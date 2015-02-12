@@ -53,6 +53,38 @@ impl<'a> Record<'a>{
         Record { b: b, data: unsafe { from_raw_parts((*b).data, b.l_data as usize) } }
     }
 
+    fn tid(&self) -> i32 {
+        self.b.core.tid
+    }
+
+    fn pos(&self) -> i32 {
+        self.b.core.pos
+    }
+
+    fn bin(&self) -> u16 {
+        self.b.core.bin
+    }
+
+    fn map_qual(&self) -> u8 {
+        self.b.core.qual
+    }
+
+    fn flag(&self) -> u16 {
+        self.b.core.flag
+    }
+
+    fn mtid(&self) -> i32 {
+        self.b.core.mtid
+    }
+
+    fn mpos(&self) -> i32 {
+        self.b.core.mpos
+    }
+
+    fn isize(&self) -> i32 {
+        self.b.core.isize
+    }
+
     fn qname_len(&self) -> usize {
         self.b.core.l_qname as usize
     }
