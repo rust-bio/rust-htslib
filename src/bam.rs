@@ -9,7 +9,7 @@ use std::mem::copy_lifetime;
 pub enum Aux<'a> {
     Integer(i32),
     String(&'a [u8]),
-    Float(f32),
+    Float(f64),
     Char(u8),
 }
 
@@ -21,7 +21,7 @@ impl<'a> Aux<'a> {
         }
     }
 
-    pub fn float(&self) -> f32 {
+    pub fn float(&self) -> f64 {
         match *self {
             Aux::Float(x) => x,
             _ => panic!("not a float"),
@@ -75,11 +75,11 @@ impl<'a> Record<'a>{
     }
 
     pub fn seq(&self) -> &[u8] {
-        self.data[self.qname_len() + self.cigar_len()*4..][0..self.seq_len()].as_slice()
+        self.data[self.qname_len() + self.cigar_len()*4..][..self.seq_len()].as_slice()
     }
 
     pub fn qual(&self) -> &[u8] {
-        self.data[self.qname_len() + self.cigar_len()*4 + (self.seq_len()+1)/2..][0..self.seq_len()].as_slice()
+        self.data[self.qname_len() + self.cigar_len()*4 + (self.seq_len()+1)/2..][..self.seq_len()].as_slice()
     }
 
     pub fn aux(&self, name: &[u8]) -> Result<Aux, &str> {
@@ -89,9 +89,9 @@ impl<'a> Record<'a>{
         unsafe {
             match *aux {
                 b'c'|b'C'|b's'|b'S'|b'i'|b'I' => Ok(Aux::Integer(htslib::bam_aux2i(aux))),
-                b'f'|b'd' => Ok(Aux::Float(*(aux.offset(1) as *const f32))),
-                b'A' => Ok(Aux::Char(*(aux.offset(1) as *const u8))),
-                b'Z' => {
+                b'f'|b'd' => Ok(Aux::Float(htslib::bam_aux2f(aux))),
+                b'A' => Ok(Aux::Char(htslib::bam_aux2A(aux) as u8)),
+                b'Z'|b'H' => {
                     let f = (aux.offset(1) as *const i8);
                     let x = c_str_to_bytes(&f);
                     Ok(Aux::String(copy_lifetime(self, x)))
