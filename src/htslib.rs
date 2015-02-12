@@ -1,9 +1,10 @@
-extern crate libc;
+#![allow(non_camel_case_types)]
+#![allow(non_upper_case_globals)]
 
-use std::ffi::c_str_to_bytes;
-use std::slice::from_raw_parts;
-use std::slice::from_raw_parts_mut;
-use std::slice;
+//use std::ffi::c_str_to_bytes;
+//use std::slice::from_raw_parts;
+//use std::slice::from_raw_parts_mut;
+//use std::slice;
 //use std::c_vec::CVec;
 
 
@@ -468,50 +469,4 @@ extern "C" {
     pub fn bam_mplp_auto(iter: bam_mplp_t, _tid: *mut ::libc::c_int,
                          _pos: *mut ::libc::c_int, n_plp: *mut ::libc::c_int,
                          plp: *mut *const bam_pileup1_t) -> ::libc::c_int;
-}
-
-fn main() {
-    let version = unsafe { *hts_version() };    
-    let f = unsafe { bgzf_open(b"/vol/huge/exomate/pipeline2/bams/M46539TCS.bam\0".as_ptr() as *const i8, b"r\0".as_ptr() as *const i8) };
-    let h = unsafe { bam_hdr_read(f) };
-
-    let b = unsafe { bam_init1() };
-    let mut status = unsafe { bam_read1(f, b) };
-    status = unsafe { bam_read1(f, b) };
-    //status = unsafe { bam_read1(f, b) };
-    //unsafe { println!("{}", status); }
-
-    let x = unsafe { (*b).data as *const i8 };
-    let qname = unsafe {  c_str_to_bytes(&x) };
-    unsafe { println!("{:?}", qname) };
-
-
-    //let aux = unsafe { bam_aux_get(b, b"RG".as_ptr() as *mut i8 ) };
-    //unsafe { println!("{:?}", from_raw_parts(aux, 5)) };
-
-
-    //unsafe { println!("{:?}", *(*f).fp.bgzf()); }
-    unsafe { bam_destroy1(b) };
-    //unsafe { hts_close(f) };
-
-    //let idx = unsafe { hts_idx_load(b"/vol/home/schroeder/smaller.bam.bai\0".as_ptr() as *const i8, 1) };
-    //let h = unsafe { sam_hdr_read(fq) };
-    //let iter = unsafe { sam_itr_queryi(idx, 0, 100000, 200000) };
-    //let mut null = 0us;
-    //let r =  unsafe { hts_itr_next(*(*f).fp.bgzf(), iter, b as *mut libc::types::common::c95::c_void, null as *mut libc::types::common::c95::c_void) };
-
-
-    //println!("{}", "hallo");
-
-    //unsafe { hts_itr_destroy(iter) };
-    //unsafe { bam_destroy1(b) };
-    //unsafe { hts_close(f) };
-
-
-    //while ((r = bam_itr_next(f, iter, b)) >= 0) {
-    //}
-
-    //let y = unsafe { bam_hdr_read(f.fp) };
-
-
 }
