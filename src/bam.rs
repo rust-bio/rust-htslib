@@ -52,23 +52,23 @@ impl<'a> Record<'a>{
         Record { b: b, data: unsafe { from_raw_parts((*b).data, b.l_data as usize) } }
     }
 
-    fn tid(&self) -> i32 {
+    pub fn tid(&self) -> i32 {
         self.b.core.tid
     }
 
-    fn pos(&self) -> i32 {
+    pub fn pos(&self) -> i32 {
         self.b.core.pos
     }
 
-    fn bin(&self) -> u16 {
+    pub fn bin(&self) -> u16 {
         self.b.core.bin
     }
 
-    fn map_qual(&self) -> u8 {
+    pub fn map_qual(&self) -> u8 {
         self.b.core.qual
     }
 
-    fn flag(&self) -> u16 {
+    pub fn flag(&self) -> u16 {
         self.b.core.flag
     }
 
@@ -130,6 +130,54 @@ impl<'a> Record<'a>{
                 _ => Err("unexpected aux type"),
             }
         }
+    }
+
+    pub fn is_paired(&self) -> bool{
+        (self.flag() & 1u16) > 0
+    }
+
+    pub fn is_proper_pair(&self) -> bool{
+        (self.flag() & 2u16) > 0
+    }
+
+    pub fn is_unmapped(&self) -> bool{
+        (self.flag() & 4u16) > 0
+    }
+
+    pub fn mate_is_unmapped(&self) -> bool{
+        (self.flag() & 8u16) > 0
+    }
+
+    pub fn is_reverse(&self) -> bool{
+        (self.flag() & 16u16) > 0
+    }
+
+    pub fn mate_is_reverse(&self) -> bool{
+        (self.flag() & 32u16) > 0
+    }
+
+    pub fn is_first_in_pair(&self) -> bool{
+        (self.flag() & 64u16) > 0
+    }
+
+    pub fn is_second_in_pair(&self) -> bool{
+        (self.flag() & 128u16) > 0
+    }
+
+    pub fn is_secondary(&self) -> bool{
+        (self.flag() & 256u16) > 0
+    }
+
+    pub fn is_quality_check_failed(&self) -> bool{
+        (self.flag() & 512u16) > 0
+    }
+
+    pub fn is_duplicate(&self) -> bool{
+        (self.flag() & 1024u16) > 0
+    }
+
+    pub fn is_supplementary(&self) -> bool{
+        (self.flag() & 2048u16) > 0
     }
 }
 

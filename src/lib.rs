@@ -47,6 +47,7 @@ mod tests {
         let f = bam::Samfile::new(b"/vol/huge/exomate/pipeline2/bams/M46539TCS.bam");
         for record in f.take(10) {
             println!("{:?}", String::from_utf8_lossy(record.qname()));
+            println!("{:?}", record.flag());
         }
 
 
