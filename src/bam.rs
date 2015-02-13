@@ -132,4 +132,23 @@ impl<'a> Record<'a>{
             }
         }
     }
-} 
+}
+
+pub struct Samfile<'a> {
+    f: *mut htslib::Struct_BGZF,
+    header: *mut htslib::bam_hdr_t,
+}
+
+impl<'a> Samfile<'a>{
+     pub fn new(filename: &[u8]) -> Samfile {
+        let f = unsafe { htslib::bgzf_open(filename.as_ptr() as *const i8, b"r\0".as_ptr() as *const i8) };
+        let header = unsafe { htslib::bam_hdr_read(f) };
+        Samfile { f : f, header : header }
+    }
+
+    pub fn read(&self) -> Record {
+        let b = unsafe { htslib::bam_init1() };
+        let mut status = unsafe { htslib::bam_read1(self.f, b) };
+        Record::new(unsafe { &(*b) })
+    }
+}

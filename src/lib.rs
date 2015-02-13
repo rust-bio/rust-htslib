@@ -44,16 +44,13 @@ mod tests {
 
     #[test]
     fn test_record() {
-       let f = unsafe { htslib::bgzf_open(b"/vol/huge/exomate/pipeline2/bams/M46539TCS.bam\0".as_ptr() as *const i8, b"r\0".as_ptr() as *const i8) };
-        let header = unsafe { htslib::bam_hdr_read(f) };
-        let b = unsafe { htslib::bam_init1() };
-        let mut status = unsafe { htslib::bam_read1(f, b) };
-        status = unsafe { htslib::bam_read1(f, b) };
-        let c = unsafe { *b };
-        let record = bam::Record::new(&c);
-        //println!("{:?}", record.qname());
-        //println!("{}", String::from_utf8_lossy(record.aux(b"MD").ok().unwrap().string()).as_slice());
-        println!("{}", record.aux(b"SM").ok().unwrap().integer());
+        let f = bam::Samfile::new(b"/vol/huge/exomate/pipeline2/bams/M46539TCS.bam");
+        let mut record = f.read();
+        println!("{:?}", record.qname());
+
+//        println!("{:?}", record.qname());
+//        println!("{}", String::from_utf8_lossy(record.aux(b"MD").ok().unwrap().string()).as_slice());
+//        println!("{}", record.aux(b"SM").ok().unwrap().integer());
 
         assert!(false);
     }
