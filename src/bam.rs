@@ -4,7 +4,6 @@ use std::slice::from_raw_parts;
 use std::ffi::CString;
 use std::mem::copy_lifetime;
 
-
 #[derive(Debug)]
 pub enum Aux<'a> {
     Integer(i32),
@@ -90,7 +89,7 @@ impl<'a> Record<'a>{
     }
 
     pub fn qname(&self) -> &[u8] {
-        self.data[0..self.qname_len()].as_slice()
+        self.data[0..self.qname_len()-1].as_slice() // -1 ignores the termination symbol
     }
 
     fn cigar_len(&self) -> usize {
@@ -150,5 +149,12 @@ impl<'a> Samfile<'a>{
         let b = unsafe { htslib::bam_init1() };
         let mut status = unsafe { htslib::bam_read1(self.f, b) };
         Record::new(unsafe { &(*b) })
+    }
+}
+
+impl<'a> Iterator for Samfile<'a> {
+    type Item = Record<'a>;
+    fn next(&mut self) -> Option<Record> {
+        Some(self.read())
     }
 }

@@ -45,10 +45,11 @@ mod tests {
     #[test]
     fn test_record() {
         let f = bam::Samfile::new(b"/vol/huge/exomate/pipeline2/bams/M46539TCS.bam");
-        let mut record = f.read();
-        println!("{:?}", record.qname());
+        for record in f.take(10) {
+            println!("{:?}", String::from_utf8_lossy(record.qname()));
+        }
 
-//        println!("{:?}", record.qname());
+
 //        println!("{}", String::from_utf8_lossy(record.aux(b"MD").ok().unwrap().string()).as_slice());
 //        println!("{}", record.aux(b"SM").ok().unwrap().integer());
 
