@@ -1,6 +1,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
+
 //use std::ffi::c_str_to_bytes;
 //use std::slice::from_raw_parts;
 //use std::slice::from_raw_parts_mut;
@@ -319,7 +320,6 @@ extern "C" {
     pub static mut seq_nt16_int: *const ::libc::c_int;
 }
 
-#[link(name = "hts")]
 extern "C" {
     pub fn bgzf_open(_fn: *const ::libc::c_char, mode: *const ::libc::c_char) -> *mut BGZF;
     pub fn hts_version() -> *const ::libc::c_char;

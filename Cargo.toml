@@ -3,3 +3,4 @@
 name = "rust-htslib"
 version = "0.0.1"
 authors = ["Christopher Schroeder <christopher.schroeder@tu-dortmund.de>", "Johannes Koester <johannes.koester@tu-dortmund.de>"]
+build = "build.rs"
