@@ -126,7 +126,7 @@ impl ::std::default::Default for Struct_Unnamed2 {
 #[repr(C)]
 #[derive(Copy)]
 pub struct Union_Unnamed3 {
-    pub _bindgen_data_: [u64; 1us],
+    pub _bindgen_data_: [u64; 1],
 }
 impl Union_Unnamed3 {
     pub unsafe fn bgzf(&mut self) -> *mut *mut BGZF {
@@ -315,7 +315,7 @@ pub enum Struct___bam_mplp_t { }
 pub type bam_mplp_t = *mut Struct___bam_mplp_t;
 extern "C" {
     pub static mut hts_verbose: ::libc::c_int;
-    pub static mut seq_nt16_table: [::libc::c_uchar; 256us];
+    pub static mut seq_nt16_table: [::libc::c_uchar; 256];
     pub static mut seq_nt16_str: *const ::libc::c_char;
     pub static mut seq_nt16_int: *const ::libc::c_int;
 }

@@ -72,15 +72,15 @@ impl<'a> Record<'a>{
         self.b.core.flag
     }
 
-    fn mtid(&self) -> i32 {
+    pub fn mtid(&self) -> i32 {
         self.b.core.mtid
     }
 
-    fn mpos(&self) -> i32 {
+    pub fn mpos(&self) -> i32 {
         self.b.core.mpos
     }
 
-    fn isize(&self) -> i32 {
+    pub fn isize(&self) -> i32 {
         self.b.core.isize
     }
 
@@ -181,12 +181,12 @@ impl<'a> Record<'a>{
     }
 }
 
-pub struct Samfile<'a> {
+pub struct Samfile {
     f: *mut htslib::Struct_BGZF,
     header: *mut htslib::bam_hdr_t,
 }
 
-impl<'a> Samfile<'a>{
+impl Samfile{
      pub fn new(filename: &[u8]) -> Samfile {
         let f = unsafe { htslib::bgzf_open(filename.as_ptr() as *const i8, b"r\0".as_ptr() as *const i8) };
         let header = unsafe { htslib::bam_hdr_read(f) };
@@ -200,7 +200,7 @@ impl<'a> Samfile<'a>{
     }
 }
 
-impl<'a> Iterator for Samfile<'a> {
+impl<'a> Iterator for Samfile {
     type Item = Record<'a>;
     fn next(&mut self) -> Option<Record> {
         Some(self.read())
