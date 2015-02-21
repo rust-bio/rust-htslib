@@ -7,20 +7,33 @@ pub mod bam;
 mod tests {
     use htslib;
     use bam;
+    use std::str;
 
     #[test]
     fn test_record() {
         let names = [b"I", b"II.14978392", b"III", b"IV", b"V", b"VI"];
         let flags = [16u16, 16u16, 16u16, 16u16, 16u16, 2048u16];
-        let f = bam::Samfile::new(b"test.bam");
-        let records: Vec<bam::Record> = f.take(6).collect();
-        assert!(records.len() == 6);
+        let seqs = [
+            b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA",
+            b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA",
+            b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA",
+            b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA",
+            b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA",
+            b"ACTAAGCCTAAGCCTAAGCCTAAGCCAATTATCGATTTCTGAAAAAATTATCGAATTTTCTAGAAATTTTGCAAATTTTTTCATAAAATTATCGATTTTA",
+        ];
 
-        for ((record, &name), &flag) in records.iter().zip(names.iter()).zip(flags.iter()) {
-            assert_eq!(record.qname(), name);
-            assert_eq!(record.flag(), flag);
-            println!("{:?}", String::from_utf8_lossy(record.qname()));
-            println!("{:?}", record.flag());
+        let samfile = bam::Samfile::new(b"test.bam");
+
+        for (((record, &name), &flag), &seq) in samfile.records()
+                                                       .zip(names.iter())
+                                                       .zip(flags.iter())
+                                                       .zip(seqs.iter()) {
+            let rec = record.ok().expect("Expected valid record");
+            println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
+            //println!("{}", str::from_utf8(rec.seq()).ok().unwrap());
+            assert_eq!(rec.qname(), name);
+            assert_eq!(rec.flag(), flag);
+            assert_eq!(rec.seq(), seq);
         }
 
 

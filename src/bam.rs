@@ -4,6 +4,7 @@ use std::slice::from_raw_parts;
 use std::ffi::CString;
 use std::mem::copy_lifetime;
 
+
 #[derive(Debug)]
 pub enum Aux<'a> {
     Integer(i32),
@@ -11,6 +12,7 @@ pub enum Aux<'a> {
     Float(f64),
     Char(u8),
 }
+
 
 impl<'a> Aux<'a> {
     pub fn string(&self) -> &'a [u8] {
@@ -42,14 +44,20 @@ impl<'a> Aux<'a> {
     }
 }
 
-pub struct Record<'a> {
-    b: &'a htslib::bam1_t,
-    data: &'a [u8],
+
+pub struct Record {
+    b: htslib::bam1_t,
 }
 
-impl<'a> Record<'a>{
-    pub fn new(b: &'a htslib::bam1_t) -> Record {
-        Record { b: b, data: unsafe { from_raw_parts((*b).data, b.l_data as usize) } }
+
+impl Record {
+    pub fn new() -> Self {
+        let b = unsafe { *htslib::bam_init1() };
+        Record { b: b }
+    }
+
+    fn data(&self) -> &[u8] {
+        unsafe { from_raw_parts(self.b.data, self.b.l_data as usize) }
     }
 
     pub fn tid(&self) -> i32 {
@@ -89,7 +97,7 @@ impl<'a> Record<'a>{
     }
 
     pub fn qname(&self) -> &[u8] {
-        self.data[0..self.qname_len()-1].as_slice() // -1 ignores the termination symbol
+        self.data()[0..self.qname_len()-1].as_slice() // -1 ignores the termination symbol
     }
 
     fn cigar_len(&self) -> usize {
@@ -98,7 +106,7 @@ impl<'a> Record<'a>{
 
     pub fn bam_get_cigar(&self) -> &[u32] {
         let x = self.b.core.l_qname as usize;
-        unsafe { from_raw_parts(self.data[self.qname_len()..].as_ptr() as *const u32, self.cigar_len()) }
+        unsafe { from_raw_parts(self.data()[self.qname_len()..].as_ptr() as *const u32, self.cigar_len()) }
     }
 
     fn seq_len(&self) -> usize {
@@ -106,15 +114,16 @@ impl<'a> Record<'a>{
     }
 
     pub fn seq(&self) -> &[u8] {
-        self.data[self.qname_len() + self.cigar_len()*4..][..self.seq_len()].as_slice()
+        // TODO sequence seems to return wrong characters
+        self.data()[self.qname_len() + self.cigar_len()*4..][..self.seq_len()].as_slice()
     }
 
     pub fn qual(&self) -> &[u8] {
-        self.data[self.qname_len() + self.cigar_len()*4 + (self.seq_len()+1)/2..][..self.seq_len()].as_slice()
+        self.data()[self.qname_len() + self.cigar_len()*4 + (self.seq_len()+1)/2..][..self.seq_len()].as_slice()
     }
 
     pub fn aux(&self, name: &[u8]) -> Result<Aux, &str> {
-        let aux = unsafe { htslib::bam_aux_get(self.b, name.as_ptr() as *mut i8 ) };
+        let aux = unsafe { htslib::bam_aux_get(&self.b, name.as_ptr() as *mut i8 ) };
         unsafe { println!("{}", *aux); }
 
         unsafe {
@@ -181,10 +190,12 @@ impl<'a> Record<'a>{
     }
 }
 
+
 pub struct Samfile {
     f: *mut htslib::Struct_BGZF,
     header: *mut htslib::bam_hdr_t,
 }
+
 
 impl Samfile{
      pub fn new(filename: &[u8]) -> Samfile {
@@ -193,16 +204,42 @@ impl Samfile{
         Samfile { f : f, header : header }
     }
 
-    pub fn read(&self) -> Record {
-        let b = unsafe { htslib::bam_init1() };
-        let mut status = unsafe { htslib::bam_read1(self.f, b) };
-        Record::new(unsafe { &(*b) })
+    pub fn read(&self, record: &mut Record) -> Result<(), Error> {
+        match unsafe { htslib::bam_read1(self.f, &mut record.b as *mut htslib::bam1_t) } {
+            -1 => Err(Error::EOF),
+            -2 => Err(Error::Truncated),
+            -4 => Err(Error::Invalid),
+            _  => Ok(())
+        }
+    }
+
+    pub fn records(self) -> Records {
+        Records { samfile: self }
     }
 }
 
-impl<'a> Iterator for Samfile {
-    type Item = Record<'a>;
-    fn next(&mut self) -> Option<Record> {
-        Some(self.read())
+
+pub struct Records {
+    samfile: Samfile
+}
+
+
+impl Iterator for Records {
+    type Item = Result<Record, Error>;
+
+    fn next(&mut self) -> Option<Result<Record, Error>> {
+        let mut record = Record::new();
+        match self.samfile.read(&mut record) {
+            Err(Error::EOF) => None,
+            Ok(())   => Some(Ok(record)),
+            Err(err) => Some(Err(err))
+        }
     }
+}
+
+
+pub enum Error {
+    Truncated,
+    Invalid,
+    EOF,
 }
