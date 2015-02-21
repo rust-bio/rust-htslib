@@ -29,12 +29,8 @@ mod tests {
             println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
             assert_eq!(rec.qname(), names[i]);
             assert_eq!(rec.flag(), flags[i]);
-            assert_eq!(rec.seq(), seqs[i]);
+            assert_eq!(rec.seq().as_bytes(), seqs[i]);
         }
-
-
-//        println!("{}", String::from_utf8_lossy(record.aux(b"MD").ok().unwrap().string()).as_slice());
-//        println!("{}", record.aux(b"SM").ok().unwrap().integer());
 
     }
 }

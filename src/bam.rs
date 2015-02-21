@@ -115,9 +115,12 @@ impl Record {
         self.b.core.l_qseq as usize
     }
 
-    pub fn seq(&self) -> &[u8] {
-        // TODO sequence seems to return wrong characters
-        self.data()[self.qname_len() + self.cigar_len()*4..][..self.seq_len()].as_slice()
+    pub fn seq(&self) -> Seq {
+        Seq { 
+            encoded: self.data()
+                        [self.qname_len() + self.cigar_len()*4..]
+                        [..(self.seq_len() + 1) / 2].as_slice()
+        }
     }
 
     pub fn qual(&self) -> &[u8] {
@@ -236,6 +239,36 @@ impl Iterator for Records {
             Ok(())   => Some(Ok(record)),
             Err(err) => Some(Err(err))
         }
+    }
+}
+
+
+static TRANSLATE_BASE: &'static [u8] = b"=ACMGRSVTWYHKDBN";
+
+
+pub struct Seq<'a> {
+    pub encoded: &'a [u8]
+}
+
+
+impl<'a> Seq<'a> {
+
+    #[inline]
+    pub fn encoded_base(&self, i: usize) -> u8 {
+        (self.encoded[i / 2] >> ((! i & 1) << 2)) & 0b1111
+    }
+
+    #[inline]
+    pub fn base(&self, i: usize) -> u8 {
+        TRANSLATE_BASE[self.encoded_base(i) as usize]
+    }
+
+    pub fn as_bytes(&self) -> Vec<u8> {
+        (0..self.len()).map(|i| self.base(i)).collect()
+    }
+
+    pub fn len(&self) -> usize {
+        self.encoded.len() * 2
     }
 }
 
