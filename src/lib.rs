@@ -24,16 +24,12 @@ mod tests {
 
         let samfile = bam::Samfile::new(b"test.bam");
 
-        for (((record, &name), &flag), &seq) in samfile.records()
-                                                       .zip(names.iter())
-                                                       .zip(flags.iter())
-                                                       .zip(seqs.iter()) {
+        for (i, record) in samfile.records().enumerate() {
             let rec = record.ok().expect("Expected valid record");
             println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
-            //println!("{}", str::from_utf8(rec.seq()).ok().unwrap());
-            assert_eq!(rec.qname(), name);
-            assert_eq!(rec.flag(), flag);
-            assert_eq!(rec.seq(), seq);
+            assert_eq!(rec.qname(), names[i]);
+            assert_eq!(rec.flag(), flags[i]);
+            assert_eq!(rec.seq(), seqs[i]);
         }
 
 

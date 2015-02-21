@@ -55,6 +55,7 @@ impl Record {
         let b = unsafe { *htslib::bam_init1() };
         Record { b: b }
     }
+    // TODO add destructor that deallocs b.data
 
     fn data(&self) -> &[u8] {
         unsafe { from_raw_parts(self.b.data, self.b.l_data as usize) }
@@ -97,7 +98,8 @@ impl Record {
     }
 
     pub fn qname(&self) -> &[u8] {
-        self.data()[0..self.qname_len()-1].as_slice() // -1 ignores the termination symbol
+        self.data()[..self.qname_len()-1].as_slice() // -1 ignores the termination symbol
+
     }
 
     fn cigar_len(&self) -> usize {
@@ -122,21 +124,21 @@ impl Record {
         self.data()[self.qname_len() + self.cigar_len()*4 + (self.seq_len()+1)/2..][..self.seq_len()].as_slice()
     }
 
-    pub fn aux(&self, name: &[u8]) -> Result<Aux, &str> {
+    pub fn aux(&self, name: &[u8]) -> Option<Aux> {
         let aux = unsafe { htslib::bam_aux_get(&self.b, name.as_ptr() as *mut i8 ) };
         unsafe { println!("{}", *aux); }
 
         unsafe {
             match *aux {
-                b'c'|b'C'|b's'|b'S'|b'i'|b'I' => Ok(Aux::Integer(htslib::bam_aux2i(aux))),
-                b'f'|b'd' => Ok(Aux::Float(htslib::bam_aux2f(aux))),
-                b'A' => Ok(Aux::Char(htslib::bam_aux2A(aux) as u8)),
+                b'c'|b'C'|b's'|b'S'|b'i'|b'I' => Some(Aux::Integer(htslib::bam_aux2i(aux))),
+                b'f'|b'd' => Some(Aux::Float(htslib::bam_aux2f(aux))),
+                b'A' => Some(Aux::Char(htslib::bam_aux2A(aux) as u8)),
                 b'Z'|b'H' => {
                     let f = (aux.offset(1) as *const i8);
                     let x = c_str_to_bytes(&f);
-                    Ok(Aux::String(copy_lifetime(self, x)))
+                    Some(Aux::String(copy_lifetime(self, x)))
                 },
-                _ => Err("unexpected aux type"),
+                _ => None,
             }
         }
     }
