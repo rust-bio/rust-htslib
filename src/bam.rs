@@ -1,9 +1,8 @@
-use htslib;
-use std::ffi::c_str_to_bytes;
 use std::slice::from_raw_parts;
-use std::ffi::CString;
+use std::ffi::CStr;
 use std::mem::copy_lifetime;
 
+use htslib;
 
 #[derive(Debug)]
 pub enum Aux<'a> {
@@ -55,7 +54,7 @@ impl Record {
         let b = unsafe { *htslib::bam_init1() };
         Record { b: b }
     }
-    // TODO add destructor that deallocs b.data
+    // TODO ensure that owning b really destroys b.data when object goes out of scope
 
     fn data(&self) -> &[u8] {
         unsafe { from_raw_parts(self.b.data, self.b.l_data as usize) }
@@ -107,7 +106,6 @@ impl Record {
     }
 
     pub fn bam_get_cigar(&self) -> &[u32] {
-        let x = self.b.core.l_qname as usize;
         unsafe { from_raw_parts(self.data()[self.qname_len()..].as_ptr() as *const u32, self.cigar_len()) }
     }
 
@@ -137,8 +135,8 @@ impl Record {
                 b'f'|b'd' => Some(Aux::Float(htslib::bam_aux2f(aux))),
                 b'A' => Some(Aux::Char(htslib::bam_aux2A(aux) as u8)),
                 b'Z'|b'H' => {
-                    let f = (aux.offset(1) as *const i8);
-                    let x = c_str_to_bytes(&f);
+                    let f = aux.offset(1) as *const i8;
+                    let x = CStr::from_ptr(f).to_bytes();
                     Some(Aux::String(copy_lifetime(self, x)))
                 },
                 _ => None,
@@ -196,17 +194,17 @@ impl Record {
 }
 
 
-pub struct Samfile {
+pub struct Bamfile {
     f: *mut htslib::Struct_BGZF,
-    header: *mut htslib::bam_hdr_t,
+    header: htslib::bam_hdr_t,
 }
 
 
-impl Samfile{
-     pub fn new(filename: &[u8]) -> Samfile {
+impl Bamfile{
+     pub fn new(filename: &[u8]) -> Self {
         let f = unsafe { htslib::bgzf_open(filename.as_ptr() as *const i8, b"r\0".as_ptr() as *const i8) };
-        let header = unsafe { htslib::bam_hdr_read(f) };
-        Samfile { f : f, header : header }
+        let header = unsafe { *htslib::bam_hdr_read(f) };
+        Bamfile { f : f, header : header }
     }
 
     pub fn read(&self, record: &mut Record) -> Result<(), Error> {
@@ -219,13 +217,13 @@ impl Samfile{
     }
 
     pub fn records(self) -> Records {
-        Records { samfile: self }
+        Records { bam: self }
     }
 }
 
 
 pub struct Records {
-    samfile: Samfile
+    bam: Bamfile
 }
 
 
@@ -234,7 +232,7 @@ impl Iterator for Records {
 
     fn next(&mut self) -> Option<Result<Record, Error>> {
         let mut record = Record::new();
-        match self.samfile.read(&mut record) {
+        match self.bam.read(&mut record) {
             Err(Error::EOF) => None,
             Ok(())   => Some(Ok(record)),
             Err(err) => Some(Err(err))
@@ -277,4 +275,36 @@ pub enum Error {
     Truncated,
     Invalid,
     EOF,
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::str;
+
+    #[test]
+    fn test_record() {
+        let names = [b"I", b"II.14978392", b"III", b"IV", b"V", b"VI"];
+        let flags = [16u16, 16u16, 16u16, 16u16, 16u16, 2048u16];
+        let seqs = [
+            b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA",
+            b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA",
+            b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA",
+            b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA",
+            b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA",
+            b"ACTAAGCCTAAGCCTAAGCCTAAGCCAATTATCGATTTCTGAAAAAATTATCGAATTTTCTAGAAATTTTGCAAATTTTTTCATAAAATTATCGATTTTA",
+        ];
+
+        let bam = Bamfile::new(b"test.bam");
+
+        for (i, record) in bam.records().enumerate() {
+            let rec = record.ok().expect("Expected valid record");
+            println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
+            assert_eq!(rec.qname(), names[i]);
+            assert_eq!(rec.flag(), flags[i]);
+            assert_eq!(rec.seq().as_bytes(), seqs[i]);
+        }
+
+    }
 }
