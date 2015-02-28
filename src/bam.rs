@@ -271,6 +271,20 @@ impl<'a> Seq<'a> {
 }
 
 
+pub enum Cigar {
+    Match(u32),  // M
+    Ins(u32),  // I
+    Del(u32),  // D
+    RefSkip(u32),  // N
+    SoftClip(u32),  // S
+    HardClip(u32),  // H
+    Pad(u32),  // P
+    Equal(u32),  // =
+    Diff(u32),  // X
+    Back(u32)  // B
+}
+
+
 pub enum Error {
     Truncated,
     Invalid,
