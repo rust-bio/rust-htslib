@@ -304,6 +304,8 @@ impl<'a> Seq<'a> {
 }
 
 
+#[derive(Debug)]
+#[derive(PartialEq)]
 pub enum Cigar {
     Match(u32),  // M
     Ins(u32),  // I
@@ -342,6 +344,14 @@ mod tests {
             b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA",
             b"ACTAAGCCTAAGCCTAAGCCTAAGCCAATTATCGATTTCTGAAAAAATTATCGAATTTTCTAGAAATTTTGCAAATTTTTTCATAAAATTATCGATTTTA",
         ];
+        let cigars = [
+            [Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)],
+            [Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)],
+            [Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)],
+            [Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)],
+            [Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)],
+            [Cigar::Match(27), Cigar::Del(100000), Cigar::Match(73)],
+        ];
 
         let bam = Bamfile::new(b"test.bam");
 
@@ -351,6 +361,7 @@ mod tests {
             assert_eq!(rec.qname(), names[i]);
             assert_eq!(rec.flag(), flags[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
+            assert_eq!(rec.cigar(), cigars[i]);
         }
 
     }
