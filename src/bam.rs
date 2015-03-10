@@ -133,6 +133,7 @@ impl Record {
     }
 
     pub fn set(&mut self, qname: &[u8], cigar: &[Cigar], seq: &[u8], qual: &[u8]) {
+        // TODO fix segfault. self.b.data does not seem to be allocated correctly
         self.b.l_data = (qname.len() + 1 + cigar.len() * 4 + seq.len() / 2 + qual.len()) as i32;
 
         if self.b.m_data < self.b.l_data {
@@ -146,7 +147,6 @@ impl Record {
         }
 
         let mut data = unsafe { slice::from_raw_parts_mut(self.b.data, self.b.l_data as usize) };
-
         // qname
         slice::bytes::copy_memory(data, qname);
         data[qname.len()] = b'\0';
@@ -234,8 +234,12 @@ impl Record {
         }
     }
 
-    pub fn is_paired(&self) -> bool{
+    pub fn is_paired(&self) -> bool {
         (self.flags() & 1u16) > 0
+    }
+
+    pub fn set_is_paired(&mut self) {
+        self.b.core.flag | 1u16;
     }
 
     pub fn is_proper_pair(&self) -> bool{
@@ -468,10 +472,25 @@ mod tests {
             let rec = record.ok().expect("Expected valid record");
             println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
             assert_eq!(rec.qname(), names[i]);
-            assert_eq!(rec.flag(), flags[i]);
+            assert_eq!(rec.flags(), flags[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
             assert_eq!(rec.cigar(), cigars[i]);
         }
+    }
 
+    #[test]
+    fn test_set_record() {
+        let qname = b"I";
+        let cigar = [Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)];
+        let seq =  b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGC";
+        let qual = b"JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ";
+
+        let mut rec = Record::new();
+        rec.set(qname, &cigar, seq, qual);
+        assert!(false);
+        assert_eq!(rec.qname(), qname);
+        assert_eq!(rec.cigar(), cigar);
+        assert_eq!(rec.seq().as_bytes(), seq);
+        assert_eq!(rec.qual(), qual);
     }
 }
