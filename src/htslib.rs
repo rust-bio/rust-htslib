@@ -42,8 +42,15 @@ pub type uintmax_t = ::libc::c_ulong;
 pub type ptrdiff_t = ::libc::c_long;
 pub type size_t = ::libc::c_ulong;
 pub type wchar_t = ::libc::c_int;
+
+// bgzf.h
 pub enum Struct_BGZF { }
 pub type BGZF = Struct_BGZF;
+
+extern "C" {
+    pub fn bgzf_close(fp: *mut BGZF) -> ::libc::c_int;
+}
+
 pub enum Struct_cram_fd { }
 pub enum Struct_hFILE { }
 #[repr(C)]

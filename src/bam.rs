@@ -1,6 +1,7 @@
 use std::slice::from_raw_parts;
 use std::ffi::CStr;
 use std::mem::copy_lifetime;
+use libc;
 
 use htslib;
 
@@ -97,7 +98,7 @@ impl Record {
     }
 
     pub fn qname(&self) -> &[u8] {
-        self.data()[..self.qname_len()-1].as_slice() // -1 ignores the termination symbol
+        &self.data()[..self.qname_len()-1] // -1 ignores the termination symbol
 
     }
 
@@ -105,8 +106,24 @@ impl Record {
         self.b.core.n_cigar as usize
     }
 
-    pub fn bam_get_cigar(&self) -> &[u32] {
-        unsafe { from_raw_parts(self.data()[self.qname_len()..].as_ptr() as *const u32, self.cigar_len()) }
+    pub fn cigar(&self) -> Vec<Cigar> {
+        let raw = unsafe { from_raw_parts(self.data()[self.qname_len()..].as_ptr() as *const u32, self.cigar_len()) };
+        raw.iter().map(|&c| {
+            let len = c >> 4;
+            match c & 0b1111 {
+                0 => Cigar::Match(len),
+                1 => Cigar::Ins(len),
+                2 => Cigar::Del(len),
+                3 => Cigar::RefSkip(len),
+                4 => Cigar::SoftClip(len),
+                5 => Cigar::HardClip(len),
+                6 => Cigar::Pad(len),
+                7 => Cigar::Equal(len),
+                8 => Cigar::Diff(len),
+                9 => Cigar::Back(len),
+                _ => panic!("Unexpected cigar type"),
+            }
+        }).collect()
     }
 
     fn seq_len(&self) -> usize {
@@ -115,19 +132,18 @@ impl Record {
 
     pub fn seq(&self) -> Seq {
         Seq { 
-            encoded: self.data()
+            encoded: &self.data()
                         [self.qname_len() + self.cigar_len()*4..]
-                        [..(self.seq_len() + 1) / 2].as_slice()
+                        [..(self.seq_len() + 1) / 2]
         }
     }
 
     pub fn qual(&self) -> &[u8] {
-        self.data()[self.qname_len() + self.cigar_len()*4 + (self.seq_len()+1)/2..][..self.seq_len()].as_slice()
+        &self.data()[self.qname_len() + self.cigar_len()*4 + (self.seq_len()+1)/2..][..self.seq_len()]
     }
 
     pub fn aux(&self, name: &[u8]) -> Option<Aux> {
         let aux = unsafe { htslib::bam_aux_get(&self.b, name.as_ptr() as *mut i8 ) };
-        unsafe { println!("{}", *aux); }
 
         unsafe {
             match *aux {
@@ -194,16 +210,23 @@ impl Record {
 }
 
 
+impl Drop for Record {
+    fn drop(&mut self) {
+        unsafe { libc::funcs::c95::stdlib::free(self.b.data as *mut libc::types::common::c95::c_void) };
+    }
+}
+
+
 pub struct Bamfile {
     f: *mut htslib::Struct_BGZF,
-    header: htslib::bam_hdr_t,
+    header: *mut htslib::bam_hdr_t,
 }
 
 
 impl Bamfile{
      pub fn new(filename: &[u8]) -> Self {
         let f = unsafe { htslib::bgzf_open(filename.as_ptr() as *const i8, b"r\0".as_ptr() as *const i8) };
-        let header = unsafe { *htslib::bam_hdr_read(f) };
+        let header = unsafe { htslib::bam_hdr_read(f) };
         Bamfile { f : f, header : header }
     }
 
@@ -218,6 +241,16 @@ impl Bamfile{
 
     pub fn records(self) -> Records {
         Records { bam: self }
+    }
+}
+
+
+impl Drop for Bamfile {
+    fn drop(&mut self) {
+        unsafe {
+            htslib::bam_hdr_destroy(self.header);
+            htslib::bgzf_close(self.f);
+        }
     }
 }
 
