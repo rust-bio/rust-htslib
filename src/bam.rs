@@ -1,6 +1,6 @@
-use std::slice::from_raw_parts;
+use std::slice;
 use std::ffi::CStr;
-use std::mem::copy_lifetime;
+use std::mem;
 use libc;
 
 use htslib;
@@ -57,7 +57,7 @@ impl Record {
     }
 
     fn data(&self) -> &[u8] {
-        unsafe { from_raw_parts(self.b.data, self.b.l_data as usize) }
+        unsafe { slice::from_raw_parts(self.b.data, self.b.l_data as usize) }
     }
 
     pub fn tid(&self) -> i32 {
@@ -132,8 +132,48 @@ impl Record {
         &self.data()[..self.qname_len()-1] // -1 ignores the termination symbol
     }
 
-    pub fn set_data(&mut self, qname: &[u8], cigar: &[Cigar], seq: Seq, qual: &[u8]) {
-        // TODO delegate to appropriate htslib functions here
+    pub fn set(&mut self, qname: &[u8], cigar: &[Cigar], seq: &[u8], qual: &[u8]) {
+        self.b.l_data = (qname.len() + 1 + cigar.len() * 4 + seq.len() / 2 + qual.len()) as i32;
+
+        if self.b.m_data < self.b.l_data {
+            self.b.m_data = self.b.l_data;
+            self.b.m_data += 32 - self.b.m_data % 32;
+            unsafe {
+                libc::funcs::c95::stdlib::realloc(
+                    self.b.data as *mut libc::types::common::c95::c_void, self.b.m_data as u64
+                );
+            }
+        }
+
+        let mut data = unsafe { slice::from_raw_parts_mut(self.b.data, self.b.l_data as usize) };
+
+        // qname
+        slice::bytes::copy_memory(data, qname);
+        data[qname.len()] = b'\0';
+        let mut i = qname.len() + 1;
+
+        // cigar
+        {
+            let mut cigar_data = unsafe {
+                 slice::from_raw_parts_mut(data[i..].as_ptr() as *mut u32, cigar.len())
+            };
+            for (i, c) in cigar.iter().enumerate() {
+                cigar_data[i] = c.encode();
+            }
+
+        }
+
+        i += cigar.len() * 4;
+        // seq
+        {
+            for (j, &a) in seq.iter().enumerate() {
+                data[i] = ENCODE_BASE[a as usize] << (j % 2) * 4;
+                i += j % 2;
+            }
+        }
+
+        // qual
+        slice::bytes::copy_memory(&mut data[i..], qual);
     }
 
     fn cigar_len(&self) -> usize {
@@ -141,7 +181,7 @@ impl Record {
     }
 
     pub fn cigar(&self) -> Vec<Cigar> {
-        let raw = unsafe { from_raw_parts(self.data()[self.qname_len()..].as_ptr() as *const u32, self.cigar_len()) };
+        let raw = unsafe { slice::from_raw_parts(self.data()[self.qname_len()..].as_ptr() as *const u32, self.cigar_len()) };
         raw.iter().map(|&c| {
             let len = c >> 4;
             match c & 0b1111 {
@@ -187,7 +227,7 @@ impl Record {
                 b'Z'|b'H' => {
                     let f = aux.offset(1) as *const i8;
                     let x = CStr::from_ptr(f).to_bytes();
-                    Some(Aux::String(copy_lifetime(self, x)))
+                    Some(Aux::String(mem::copy_lifetime(self, x)))
                 },
                 _ => None,
             }
@@ -195,51 +235,51 @@ impl Record {
     }
 
     pub fn is_paired(&self) -> bool{
-        (self.flag() & 1u16) > 0
+        (self.flags() & 1u16) > 0
     }
 
     pub fn is_proper_pair(&self) -> bool{
-        (self.flag() & 2u16) > 0
+        (self.flags() & 2u16) > 0
     }
 
     pub fn is_unmapped(&self) -> bool{
-        (self.flag() & 4u16) > 0
+        (self.flags() & 4u16) > 0
     }
 
     pub fn mate_is_unmapped(&self) -> bool{
-        (self.flag() & 8u16) > 0
+        (self.flags() & 8u16) > 0
     }
 
     pub fn is_reverse(&self) -> bool{
-        (self.flag() & 16u16) > 0
+        (self.flags() & 16u16) > 0
     }
 
     pub fn mate_is_reverse(&self) -> bool{
-        (self.flag() & 32u16) > 0
+        (self.flags() & 32u16) > 0
     }
 
     pub fn is_first_in_pair(&self) -> bool{
-        (self.flag() & 64u16) > 0
+        (self.flags() & 64u16) > 0
     }
 
     pub fn is_second_in_pair(&self) -> bool{
-        (self.flag() & 128u16) > 0
+        (self.flags() & 128u16) > 0
     }
 
     pub fn is_secondary(&self) -> bool{
-        (self.flag() & 256u16) > 0
+        (self.flags() & 256u16) > 0
     }
 
     pub fn is_quality_check_failed(&self) -> bool{
-        (self.flag() & 512u16) > 0
+        (self.flags() & 512u16) > 0
     }
 
     pub fn is_duplicate(&self) -> bool{
-        (self.flag() & 1024u16) > 0
+        (self.flags() & 1024u16) > 0
     }
 
     pub fn is_supplementary(&self) -> bool{
-        (self.flag() & 2048u16) > 0
+        (self.flags() & 2048u16) > 0
     }
 }
 
@@ -308,7 +348,25 @@ impl Iterator for Records {
 }
 
 
-static TRANSLATE_BASE: &'static [u8] = b"=ACMGRSVTWYHKDBN";
+static DECODE_BASE: &'static [u8] = b"=ACMGRSVTWYHKDBN";
+static ENCODE_BASE: [u8; 256] = [
+15,15,15,15, 15,15,15,15, 15,15,15,15, 15,15,15,15,
+15,15,15,15, 15,15,15,15, 15,15,15,15, 15,15,15,15,
+15,15,15,15, 15,15,15,15, 15,15,15,15, 15,15,15,15,
+1, 2, 4, 8, 15,15,15,15, 15,15,15,15, 15, 0 /*=*/,15,15,
+15, 1,14, 2, 13,15,15, 4, 11,15,15,12, 15, 3,15,15,
+15,15, 5, 6, 8,15, 7, 9, 15,10,15,15, 15,15,15,15,
+15, 1,14, 2, 13,15,15, 4, 11,15,15,12, 15, 3,15,15,
+15,15, 5, 6, 8,15, 7, 9, 15,10,15,15, 15,15,15,15,
+15,15,15,15, 15,15,15,15, 15,15,15,15, 15,15,15,15,
+15,15,15,15, 15,15,15,15, 15,15,15,15, 15,15,15,15,
+15,15,15,15, 15,15,15,15, 15,15,15,15, 15,15,15,15,
+15,15,15,15, 15,15,15,15, 15,15,15,15, 15,15,15,15,
+15,15,15,15, 15,15,15,15, 15,15,15,15, 15,15,15,15,
+15,15,15,15, 15,15,15,15, 15,15,15,15, 15,15,15,15,
+15,15,15,15, 15,15,15,15, 15,15,15,15, 15,15,15,15,
+15,15,15,15, 15,15,15,15, 15,15,15,15, 15,15,15,15
+];
 
 
 pub struct Seq<'a> {
@@ -317,7 +375,6 @@ pub struct Seq<'a> {
 
 
 impl<'a> Seq<'a> {
-
     #[inline]
     pub fn encoded_base(&self, i: usize) -> u8 {
         (self.encoded[i / 2] >> ((! i & 1) << 2)) & 0b1111
@@ -325,7 +382,7 @@ impl<'a> Seq<'a> {
 
     #[inline]
     pub fn base(&self, i: usize) -> u8 {
-        TRANSLATE_BASE[self.encoded_base(i) as usize]
+        DECODE_BASE[self.encoded_base(i) as usize]
     }
 
     pub fn as_bytes(&self) -> Vec<u8> {
@@ -351,6 +408,24 @@ pub enum Cigar {
     Equal(u32),  // =
     Diff(u32),  // X
     Back(u32)  // B
+}
+
+
+impl Cigar {
+    fn encode(&self) -> u32 {
+        match *self {
+            Cigar::Match(len)    => len << 4 | 0,
+            Cigar::Ins(len)      => len << 4 | 1,
+            Cigar::Del(len)      => len << 4 | 2,
+            Cigar::RefSkip(len)  => len << 4 | 3,
+            Cigar::SoftClip(len) => len << 4 | 4,
+            Cigar::HardClip(len) => len << 4 | 5,
+            Cigar::Pad(len)      => len << 4 | 6,
+            Cigar::Equal(len)    => len << 4 | 7,
+            Cigar::Diff(len)     => len << 4 | 8,
+            Cigar::Back(len)     => len << 4 | 9,
+        }
+    }
 }
 
 
