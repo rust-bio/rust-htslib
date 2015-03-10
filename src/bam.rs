@@ -55,7 +55,6 @@ impl Record {
         let b = unsafe { *htslib::bam_init1() };
         Record { b: b }
     }
-    // TODO ensure that owning b really destroys b.data when object goes out of scope
 
     fn data(&self) -> &[u8] {
         unsafe { from_raw_parts(self.b.data, self.b.l_data as usize) }
