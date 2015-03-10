@@ -64,32 +64,64 @@ impl Record {
         self.b.core.tid
     }
 
+    pub fn set_tid(&mut self, tid: i32) {
+        self.b.core.tid = tid;
+    }
+
     pub fn pos(&self) -> i32 {
         self.b.core.pos
+    }
+
+    pub fn set_pos(&mut self, pos: i32) {
+        self.b.core.pos = pos;
     }
 
     pub fn bin(&self) -> u16 {
         self.b.core.bin
     }
 
-    pub fn map_qual(&self) -> u8 {
+    pub fn set_bin(&mut self, bin: u16) {
+        self.b.core.bin = bin;
+    }
+
+    pub fn mapq(&self) -> u8 {
         self.b.core.qual
     }
 
-    pub fn flag(&self) -> u16 {
+    pub fn set_mapq(&mut self, mapq: u8) {
+        self.b.core.qual = mapq;
+    }
+
+    pub fn flags(&self) -> u16 {
         self.b.core.flag
+    }
+
+    pub fn set_flags(&mut self, flags: u16) {
+        self.b.core.flag = flags;
     }
 
     pub fn mtid(&self) -> i32 {
         self.b.core.mtid
     }
 
+    pub fn set_mtid(&mut self, mtid: i32) {
+        self.b.core.mtid = mtid;
+    }
+
     pub fn mpos(&self) -> i32 {
         self.b.core.mpos
     }
 
-    pub fn isize(&self) -> i32 {
+    pub fn set_mpos(&mut self, mpos: i32) {
+        self.b.core.mpos = mpos;
+    }
+
+    pub fn insert_size(&self) -> i32 {
         self.b.core.isize
+    }
+
+    pub fn set_insert_size(&mut self, insert_size: i32) {
+        self.b.core.isize = insert_size;
     }
 
     fn qname_len(&self) -> usize {
@@ -98,7 +130,10 @@ impl Record {
 
     pub fn qname(&self) -> &[u8] {
         &self.data()[..self.qname_len()-1] // -1 ignores the termination symbol
+    }
 
+    pub fn set_data(&mut self, qname: &[u8], cigar: &[Cigar], seq: Seq, qual: &[u8]) {
+        // TODO delegate to appropriate htslib functions here
     }
 
     fn cigar_len(&self) -> usize {
