@@ -4,6 +4,7 @@
 // except according to those terms.
 
 
+/// Header record.
 pub struct HeaderRecord<'a> {
     rec_type: &'a [u8],
     tags: Vec<(&'a [u8], Vec<u8>)>,
@@ -11,16 +12,24 @@ pub struct HeaderRecord<'a> {
 
 
 impl<'a> HeaderRecord<'a> {
+    /// Create a new header record.
+    /// See SAM format specification for possible record types.
     pub fn new(rec_type: &'a [u8]) -> Self {
         HeaderRecord { rec_type: rec_type, tags: Vec::new() }
     }
 
+    /// Add a new tag to the record.
+    ///
+    /// # Arguments
+    ///
+    /// * `tag` - the tag identifier
+    /// * `value` - the value. Can be any type convertible into a string. Preferably numbers or strings.
     pub fn push_tag<V: ToString>(&mut self, tag: &'a [u8], value: &V) -> &mut Self {
         self.tags.push((tag, value.to_string().into_bytes()));
         self
     }
 
-    pub fn to_bytes(&self) -> Vec<u8> {
+    fn to_bytes(&self) -> Vec<u8> {
         let mut out = Vec::new();
         out.push_all(self.rec_type);
         for &(tag, ref value) in self.tags.iter() {
@@ -33,20 +42,24 @@ impl<'a> HeaderRecord<'a> {
 }
 
 
+/// A BAM header.
 pub struct Header {
     records: Vec<Vec<u8>>
 }
 
 
 impl Header {
+    /// Create a new header.
     pub fn new() -> Self {
         Header { records: Vec::new() }
     }
 
+    /// Add a record to the header.
     pub fn push_record(&mut self, record: HeaderRecord) {
         self.records.push(record.to_bytes());
     }
 
+    /// Add a comment to the header.
     pub fn push_comment(&mut self, comment: &[u8]) {
         self.records.push([b"@CO", comment].connect(&b'\t'));
     }

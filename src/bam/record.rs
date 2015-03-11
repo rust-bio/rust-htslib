@@ -13,6 +13,7 @@ use libc;
 use htslib;
 
 
+/// A macro creating methods for flag access.
 macro_rules! flag {
     ($get:ident, $set:ident, $bit:expr) => (
         pub fn $get(&self) -> bool {
@@ -26,12 +27,14 @@ macro_rules! flag {
 }
 
 
+/// A BAM record.
 pub struct Record {
     pub inner: htslib::bam1_t,
 }
 
 
 impl Record {
+    /// Create an empty BAM record.
     pub fn new() -> Self {
         let mut inner = unsafe { *htslib::bam_init1() };
         inner.m_data = 0;
@@ -42,18 +45,22 @@ impl Record {
         unsafe { slice::from_raw_parts(self.inner.data, self.inner.l_data as usize) }
     }
 
+    /// Get target id.
     pub fn tid(&self) -> i32 {
         self.inner.core.tid
     }
 
+    /// Set target id.
     pub fn set_tid(&mut self, tid: i32) {
         self.inner.core.tid = tid;
     }
 
+    /// Get position.
     pub fn pos(&self) -> i32 {
         self.inner.core.pos
     }
 
+    /// Set position.
     pub fn set_pos(&mut self, pos: i32) {
         self.inner.core.pos = pos;
     }
@@ -66,46 +73,57 @@ impl Record {
         self.inner.core.bin = bin;
     }
 
+    /// Get MAPQ.
     pub fn mapq(&self) -> u8 {
         self.inner.core.qual
     }
 
+    /// Set MAPQ.
     pub fn set_mapq(&mut self, mapq: u8) {
         self.inner.core.qual = mapq;
     }
 
+    /// Get raw flags.
     pub fn flags(&self) -> u16 {
         self.inner.core.flag
     }
 
+    /// Set raw flags.
     pub fn set_flags(&mut self, flags: u16) {
         self.inner.core.flag = flags;
     }
 
+    /// Unset all flags.
     pub fn unset_flags(&mut self) {
         self.inner.core.flag = 0;
     }
 
+    /// Get target id of mate.
     pub fn mtid(&self) -> i32 {
         self.inner.core.mtid
     }
 
+    /// Set target id of mate.
     pub fn set_mtid(&mut self, mtid: i32) {
         self.inner.core.mtid = mtid;
     }
 
+    /// Get mate position.
     pub fn mpos(&self) -> i32 {
         self.inner.core.mpos
     }
 
+    /// Set mate position.
     pub fn set_mpos(&mut self, mpos: i32) {
         self.inner.core.mpos = mpos;
     }
 
+    /// Get insert size.
     pub fn insert_size(&self) -> i32 {
         self.inner.core.isize
     }
 
+    /// Set insert size.
     pub fn set_insert_size(&mut self, insert_size: i32) {
         self.inner.core.isize = insert_size;
     }
@@ -114,10 +132,12 @@ impl Record {
         self.inner.core.l_qname as usize
     }
 
+    /// Get qname (read name).
     pub fn qname(&self) -> &[u8] {
         &self.data()[..self.qname_len()-1] // -1 ignores the termination symbol
     }
 
+    /// Set variable length data (qname, cigar, seq, qual).
     pub fn set(&mut self, qname: &[u8], cigar: &[Cigar], seq: &[u8], qual: &[u8]) {
         self.inner.l_data = (qname.len() + 1 + cigar.len() * 4 + seq.len() / 2 + qual.len()) as i32;
 
@@ -168,6 +188,7 @@ impl Record {
         self.inner.core.n_cigar as usize
     }
 
+    /// Get cigar sequence.
     pub fn cigar(&self) -> Vec<Cigar> {
         let raw = unsafe { slice::from_raw_parts(self.data()[self.qname_len()..].as_ptr() as *const u32, self.cigar_len()) };
         raw.iter().map(|&c| {
@@ -192,6 +213,7 @@ impl Record {
         self.inner.core.l_qseq as usize
     }
 
+    /// Get read sequence.
     pub fn seq(&self) -> Seq {
         Seq { 
             encoded: &self.data()
@@ -200,10 +222,12 @@ impl Record {
         }
     }
 
+    /// Get base qualities.
     pub fn qual(&self) -> &[u8] {
         &self.data()[self.qname_len() + self.cigar_len()*4 + (self.seq_len()+1)/2..][..self.seq_len()]
     }
 
+    /// Get auxiliary data (tags).
     pub fn aux(&self, tag: &[u8]) -> Option<Aux> {
         let aux = unsafe { htslib::bam_aux_get(&self.inner, ffi::CString::new(tag).unwrap().as_ptr() as *mut i8 ) };
 
@@ -222,6 +246,7 @@ impl Record {
         }
     }
 
+    /// Add auxiliary data.
     pub fn push_aux(&mut self, tag: &[u8], value: &Aux) {
         let ctag = tag.as_ptr() as *mut i8;
         unsafe {
@@ -262,6 +287,7 @@ impl Drop for Record {
 }
 
 
+/// Auxiliary record data.
 #[derive(Debug)]
 #[derive(PartialEq)]
 pub enum Aux<'a> {
@@ -273,6 +299,7 @@ pub enum Aux<'a> {
 
 
 impl<'a> Aux<'a> {
+    /// Get string from aux data (panics if not a string).
     pub fn string(&self) -> &'a [u8] {
         match *self {
             Aux::String(x) => x,

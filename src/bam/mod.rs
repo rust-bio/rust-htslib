@@ -15,11 +15,20 @@ use std::os::unix::prelude::OsStrExt;
 use htslib;
 
 
+/// A trait for a BAM reader with a read method.
 pub trait BAMRead {
+    /// Read next BAM record into given record.
+    /// Use this method in combination with a single allocated record to avoid the reallocations
+    /// occurring with the iterator.
+    ///
+    /// # Arguments
+    ///
+    /// * `record` - the record to be filled
     fn read(&self, record: &mut record::Record) -> Result<(), ReadError>;
 }
 
 
+/// A BAM reader.
 pub struct BAMReader {
     f: *mut htslib::Struct_BGZF,
     header: *mut htslib::bam_hdr_t,
@@ -27,7 +36,12 @@ pub struct BAMReader {
 
 
 impl BAMReader {
-     pub fn new<P: path::AsPath>(path: P) -> Self {
+    /// Create a new BAMReader.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - the path. Use "-" for stdin.
+    pub fn new<P: path::AsPath>(path: P) -> Self {
         let f = unsafe {
             htslib::bgzf_open(
                 path.as_path().as_os_str().to_cstring().unwrap().as_ptr(),
@@ -38,6 +52,7 @@ impl BAMReader {
         BAMReader { f : f, header : header }
     }
 
+    /// Iterator over the records of the BAM file.
     pub fn records(self) -> Records {
         Records { bam: self }
     }
@@ -66,6 +81,7 @@ impl Drop for BAMReader {
 }
 
 
+/// Wrapper for opening a BAM file.
 fn bgzf_open<P: path::AsPath>(path: &P, mode: &[u8]) -> *mut htslib::Struct_BGZF {
     unsafe {
         htslib::bgzf_open(
@@ -76,6 +92,7 @@ fn bgzf_open<P: path::AsPath>(path: &P, mode: &[u8]) -> *mut htslib::Struct_BGZF
 }
 
 
+/// A BAM writer.
 pub struct BAMWriter {
     f: *mut htslib::Struct_BGZF,
     header: *mut htslib::bam_hdr_t,
@@ -83,6 +100,12 @@ pub struct BAMWriter {
 
 
 impl BAMWriter {
+    /// Create a new BAM file.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - the path. Use "-" for stdin.
+    /// * `header` - header definition to use
     pub fn new<P: path::AsPath>(path: &P, header: &header::Header) -> Self {
         let f = bgzf_open(path, b"w");
         let header_record = unsafe {
@@ -96,6 +119,12 @@ impl BAMWriter {
         BAMWriter { f: f, header: header_record }
     }
 
+    /// Create a new BAM file from template.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - the path. Use "-" for stdin.
+    /// * `template` - the template BAM. Use "-" for stdin.
     pub fn with_template<P: path::AsPath, T: path::AsPath>(path: &P, template: &T) -> Self {
         let t = bgzf_open(template, b"r");
         let header = unsafe { htslib::bam_hdr_read(t) };
@@ -105,7 +134,11 @@ impl BAMWriter {
         BAMWriter { f: f, header: header }
     }
 
-
+    /// Write record to BAM.
+    ///
+    /// # Arguments
+    ///
+    /// * `record` - the record to write
     pub fn write(&mut self, record: &record::Record) -> Result<(), ()> {
         if unsafe { htslib::bam_write1(self.f, &record.inner) } == -1 {
             Err(())
@@ -127,6 +160,7 @@ impl Drop for BAMWriter {
 }
 
 
+/// Iterator over the records of a BAM.
 pub struct Records {
     bam: BAMReader
 }
