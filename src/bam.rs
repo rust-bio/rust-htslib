@@ -1,10 +1,24 @@
 use std::slice;
-use std::ffi::CStr;
+use std::ffi;
 use std::mem;
 use std::iter;
 use libc;
 
 use htslib;
+
+
+macro_rules! flag {
+    ($get:ident, $set:ident, $bit:expr) => (
+        pub fn $get(&self) -> bool {
+            self.b.core.flag & $bit != 0
+        }
+
+        pub fn $set(&mut self) {
+            self.b.core.flag |= $bit;
+        }
+    )
+}
+
 
 #[derive(Debug)]
 pub enum Aux<'a> {
@@ -100,6 +114,10 @@ impl Record {
 
     pub fn set_flags(&mut self, flags: u16) {
         self.b.core.flag = flags;
+    }
+
+    pub fn unset_flags(&mut self) {
+        self.b.core.flag = 0;
     }
 
     pub fn mtid(&self) -> i32 {
@@ -220,8 +238,8 @@ impl Record {
         &self.data()[self.qname_len() + self.cigar_len()*4 + (self.seq_len()+1)/2..][..self.seq_len()]
     }
 
-    pub fn aux(&self, name: &[u8]) -> Option<Aux> {
-        let aux = unsafe { htslib::bam_aux_get(&self.b, name.as_ptr() as *mut i8 ) };
+    pub fn aux(&self, tag: &[u8]) -> Option<Aux> {
+        let aux = unsafe { htslib::bam_aux_get(&self.b, tag.as_ptr() as *mut i8 ) };
 
         unsafe {
             match *aux {
@@ -230,7 +248,7 @@ impl Record {
                 b'A' => Some(Aux::Char(htslib::bam_aux2A(aux) as u8)),
                 b'Z'|b'H' => {
                     let f = aux.offset(1) as *const i8;
-                    let x = CStr::from_ptr(f).to_bytes();
+                    let x = ffi::CStr::from_ptr(f).to_bytes();
                     Some(Aux::String(mem::copy_lifetime(self, x)))
                 },
                 _ => None,
@@ -238,57 +256,36 @@ impl Record {
         }
     }
 
-    pub fn is_paired(&self) -> bool {
-        (self.flags() & 1u16) > 0
+    pub fn push_aux(&mut self, tag: &[u8], value: &Aux) {
+        let ctag = tag.as_ptr() as *mut i8;
+        unsafe {
+            match *value {
+                Aux::Integer(v) => htslib::bam_aux_append(&mut self.b, ctag, b'i' as i8, 4, [v].as_mut_ptr() as *mut u8),
+                Aux::Float(v) => htslib::bam_aux_append(&mut self.b, ctag, b'f' as i8, 4, [v].as_mut_ptr() as *mut u8),
+                Aux::Char(v) => htslib::bam_aux_append(&mut self.b, ctag, b'A' as i8, 1, [v].as_mut_ptr() as *mut u8),
+                Aux::String(v) => htslib::bam_aux_append(
+                    &mut self.b,
+                    ctag,
+                    b'Z' as i8,
+                    (v.len() + 1) as i32,
+                    ffi::CString::new(v).unwrap().as_ptr() as *mut u8
+                ),
+            }
+        }
     }
 
-    pub fn set_is_paired(&mut self) {
-        self.b.core.flag | 1u16;
-    }
-
-    pub fn is_proper_pair(&self) -> bool{
-        (self.flags() & 2u16) > 0
-    }
-
-    pub fn is_unmapped(&self) -> bool{
-        (self.flags() & 4u16) > 0
-    }
-
-    pub fn mate_is_unmapped(&self) -> bool{
-        (self.flags() & 8u16) > 0
-    }
-
-    pub fn is_reverse(&self) -> bool{
-        (self.flags() & 16u16) > 0
-    }
-
-    pub fn mate_is_reverse(&self) -> bool{
-        (self.flags() & 32u16) > 0
-    }
-
-    pub fn is_first_in_pair(&self) -> bool{
-        (self.flags() & 64u16) > 0
-    }
-
-    pub fn is_second_in_pair(&self) -> bool{
-        (self.flags() & 128u16) > 0
-    }
-
-    pub fn is_secondary(&self) -> bool{
-        (self.flags() & 256u16) > 0
-    }
-
-    pub fn is_quality_check_failed(&self) -> bool{
-        (self.flags() & 512u16) > 0
-    }
-
-    pub fn is_duplicate(&self) -> bool{
-        (self.flags() & 1024u16) > 0
-    }
-
-    pub fn is_supplementary(&self) -> bool{
-        (self.flags() & 2048u16) > 0
-    }
+    flag!(is_paired, set_paired, 1u16);
+    flag!(is_proper_pair, set_proper_pair, 2u16);
+    flag!(is_unmapped, set_unmapped, 4u16);
+    flag!(is_mate_unmapped, set_mate_unmapped, 8u16);
+    flag!(is_reverse, set_reverse, 16u16);
+    flag!(is_mate_reverse, set_mate_reverse, 32u16);
+    flag!(is_first_in_pair, set_first_in_pair, 64u16);
+    flag!(is_second_in_pair, set_second_in_pair, 128u16);
+    flag!(is_secondary, set_secondary, 256u16);
+    flag!(is_quality_check_failed, set_quality_check_failed, 512u16);
+    flag!(is_duplicate, set_duplicate, 1024u16);
+    flag!(is_supplementary, set_supplementary, 2048u16);
 }
 
 
@@ -490,10 +487,13 @@ mod tests {
         let qual = b"JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ";
 
         let mut rec = Record::new();
+        rec.set_reverse();
+        println!("{}", rec.flags());
         rec.set(qname, &cigar, seq, qual);
         assert_eq!(rec.qname(), qname);
         assert_eq!(rec.cigar(), cigar);
         assert_eq!(rec.seq().as_bytes(), seq);
+        assert!(rec.is_reverse());
         //assert_eq!(rec.qual(), qual);
     }
 }
