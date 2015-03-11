@@ -457,7 +457,7 @@ mod tests {
     use std::str;
 
     #[test]
-    fn test_record() {
+    fn test_read() {
         let names = [b"I", b"II.14978392", b"III", b"IV", b"V", b"VI"];
         let flags = [16u16, 16u16, 16u16, 16u16, 16u16, 2048u16];
         let seqs = [
