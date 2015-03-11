@@ -2,7 +2,10 @@ use std::slice;
 use std::ffi;
 use std::mem;
 use std::iter;
+use std::path;
 use libc;
+use std::ffi::AsOsStr;
+use std::os::unix::prelude::OsStrExt;
 
 use htslib;
 
@@ -240,7 +243,7 @@ impl Record {
     }
 
     pub fn aux(&self, tag: &[u8]) -> Option<Aux> {
-        let aux = unsafe { htslib::bam_aux_get(&self.b, tag.as_ptr() as *mut i8 ) };
+        let aux = unsafe { htslib::bam_aux_get(&self.b, ffi::CString::new(tag).unwrap().as_ptr() as *mut i8 ) };
 
         unsafe {
             match *aux {
@@ -297,35 +300,27 @@ impl Drop for Record {
 }
 
 
-pub struct Bamfile {
+pub trait BAMRead {
+    fn read(&self, record: &mut Record) -> Result<(), ReadError>;
+}
+
+
+pub struct BAMReader {
     f: *mut htslib::Struct_BGZF,
     header: *mut htslib::bam_hdr_t,
 }
 
 
-impl Bamfile{
-     pub fn new(filename: &[u8]) -> Self {
-        let f = unsafe { htslib::bgzf_open(filename.as_ptr() as *const i8, b"r\0".as_ptr() as *const i8) };
+impl BAMReader {
+     pub fn new<P: path::AsPath>(path: P) -> Self {
+        let f = unsafe {
+            htslib::bgzf_open(
+                path.as_path().as_os_str().to_cstring().unwrap().as_ptr(),
+                ffi::CString::new(b"r").unwrap().as_ptr()
+            )
+        };
         let header = unsafe { htslib::bam_hdr_read(f) };
-        Bamfile { f : f, header : header }
-    }
-
-    pub fn read(&self, record: &mut Record) -> Result<(), ReadError> {
-        match unsafe { htslib::bam_read1(self.f, &mut record.b as *mut htslib::bam1_t) } {
-            -1 => Err(ReadError::EOF),
-            -2 => Err(ReadError::Truncated),
-            -4 => Err(ReadError::Invalid),
-            _  => Ok(())
-        }
-    }
-
-    pub fn write(&mut self, record: &Record) -> Result<(), ()> {
-        if unsafe { htslib::bam_write1(self.f, &record.b as *const htslib::bam1_t) } == -1 {
-            Err(())
-        }
-        else {
-            Ok(())
-        }
+        BAMReader { f : f, header : header }
     }
 
     pub fn records(self) -> Records {
@@ -334,7 +329,63 @@ impl Bamfile{
 }
 
 
-impl Drop for Bamfile {
+impl BAMRead for BAMReader {
+    fn read(&self, record: &mut Record) -> Result<(), ReadError> {
+        match unsafe { htslib::bam_read1(self.f, &mut record.b) } {
+            -1 => Err(ReadError::EOF),
+            -2 => Err(ReadError::Truncated),
+            -4 => Err(ReadError::Invalid),
+            _  => Ok(())
+        }
+    }
+}
+
+
+impl Drop for BAMReader {
+    fn drop(&mut self) {
+        unsafe {
+            htslib::bam_hdr_destroy(self.header);
+            htslib::bgzf_close(self.f);
+        }
+    }
+}
+
+
+pub struct BAMWriter {
+    f: *mut htslib::Struct_BGZF,
+    header: *mut htslib::bam_hdr_t,
+}
+
+
+impl BAMWriter {
+    pub fn new<P: path::AsPath>(path: P, header: &[u8]) -> Self {
+        let f = unsafe {
+            htslib::bgzf_open(
+                path.as_path().as_os_str().to_cstring().unwrap().as_ptr(),
+                ffi::CString::new(b"w").unwrap().as_ptr()
+            )
+        };
+        let header_record = unsafe {
+            htslib::sam_hdr_parse(
+                header.len() as i32,
+                ffi::CString::new(header).unwrap().as_ptr()
+            )
+        };
+        BAMWriter { f: f, header: header_record }
+    }
+
+    pub fn write(&mut self, record: &Record) -> Result<(), ()> {
+        if unsafe { htslib::bam_write1(self.f, &record.b) } == -1 {
+            Err(())
+        }
+        else {
+            Ok(())
+        }
+    }
+}
+
+
+impl Drop for BAMWriter {
     fn drop(&mut self) {
         unsafe {
             htslib::bam_hdr_destroy(self.header);
@@ -345,7 +396,7 @@ impl Drop for Bamfile {
 
 
 pub struct Records {
-    bam: Bamfile
+    bam: BAMReader
 }
 
 
@@ -477,7 +528,7 @@ mod tests {
             [Cigar::Match(27), Cigar::Del(100000), Cigar::Match(73)],
         ];
 
-        let bam = Bamfile::new(b"test.bam");
+        let bam = BAMReader::new("test.bam");
 
         for (i, record) in bam.records().enumerate() {
             let rec = record.ok().expect("Expected valid record");
