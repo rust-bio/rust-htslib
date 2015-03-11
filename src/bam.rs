@@ -21,6 +21,7 @@ macro_rules! flag {
 
 
 #[derive(Debug)]
+#[derive(PartialEq)]
 pub enum Aux<'a> {
     Integer(i32),
     String(&'a [u8]),
@@ -309,12 +310,21 @@ impl Bamfile{
         Bamfile { f : f, header : header }
     }
 
-    pub fn read(&self, record: &mut Record) -> Result<(), Error> {
+    pub fn read(&self, record: &mut Record) -> Result<(), ReadError> {
         match unsafe { htslib::bam_read1(self.f, &mut record.b as *mut htslib::bam1_t) } {
-            -1 => Err(Error::EOF),
-            -2 => Err(Error::Truncated),
-            -4 => Err(Error::Invalid),
+            -1 => Err(ReadError::EOF),
+            -2 => Err(ReadError::Truncated),
+            -4 => Err(ReadError::Invalid),
             _  => Ok(())
+        }
+    }
+
+    pub fn write(&mut self, record: &Record) -> Result<(), ()> {
+        if unsafe { htslib::bam_write1(self.f, &record.b as *const htslib::bam1_t) } == -1 {
+            Err(())
+        }
+        else {
+            Ok(())
         }
     }
 
@@ -340,12 +350,12 @@ pub struct Records {
 
 
 impl Iterator for Records {
-    type Item = Result<Record, Error>;
+    type Item = Result<Record, ReadError>;
 
-    fn next(&mut self) -> Option<Result<Record, Error>> {
+    fn next(&mut self) -> Option<Result<Record, ReadError>> {
         let mut record = Record::new();
         match self.bam.read(&mut record) {
-            Err(Error::EOF) => None,
+            Err(ReadError::EOF) => None,
             Ok(())   => Some(Ok(record)),
             Err(err) => Some(Err(err))
         }
@@ -434,7 +444,7 @@ impl Cigar {
 }
 
 
-pub enum Error {
+pub enum ReadError {
     Truncated,
     Invalid,
     EOF,
@@ -488,12 +498,13 @@ mod tests {
 
         let mut rec = Record::new();
         rec.set_reverse();
-        println!("{}", rec.flags());
         rec.set(qname, &cigar, seq, qual);
+        rec.push_aux(b"NM", &Aux::Integer(15));
         assert_eq!(rec.qname(), qname);
         assert_eq!(rec.cigar(), cigar);
         assert_eq!(rec.seq().as_bytes(), seq);
+        assert_eq!(rec.qual(), qual);
         assert!(rec.is_reverse());
-        //assert_eq!(rec.qual(), qual);
+        assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
     }
 }
