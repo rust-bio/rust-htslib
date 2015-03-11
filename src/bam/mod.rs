@@ -60,6 +60,16 @@ impl Drop for BAMReader {
 }
 
 
+fn bgzf_open<P: path::AsPath>(path: &P, mode: &[u8]) -> *mut htslib::Struct_BGZF {
+    unsafe {
+        htslib::bgzf_open(
+            path.as_path().as_os_str().to_cstring().unwrap().as_ptr(),
+            ffi::CString::new(mode).unwrap().as_ptr()
+        )
+    }
+}
+
+
 pub struct BAMWriter {
     f: *mut htslib::Struct_BGZF,
     header: *mut htslib::bam_hdr_t,
@@ -67,13 +77,8 @@ pub struct BAMWriter {
 
 
 impl BAMWriter {
-    pub fn new<P: path::AsPath>(path: P, header: &header::Header) -> Self {
-        let f = unsafe {
-            htslib::bgzf_open(
-                path.as_path().as_os_str().to_cstring().unwrap().as_ptr(),
-                ffi::CString::new(b"w").unwrap().as_ptr()
-            )
-        };
+    pub fn new<P: path::AsPath>(path: &P, header: &header::Header) -> Self {
+        let f = bgzf_open(path, b"w");
         let header_record = unsafe {
             let header_string = header.to_bytes();
             htslib::sam_hdr_parse(
@@ -81,8 +86,19 @@ impl BAMWriter {
                 ffi::CString::new(header_string).unwrap().as_ptr()
             )
         };
+        unsafe { htslib::bam_hdr_write(f, header_record); }
         BAMWriter { f: f, header: header_record }
     }
+
+    pub fn with_template<P: path::AsPath, T: path::AsPath>(path: &P, template: &T) -> Self {
+        let t = bgzf_open(template, b"r");
+        let header = unsafe { htslib::bam_hdr_read(t) };
+        unsafe { htslib::bgzf_close(t); }
+        let f = bgzf_open(path, b"w");
+        unsafe { htslib::bam_hdr_write(f, header); }
+        BAMWriter { f: f, header: header }
+    }
+
 
     pub fn write(&mut self, record: &record::Record) -> Result<(), ()> {
         if unsafe { htslib::bam_write1(self.f, &record.inner) } == -1 {
