@@ -6,7 +6,7 @@
 
 /// Header record.
 pub struct HeaderRecord<'a> {
-    rec_type: &'a [u8],
+    rec_type: Vec<u8>,
     tags: Vec<(&'a [u8], Vec<u8>)>,
 }
 
@@ -15,7 +15,7 @@ impl<'a> HeaderRecord<'a> {
     /// Create a new header record.
     /// See SAM format specification for possible record types.
     pub fn new(rec_type: &'a [u8]) -> Self {
-        HeaderRecord { rec_type: rec_type, tags: Vec::new() }
+        HeaderRecord { rec_type: [b"@", rec_type].concat(), tags: Vec::new() }
     }
 
     /// Add a new tag to the record.
@@ -31,7 +31,7 @@ impl<'a> HeaderRecord<'a> {
 
     fn to_bytes(&self) -> Vec<u8> {
         let mut out = Vec::new();
-        out.push_all(self.rec_type);
+        out.push_all(&self.rec_type);
         for &(tag, ref value) in self.tags.iter() {
             out.push(b'\t');
             out.push_all(tag);
@@ -55,13 +55,15 @@ impl Header {
     }
 
     /// Add a record to the header.
-    pub fn push_record(&mut self, record: HeaderRecord) {
+    pub fn push_record(&mut self, record: &HeaderRecord) -> &mut Self {
         self.records.push(record.to_bytes());
+        self
     }
 
     /// Add a comment to the header.
-    pub fn push_comment(&mut self, comment: &[u8]) {
+    pub fn push_comment(&mut self, comment: &[u8]) -> &mut Self {
         self.records.push([b"@CO", comment].connect(&b'\t'));
+        self
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {

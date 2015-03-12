@@ -11,6 +11,7 @@ use std::ffi;
 use std::path;
 use std::ffi::AsOsStr;
 use std::os::unix::prelude::OsStrExt;
+use std::str;
 
 use htslib;
 
@@ -94,6 +95,7 @@ impl BAMWriter {
         let f = bgzf_open(path, b"w");
         let header_record = unsafe {
             let header_string = header.to_bytes();
+            println!("{}", str::from_utf8(&header_string).unwrap());
             htslib::sam_hdr_parse(
                 header_string.len() as i32,
                 ffi::CString::new(header_string).unwrap().as_ptr()
@@ -184,8 +186,10 @@ fn bgzf_open<P: path::AsPath>(path: &P, mode: &[u8]) -> *mut htslib::Struct_BGZF
 
 #[cfg(test)]
 mod tests {
-    use super::record::*;
+    extern crate tempdir;
     use super::*;
+    use super::record::*;
+    use super::header::*;
     use std::str;
 
     #[test]
@@ -238,5 +242,22 @@ mod tests {
         assert_eq!(rec.qual(), qual);
         assert!(rec.is_reverse());
         assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+    }
+
+    #[test]
+    fn test_write() {
+        let tmp = tempdir::TempDir::new("rust-htslib").ok().expect("Cannot create temp dir");
+        let bampath = tmp.path().join("test.bam");
+        {
+            let bam = BAMWriter::new(
+                &bampath,
+                Header::new().push_record(
+                    HeaderRecord::new(b"SQ").push_tag(b"SN", &"chr1")
+                                            .push_tag(b"LN", &15072423)
+                )
+            );
+            
+        }
+        tmp.close().ok().expect("Failed to delete temp dir");
     }
 }
