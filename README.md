@@ -13,7 +13,7 @@ ensuring that the HTSlib submodule is fetched, too.
 # Usage
 
 To use rust-bio in your Rust project, import the crate from your source code:
-```
+```rust
 extern create htslib;
 use htslib::bam;
 
