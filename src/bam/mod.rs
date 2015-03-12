@@ -49,7 +49,7 @@ impl Reader {
     }
 
     /// Iterator over the records of the BAM file.
-    pub fn records(self) -> Records {
+    pub fn records(self) -> Records<Self> {
         Records { bam: self }
     }
 }
@@ -151,12 +151,12 @@ impl Drop for Writer {
 
 
 /// Iterator over the records of a BAM.
-pub struct Records {
-    bam: Reader
+pub struct Records<R: Read> {
+    bam: R
 }
 
 
-impl Iterator for Records {
+impl<R: Read> Iterator for Records<R> {
     type Item = Result<record::Record, ReadError>;
 
     fn next(&mut self) -> Option<Result<record::Record, ReadError>> {
