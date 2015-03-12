@@ -11,8 +11,8 @@ use std::ffi;
 use std::path;
 use std::ffi::AsOsStr;
 use std::os::unix::prelude::OsStrExt;
-use std::str;
 use std::ptr;
+use std::slice;
 use libc;
 
 use htslib;
@@ -34,7 +34,7 @@ pub trait Read {
 /// A BAM reader.
 pub struct Reader {
     f: *mut htslib::Struct_BGZF,
-    header: *mut htslib::bam_hdr_t,
+    pub header: HeaderView,
 }
 
 
@@ -47,7 +47,7 @@ impl Reader {
     pub fn new<P: path::AsPath>(path: &P) -> Self {
         let f = bgzf_open(path, b"r");
         let header = unsafe { htslib::bam_hdr_read(f) };
-        Reader { f : f, header : header }
+        Reader { f : f, header: HeaderView::new(header) }
     }
 
     /// Iterator over the records of the seeked region.
@@ -75,7 +75,7 @@ impl Read for Reader {
 impl Drop for Reader {
     fn drop(&mut self) {
         unsafe {
-            htslib::bam_hdr_destroy(self.header);
+            htslib::bam_hdr_destroy(self.header.inner);
             htslib::bgzf_close(self.f);
         }
     }
@@ -84,7 +84,7 @@ impl Drop for Reader {
 
 pub struct IndexedReader {
     bgzf: *mut htslib::Struct_BGZF,
-    header: *mut htslib::bam_hdr_t,
+    pub header: HeaderView,
     idx: *mut htslib::hts_idx_t,
     itr: Option<*mut htslib:: hts_itr_t>,
 }
@@ -109,7 +109,7 @@ impl IndexedReader {
             Err(IndexError::InvalidIndex)
         }
         else {
-            Ok(IndexedReader { bgzf: bgzf, header : header, idx: idx, itr: None })
+            Ok(IndexedReader { bgzf: bgzf, header : HeaderView::new(header), idx: idx, itr: None })
         }
     }
 
@@ -140,7 +140,7 @@ impl IndexedReader {
 impl Read for IndexedReader {
     fn read(&self, record: &mut record::Record) -> Result<(), ReadError> {
         match self.itr {
-            Some(itr) => match bam_itr_next(self.bgzf, itr, &mut record.inner) {
+            Some(itr) => match itr_next(self.bgzf, itr, &mut record.inner) {
                 -1 => Err(ReadError::NoMoreRecord),
                 -2 => Err(ReadError::Truncated),
                 -4 => Err(ReadError::Invalid),
@@ -159,7 +159,7 @@ impl Drop for IndexedReader {
                 htslib::hts_itr_destroy(self.itr.unwrap());
             }
             htslib::hts_idx_destroy(self.idx);
-            htslib::bam_hdr_destroy(self.header);
+            htslib::bam_hdr_destroy(self.header.inner);
             htslib::bgzf_close(self.bgzf);
         }
     }
@@ -169,7 +169,7 @@ impl Drop for IndexedReader {
 /// A BAM writer.
 pub struct Writer {
     f: *mut htslib::Struct_BGZF,
-    header: *mut htslib::bam_hdr_t,
+    pub header: HeaderView,
 }
 
 
@@ -185,15 +185,15 @@ impl Writer {
 
         let header_record = unsafe {
             let header_string = header.to_bytes();
-            println!("{}", str::from_utf8(&header_string).unwrap());
+            //println!("{}", str::from_utf8(&header_string).unwrap());
             htslib::sam_hdr_parse(
-                header_string.len() as i32,
+                (header_string.len() + 1) as i32,
                 ffi::CString::new(header_string).unwrap().as_ptr()
             )
         };
         unsafe { htslib::bam_hdr_write(f, header_record); }
 
-        Writer { f: f, header: header_record }
+        Writer { f: f, header: HeaderView::new(header_record) }
     }
 
     /// Create a new BAM file from template.
@@ -205,12 +205,13 @@ impl Writer {
     pub fn with_template<P: path::AsPath, T: path::AsPath>(path: &P, template: &T) -> Self {
         let t = bgzf_open(template, b"r");
         let header = unsafe { htslib::bam_hdr_read(t) };
-        unsafe { htslib::bgzf_close(t); }
 
         let f = bgzf_open(path, b"w");
         unsafe { htslib::bam_hdr_write(f, header); }
 
-        Writer { f: f, header: header }
+        unsafe { htslib::bgzf_close(t); }
+
+        Writer { f: f, header: HeaderView::new(header) }
     }
 
     /// Write record to BAM.
@@ -232,7 +233,7 @@ impl Writer {
 impl Drop for Writer {
     fn drop(&mut self) {
         unsafe {
-            htslib::bam_hdr_destroy(self.header);
+            htslib::bam_hdr_destroy(self.header.inner);
             htslib::bgzf_close(self.f);
         }
     }
@@ -283,7 +284,7 @@ fn bgzf_open<P: path::AsPath>(path: &P, mode: &[u8]) -> *mut htslib::Struct_BGZF
 
 
 /// Wrapper for iterating an indexed BAM file.
-fn bam_itr_next(bgzf: *mut htslib::Struct_BGZF, itr: *mut htslib:: hts_itr_t, record: *mut htslib::bam1_t) -> i32 {
+fn itr_next(bgzf: *mut htslib::Struct_BGZF, itr: *mut htslib:: hts_itr_t, record: *mut htslib::bam1_t) -> i32 {
     unsafe {
         htslib::hts_itr_next(
             bgzf,
@@ -293,6 +294,45 @@ fn bam_itr_next(bgzf: *mut htslib::Struct_BGZF, itr: *mut htslib:: hts_itr_t, re
         )
     }
 }
+
+
+pub struct HeaderView {
+    inner: *mut htslib::bam_hdr_t,
+}
+
+
+impl HeaderView {
+    fn new(inner: *mut htslib::bam_hdr_t) -> Self {
+        HeaderView { inner: inner }
+    }
+
+    pub fn tid(&self, name: &[u8]) -> Option<u32> {
+        let tid = unsafe {
+            htslib::bam_name2id(
+                self.inner,
+                ffi::CString::new(name).ok().expect("Expected valid name.").as_ptr()
+            )
+        };
+        if tid < 0 {
+            None
+        }
+        else {
+            Some(tid as u32)
+        }
+    }
+
+    pub fn target_len(&self, tid: u32) -> Option<u32> {
+        let inner = unsafe { *self.inner };
+        if (tid as i32) < inner.n_targets {
+            let l: &[u32] = unsafe { slice::from_raw_parts(inner.target_len, inner.n_targets as usize) };
+            Some(l[tid as usize])
+        }
+        else {
+            None
+        }
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -355,12 +395,15 @@ mod tests {
         let (names, flags, seqs, quals, cigars) = gold();
         let mut bam = IndexedReader::new(&"test.bam").ok().expect("Expected valid index.");
 
+        let tid = bam.header.tid(b"CHROMOSOME_I").expect("Expected tid.");
+        assert!(bam.header.target_len(tid).expect("Expected target len.") == 15072423);
+
         // seek to position containing reads
-        bam.seek(0, 0, 2).ok().expect("Expected successful seek.");
+        bam.seek(tid, 0, 2).ok().expect("Expected successful seek.");
         assert!(bam.records().count() == 6);
 
         // compare reads
-        bam.seek(0, 0, 2).ok().expect("Expected successful seek.");
+        bam.seek(tid, 0, 2).ok().expect("Expected successful seek.");
         for (i, record) in bam.records().enumerate() {
             let rec = record.ok().expect("Expected valid record");
             println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
@@ -398,13 +441,11 @@ mod tests {
 
     #[test]
     fn test_write() {
-        let qname = b"I";
-        let cigar = [Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)];
-        let seq =  b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGC";
-        let qual = b"JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ";
+        let (names, _, seqs, quals, cigars) = gold();
 
         let tmp = tempdir::TempDir::new("rust-htslib").ok().expect("Cannot create temp dir");
         let bampath = tmp.path().join("test.bam");
+        println!("{:?}", bampath);
         {
             let mut bam = Writer::new(
                 &bampath,
@@ -415,7 +456,7 @@ mod tests {
             );
 
             let mut rec = record::Record::new();
-            rec.set(qname, &cigar, seq, qual);
+            rec.set(names[0], &cigars[0], seqs[0], quals[0]);
             rec.push_aux(b"NM", &Aux::Integer(15));
 
             bam.write(&mut rec).ok().expect("Failed to write record.");
@@ -427,10 +468,10 @@ mod tests {
             let mut rec = record::Record::new();
             bam.read(&mut rec).ok().expect("Failed to read record.");
 
-            assert_eq!(rec.qname(), qname);
-            assert_eq!(rec.cigar(), cigar);
-            assert_eq!(rec.seq().as_bytes(), seq);
-            assert_eq!(rec.qual(), qual);
+            assert_eq!(rec.qname(), names[0]);
+            assert_eq!(rec.cigar(), cigars[0]);
+            assert_eq!(rec.seq().as_bytes(), seqs[0]);
+            assert_eq!(rec.qual(), quals[0]);
             assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
         }
 

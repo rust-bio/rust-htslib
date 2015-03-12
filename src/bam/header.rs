@@ -4,6 +4,36 @@
 // except according to those terms.
 
 
+/// A BAM header.
+pub struct Header {
+    records: Vec<Vec<u8>>
+}
+
+
+impl Header {
+    /// Create a new header.
+    pub fn new() -> Self {
+        Header { records: Vec::new() }
+    }
+
+    /// Add a record to the header.
+    pub fn push_record(&mut self, record: &HeaderRecord) -> &mut Self {
+        self.records.push(record.to_bytes());
+        self
+    }
+
+    /// Add a comment to the header.
+    pub fn push_comment(&mut self, comment: &[u8]) -> &mut Self {
+        self.records.push([b"@CO", comment].connect(&b'\t'));
+        self
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.records.connect(&b'\n')
+    }
+}
+
+
 /// Header record.
 pub struct HeaderRecord<'a> {
     rec_type: Vec<u8>,
@@ -38,35 +68,5 @@ impl<'a> HeaderRecord<'a> {
             out.push_all(&value);
         }
         out
-    }
-}
-
-
-/// A BAM header.
-pub struct Header {
-    records: Vec<Vec<u8>>
-}
-
-
-impl Header {
-    /// Create a new header.
-    pub fn new() -> Self {
-        Header { records: Vec::new() }
-    }
-
-    /// Add a record to the header.
-    pub fn push_record(&mut self, record: &HeaderRecord) -> &mut Self {
-        self.records.push(record.to_bytes());
-        self
-    }
-
-    /// Add a comment to the header.
-    pub fn push_comment(&mut self, comment: &[u8]) -> &mut Self {
-        self.records.push([b"@CO", comment].connect(&b'\t'));
-        self
-    }
-
-    pub fn to_bytes(&self) -> Vec<u8> {
-        self.records.connect(&b'\n')
     }
 }
