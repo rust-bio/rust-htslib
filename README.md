@@ -14,7 +14,7 @@ ensuring that the HTSlib submodule is fetched, too.
 
 To use rust-bio in your Rust project, import the crate from your source code:
 ```rust
-extern create htslib;
+extern crate htslib;
 use htslib::bam;
 
 // copy reverse reads to new BAM file
