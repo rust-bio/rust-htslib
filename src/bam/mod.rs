@@ -202,7 +202,7 @@ impl Writer {
     ///
     /// * `path` - the path. Use "-" for stdin.
     /// * `template` - the template BAM. Use "-" for stdin.
-    pub fn with_template<P: path::AsPath, T: path::AsPath>(path: &P, template: &T) -> Self {
+    pub fn with_template<P: path::AsPath, T: path::AsPath>(template: &T, path: &P) -> Self {
         let t = bgzf_open(template, b"r");
         let header = unsafe { htslib::bam_hdr_read(t) };
 
