@@ -41,7 +41,7 @@ impl BAMReader {
     /// # Arguments
     ///
     /// * `path` - the path. Use "-" for stdin.
-    pub fn new<P: path::AsPath>(path: P) -> Self {
+    pub fn new<P: path::AsPath>(path: &P) -> Self {
         let f = bgzf_open(path, b"r");
         let header = unsafe { htslib::bam_hdr_read(f) };
         BAMReader { f : f, header : header }
@@ -209,7 +209,7 @@ mod tests {
             [Cigar::Match(27), Cigar::Del(100000), Cigar::Match(73)],
         ];
 
-        let bam = BAMReader::new("test.bam");
+        let bam = BAMReader::new(&"test.bam");
 
         for (i, record) in bam.records().enumerate() {
             let rec = record.ok().expect("Expected valid record");
