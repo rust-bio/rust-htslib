@@ -12,6 +12,8 @@ use std::path;
 use std::ffi::AsOsStr;
 use std::os::unix::prelude::OsStrExt;
 use std::str;
+use std::ptr;
+use libc;
 
 use htslib;
 
@@ -48,8 +50,11 @@ impl Reader {
         Reader { f : f, header : header }
     }
 
-    /// Iterator over the records of the BAM file.
-    pub fn records(self) -> Records<Self> {
+    /// Iterator over the records of the seeked region.
+    /// Note that, while being convenient, this is less efficient than pre-allocating a
+    /// `Record` and reading into it with the `read` method, since every iteration involves
+    /// the allocation of a new `Record`.
+    pub fn records(&self) -> Records<Self> {
         Records { bam: self }
     }
 }
@@ -58,7 +63,7 @@ impl Reader {
 impl Read for Reader {
     fn read(&self, record: &mut record::Record) -> Result<(), ReadError> {
         match unsafe { htslib::bam_read1(self.f, &mut record.inner) } {
-            -1 => Err(ReadError::EOF),
+            -1 => Err(ReadError::NoMoreRecord),
             -2 => Err(ReadError::Truncated),
             -4 => Err(ReadError::Invalid),
             _  => Ok(())
@@ -72,6 +77,90 @@ impl Drop for Reader {
         unsafe {
             htslib::bam_hdr_destroy(self.header);
             htslib::bgzf_close(self.f);
+        }
+    }
+}
+
+
+pub struct IndexedReader {
+    bgzf: *mut htslib::Struct_BGZF,
+    header: *mut htslib::bam_hdr_t,
+    idx: *mut htslib::hts_idx_t,
+    itr: Option<*mut htslib:: hts_itr_t>,
+}
+
+
+impl IndexedReader {
+    /// Create a new Reader.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - the path. Use "-" for stdin.
+    pub fn new<P: path::AsPath>(path: &P) -> Result<Self, IndexError> {
+        let bgzf = bgzf_open(path, b"r");
+        let header = unsafe { htslib::bam_hdr_read(bgzf) };
+        let idx = unsafe {
+            htslib::hts_idx_load(
+                path.as_path().as_os_str().to_cstring().unwrap().as_ptr(),
+                htslib::HTS_FMT_BAI
+            )
+        };
+        if idx.is_null() {
+            Err(IndexError::InvalidIndex)
+        }
+        else {
+            Ok(IndexedReader { bgzf: bgzf, header : header, idx: idx, itr: None })
+        }
+    }
+
+    pub fn seek(&mut self, tid: u32, beg: u32, end: u32) -> Result<(), ()> {
+        let itr = unsafe {
+            htslib::sam_itr_queryi(self.idx, tid as i32, beg as i32, end as i32)
+        };
+        if itr.is_null() {
+            self.itr = None;
+            Err(())
+        }
+        else {
+            self.itr = Some(itr);
+            Ok(())
+        }
+    }
+
+    /// Iterator over the records of the seeked region.
+    /// Note that, while being convenient, this is less efficient than pre-allocating a
+    /// `Record` and reading into it with the `read` method, since every iteration involves
+    /// the allocation of a new `Record`.
+    pub fn records(&self) -> Records<Self> {
+        Records { bam: self }
+    }
+}
+
+
+impl Read for IndexedReader {
+    fn read(&self, record: &mut record::Record) -> Result<(), ReadError> {
+        match self.itr {
+            Some(itr) => match bam_itr_next(self.bgzf, itr, &mut record.inner) {
+                -1 => Err(ReadError::NoMoreRecord),
+                -2 => Err(ReadError::Truncated),
+                -4 => Err(ReadError::Invalid),
+                _  => Ok(())
+            },
+            None      => Err(ReadError::NoMoreRecord)
+        }
+    }
+}
+
+
+impl Drop for IndexedReader {
+    fn drop(&mut self) {
+        unsafe {
+            if self.itr.is_some() {
+                htslib::hts_itr_destroy(self.itr.unwrap());
+            }
+            htslib::hts_idx_destroy(self.idx);
+            htslib::bam_hdr_destroy(self.header);
+            htslib::bgzf_close(self.bgzf);
         }
     }
 }
@@ -151,18 +240,18 @@ impl Drop for Writer {
 
 
 /// Iterator over the records of a BAM.
-pub struct Records<R: Read> {
-    bam: R
+pub struct Records<'a, R: 'a + Read> {
+    bam: &'a R
 }
 
 
-impl<R: Read> Iterator for Records<R> {
+impl<'a, R: Read> Iterator for Records<'a, R> {
     type Item = Result<record::Record, ReadError>;
 
     fn next(&mut self) -> Option<Result<record::Record, ReadError>> {
         let mut record = record::Record::new();
         match self.bam.read(&mut record) {
-            Err(ReadError::EOF) => None,
+            Err(ReadError::NoMoreRecord) => None,
             Ok(())   => Some(Ok(record)),
             Err(err) => Some(Err(err))
         }
@@ -173,7 +262,12 @@ impl<R: Read> Iterator for Records<R> {
 pub enum ReadError {
     Truncated,
     Invalid,
-    EOF,
+    NoMoreRecord,
+}
+
+
+pub enum IndexError {
+    InvalidIndex,
 }
 
 
@@ -188,6 +282,18 @@ fn bgzf_open<P: path::AsPath>(path: &P, mode: &[u8]) -> *mut htslib::Struct_BGZF
 }
 
 
+/// Wrapper for iterating an indexed BAM file.
+fn bam_itr_next(bgzf: *mut htslib::Struct_BGZF, itr: *mut htslib:: hts_itr_t, record: *mut htslib::bam1_t) -> i32 {
+    unsafe {
+        htslib::hts_itr_next(
+            bgzf,
+            itr,
+            record as *mut libc::types::common::c95::c_void,
+            ptr::null_mut()
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     extern crate tempdir;
@@ -196,8 +302,7 @@ mod tests {
     use super::header::*;
     use std::str;
 
-    #[test]
-    fn test_read() {
+    fn gold() -> ([&'static [u8]; 6], [u16; 6], [&'static [u8]; 6], [&'static [u8]; 6], [[Cigar; 3]; 6]) {
         let names = [b"I", b"II.14978392", b"III", b"IV", b"V", b"VI"];
         let flags = [16u16, 16u16, 16u16, 16u16, 16u16, 2048u16];
         let seqs = [
@@ -208,6 +313,14 @@ mod tests {
             b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA",
             b"ACTAAGCCTAAGCCTAAGCCTAAGCCAATTATCGATTTCTGAAAAAATTATCGAATTTTCTAGAAATTTTGCAAATTTTTTCATAAAATTATCGATTTTA",
         ];
+        let quals = [
+            b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+            b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+            b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+            b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+            b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+            b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+        ];
         let cigars = [
             [Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)],
             [Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)],
@@ -216,7 +329,12 @@ mod tests {
             [Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)],
             [Cigar::Match(27), Cigar::Del(100000), Cigar::Match(73)],
         ];
+        (names, flags, seqs, quals, cigars)
+    }
 
+    #[test]
+    fn test_read() {
+        let (names, flags, seqs, quals, cigars) = gold();
         let bam = Reader::new(&"test.bam");
 
         for (i, record) in bam.records().enumerate() {
@@ -226,25 +344,54 @@ mod tests {
             assert_eq!(rec.flags(), flags[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
             assert_eq!(rec.cigar(), cigars[i]);
+            // fix qual offset
+            let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
+            assert_eq!(rec.qual(), qual);
         }
     }
 
     #[test]
+    fn test_read_indexed() {
+        let (names, flags, seqs, quals, cigars) = gold();
+        let mut bam = IndexedReader::new(&"test.bam").ok().expect("Expected valid index.");
+
+        // seek to position containing reads
+        bam.seek(0, 0, 2).ok().expect("Expected successful seek.");
+        assert!(bam.records().count() == 6);
+
+        // compare reads
+        bam.seek(0, 0, 2).ok().expect("Expected successful seek.");
+        for (i, record) in bam.records().enumerate() {
+            let rec = record.ok().expect("Expected valid record");
+            println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
+            assert_eq!(rec.qname(), names[i]);
+            assert_eq!(rec.flags(), flags[i]);
+            assert_eq!(rec.seq().as_bytes(), seqs[i]);
+            assert_eq!(rec.cigar(), cigars[i]);
+            // fix qual offset
+            let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
+            assert_eq!(rec.qual(), qual);
+        }
+
+        // seek to empty position
+        bam.seek(2, 1, 1).ok().expect("Expected successful seek.");
+        assert!(bam.records().count() == 0);
+    }
+
+    #[test]
     fn test_set_record() {
-        let qname = b"I";
-        let cigar = [Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)];
-        let seq =  b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGC";
-        let qual = b"JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ";
+
+        let (names, _, seqs, quals, cigars) = gold();
 
         let mut rec = record::Record::new();
         rec.set_reverse();
-        rec.set(qname, &cigar, seq, qual);
+        rec.set(names[0], &cigars[0], seqs[0], quals[0]);
         rec.push_aux(b"NM", &Aux::Integer(15));
 
-        assert_eq!(rec.qname(), qname);
-        assert_eq!(rec.cigar(), cigar);
-        assert_eq!(rec.seq().as_bytes(), seq);
-        assert_eq!(rec.qual(), qual);
+        assert_eq!(rec.qname(), names[0]);
+        assert_eq!(rec.cigar(), cigars[0]);
+        assert_eq!(rec.seq().as_bytes(), seqs[0]);
+        assert_eq!(rec.qual(), quals[0]);
         assert!(rec.is_reverse());
         assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
     }
@@ -273,6 +420,7 @@ mod tests {
 
             bam.write(&mut rec).ok().expect("Failed to write record.");
         }
+
         {
             let bam = Reader::new(&bampath);
 
@@ -285,6 +433,7 @@ mod tests {
             assert_eq!(rec.qual(), qual);
             assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
         }
+
         tmp.close().ok().expect("Failed to delete temp dir");
     }
 }

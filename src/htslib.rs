@@ -51,6 +51,9 @@ extern "C" {
     pub fn bgzf_close(fp: *mut BGZF) -> ::libc::c_int;
 }
 
+// hts.h
+pub const HTS_FMT_BAI: ::libc::c_int = 1;
+
 pub enum Struct_cram_fd { }
 pub enum Struct_hFILE { }
 #[repr(C)]
