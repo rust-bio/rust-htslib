@@ -42,12 +42,7 @@ impl BAMReader {
     ///
     /// * `path` - the path. Use "-" for stdin.
     pub fn new<P: path::AsPath>(path: P) -> Self {
-        let f = unsafe {
-            htslib::bgzf_open(
-                path.as_path().as_os_str().to_cstring().unwrap().as_ptr(),
-                ffi::CString::new(b"r").unwrap().as_ptr()
-            )
-        };
+        let f = bgzf_open(path, b"r");
         let header = unsafe { htslib::bam_hdr_read(f) };
         BAMReader { f : f, header : header }
     }
@@ -77,17 +72,6 @@ impl Drop for BAMReader {
             htslib::bam_hdr_destroy(self.header);
             htslib::bgzf_close(self.f);
         }
-    }
-}
-
-
-/// Wrapper for opening a BAM file.
-fn bgzf_open<P: path::AsPath>(path: &P, mode: &[u8]) -> *mut htslib::Struct_BGZF {
-    unsafe {
-        htslib::bgzf_open(
-            path.as_path().as_os_str().to_cstring().unwrap().as_ptr(),
-            ffi::CString::new(mode).unwrap().as_ptr()
-        )
     }
 }
 
@@ -184,6 +168,17 @@ pub enum ReadError {
     Truncated,
     Invalid,
     EOF,
+}
+
+
+/// Wrapper for opening a BAM file.
+fn bgzf_open<P: path::AsPath>(path: &P, mode: &[u8]) -> *mut htslib::Struct_BGZF {
+    unsafe {
+        htslib::bgzf_open(
+            path.as_path().as_os_str().to_cstring().unwrap().as_ptr(),
+            ffi::CString::new(mode).unwrap().as_ptr()
+        )
+    }
 }
 
 
