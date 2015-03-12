@@ -17,7 +17,7 @@ use htslib;
 
 
 /// A trait for a BAM reader with a read method.
-pub trait BAMRead {
+pub trait Read {
     /// Read next BAM record into given record.
     /// Use this method in combination with a single allocated record to avoid the reallocations
     /// occurring with the iterator.
@@ -30,14 +30,14 @@ pub trait BAMRead {
 
 
 /// A BAM reader.
-pub struct BAMReader {
+pub struct Reader {
     f: *mut htslib::Struct_BGZF,
     header: *mut htslib::bam_hdr_t,
 }
 
 
-impl BAMReader {
-    /// Create a new BAMReader.
+impl Reader {
+    /// Create a new Reader.
     ///
     /// # Arguments
     ///
@@ -45,7 +45,7 @@ impl BAMReader {
     pub fn new<P: path::AsPath>(path: &P) -> Self {
         let f = bgzf_open(path, b"r");
         let header = unsafe { htslib::bam_hdr_read(f) };
-        BAMReader { f : f, header : header }
+        Reader { f : f, header : header }
     }
 
     /// Iterator over the records of the BAM file.
@@ -55,7 +55,7 @@ impl BAMReader {
 }
 
 
-impl BAMRead for BAMReader {
+impl Read for Reader {
     fn read(&self, record: &mut record::Record) -> Result<(), ReadError> {
         match unsafe { htslib::bam_read1(self.f, &mut record.inner) } {
             -1 => Err(ReadError::EOF),
@@ -67,7 +67,7 @@ impl BAMRead for BAMReader {
 }
 
 
-impl Drop for BAMReader {
+impl Drop for Reader {
     fn drop(&mut self) {
         unsafe {
             htslib::bam_hdr_destroy(self.header);
@@ -78,13 +78,13 @@ impl Drop for BAMReader {
 
 
 /// A BAM writer.
-pub struct BAMWriter {
+pub struct Writer {
     f: *mut htslib::Struct_BGZF,
     header: *mut htslib::bam_hdr_t,
 }
 
 
-impl BAMWriter {
+impl Writer {
     /// Create a new BAM file.
     ///
     /// # Arguments
@@ -93,6 +93,7 @@ impl BAMWriter {
     /// * `header` - header definition to use
     pub fn new<P: path::AsPath>(path: &P, header: &header::Header) -> Self {
         let f = bgzf_open(path, b"w");
+
         let header_record = unsafe {
             let header_string = header.to_bytes();
             println!("{}", str::from_utf8(&header_string).unwrap());
@@ -102,7 +103,8 @@ impl BAMWriter {
             )
         };
         unsafe { htslib::bam_hdr_write(f, header_record); }
-        BAMWriter { f: f, header: header_record }
+
+        Writer { f: f, header: header_record }
     }
 
     /// Create a new BAM file from template.
@@ -115,9 +117,11 @@ impl BAMWriter {
         let t = bgzf_open(template, b"r");
         let header = unsafe { htslib::bam_hdr_read(t) };
         unsafe { htslib::bgzf_close(t); }
+
         let f = bgzf_open(path, b"w");
         unsafe { htslib::bam_hdr_write(f, header); }
-        BAMWriter { f: f, header: header }
+
+        Writer { f: f, header: header }
     }
 
     /// Write record to BAM.
@@ -136,7 +140,7 @@ impl BAMWriter {
 }
 
 
-impl Drop for BAMWriter {
+impl Drop for Writer {
     fn drop(&mut self) {
         unsafe {
             htslib::bam_hdr_destroy(self.header);
@@ -148,7 +152,7 @@ impl Drop for BAMWriter {
 
 /// Iterator over the records of a BAM.
 pub struct Records {
-    bam: BAMReader
+    bam: Reader
 }
 
 
@@ -213,7 +217,7 @@ mod tests {
             [Cigar::Match(27), Cigar::Del(100000), Cigar::Match(73)],
         ];
 
-        let bam = BAMReader::new(&"test.bam");
+        let bam = Reader::new(&"test.bam");
 
         for (i, record) in bam.records().enumerate() {
             let rec = record.ok().expect("Expected valid record");
@@ -255,7 +259,7 @@ mod tests {
         let tmp = tempdir::TempDir::new("rust-htslib").ok().expect("Cannot create temp dir");
         let bampath = tmp.path().join("test.bam");
         {
-            let mut bam = BAMWriter::new(
+            let mut bam = Writer::new(
                 &bampath,
                 Header::new().push_record(
                     HeaderRecord::new(b"SQ").push_tag(b"SN", &"chr1")
@@ -270,7 +274,7 @@ mod tests {
             bam.write(&mut rec).ok().expect("Failed to write record.");
         }
         {
-            let bam = BAMReader::new(&bampath);
+            let bam = Reader::new(&bampath);
 
             let mut rec = record::Record::new();
             bam.read(&mut rec).ok().expect("Failed to read record.");
