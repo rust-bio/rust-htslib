@@ -246,17 +246,35 @@ mod tests {
 
     #[test]
     fn test_write() {
+        let qname = b"I";
+        let cigar = [Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)];
+        let seq =  b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGC";
+        let qual = b"JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ";
+
         let tmp = tempdir::TempDir::new("rust-htslib").ok().expect("Cannot create temp dir");
         let bampath = tmp.path().join("test.bam");
         {
-            let bam = BAMWriter::new(
+            let mut bam = BAMWriter::new(
                 &bampath,
                 Header::new().push_record(
                     HeaderRecord::new(b"SQ").push_tag(b"SN", &"chr1")
                                             .push_tag(b"LN", &15072423)
                 )
             );
-            
+            let mut rec = record::Record::new();
+            rec.set(qname, &cigar, seq, qual);
+            rec.push_aux(b"NM", &Aux::Integer(15));
+            bam.write(&mut rec).ok().expect("Failed to write record.");
+        }
+        {
+            let bam = BAMReader::new(&bampath);
+            let mut rec = record::Record::new();
+            bam.read(&mut rec).ok().expect("Failed to read record.");
+            assert_eq!(rec.qname(), qname);
+            assert_eq!(rec.cigar(), cigar);
+            assert_eq!(rec.seq().as_bytes(), seq);
+            assert_eq!(rec.qual(), qual);
+            assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
         }
         tmp.close().ok().expect("Failed to delete temp dir");
     }
