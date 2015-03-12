@@ -236,6 +236,7 @@ mod tests {
         rec.set_reverse();
         rec.set(qname, &cigar, seq, qual);
         rec.push_aux(b"NM", &Aux::Integer(15));
+
         assert_eq!(rec.qname(), qname);
         assert_eq!(rec.cigar(), cigar);
         assert_eq!(rec.seq().as_bytes(), seq);
@@ -261,15 +262,19 @@ mod tests {
                                             .push_tag(b"LN", &15072423)
                 )
             );
+
             let mut rec = record::Record::new();
             rec.set(qname, &cigar, seq, qual);
             rec.push_aux(b"NM", &Aux::Integer(15));
+
             bam.write(&mut rec).ok().expect("Failed to write record.");
         }
         {
             let bam = BAMReader::new(&bampath);
+
             let mut rec = record::Record::new();
             bam.read(&mut rec).ok().expect("Failed to read record.");
+
             assert_eq!(rec.qname(), qname);
             assert_eq!(rec.cigar(), cigar);
             assert_eq!(rec.seq().as_bytes(), seq);
