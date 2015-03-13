@@ -532,4 +532,23 @@ mod tests {
 
         tmp.close().ok().expect("Failed to delete temp dir");
     }
+
+    #[test]
+    fn test_pileup() {
+        let (_, _, seqs, quals, _) = gold();
+
+        let bam = Reader::new(&"test.bam");
+        for pileup in bam.pileup().take(26) {
+            let _pileup = pileup.ok().expect("Expected successful pileup.");
+            println!("{}", _pileup.pos);
+            let pos = _pileup.pos as usize;
+            assert!(_pileup.tid == 0);
+            for (i, a) in _pileup.alignments().enumerate() {
+                assert_eq!(a.indel(), pileup::Indel::None);
+                assert_eq!(a.qpos(), pos - 1);
+                assert_eq!(a.record().seq()[a.qpos()], seqs[i][a.qpos()]);
+                assert_eq!(a.record().qual()[a.qpos()], quals[i][a.qpos()] - 33);
+            }
+        }
+    }
 }

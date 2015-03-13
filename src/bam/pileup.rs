@@ -20,7 +20,8 @@ pub type Alignments<'a> = iter::Map<
 
 /// A pileup over one genomic position.
 pub struct Pileup {
-    inner: Vec<htslib::bam_pileup1_t>,
+    inner: *const htslib::bam_pileup1_t,
+    len: usize,
     pub tid: u32,
     pub pos: u32,
 }
@@ -28,7 +29,21 @@ pub struct Pileup {
 
 impl Pileup {
     pub fn alignments(&self) -> Alignments {
-        self.inner.iter().map(Alignment::new)
+        self.inner().iter().map(Alignment::new)
+    }
+
+    fn inner(&self) -> &[htslib::bam_pileup1_t] {
+        unsafe { slice::from_raw_parts(self.inner as *mut htslib::bam_pileup1_t, self.len) }
+    }
+}
+
+
+impl Drop for Pileup {
+    fn drop(&mut self) {
+        // TODO think about what to drop here, the following causes a double free
+        //for &a in self.inner().iter() {
+        //    unsafe { htslib::bam_destroy1(a.b); }
+        //}
     }
 }
 
@@ -45,8 +60,8 @@ impl<'a> Alignment<'a> {
     }
 
     /// Position within the read.
-    pub fn qpos(&self) -> u32 {
-        self.inner.qpos as u32
+    pub fn qpos(&self) -> usize {
+        self.inner.qpos as usize
     }
 
     /// Insertion, deletion (with length) or None if no indel.
@@ -65,6 +80,8 @@ impl<'a> Alignment<'a> {
 }
 
 
+#[derive(PartialEq)]
+#[derive(Debug)]
 pub enum Indel {
     Ins(u32),
     Del(u32),
@@ -86,25 +103,30 @@ impl Pileups {
 
 
 impl Iterator for Pileups {
-    type Item = Pileup;
+    type Item = Result<Pileup, ()>;
 
-    fn next(&mut self) -> Option<Pileup> {
+    fn next(&mut self) -> Option<Result<Pileup, ()>> {
         let (mut tid, mut pos, mut len) = (0i32, 0i32, 0i32);
         let inner = unsafe {
             htslib::bam_plp_auto(self.itr, &mut tid, &mut pos, &mut len)
         };
+        //let x = unsafe {
+        //    slice::from_raw_parts(inner as *mut htslib::bam_pileup1_t, len as usize)
+        //};
+        //println!("{:?} {} {:?}", inner, len, x.len());
 
-        if inner.is_null() {
-            None
-        }
-        else {
-            Some(Pileup {
-                inner: unsafe {
-                    Vec::from_raw_parts(inner as *mut htslib::bam_pileup1_t, len as usize, len as usize)
-                },
-                tid: tid as u32,
-                pos: pos as u32,
-            })
+        //return None;
+        match inner.is_null() {
+            true if len == -1 => Some(Err(())),
+            true              => None,
+            false             => Some(Ok(
+                    Pileup {
+                        inner: inner,
+                        len: len as usize,
+                        tid: tid as u32,
+                        pos: pos as u32,
+                    }
+            ))
         }
     }
 }

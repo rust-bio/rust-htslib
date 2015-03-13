@@ -30,6 +30,7 @@ macro_rules! flag {
 /// A BAM record.
 pub struct Record {
     pub inner: htslib::bam1_t,
+    own: bool,
 }
 
 
@@ -38,11 +39,11 @@ impl Record {
     pub fn new() -> Self {
         let mut inner = unsafe { *htslib::bam_init1() };
         inner.m_data = 0;
-        Record { inner: inner }
+        Record { inner: inner, own: true }
     }
 
     pub fn from_inner(inner: *mut htslib::bam1_t) -> Self {
-        Record { inner: unsafe { *inner } }
+        Record { inner: unsafe { *inner }, own: false }
     }
 
     fn data(&self) -> &[u8] {
@@ -286,7 +287,9 @@ impl Record {
 
 impl Drop for Record {
     fn drop(&mut self) {
-        unsafe { ::libc::funcs::c95::stdlib::free(self.inner.data as *mut ::libc::c_void) };
+        if self.own {
+            unsafe { ::libc::funcs::c95::stdlib::free(self.inner.data as *mut ::libc::c_void) };
+        }
     }
 }
 
