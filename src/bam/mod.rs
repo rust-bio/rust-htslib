@@ -35,6 +35,7 @@ pub trait Read {
     /// the allocation of a new `Record`.
     fn records(&self) -> Records<Self>;
 
+    /// Iterator over pileups.
     fn pileup(&self) -> pileup::Pileups;
 
     /// Return the BGZF struct
