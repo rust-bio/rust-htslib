@@ -6,6 +6,7 @@
 
 pub mod record;
 pub mod header;
+pub mod pileup;
 
 use std::ffi;
 use std::path;
@@ -13,7 +14,6 @@ use std::ffi::AsOsStr;
 use std::os::unix::prelude::OsStrExt;
 use std::ptr;
 use std::slice;
-use libc;
 
 use htslib;
 
@@ -28,12 +28,21 @@ pub trait Read {
     ///
     /// * `record` - the record to be filled
     fn read(&self, record: &mut record::Record) -> Result<(), ReadError>;
+
+    /// Iterator over the records of the seeked region.
+    /// Note that, while being convenient, this is less efficient than pre-allocating a
+    /// `Record` and reading into it with the `read` method, since every iteration involves
+    /// the allocation of a new `Record`.
+    fn records(&self) -> Records<Self>;
+
+    /// Return the BGZF struct
+    fn bgzf(&self) -> *mut htslib::Struct_BGZF;
 }
 
 
 /// A BAM reader.
 pub struct Reader {
-    f: *mut htslib::Struct_BGZF,
+    bgzf: *mut htslib::Struct_BGZF,
     pub header: HeaderView,
 }
 
@@ -45,29 +54,46 @@ impl Reader {
     ///
     /// * `path` - the path. Use "-" for stdin.
     pub fn new<P: path::AsPath>(path: &P) -> Self {
-        let f = bgzf_open(path, b"r");
-        let header = unsafe { htslib::bam_hdr_read(f) };
-        Reader { f : f, header: HeaderView::new(header) }
+        let bgzf = bgzf_open(path, b"r");
+        let header = unsafe { htslib::bam_hdr_read(bgzf) };
+        Reader { bgzf: bgzf, header: HeaderView::new(header) }
     }
 
-    /// Iterator over the records of the seeked region.
-    /// Note that, while being convenient, this is less efficient than pre-allocating a
-    /// `Record` and reading into it with the `read` method, since every iteration involves
-    /// the allocation of a new `Record`.
-    pub fn records(&self) -> Records<Self> {
-        Records { bam: self }
+    pub fn pileup(&self) -> pileup::Pileups {
+        let itr = unsafe {
+            htslib::bam_plp_init(
+                Some(Reader::pileup_read),
+                self.bgzf as *mut ::libc::c_void)
+        };
+        pileup::Pileups::new(itr)
+    }
+
+    extern fn pileup_read(data: *mut ::libc::c_void, record: *mut htslib::bam1_t) -> ::libc::c_int {
+        unsafe { htslib::bam_read1(data as *mut htslib::BGZF, record) }
     }
 }
 
 
 impl Read for Reader {
     fn read(&self, record: &mut record::Record) -> Result<(), ReadError> {
-        match unsafe { htslib::bam_read1(self.f, &mut record.inner) } {
+        match unsafe { htslib::bam_read1(self.bgzf, &mut record.inner) } {
             -1 => Err(ReadError::NoMoreRecord),
             -2 => Err(ReadError::Truncated),
             -4 => Err(ReadError::Invalid),
             _  => Ok(())
         }
+    }
+
+    /// Iterator over the records of the seeked region.
+    /// Note that, while being convenient, this is less efficient than pre-allocating a
+    /// `Record` and reading into it with the `read` method, since every iteration involves
+    /// the allocation of a new `Record`.
+    fn records(&self) -> Records<Self> {
+        Records { reader: self }
+    }
+
+    fn bgzf(&self) -> *mut htslib::Struct_BGZF {
+        self.bgzf
     }
 }
 
@@ -76,7 +102,7 @@ impl Drop for Reader {
     fn drop(&mut self) {
         unsafe {
             htslib::bam_hdr_destroy(self.header.inner);
-            htslib::bgzf_close(self.f);
+            htslib::bgzf_close(self.bgzf);
         }
     }
 }
@@ -126,14 +152,6 @@ impl IndexedReader {
             Ok(())
         }
     }
-
-    /// Iterator over the records of the seeked region.
-    /// Note that, while being convenient, this is less efficient than pre-allocating a
-    /// `Record` and reading into it with the `read` method, since every iteration involves
-    /// the allocation of a new `Record`.
-    pub fn records(&self) -> Records<Self> {
-        Records { bam: self }
-    }
 }
 
 
@@ -148,6 +166,18 @@ impl Read for IndexedReader {
             },
             None      => Err(ReadError::NoMoreRecord)
         }
+    }
+
+    /// Iterator over the records of the seeked region.
+    /// Note that, while being convenient, this is less efficient than pre-allocating a
+    /// `Record` and reading into it with the `read` method, since every iteration involves
+    /// the allocation of a new `Record`.
+    fn records(&self) -> Records<Self> {
+        Records { reader: self }
+    }
+
+    fn bgzf(&self) -> *mut htslib::Struct_BGZF {
+        self.bgzf
     }
 }
 
@@ -242,7 +272,7 @@ impl Drop for Writer {
 
 /// Iterator over the records of a BAM.
 pub struct Records<'a, R: 'a + Read> {
-    bam: &'a R
+    reader: &'a R
 }
 
 
@@ -251,7 +281,7 @@ impl<'a, R: Read> Iterator for Records<'a, R> {
 
     fn next(&mut self) -> Option<Result<record::Record, ReadError>> {
         let mut record = record::Record::new();
-        match self.bam.read(&mut record) {
+        match self.reader.read(&mut record) {
             Err(ReadError::NoMoreRecord) => None,
             Ok(())   => Some(Ok(record)),
             Err(err) => Some(Err(err))
@@ -289,7 +319,7 @@ fn itr_next(bgzf: *mut htslib::Struct_BGZF, itr: *mut htslib:: hts_itr_t, record
         htslib::hts_itr_next(
             bgzf,
             itr,
-            record as *mut libc::types::common::c95::c_void,
+            record as *mut ::libc::c_void,
             ptr::null_mut()
         )
     }

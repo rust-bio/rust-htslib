@@ -8,7 +8,6 @@ use std::slice;
 use std::ffi;
 use std::mem;
 use std::iter;
-use libc;
 
 use htslib;
 
@@ -146,8 +145,8 @@ impl Record {
             self.inner.m_data = self.inner.l_data;
             self.inner.m_data += 32 - self.inner.m_data % 32;
             unsafe {
-                self.inner.data = libc::funcs::c95::stdlib::realloc(
-                    self.inner.data as *mut libc::types::common::c95::c_void, self.inner.m_data as u64
+                self.inner.data = ::libc::funcs::c95::stdlib::realloc(
+                    self.inner.data as *mut ::libc::c_void, self.inner.m_data as u64
                 ) as *mut u8;
             }
         }
@@ -282,7 +281,7 @@ impl Record {
 
 impl Drop for Record {
     fn drop(&mut self) {
-        unsafe { libc::funcs::c95::stdlib::free(self.inner.data as *mut libc::types::common::c95::c_void) };
+        unsafe { ::libc::funcs::c95::stdlib::free(self.inner.data as *mut ::libc::c_void) };
     }
 }
 
