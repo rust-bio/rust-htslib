@@ -35,6 +35,8 @@ pub trait Read {
     /// the allocation of a new `Record`.
     fn records(&self) -> Records<Self>;
 
+    fn pileup(&self) -> pileup::Pileups;
+
     /// Return the BGZF struct
     fn bgzf(&self) -> *mut htslib::Struct_BGZF;
 }
@@ -59,17 +61,9 @@ impl Reader {
         Reader { bgzf: bgzf, header: HeaderView::new(header) }
     }
 
-    pub fn pileup(&self) -> pileup::Pileups {
-        let itr = unsafe {
-            htslib::bam_plp_init(
-                Some(Reader::pileup_read),
-                self.bgzf as *mut ::libc::c_void)
-        };
-        pileup::Pileups::new(itr)
-    }
-
     extern fn pileup_read(data: *mut ::libc::c_void, record: *mut htslib::bam1_t) -> ::libc::c_int {
-        unsafe { htslib::bam_read1(data as *mut htslib::BGZF, record) }
+        let _self = unsafe { &*(data as *mut Self) };
+        unsafe { htslib::bam_read1(_self.bgzf, record) }
     }
 }
 
@@ -90,6 +84,17 @@ impl Read for Reader {
     /// the allocation of a new `Record`.
     fn records(&self) -> Records<Self> {
         Records { reader: self }
+    }
+
+    fn pileup(&self) -> pileup::Pileups {
+        let _self = self as *const Self;
+        let itr = unsafe {
+            htslib::bam_plp_init(
+                Some(Reader::pileup_read),
+                _self as *mut ::libc::c_void
+            )
+        };
+        pileup::Pileups::new(itr)
     }
 
     fn bgzf(&self) -> *mut htslib::Struct_BGZF {
@@ -152,6 +157,14 @@ impl IndexedReader {
             Ok(())
         }
     }
+
+    extern fn pileup_read(data: *mut ::libc::c_void, record: *mut htslib::bam1_t) -> ::libc::c_int {
+        let _self = unsafe { &*(data as *mut Self) };
+        match _self.itr {
+            Some(itr) => itr_next(_self.bgzf, itr, record),
+            None      => 0
+        }
+    }
 }
 
 
@@ -174,6 +187,17 @@ impl Read for IndexedReader {
     /// the allocation of a new `Record`.
     fn records(&self) -> Records<Self> {
         Records { reader: self }
+    }
+
+    fn pileup(&self) -> pileup::Pileups {
+        let _self = self as *const Self;
+        let itr = unsafe {
+            htslib::bam_plp_init(
+                Some(IndexedReader::pileup_read),
+                _self as *mut ::libc::c_void
+            )
+        };
+        pileup::Pileups::new(itr)
     }
 
     fn bgzf(&self) -> *mut htslib::Struct_BGZF {

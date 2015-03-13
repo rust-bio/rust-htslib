@@ -11,12 +11,14 @@ use htslib;
 use bam::record;
 
 
+/// Iterator over alignments of a pileup.
 pub type Alignments<'a> = iter::Map<
     slice::Iter<'a, htslib::bam_pileup1_t>,
     fn(&'a htslib::bam_pileup1_t) -> Alignment<'a>
 >;
 
 
+/// A pileup over one genomic position.
 pub struct Pileup {
     inner: Vec<htslib::bam_pileup1_t>,
     pub tid: u32,
@@ -31,6 +33,7 @@ impl Pileup {
 }
 
 
+/// An aligned read in a pileup.
 pub struct Alignment<'a> {
     inner: &'a htslib::bam_pileup1_t,
 }
@@ -46,7 +49,7 @@ impl<'a> Alignment<'a> {
         self.inner.qpos as u32
     }
 
-    /// Insertion, deletion (with length) or None.
+    /// Insertion, deletion (with length) or None if no indel.
     pub fn indel(&self) -> Indel {
         match self.inner.indel {
             len if len < 0 => Indel::Del(-len as u32),
@@ -55,6 +58,7 @@ impl<'a> Alignment<'a> {
         }
     }
 
+    /// The corresponding record.
     pub fn record(&self) -> record::Record {
         record::Record::from_inner(self.inner.b)
     }
@@ -68,6 +72,7 @@ pub enum Indel {
 }
 
 
+/// Iterator over pileups.
 pub struct Pileups {
     itr: htslib::bam_plp_t,
 }
