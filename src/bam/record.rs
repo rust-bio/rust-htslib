@@ -366,13 +366,8 @@ impl<'a> Seq<'a> {
         (self.encoded[i / 2] >> ((! i & 1) << 2)) & 0b1111
     }
 
-    #[inline]
-    pub fn base(&self, i: usize) -> u8 {
-        DECODE_BASE[self.encoded_base(i) as usize]
-    }
-
     pub fn as_bytes(&self) -> Vec<u8> {
-        (0..self.len()).map(|i| self.base(i)).collect()
+        (0..self.len()).map(|i| self[i]).collect()
     }
 
     pub fn len(&self) -> usize {
