@@ -8,6 +8,7 @@ use std::slice;
 use std::ffi;
 use std::mem;
 use std::iter;
+use std::ops;
 
 use htslib;
 
@@ -38,6 +39,10 @@ impl Record {
         let mut inner = unsafe { *htslib::bam_init1() };
         inner.m_data = 0;
         Record { inner: inner }
+    }
+
+    pub fn from_inner(inner: *mut htslib::bam1_t) -> Self {
+        Record { inner: unsafe { *inner } }
     }
 
     fn data(&self) -> &[u8] {
@@ -372,6 +377,15 @@ impl<'a> Seq<'a> {
 
     pub fn len(&self) -> usize {
         self.encoded.len() * 2
+    }
+}
+
+
+impl<'a> ops::Index<usize> for Seq<'a> {
+    type Output = u8;
+
+    fn index(&self, index: &usize) -> &u8 {
+        &DECODE_BASE[self.encoded_base(*index) as usize]
     }
 }
 
