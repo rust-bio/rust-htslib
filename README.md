@@ -40,6 +40,7 @@ let bam = bam::Reader::new("path/to/some.bam");
 for p in bam.pileup() {
     let pileup = p.ok().expect("Expected successful pileup.");
     println!("{}:{} depth {}", bam.pileup.tid(), pileup.pos(), pileup.depth());
+
     for alignment in pileup.alignments() {
         match alignment.indel() {
             bam::pileup::Indel::Ins(len) => println!("Insertion of length {}", len),
