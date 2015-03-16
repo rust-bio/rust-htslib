@@ -26,7 +26,8 @@ let bam = bam::Reader::new("path/to/some.bam");
 let out = bam::Writer::with_template("path/to/some.bam", "reversereads.bam");
 
 // copy reverse reads to new BAM file
-for record in bam.records() {
+for r in bam.records() {
+    let record = r.ok().expect("Expected successful BAM reading.");
     if record.is_reverse() {
         out.write(record);
     }
