@@ -22,10 +22,10 @@ use htslib::bam;
 Rust-HTSlib provides a high level BAM API.
 Reading and writing BAM files is as easy as
 ```rust
-// copy reverse reads to new BAM file
 let bam = bam::Reader::new("path/to/some.bam");
 let out = bam::Writer::with_template("path/to/some.bam", "reversereads.bam");
 
+// copy reverse reads to new BAM file
 for record in bam.records() {
     if record.is_reverse() {
         out.write(record);
@@ -37,6 +37,7 @@ Pileups can be performed with
 ```rust
 let bam = bam::Reader::new("path/to/some.bam");
 
+// pileup over all covered sites
 for p in bam.pileup() {
     let pileup = p.ok().expect("Expected successful pileup.");
     println!("{}:{} depth {}", bam.pileup.tid(), pileup.pos(), pileup.depth());
@@ -54,7 +55,10 @@ In both cases, indexed BAM files can be seeked for specific regions, constrainin
 
 ```rust
 let bam = bam::IndexedReader::new("path/to/some.bam");
-bam.seek(bam.header.tid(b"chr1"), 50000, 100000).ok().expect("Expected successful seek.")
+
+// seek to chr1:50000-100000
+bam.seek(bam.header.tid(b"chr1"), 50000, 100000).ok().expect("Expected successful seek.");
+// afterwards, read or pileup in this region
 ```
 
 # Authors
