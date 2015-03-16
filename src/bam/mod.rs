@@ -538,7 +538,8 @@ mod tests {
         let (_, _, seqs, quals, _) = gold();
 
         let bam = Reader::new(&"test.bam");
-        for pileup in bam.pileup().take(26) {
+        let mut pileups = bam.pileup();
+        for pileup in pileups.take(26) {
             let _pileup = pileup.ok().expect("Expected successful pileup.");
             println!("{}", _pileup.pos);
             let pos = _pileup.pos as usize;

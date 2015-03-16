@@ -89,6 +89,10 @@ impl Pileups {
     pub fn new(itr: htslib::bam_plp_t) -> Self {
         Pileups { itr: itr }
     }
+
+    pub fn set_max_depth(&mut self, depth: u32) {
+        unsafe { htslib::bam_plp_set_maxcnt(self.itr, depth as i32); }
+    }
 }
 
 
@@ -125,6 +129,7 @@ impl Iterator for Pileups {
 impl Drop for Pileups {
     fn drop(&mut self) {
         unsafe {
+            htslib::bam_plp_reset(self.itr);
             htslib::bam_plp_destroy(self.itr);
         }
     }
