@@ -21,7 +21,7 @@ pub type Alignments<'a> = iter::Map<
 /// A pileup over one genomic position.
 pub struct Pileup {
     inner: *const htslib::bam_pileup1_t,
-    len: usize,
+    depth: u32,
     tid: u32,
     pos: u32,
 }
@@ -36,16 +36,16 @@ impl Pileup {
         self.pos
     }
 
+    pub fn depth(&self) -> u32 {
+        self.depth
+    }
+
     pub fn alignments(&self) -> Alignments {
         self.inner().iter().map(Alignment::new)
     }
 
     fn inner(&self) -> &[htslib::bam_pileup1_t] {
-        unsafe { slice::from_raw_parts(self.inner as *mut htslib::bam_pileup1_t, self.len) }
-    }
-
-    pub fn len(&self) -> usize {
-        self.len
+        unsafe { slice::from_raw_parts(self.inner as *mut htslib::bam_pileup1_t, self.depth as usize) }
     }
 }
 
@@ -112,23 +112,18 @@ impl Iterator for Pileups {
     type Item = Result<Pileup, ()>;
 
     fn next(&mut self) -> Option<Result<Pileup, ()>> {
-        let (mut tid, mut pos, mut len) = (0i32, 0i32, 0i32);
+        let (mut tid, mut pos, mut depth) = (0i32, 0i32, 0i32);
         let inner = unsafe {
-            htslib::bam_plp_auto(self.itr, &mut tid, &mut pos, &mut len)
+            htslib::bam_plp_auto(self.itr, &mut tid, &mut pos, &mut depth)
         };
-        //let x = unsafe {
-        //    slice::from_raw_parts(inner as *mut htslib::bam_pileup1_t, len as usize)
-        //};
-        //println!("{:?} {} {:?}", inner, len, x.len());
 
-        //return None;
         match inner.is_null() {
-            true if len == -1 => Some(Err(())),
+            true if depth == -1 => Some(Err(())),
             true              => None,
             false             => Some(Ok(
                     Pileup {
                         inner: inner,
-                        len: len as usize,
+                        depth: depth as u32,
                         tid: tid as u32,
                         pos: pos as u32,
                     }
