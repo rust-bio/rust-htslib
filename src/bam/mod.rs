@@ -541,7 +541,6 @@ mod tests {
         let mut pileups = bam.pileup();
         for pileup in pileups.take(26) {
             let _pileup = pileup.ok().expect("Expected successful pileup.");
-            println!("{}", _pileup.pos);
             let pos = _pileup.pos as usize;
             assert!(_pileup.tid == 0);
             for (i, a) in _pileup.alignments().enumerate() {
