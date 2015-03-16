@@ -27,7 +27,7 @@ let out = bam::Writer::with_template("path/to/some.bam", "reversereads.bam");
 
 // copy reverse reads to new BAM file
 for r in bam.records() {
-    let record = r.ok().expect("Expected successful BAM reading.");
+    let record = r.ok().expect("Error reading BAM file.");
     if record.is_reverse() {
         out.write(record);
     }
@@ -40,7 +40,7 @@ let bam = bam::Reader::new("path/to/some.bam");
 
 // pileup over all covered sites
 for p in bam.pileup() {
-    let pileup = p.ok().expect("Expected successful pileup.");
+    let pileup = p.ok().expect("Error reading BAM file.");
     println!("{}:{} depth {}", bam.pileup.tid(), pileup.pos(), pileup.depth());
 
     for alignment in pileup.alignments() {
@@ -58,7 +58,7 @@ In both cases, indexed BAM files can be seeked for specific regions, constrainin
 let bam = bam::IndexedReader::new("path/to/some.bam");
 
 // seek to chr1:50000-100000
-bam.seek(bam.header.tid(b"chr1"), 50000, 100000).ok().expect("Expected successful seek.");
+bam.seek(bam.header.tid(b"chr1"), 50000, 100000).ok().expect("Error seeking BAM file.");
 // afterwards, read or pileup in this region
 ```
 
