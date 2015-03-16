@@ -538,11 +538,11 @@ mod tests {
         let (_, _, seqs, quals, _) = gold();
 
         let bam = Reader::new(&"test.bam");
-        let mut pileups = bam.pileup();
+        let pileups = bam.pileup();
         for pileup in pileups.take(26) {
             let _pileup = pileup.ok().expect("Expected successful pileup.");
-            let pos = _pileup.pos as usize;
-            assert!(_pileup.tid == 0);
+            let pos = _pileup.pos() as usize;
+            assert!(_pileup.tid() == 0);
             for (i, a) in _pileup.alignments().enumerate() {
                 assert_eq!(a.indel(), pileup::Indel::None);
                 assert_eq!(a.qpos(), pos - 1);

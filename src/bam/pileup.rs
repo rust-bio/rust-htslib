@@ -22,18 +22,30 @@ pub type Alignments<'a> = iter::Map<
 pub struct Pileup {
     inner: *const htslib::bam_pileup1_t,
     len: usize,
-    pub tid: u32,
-    pub pos: u32,
+    tid: u32,
+    pos: u32,
 }
 
 
 impl Pileup {
+    pub fn tid(&self) -> u32 {
+        self.tid
+    }
+
+    pub fn pos(&self) -> u32 {
+        self.pos
+    }
+
     pub fn alignments(&self) -> Alignments {
         self.inner().iter().map(Alignment::new)
     }
 
     fn inner(&self) -> &[htslib::bam_pileup1_t] {
         unsafe { slice::from_raw_parts(self.inner as *mut htslib::bam_pileup1_t, self.len) }
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
     }
 }
 
