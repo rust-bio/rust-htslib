@@ -1,6 +1,6 @@
 # HTSlib bindings for Rust
 
-This library provides HTSlib bindings and a high level Rust API for reading and writing SAM/BAM files.
+This library provides HTSlib bindings and a high level Rust API for reading and writing BAM files.
 
 To clone this repository, issue
 
