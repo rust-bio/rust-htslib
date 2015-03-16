@@ -38,16 +38,6 @@ impl Pileup {
 }
 
 
-impl Drop for Pileup {
-    fn drop(&mut self) {
-        // TODO think about what to drop here, the following causes a double free
-        //for &a in self.inner().iter() {
-        //    unsafe { htslib::bam_destroy1(a.b); }
-        //}
-    }
-}
-
-
 /// An aligned read in a pileup.
 pub struct Alignment<'a> {
     inner: &'a htslib::bam_pileup1_t,
