@@ -50,7 +50,12 @@ for p in bam.pileup() {
     }
 }
 ```
+In both cases, indexed BAM files can be seeked for specific regions, constraining either the record iterator or the pileups:
 
+```rust
+let bam = bam::IndexedReader::new("path/to/some.bam");
+bam.seek(bam.header.tid(b"chr1"), 50000, 100000).ok().expect("Expected successful seek.")
+```
 
 # Authors
 
