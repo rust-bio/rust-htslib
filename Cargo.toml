@@ -1,9 +1,13 @@
 [package]
-
 name = "rust-htslib"
-version = "0.0.1"
+version = "0.3.0"
 authors = ["Christopher Schröder <christopher.schroeder@tu-dortmund.de>", "Johannes Köster <johannes.koester@tu-dortmund.de>"]
 build = "build.rs"
+description = "This library provides HTSlib bindings and a high level Rust API for reading and writing BAM files."
+readme = "README.md"
+keywords = ["htslib", "bam", "bioinformatics", "pileup", "sequencing"]
+license = "MIT"
+repository = "https://github.com/christopher-schroeder/rust-htslib.git"
 
 [dev-dependencies]
 tempdir = "*"
