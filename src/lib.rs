@@ -7,8 +7,8 @@
 #![feature(libc)]
 #![feature(std_misc)]
 #![feature(core)]
-#![feature(path)]
 #![feature(collections)]
+#![feature(step_by)]
 
 extern crate libc;
 pub mod htslib;

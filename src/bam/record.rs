@@ -7,7 +7,6 @@
 use std::slice;
 use std::ffi;
 use std::mem;
-use std::iter;
 use std::ops;
 
 use htslib;
@@ -178,7 +177,7 @@ impl Record {
 
         // seq
         {
-            for j in iter::range_step(0, seq.len(), 2) {
+            for j in (0..seq.len()).step_by(2) {
                 data[i + j / 2] = ENCODE_BASE[seq[j] as usize] << 4 | ENCODE_BASE[seq[j + 1] as usize];
             }
             self.inner.core.l_qseq = seq.len() as i32;
