@@ -5,7 +5,7 @@ after_success: ! '[ $TRAVIS_BRANCH = master ] &&
 
   cargo doc &&
 
-  echo "<meta http-equiv=refresh content=0;url=index.html>" > target/doc/index.html
+  echo "<meta http-equiv=refresh content=0;url=rust-htslib/index.html>" > target/doc/index.html
   &&
 
   sudo pip install ghp-import &&
