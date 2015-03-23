@@ -10,6 +10,12 @@ git clone --recursive https://github.com/christopher-schroeder/rust-htslib.git
 
 ensuring that the HTSlib submodule is fetched, too.
 
+# Resources
+
+* Homepage: https://github.com/christopher-schroeder/rust-htslib
+* API documentation: http://christopher-schroeder.github.io/rust-htslib
+* Continuous integration tests: https://travis-ci.org/christopher-schroeder/rust-htslib
+
 # Usage
 
 To use Rust-HTSlib in your Rust project, import the crate from your source code:
