@@ -24,7 +24,7 @@ impl Header {
 
     /// Add a comment to the header.
     pub fn push_comment(&mut self, comment: &[u8]) -> &mut Self {
-        self.records.push([b"@CO", comment].connect(&b'\t'));
+        self.records.push([b"@CO".as_slice(), comment].connect(&b'\t'));
         self
     }
 
@@ -45,7 +45,7 @@ impl<'a> HeaderRecord<'a> {
     /// Create a new header record.
     /// See SAM format specification for possible record types.
     pub fn new(rec_type: &'a [u8]) -> Self {
-        HeaderRecord { rec_type: [b"@", rec_type].concat(), tags: Vec::new() }
+        HeaderRecord { rec_type: [b"@".as_slice(), rec_type].concat(), tags: Vec::new() }
     }
 
     /// Add a new tag to the record.
