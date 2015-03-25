@@ -13,3 +13,4 @@
 extern crate libc;
 pub mod htslib;
 pub mod bam;
+pub mod bcf;

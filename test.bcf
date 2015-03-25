@@ -1,0 +1,171 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=PASS,Description="All filters passed">
+##samtoolsVersion=1.1+htslib-1.1
+##samtoolsCommand=samtools mpileup -f ref.fasta -g data/reads/NA12878.subsample-0.25-0.bam
+##reference=file://ref.fasta
+##contig=<ID=1,length=249250621>
+##contig=<ID=2,length=243199373>
+##contig=<ID=3,length=198022430>
+##contig=<ID=4,length=191154276>
+##contig=<ID=5,length=180915260>
+##contig=<ID=6,length=171115067>
+##contig=<ID=7,length=159138663>
+##contig=<ID=8,length=146364022>
+##contig=<ID=9,length=141213431>
+##contig=<ID=10,length=135534747>
+##contig=<ID=11,length=135006516>
+##contig=<ID=12,length=133851895>
+##contig=<ID=13,length=115169878>
+##contig=<ID=14,length=107349540>
+##contig=<ID=15,length=102531392>
+##contig=<ID=16,length=90354753>
+##contig=<ID=17,length=81195210>
+##contig=<ID=18,length=78077248>
+##contig=<ID=19,length=59128983>
+##contig=<ID=20,length=63025520>
+##contig=<ID=21,length=48129895>
+##contig=<ID=22,length=51304566>
+##contig=<ID=X,length=155270560>
+##contig=<ID=Y,length=59373566>
+##contig=<ID=MT,length=16569>
+##contig=<ID=GL000207.1,length=4262>
+##contig=<ID=GL000226.1,length=15008>
+##contig=<ID=GL000229.1,length=19913>
+##contig=<ID=GL000231.1,length=27386>
+##contig=<ID=GL000210.1,length=27682>
+##contig=<ID=GL000239.1,length=33824>
+##contig=<ID=GL000235.1,length=34474>
+##contig=<ID=GL000201.1,length=36148>
+##contig=<ID=GL000247.1,length=36422>
+##contig=<ID=GL000245.1,length=36651>
+##contig=<ID=GL000197.1,length=37175>
+##contig=<ID=GL000203.1,length=37498>
+##contig=<ID=GL000246.1,length=38154>
+##contig=<ID=GL000249.1,length=38502>
+##contig=<ID=GL000196.1,length=38914>
+##contig=<ID=GL000248.1,length=39786>
+##contig=<ID=GL000244.1,length=39929>
+##contig=<ID=GL000238.1,length=39939>
+##contig=<ID=GL000202.1,length=40103>
+##contig=<ID=GL000234.1,length=40531>
+##contig=<ID=GL000232.1,length=40652>
+##contig=<ID=GL000206.1,length=41001>
+##contig=<ID=GL000240.1,length=41933>
+##contig=<ID=GL000236.1,length=41934>
+##contig=<ID=GL000241.1,length=42152>
+##contig=<ID=GL000243.1,length=43341>
+##contig=<ID=GL000242.1,length=43523>
+##contig=<ID=GL000230.1,length=43691>
+##contig=<ID=GL000237.1,length=45867>
+##contig=<ID=GL000233.1,length=45941>
+##contig=<ID=GL000204.1,length=81310>
+##contig=<ID=GL000198.1,length=90085>
+##contig=<ID=GL000208.1,length=92689>
+##contig=<ID=GL000191.1,length=106433>
+##contig=<ID=GL000227.1,length=128374>
+##contig=<ID=GL000228.1,length=129120>
+##contig=<ID=GL000214.1,length=137718>
+##contig=<ID=GL000221.1,length=155397>
+##contig=<ID=GL000209.1,length=159169>
+##contig=<ID=GL000218.1,length=161147>
+##contig=<ID=GL000220.1,length=161802>
+##contig=<ID=GL000213.1,length=164239>
+##contig=<ID=GL000211.1,length=166566>
+##contig=<ID=GL000199.1,length=169874>
+##contig=<ID=GL000217.1,length=172149>
+##contig=<ID=GL000216.1,length=172294>
+##contig=<ID=GL000215.1,length=172545>
+##contig=<ID=GL000205.1,length=174588>
+##contig=<ID=GL000219.1,length=179198>
+##contig=<ID=GL000224.1,length=179693>
+##contig=<ID=GL000223.1,length=180455>
+##contig=<ID=GL000195.1,length=182896>
+##contig=<ID=GL000212.1,length=186858>
+##contig=<ID=GL000222.1,length=186861>
+##contig=<ID=GL000200.1,length=187035>
+##contig=<ID=GL000193.1,length=189789>
+##contig=<ID=GL000194.1,length=191469>
+##contig=<ID=GL000225.1,length=211173>
+##contig=<ID=GL000192.1,length=547496>
+##contig=<ID=NC_007605,length=171823>
+##contig=<ID=hs37d5,length=35477943>
+##ALT=<ID=X,Description="Represents allele(s) other than observed.">
+##INFO=<ID=INDEL,Number=0,Type=Flag,Description="Indicates that the variant is an INDEL.">
+##INFO=<ID=IDV,Number=1,Type=Integer,Description="Maximum number of reads supporting an indel">
+##INFO=<ID=IMF,Number=1,Type=Float,Description="Maximum fraction of reads supporting an indel">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Raw read depth">
+##INFO=<ID=VDB,Number=1,Type=Float,Description="Variant Distance Bias for filtering splice-site artefacts in RNA-seq data (bigger is better)",Version="3">
+##INFO=<ID=RPB,Number=1,Type=Float,Description="Mann-Whitney U test of Read Position Bias (bigger is better)">
+##INFO=<ID=MQB,Number=1,Type=Float,Description="Mann-Whitney U test of Mapping Quality Bias (bigger is better)">
+##INFO=<ID=BQB,Number=1,Type=Float,Description="Mann-Whitney U test of Base Quality Bias (bigger is better)">
+##INFO=<ID=MQSB,Number=1,Type=Float,Description="Mann-Whitney U test of Mapping Quality vs Strand Bias (bigger is better)">
+##INFO=<ID=SGB,Number=1,Type=Float,Description="Segregation based metric.">
+##INFO=<ID=MQ0F,Number=1,Type=Float,Description="Fraction of MQ0 reads (smaller is better)">
+##INFO=<ID=I16,Number=16,Type=Float,Description="Auxiliary tag used for calling, see description of bcf_callret1_t in bam2bcf.h">
+##INFO=<ID=QS,Number=R,Type=Float,Description="Auxiliary tag used for calling">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="List of Phred-scaled genotype likelihoods">
+##bcftools_viewVersion=1.1+htslib-1.1
+##bcftools_viewCommand=view -r 1:1-10083 /vol/data/alpaca/analysis/NA12878.subsample-0.25-0.bcf
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878.subsample-0.25-0
+1	10022	.	C	<X>	0	.	DP=1;I16=1,0,0,0,32,1024,0,0,0,0,0,0,0,0,0,0;QS=1,0;MQ0F=1	PL	0,3,4
+1	10023	.	C	<X>	0	.	DP=1;I16=1,0,0,0,35,1225,0,0,0,0,0,0,1,1,0,0;QS=1,0;MQ0F=1	PL	0,3,4
+1	10024	.	C	<X>	0	.	DP=1;I16=1,0,0,0,36,1296,0,0,0,0,0,0,2,4,0,0;QS=1,0;MQ0F=1	PL	0,3,4
+1	10025	.	T	<X>	0	.	DP=1;I16=1,0,0,0,35,1225,0,0,0,0,0,0,3,9,0,0;QS=1,0;MQ0F=1	PL	0,3,4
+1	10026	.	A	<X>	0	.	DP=1;I16=1,0,0,0,30,900,0,0,0,0,0,0,4,16,0,0;QS=1,0;MQ0F=1	PL	0,3,4
+1	10027	.	A	<X>	0	.	DP=2;I16=2,0,0,0,65,2113,0,0,0,0,0,0,5,25,0,0;QS=1,0;MQ0F=1	PL	0,6,7
+1	10028	.	C	<X>	0	.	DP=2;I16=2,0,0,0,74,2738,0,0,0,0,0,0,7,37,0,0;QS=1,0;MQ0F=1	PL	0,6,7
+1	10029	.	C	<X>	0	.	DP=4;I16=4,0,0,0,141,4987,0,0,0,0,0,0,9,53,0,0;QS=1,0;MQ0F=1	PL	0,12,11
+1	10030	.	C	<X>	0	.	DP=4;I16=4,0,0,0,150,5626,0,0,0,0,0,0,13,75,0,0;QS=1,0;MQ0F=1	PL	0,12,11
+1	10031	.	T	<X>	0	.	DP=4;I16=4,0,0,0,144,5186,0,0,0,0,0,0,17,105,0,0;QS=1,0;MQ0F=1	PL	0,12,11
+1	10032	.	A	<X>	0	.	DP=4;I16=4,0,0,0,127,4037,0,0,0,0,0,0,21,143,0,0;QS=1,0;MQ0F=1	PL	0,12,11
+1	10033	.	A	<X>	0	.	DP=4;I16=4,0,0,0,142,5052,0,0,0,0,0,0,25,189,0,0;QS=1,0;MQ0F=1	PL	0,12,11
+1	10034	.	C	<X>	0	.	DP=5;I16=5,0,0,0,169,5919,0,0,0,0,0,0,29,243,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10035	.	C	<X>	0	.	DP=5;I16=5,0,0,0,181,6567,0,0,0,0,0,0,34,306,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10036	.	C	<X>	0	.	DP=5;I16=5,0,0,0,190,7224,0,0,0,0,0,0,39,379,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10037	.	T	<X>	0	.	DP=5;I16=5,0,0,0,186,6922,0,0,0,0,0,0,44,462,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10038	.	A	<X>	0	.	DP=5;I16=5,0,0,0,167,5583,0,0,0,0,0,0,49,555,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10039	.	A	<X>	0	.	DP=5;I16=5,0,0,0,167,5683,0,0,0,0,0,0,54,658,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10040	.	C	<X>	0	.	DP=5;I16=5,0,0,0,189,7175,0,0,0,0,0,0,59,771,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10041	.	C	<X>	0	.	DP=5;I16=5,0,0,0,171,5917,0,0,0,0,0,0,64,894,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10042	.	C	<X>	0	.	DP=5;I16=5,0,0,0,175,6203,0,0,0,0,0,0,69,1027,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10043	.	T	<X>	0	.	DP=5;I16=5,0,0,0,180,6498,0,0,0,0,0,0,74,1170,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10044	.	A	<X>	0	.	DP=5;I16=5,0,0,0,156,4938,0,0,0,0,0,0,79,1323,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10045	.	A	<X>	0	.	DP=5;I16=5,0,0,0,157,5117,0,0,0,0,0,0,84,1486,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10046	.	C	<X>	0	.	DP=5;I16=5,0,0,0,182,6676,0,0,0,0,0,0,89,1659,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10047	.	C	<X>	0	.	DP=5;I16=5,0,0,0,187,7035,0,0,0,0,0,0,94,1842,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10048	.	C	<X>	0	.	DP=5;I16=5,0,0,0,178,6462,0,0,0,0,0,0,98,1984,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10049	.	T	<X>	0	.	DP=5;I16=5,0,0,0,181,6563,0,0,0,0,0,0,102,2134,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10050	.	A	<X>	0	.	DP=5;I16=5,0,0,0,160,5146,0,0,0,0,0,0,106,2292,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10051	.	A	<X>	0	.	DP=5;I16=5,0,0,0,154,4962,0,0,0,0,0,0,110,2458,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10052	.	C	<X>	0	.	DP=5;I16=5,0,0,0,172,6014,0,0,0,0,0,0,114,2632,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10053	.	C	<X>	0	.	DP=5;I16=5,0,0,0,167,5803,0,0,0,0,0,0,117,2763,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10054	.	C	<X>	0	.	DP=5;I16=5,0,0,0,195,7619,0,0,0,0,0,0,120,2900,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10055	.	T	<X>	0	.	DP=5;I16=5,0,0,0,167,5713,0,0,0,0,0,0,121,2941,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10056	.	A	<X>	0	.	DP=5;I16=5,0,0,0,165,5453,0,0,0,0,0,0,122,2984,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10057	.	A	<X>	0	.	DP=5;I16=5,0,0,0,180,6528,0,0,0,0,0,0,123,3029,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10058	.	C	<X>	0	.	DP=5;I16=5,0,0,0,187,7029,0,0,0,0,0,0,124,3076,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10059	.	C	<X>	0	.	DP=5;I16=5,0,0,0,167,6057,0,0,0,0,0,0,125,3125,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10060	.	C	<X>	0	.	DP=5;I16=5,0,0,0,183,6757,0,0,0,0,0,0,125,3125,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10061	.	T	<X>	0	.	DP=5;I16=5,0,0,0,185,6855,0,0,0,0,0,0,125,3125,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10062	.	A	<X>	0	.	DP=5;I16=5,0,0,0,146,4446,0,0,0,0,0,0,125,3125,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10063	.	A	<X>	0	.	DP=5;I16=5,0,0,0,174,6126,0,0,0,0,0,0,125,3125,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10064	.	C	<X>	0	.	DP=5;I16=5,0,0,0,174,6122,0,0,0,0,0,0,125,3125,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10065	.	C	<X>	0	.	DP=5;I16=5,0,0,0,153,5143,0,0,0,0,0,0,125,3125,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10066	.	C	<X>	0	.	DP=5;I16=4,0,0,0,145,5305,0,0,0,0,0,0,100,2500,0,0;QS=1,0;MQ0F=1	PL	0,12,11
+1	10067	.	T	<X>	0	.	DP=5;I16=5,0,0,0,184,6790,0,0,0,0,0,0,125,3125,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10068	.	A	<X>	0	.	DP=5;I16=5,0,0,0,144,4456,0,0,0,0,0,0,125,3125,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10069	.	A	<X>	0	.	DP=5;I16=5,0,0,0,143,4295,0,0,0,0,0,0,125,3125,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10070	.	C	<X>	0	.	DP=5;I16=5,0,0,0,174,6112,0,0,0,0,0,0,125,3125,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10071	.	C	<X>	0	.	DP=5;I16=5,0,0,0,178,6406,0,0,0,0,0,0,125,3125,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10072	.	C	<X>	0	.	DP=5;I16=5,0,0,0,156,5102,0,0,0,0,0,0,125,3125,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10073	.	T	<X>	0	.	DP=5;I16=5,0,0,0,183,6719,0,0,0,0,0,0,124,3076,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10074	.	A	<X>	0	.	DP=5;I16=5,0,0,0,154,4818,0,0,0,0,0,0,123,3029,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10075	.	A	<X>	0	.	DP=5;I16=5,0,0,0,159,5257,0,0,0,0,0,0,122,2984,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10076	.	C	<X>	0	.	DP=5;I16=5,0,0,0,181,6619,0,0,0,0,0,0,121,2941,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10077	.	C	<X>	0	.	DP=5;I16=5,0,0,0,157,4991,0,0,0,0,0,0,120,2900,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10078	.	C	<X>	0	.	DP=5;I16=5,0,0,0,182,6742,0,0,0,0,0,0,118,2812,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10079	.	T	<X>	0	.	DP=5;I16=5,0,0,0,157,5155,0,0,0,0,0,0,116,2728,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10080	.	A	<X>	0	.	DP=5;I16=5,0,0,0,155,4919,0,0,0,0,0,0,112,2550,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10081	.	A	C,<X>	0	.	DP=5;I16=4,0,1,0,111,3281,17,289,0,0,0,0,85,1851,23,529;QS=0.8,0.2,0;SGB=-0.379885;RPB=1;MQB=1;BQB=1;MQ0F=1	PL	0,8,7,12,10,7
+1	10082	.	C	<X>	0	.	DP=5;I16=5,0,0,0,134,4182,0,0,0,0,0,0,104,2218,0,0;QS=1,0;MQ0F=1	PL	0,15,12
+1	10083	.	C	<X>	0	.	DP=5;I16=5,0,0,0,158,5264,0,0,0,0,0,0,100,2064,0,0;QS=1,0;MQ0F=1	PL	0,15,12
