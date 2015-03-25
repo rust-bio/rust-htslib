@@ -39,6 +39,16 @@ impl Reader {
 }
 
 
+impl Drop for Reader {
+    fn drop(&mut self) {
+        unsafe {
+            htslib::vcf::bcf_hdr_destroy(self.header);
+            htslib::vcf::hts_close(self.inner);
+        }
+    }
+}
+
+
 pub struct Records<'a> {
     reader: &'a Reader,
 }
@@ -92,6 +102,7 @@ mod tests {
             if i == 59 {
                 assert_eq!(record.info(b"SGB").float().ok().expect("Error reading info."), [-0.379885]);
             }
+            println!("test {}", i);
         }
     }
 }

@@ -6,6 +6,7 @@
 use std::ptr;
 use std::slice;
 use std::ffi;
+use std::vec;
 
 use htslib;
 
@@ -46,6 +47,10 @@ impl Record {
     pub fn info<'a>(&'a self, tag: &'a [u8]) -> Info {
         Info { record: self, tag: tag }
     }
+
+    pub fn format<'a>(&'a self, tag: &'a [u8]) -> Format {
+        Format { record: self, tag: tag }
+    }
 }
 
 
@@ -56,6 +61,7 @@ impl Drop for Record {
 }
 
 
+// TODO try to directly take the Vectors from raw parts later. Right now, this leads to crashes.
 pub struct Info<'a> {
     record: &'a Record,
     tag: &'a [u8],
@@ -83,15 +89,21 @@ impl<'a> Info<'a> {
         }
     }
 
-    pub fn integer(&self) -> Result<&[i32], InfoError> {
+    pub fn integer(&self) -> Result<Vec<i32>, InfoError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|(data, n, _)| {
-            unsafe { slice::from_raw_parts(data as *mut i32, n) }
+            let mut d = Vec::with_capacity(n);
+            d.push_all(unsafe { slice::from_raw_parts(data as *mut i32, n) });
+            unsafe { ::libc::free(data) };
+            d
         })
     }
 
-    pub fn float(&self) -> Result<&[f32], InfoError> {
+    pub fn float(&self) -> Result<Vec<f32>, InfoError> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|(data, n, _)| {
-            unsafe { slice::from_raw_parts(data as *mut f32, n) }
+            let mut d = Vec::with_capacity(n);
+            d.push_all(unsafe { slice::from_raw_parts(data as *mut f32, n) });
+            unsafe { ::libc::free(data) };
+            d
         })
     }
 
@@ -101,11 +113,21 @@ impl<'a> Info<'a> {
         })
     }
 
-    pub fn string(&self) -> Result<&[u8], InfoError> {
+    pub fn string(&self) -> Result<Vec<u8>, InfoError> {
         self.data(htslib::vcf::BCF_HT_STR).map(|(data, _, ret)| {
-            unsafe { slice::from_raw_parts(data as *mut u8, ret as usize) }
+            let mut d = Vec::with_capacity(ret as usize);
+            d.push_all(unsafe { slice::from_raw_parts(data as *mut u8, ret as usize) });
+            unsafe { ::libc::free(data) };
+            d
         })
     }
+}
+
+
+// TODO implement format.
+pub struct Format<'a> {
+    record: &'a Record,
+    tag: &'a [u8],
 }
 
 
