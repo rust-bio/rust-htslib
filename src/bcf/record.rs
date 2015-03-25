@@ -65,7 +65,6 @@ impl Drop for Record {
 }
 
 
-// TODO try to directly take the Vectors from raw parts later. Right now, this leads to crashes.
 pub struct Info<'a> {
     record: &'a mut Record,
     tag: &'a [u8],
