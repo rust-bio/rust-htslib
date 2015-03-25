@@ -24,8 +24,11 @@ impl Reader {
 
     pub fn read(&self, record: &mut record::Record) -> Result<(), ReadError> {
         match unsafe { htslib::vcf::bcf_read(self.inner, self.header, record.inner) } {
+            0  => {
+                record.header = self.header;
+                Ok(())
+            },
             -1 => Err(ReadError::NoMoreRecord),
-            0  => Ok(()),
             _  => Err(ReadError::Invalid),
         }
     }
@@ -85,6 +88,10 @@ mod tests {
             assert_eq!(record.rid().expect("Error reading rid."), 0);
             assert_eq!(record.pos(), 10021 + i as u32);
             assert_eq!(record.qual(), 0f32);
+            assert_eq!(record.info(b"MQ0F").float().ok().expect("Error reading info."), [1.0]);
+            if i == 59 {
+                assert_eq!(record.info(b"SGB").float().ok().expect("Error reading info."), [-0.379885]);
+            }
         }
     }
 }

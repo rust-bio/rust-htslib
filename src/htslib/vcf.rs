@@ -3,6 +3,12 @@
 #![allow(non_snake_case)]
 
 
+pub const BCF_HT_FLAG: ::libc::c_int = 0;
+pub const BCF_HT_INT: ::libc::c_int = 1;
+pub const BCF_HT_REAL: ::libc::c_int = 2;
+pub const BCF_HT_STR: ::libc::c_int = 3;
+
+
 extern "C" {
     pub fn bcf_read1_core(fp: *mut BGZF, v: *mut bcf1_t) -> ::libc::c_int;
 }
