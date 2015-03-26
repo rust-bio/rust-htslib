@@ -8,6 +8,9 @@ pub const BCF_HT_INT: ::libc::c_int = 1;
 pub const BCF_HT_REAL: ::libc::c_int = 2;
 pub const BCF_HT_STR: ::libc::c_int = 3;
 
+pub const BCF_UN_STR: ::libc::c_int = 1;
+pub const BCF_UN_FLT: ::libc::c_int = 2;
+
 
 extern "C" {
     pub fn bcf_read1_core(fp: *mut BGZF, v: *mut bcf1_t) -> ::libc::c_int;

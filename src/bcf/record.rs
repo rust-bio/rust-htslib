@@ -40,14 +40,24 @@ impl Record {
         self.inner().pos as u32
     }
 
+    pub fn alleles(&self) -> Vec<&[u8]> {
+        unsafe { htslib::vcf::bcf_unpack(self.inner, htslib::vcf::BCF_UN_STR) };
+        let n = self.inner().n_allele as usize;
+        let dec = self.inner().d;
+        let alleles = unsafe { slice::from_raw_parts(dec.allele, n) };
+        (0..n).map(|i| unsafe { ffi::CStr::from_ptr(alleles[i]).to_bytes() }).collect()
+    }
+
     pub fn qual(&self) -> f32 {
         self.inner().qual
     }
 
+    /// Get the value of the given info tag.
     pub fn info<'a>(&'a mut self, tag: &'a [u8]) -> Info {
         Info { record: self, tag: tag }
     }
 
+    /// Get the value of the given format tag for each sample.
     pub fn format<'a>(&'a mut self, tag: &'a [u8]) -> Format {
         Format { record: self, tag: tag }
     }

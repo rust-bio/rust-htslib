@@ -106,6 +106,8 @@ mod tests {
             else {
                 assert_eq!(record.format(b"PL").integer().ok().expect("Error reading format.").len(), 3);
             }
+            // the artificial "not observed" allele is present in each record.
+            assert_eq!(record.alleles().iter().last().unwrap(), b"<X>");
         }
     }
 }
