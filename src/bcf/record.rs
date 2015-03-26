@@ -6,7 +6,6 @@
 use std::ptr;
 use std::slice;
 use std::ffi;
-use std::vec;
 
 use htslib;
 
@@ -119,8 +118,42 @@ impl<'a> Info<'a> {
 
 // TODO implement format.
 pub struct Format<'a> {
-    record: &'a Record,
+    record: &'a mut Record,
     tag: &'a [u8],
+}
+
+
+impl<'a> Format<'a> {
+    fn data(&mut self, data_type: i32) -> Result<(usize, i32), InfoError> {
+        let mut n: i32 = 0;
+        match unsafe {
+            htslib::vcf::bcf_get_format_values(
+                self.record.header,
+                self.record.inner,
+                ffi::CString::new(self.tag).unwrap().as_ptr() as *mut i8,
+                &mut self.record.buffer,
+                &mut n,
+                data_type
+            )
+        } {
+            -1 => Err(InfoError::UndefinedTag),
+            -2 => Err(InfoError::UnexpectedType),
+            -3 => Err(InfoError::MissingTag),
+            ret  => Ok((n as usize, ret)),
+        }
+    }
+
+    pub fn integer(&mut self) -> Result<&[i32], InfoError> {
+        self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
+            unsafe { slice::from_raw_parts(self.record.buffer as *mut i32, n) }
+        })
+    }
+
+    pub fn float(&mut self) -> Result<&[f32], InfoError> {
+        self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
+            unsafe { slice::from_raw_parts(self.record.buffer as *mut f32, n) }
+        })
+    }
 }
 
 

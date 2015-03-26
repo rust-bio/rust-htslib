@@ -94,15 +94,18 @@ mod tests {
     fn test_read() {
         let bcf = Reader::new(&"test.bcf");
         for (i, rec) in bcf.records().enumerate() {
-            let record = rec.ok().expect("Error reading record.");
+            let mut record = rec.ok().expect("Error reading record.");
             assert_eq!(record.rid().expect("Error reading rid."), 0);
             assert_eq!(record.pos(), 10021 + i as u32);
             assert_eq!(record.qual(), 0f32);
             assert_eq!(record.info(b"MQ0F").float().ok().expect("Error reading info."), [1.0]);
             if i == 59 {
                 assert_eq!(record.info(b"SGB").float().ok().expect("Error reading info."), [-0.379885]);
+                assert_eq!(record.format(b"PL").integer().ok().expect("Error reading format.").len(), 6);
             }
-            println!("test {}", i);
+            else {
+                assert_eq!(record.format(b"PL").integer().ok().expect("Error reading format.").len(), 3);
+            }
         }
     }
 }
