@@ -381,8 +381,8 @@ impl<'a> Seq<'a> {
 impl<'a> ops::Index<usize> for Seq<'a> {
     type Output = u8;
 
-    fn index(&self, index: &usize) -> &u8 {
-        &DECODE_BASE[self.encoded_base(*index) as usize]
+    fn index(&self, index: usize) -> &u8 {
+        &DECODE_BASE[self.encoded_base(index) as usize]
     }
 }
 
