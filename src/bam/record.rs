@@ -158,7 +158,7 @@ impl Record {
 
         let mut data = unsafe { slice::from_raw_parts_mut(self.inner.data, self.inner.l_data as usize) };
         // qname
-        slice::bytes::copy_memory(data, qname);
+        slice::bytes::copy_memory(qname, data);
         data[qname.len()] = b'\0';
         let mut i = qname.len() + 1;
         self.inner.core.l_qname = i as u8;
@@ -185,7 +185,7 @@ impl Record {
         }
 
         // qual
-        slice::bytes::copy_memory(&mut data[i..], qual);
+        slice::bytes::copy_memory(qual, &mut data[i..]);
     }
 
     fn cigar_len(&self) -> usize {

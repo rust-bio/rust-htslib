@@ -9,6 +9,8 @@
 #![feature(core)]
 #![feature(collections)]
 #![feature(step_by)]
+#![feature(convert)]
+
 
 extern crate libc;
 pub mod htslib;

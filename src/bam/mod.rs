@@ -9,11 +9,10 @@ pub mod header;
 pub mod pileup;
 
 use std::ffi;
-use std::path;
-use std::ffi::AsOsStr;
-use std::os::unix::prelude::OsStrExt;
 use std::ptr;
 use std::slice;
+use std::convert::AsRef;
+use std::path::Path;
 
 use htslib;
 
@@ -56,7 +55,7 @@ impl Reader {
     /// # Arguments
     ///
     /// * `path` - the path. Use "-" for stdin.
-    pub fn new<P: path::AsPath>(path: &P) -> Self {
+    pub fn new<P: AsRef<Path>>(path: &P) -> Self {
         let bgzf = bgzf_open(path, b"r");
         let header = unsafe { htslib::bam_hdr_read(bgzf) };
         Reader { bgzf: bgzf, header: HeaderView::new(header) }
@@ -128,12 +127,12 @@ impl IndexedReader {
     /// # Arguments
     ///
     /// * `path` - the path. Use "-" for stdin.
-    pub fn new<P: path::AsPath>(path: &P) -> Result<Self, IndexError> {
+    pub fn new<P: AsRef<Path>>(path: &P) -> Result<Self, IndexError> {
         let bgzf = bgzf_open(path, b"r");
         let header = unsafe { htslib::bam_hdr_read(bgzf) };
         let idx = unsafe {
             htslib::hts_idx_load(
-                path.as_path().as_os_str().to_cstring().unwrap().as_ptr(),
+                path.as_ref().as_os_str().to_cstring().unwrap().as_ptr(),
                 htslib::HTS_FMT_BAI
             )
         };
@@ -235,7 +234,7 @@ impl Writer {
     ///
     /// * `path` - the path. Use "-" for stdin.
     /// * `header` - header definition to use
-    pub fn new<P: path::AsPath>(path: &P, header: &header::Header) -> Self {
+    pub fn new<P: AsRef<Path>>(path: &P, header: &header::Header) -> Self {
         let f = bgzf_open(path, b"w");
 
         let header_record = unsafe {
@@ -257,7 +256,7 @@ impl Writer {
     ///
     /// * `path` - the path. Use "-" for stdin.
     /// * `template` - the template BAM. Use "-" for stdin.
-    pub fn with_template<P: path::AsPath, T: path::AsPath>(template: &T, path: &P) -> Self {
+    pub fn with_template<P: AsRef<Path>, T: AsRef<Path>>(template: &T, path: &P) -> Self {
         let t = bgzf_open(template, b"r");
         let header = unsafe { htslib::bam_hdr_read(t) };
 
@@ -328,10 +327,10 @@ pub enum IndexError {
 
 
 /// Wrapper for opening a BAM file.
-fn bgzf_open<P: path::AsPath>(path: &P, mode: &[u8]) -> *mut htslib::Struct_BGZF {
+fn bgzf_open<P: AsRef<Path>>(path: &P, mode: &[u8]) -> *mut htslib::Struct_BGZF {
     unsafe {
         htslib::bgzf_open(
-            path.as_path().as_os_str().to_cstring().unwrap().as_ptr(),
+            path.as_ref().as_os_str().to_cstring().unwrap().as_ptr(),
             ffi::CString::new(mode).unwrap().as_ptr()
         )
     }
@@ -398,23 +397,23 @@ mod tests {
     use std::str;
 
     fn gold() -> ([&'static [u8]; 6], [u16; 6], [&'static [u8]; 6], [&'static [u8]; 6], [[Cigar; 3]; 6]) {
-        let names = [b"I".as_slice(), b"II.14978392".as_slice(), b"III".as_slice(), b"IV".as_slice(), b"V".as_slice(), b"VI".as_slice()];
+        let names = [&b"I"[..], &b"II.14978392"[..], &b"III"[..], &b"IV"[..], &b"V"[..], &b"VI"[..]];
         let flags = [16u16, 16u16, 16u16, 16u16, 16u16, 2048u16];
         let seqs = [
-            b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA".as_slice(),
-            b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA".as_slice(),
-            b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA".as_slice(),
-            b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA".as_slice(),
-            b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA".as_slice(),
-            b"ACTAAGCCTAAGCCTAAGCCTAAGCCAATTATCGATTTCTGAAAAAATTATCGAATTTTCTAGAAATTTTGCAAATTTTTTCATAAAATTATCGATTTTA".as_slice(),
+            &b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA"[..],
+            &b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA"[..],
+            &b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA"[..],
+            &b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA"[..],
+            &b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA"[..],
+            &b"ACTAAGCCTAAGCCTAAGCCTAAGCCAATTATCGATTTCTGAAAAAATTATCGAATTTTCTAGAAATTTTGCAAATTTTTTCATAAAATTATCGATTTTA"[..],
         ];
         let quals = [
-            b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC".as_slice(),
-            b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC".as_slice(),
-            b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC".as_slice(),
-            b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC".as_slice(),
-            b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC".as_slice(),
-            b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC".as_slice(),
+            &b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"[..],
+            &b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"[..],
+            &b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"[..],
+            &b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"[..],
+            &b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"[..],
+            &b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"[..],
         ];
         let cigars = [
             [Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)],
@@ -441,7 +440,7 @@ mod tests {
             assert_eq!(rec.cigar(), cigars[i]);
             // fix qual offset
             let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
-            assert_eq!(rec.qual(), qual);
+            assert_eq!(rec.qual(), qual.as_slice());
         }
     }
 
@@ -468,7 +467,7 @@ mod tests {
             assert_eq!(rec.cigar(), cigars[i]);
             // fix qual offset
             let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
-            assert_eq!(rec.qual(), qual);
+            assert_eq!(rec.qual(), qual.as_slice());
         }
 
         // seek to empty position

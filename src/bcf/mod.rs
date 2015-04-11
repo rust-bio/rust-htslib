@@ -1,8 +1,8 @@
 
 use std::ffi;
-use std::path;
 use std::ffi::AsOsStr;
-use std::os::unix::prelude::OsStrExt;
+use std::convert::AsRef;
+use std::path::Path;
 
 
 pub mod record;
@@ -16,7 +16,7 @@ pub struct Reader {
 }
 
 impl Reader {
-   pub fn new<P: path::AsPath>(path: &P) -> Self {
+   pub fn new<P: AsRef<Path>>(path: &P) -> Self {
         let htsfile = bcf_open(path, b"r");
         let header = unsafe { htslib::vcf::bcf_hdr_read(htsfile) };
         Reader { inner: htsfile, header: header }
@@ -69,10 +69,10 @@ impl<'a> Iterator for Records<'a> {
 
 
 /// Wrapper for opening a BCF file.
-fn bcf_open<P: path::AsPath>(path: &P, mode: &[u8]) -> *mut htslib::vcf::htsFile {
+fn bcf_open<P: AsRef<Path>>(path: &P, mode: &[u8]) -> *mut htslib::vcf::htsFile {
     unsafe {
         htslib::vcf::hts_open(
-            path.as_path().as_os_str().to_cstring().unwrap().as_ptr(),
+            path.as_ref().as_os_str().to_cstring().unwrap().as_ptr(),
             ffi::CString::new(mode).unwrap().as_ptr()
         )
     }

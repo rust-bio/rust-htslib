@@ -1,6 +1,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 #![allow(non_snake_case)]
+#![allow(raw_pointer_derive)]
 
 
 pub const BCF_HT_FLAG: ::libc::c_int = 0;
@@ -57,7 +58,7 @@ pub type BGZF = Struct_BGZF;
 pub enum Struct_cram_fd { }
 pub enum Struct_hFILE { }
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct___kstring_t {
     pub l: size_t,
     pub m: size_t,
@@ -97,7 +98,7 @@ pub const bgzf: ::libc::c_uint = 2;
 pub const custom: ::libc::c_uint = 3;
 pub const compression_maximum: ::libc::c_uint = 32767;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_htsFormat {
     pub category: Enum_htsFormatCategory,
     pub format: Enum_htsExactFormat,
@@ -110,7 +111,7 @@ impl ::std::default::Default for Struct_htsFormat {
     fn default() -> Struct_htsFormat { unsafe { ::std::mem::zeroed() } }
 }
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed1 {
     pub major: ::libc::c_short,
     pub minor: ::libc::c_short,
@@ -120,7 +121,7 @@ impl ::std::default::Default for Struct_Unnamed1 {
 }
 pub type htsFormat = Struct_htsFormat;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed2 {
     pub isbin_isright_isbe_iscram_dummy : uint32_t,
     pub lineno: int64_t,
@@ -134,7 +135,7 @@ impl ::std::default::Default for Struct_Unnamed2 {
     fn default() -> Struct_Unnamed2 { unsafe { ::std::mem::zeroed() } }
 }
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Union_Unnamed3 {
     pub _bindgen_data_: [u64; 1usize],
 }
@@ -193,7 +194,7 @@ pub const CRAM_OPT_REQUIRED_FIELDS: ::libc::c_uint = 18;
 pub enum Struct___hts_idx_t { }
 pub type hts_idx_t = Struct___hts_idx_t;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed4 {
     pub u: uint64_t,
     pub v: uint64_t,
@@ -208,7 +209,7 @@ pub type hts_readrec_func =
                   beg: *mut ::libc::c_int, end: *mut ::libc::c_int)
         -> ::libc::c_int;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed5 {
     pub readres_finished_dummy: uint32_t,
     pub tid: ::libc::c_int,
@@ -228,7 +229,7 @@ impl ::std::default::Default for Struct_Unnamed5 {
     fn default() -> Struct_Unnamed5 { unsafe { ::std::mem::zeroed() } }
 }
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed6 {
     pub n: ::libc::c_int,
     pub m: ::libc::c_int,
@@ -278,7 +279,7 @@ pub type __off_t = ::libc::c_long;
 pub type __off64_t = ::libc::c_long;
 pub type __pid_t = ::libc::c_int;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed7 {
     pub __val: [::libc::c_int; 2usize],
 }
@@ -314,7 +315,7 @@ pub type __caddr_t = *mut ::libc::c_char;
 pub type __intptr_t = ::libc::c_long;
 pub type __socklen_t = ::libc::c_uint;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Union_wait {
     pub _bindgen_data_: [u32; 1usize],
 }
@@ -333,7 +334,7 @@ impl ::std::default::Default for Union_wait {
     fn default() -> Union_wait { unsafe { ::std::mem::zeroed() } }
 }
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed8 {
     pub _bindgen_bitfield_1_: ::libc::c_uint,
 }
@@ -341,7 +342,7 @@ impl ::std::default::Default for Struct_Unnamed8 {
     fn default() -> Struct_Unnamed8 { unsafe { ::std::mem::zeroed() } }
 }
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed9 {
     pub _bindgen_bitfield_1_: ::libc::c_uint,
 }
@@ -349,7 +350,7 @@ impl ::std::default::Default for Struct_Unnamed9 {
     fn default() -> Struct_Unnamed9 { unsafe { ::std::mem::zeroed() } }
 }
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Union_Unnamed10 {
     pub _bindgen_data_: [u64; 1usize],
 }
@@ -366,7 +367,7 @@ impl ::std::default::Default for Union_Unnamed10 {
 }
 pub type __WAIT_STATUS = Union_Unnamed10;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed11 {
     pub quot: ::libc::c_int,
     pub rem: ::libc::c_int,
@@ -376,7 +377,7 @@ impl ::std::default::Default for Struct_Unnamed11 {
 }
 pub type div_t = Struct_Unnamed11;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed12 {
     pub quot: ::libc::c_long,
     pub rem: ::libc::c_long,
@@ -386,7 +387,7 @@ impl ::std::default::Default for Struct_Unnamed12 {
 }
 pub type ldiv_t = Struct_Unnamed12;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed13 {
     pub quot: ::libc::c_longlong,
     pub rem: ::libc::c_longlong,
@@ -430,7 +431,7 @@ pub type u_int64_t = ::libc::c_ulong;
 pub type register_t = ::libc::c_long;
 pub type __sig_atomic_t = ::libc::c_int;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed14 {
     pub __val: [::libc::c_ulong; 16usize],
 }
@@ -440,7 +441,7 @@ impl ::std::default::Default for Struct_Unnamed14 {
 pub type __sigset_t = Struct_Unnamed14;
 pub type sigset_t = __sigset_t;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_timespec {
     pub tv_sec: __time_t,
     pub tv_nsec: __syscall_slong_t,
@@ -449,7 +450,7 @@ impl ::std::default::Default for Struct_timespec {
     fn default() -> Struct_timespec { unsafe { ::std::mem::zeroed() } }
 }
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_timeval {
     pub tv_sec: __time_t,
     pub tv_usec: __suseconds_t,
@@ -460,7 +461,7 @@ impl ::std::default::Default for Struct_timeval {
 pub type suseconds_t = __suseconds_t;
 pub type __fd_mask = ::libc::c_long;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed15 {
     pub __fds_bits: [__fd_mask; 16usize],
 }
@@ -475,7 +476,7 @@ pub type fsblkcnt_t = __fsblkcnt_t;
 pub type fsfilcnt_t = __fsfilcnt_t;
 pub type pthread_t = ::libc::c_ulong;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Union_pthread_attr_t {
     pub _bindgen_data_: [u64; 7usize],
 }
@@ -492,7 +493,7 @@ impl ::std::default::Default for Union_pthread_attr_t {
 }
 pub type pthread_attr_t = Union_pthread_attr_t;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct___pthread_internal_list {
     pub __prev: *mut Struct___pthread_internal_list,
     pub __next: *mut Struct___pthread_internal_list,
@@ -504,7 +505,7 @@ impl ::std::default::Default for Struct___pthread_internal_list {
 }
 pub type __pthread_list_t = Struct___pthread_internal_list;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Union_Unnamed16 {
     pub _bindgen_data_: [u64; 5usize],
 }
@@ -523,7 +524,7 @@ impl ::std::default::Default for Union_Unnamed16 {
     fn default() -> Union_Unnamed16 { unsafe { ::std::mem::zeroed() } }
 }
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct___pthread_mutex_s {
     pub __lock: ::libc::c_int,
     pub __count: ::libc::c_uint,
@@ -541,7 +542,7 @@ impl ::std::default::Default for Struct___pthread_mutex_s {
 }
 pub type pthread_mutex_t = Union_Unnamed16;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Union_Unnamed17 {
     pub _bindgen_data_: [u32; 1usize],
 }
@@ -558,7 +559,7 @@ impl ::std::default::Default for Union_Unnamed17 {
 }
 pub type pthread_mutexattr_t = Union_Unnamed17;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Union_Unnamed18 {
     pub _bindgen_data_: [u64; 6usize],
 }
@@ -577,7 +578,7 @@ impl ::std::default::Default for Union_Unnamed18 {
     fn default() -> Union_Unnamed18 { unsafe { ::std::mem::zeroed() } }
 }
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed19 {
     pub __lock: ::libc::c_int,
     pub __futex: ::libc::c_uint,
@@ -593,7 +594,7 @@ impl ::std::default::Default for Struct_Unnamed19 {
 }
 pub type pthread_cond_t = Union_Unnamed18;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Union_Unnamed20 {
     pub _bindgen_data_: [u32; 1usize],
 }
@@ -612,7 +613,7 @@ pub type pthread_condattr_t = Union_Unnamed20;
 pub type pthread_key_t = ::libc::c_uint;
 pub type pthread_once_t = ::libc::c_int;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Union_Unnamed21 {
     pub _bindgen_data_: [u64; 7usize],
 }
@@ -631,7 +632,7 @@ impl ::std::default::Default for Union_Unnamed21 {
     fn default() -> Union_Unnamed21 { unsafe { ::std::mem::zeroed() } }
 }
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed22 {
     pub __lock: ::libc::c_int,
     pub __nr_readers: ::libc::c_uint,
@@ -650,7 +651,7 @@ impl ::std::default::Default for Struct_Unnamed22 {
 }
 pub type pthread_rwlock_t = Union_Unnamed21;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Union_Unnamed23 {
     pub _bindgen_data_: [u64; 1usize],
 }
@@ -668,7 +669,7 @@ impl ::std::default::Default for Union_Unnamed23 {
 pub type pthread_rwlockattr_t = Union_Unnamed23;
 pub type pthread_spinlock_t = ::libc::c_int;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Union_Unnamed24 {
     pub _bindgen_data_: [u64; 4usize],
 }
@@ -685,7 +686,7 @@ impl ::std::default::Default for Union_Unnamed24 {
 }
 pub type pthread_barrier_t = Union_Unnamed24;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Union_Unnamed25 {
     pub _bindgen_data_: [u32; 1usize],
 }
@@ -702,7 +703,7 @@ impl ::std::default::Default for Union_Unnamed25 {
 }
 pub type pthread_barrierattr_t = Union_Unnamed25;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_random_data {
     pub fptr: *mut int32_t,
     pub rptr: *mut int32_t,
@@ -716,7 +717,7 @@ impl ::std::default::Default for Struct_random_data {
     fn default() -> Struct_random_data { unsafe { ::std::mem::zeroed() } }
 }
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_drand48_data {
     pub __x: [::libc::c_ushort; 3usize],
     pub __old_x: [::libc::c_ushort; 3usize],
@@ -733,7 +734,7 @@ pub type __compar_fn_t =
                               -> ::libc::c_int>;
 pub enum Struct___locale_data { }
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct___locale_struct {
     pub __locales: [*mut Struct___locale_data; 13usize],
     pub __ctype_b: *const ::libc::c_ushort,
@@ -751,7 +752,7 @@ pub type va_list = __gnuc_va_list;
 pub type FILE = Struct__IO_FILE;
 pub type __FILE = Struct__IO_FILE;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed26 {
     pub __count: ::libc::c_int,
     pub __value: Union_Unnamed27,
@@ -760,7 +761,7 @@ impl ::std::default::Default for Struct_Unnamed26 {
     fn default() -> Struct_Unnamed26 { unsafe { ::std::mem::zeroed() } }
 }
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Union_Unnamed27 {
     pub _bindgen_data_: [u32; 1usize],
 }
@@ -777,7 +778,7 @@ impl ::std::default::Default for Union_Unnamed27 {
 }
 pub type __mbstate_t = Struct_Unnamed26;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed28 {
     pub __pos: __off_t,
     pub __state: __mbstate_t,
@@ -787,7 +788,7 @@ impl ::std::default::Default for Struct_Unnamed28 {
 }
 pub type _G_fpos_t = Struct_Unnamed28;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed29 {
     pub __pos: __off64_t,
     pub __state: __mbstate_t,
@@ -799,7 +800,7 @@ pub type _G_fpos64_t = Struct_Unnamed29;
 pub enum Struct__IO_jump_t { }
 pub type _IO_lock_t = ::libc::c_void;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct__IO_marker {
     pub _next: *mut Struct__IO_marker,
     pub _sbuf: *mut Struct__IO_FILE,
@@ -814,7 +815,7 @@ pub const __codecvt_partial: ::libc::c_uint = 1;
 pub const __codecvt_error: ::libc::c_uint = 2;
 pub const __codecvt_noconv: ::libc::c_uint = 3;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct__IO_FILE {
     pub _flags: ::libc::c_int,
     pub _IO_read_ptr: *mut ::libc::c_char,
@@ -864,7 +865,7 @@ pub type __io_close_fn =
     extern "C" fn(__cookie: *mut ::libc::c_void) -> ::libc::c_int;
 pub type fpos_t = _G_fpos_t;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed30 {
     pub tab: [uint64_t; 4usize],
     pub sep: ::libc::c_int,
@@ -876,7 +877,7 @@ impl ::std::default::Default for Struct_Unnamed30 {
 }
 pub type ks_tokaux_t = Struct_Unnamed30;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed31 {
     pub _type: ::libc::c_int,
     pub key: *mut ::libc::c_char,
@@ -890,7 +891,7 @@ impl ::std::default::Default for Struct_Unnamed31 {
 }
 pub type bcf_hrec_t = Struct_Unnamed31;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed32 {
     pub info: [uint32_t; 3usize],
     pub hrec: [*mut bcf_hrec_t; 3usize],
@@ -901,7 +902,7 @@ impl ::std::default::Default for Struct_Unnamed32 {
 }
 pub type bcf_idinfo_t = Struct_Unnamed32;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed33 {
     pub key: *const ::libc::c_char,
     pub val: *const bcf_idinfo_t,
@@ -911,7 +912,7 @@ impl ::std::default::Default for Struct_Unnamed33 {
 }
 pub type bcf_idpair_t = Struct_Unnamed33;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed34 {
     pub n: [int32_t; 3usize],
     pub id: [*mut bcf_idpair_t; 3usize],
@@ -931,7 +932,7 @@ impl ::std::default::Default for Struct_Unnamed34 {
 }
 pub type bcf_hdr_t = Struct_Unnamed34;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed35 {
     pub _type: ::libc::c_int,
     pub n: ::libc::c_int,
@@ -941,7 +942,7 @@ impl ::std::default::Default for Struct_Unnamed35 {
 }
 pub type variant_t = Struct_Unnamed35;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed36 {
     pub id: ::libc::c_int,
     pub n: ::libc::c_int,
@@ -956,7 +957,7 @@ impl ::std::default::Default for Struct_Unnamed36 {
 }
 pub type bcf_fmt_t = Struct_Unnamed36;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed37 {
     pub key: ::libc::c_int,
     pub _type: ::libc::c_int,
@@ -970,7 +971,7 @@ impl ::std::default::Default for Struct_Unnamed37 {
     fn default() -> Struct_Unnamed37 { unsafe { ::std::mem::zeroed() } }
 }
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Union_Unnamed38 {
     pub _bindgen_data_: [u32; 1usize],
 }
@@ -987,7 +988,7 @@ impl ::std::default::Default for Union_Unnamed38 {
 }
 pub type bcf_info_t = Struct_Unnamed37;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed39 {
     pub m_fmt: ::libc::c_int,
     pub m_info: ::libc::c_int,
@@ -1013,7 +1014,7 @@ impl ::std::default::Default for Struct_Unnamed39 {
 }
 pub type bcf_dec_t = Struct_Unnamed39;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed40 {
     pub rid: int32_t,
     pub pos: int32_t,
@@ -1037,7 +1038,7 @@ pub type bcf1_t = Struct_Unnamed40;
 pub type vcfFile = htsFile;
 pub type __va_list_tag = Struct___va_list_tag;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct___va_list_tag {
     pub gp_offset: ::libc::c_uint,
     pub fp_offset: ::libc::c_uint,

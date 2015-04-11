@@ -1,5 +1,6 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
+#![allow(raw_pointer_derive)]
 
 /* manually added */
 // bgzf.h
@@ -51,7 +52,7 @@ pub type wchar_t = ::libc::c_int;
 pub enum Struct_cram_fd { }
 pub enum Struct_hFILE { }
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct___kstring_t {
     pub l: size_t,
     pub m: size_t,
@@ -91,7 +92,7 @@ pub const bgzf: ::libc::c_uint = 2;
 pub const custom: ::libc::c_uint = 3;
 pub const compression_maximum: ::libc::c_uint = 32767;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_htsFormat {
     pub category: Enum_htsFormatCategory,
     pub format: Enum_htsExactFormat,
@@ -104,7 +105,7 @@ impl ::std::default::Default for Struct_htsFormat {
     fn default() -> Struct_htsFormat { unsafe { ::std::mem::zeroed() } }
 }
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed1 {
     pub major: ::libc::c_short,
     pub minor: ::libc::c_short,
@@ -114,7 +115,7 @@ impl ::std::default::Default for Struct_Unnamed1 {
 }
 pub type htsFormat = Struct_htsFormat;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed2 {
     pub isbin_isright_isbe_iscram_dummy : uint32_t,
     pub lineno: int64_t,
@@ -128,7 +129,7 @@ impl ::std::default::Default for Struct_Unnamed2 {
     fn default() -> Struct_Unnamed2 { unsafe { ::std::mem::zeroed() } }
 }
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Union_Unnamed3 {
     pub _bindgen_data_: [u64; 1],
 }
@@ -187,7 +188,7 @@ pub const CRAM_OPT_REQUIRED_FIELDS: ::libc::c_uint = 18;
 pub enum Struct___hts_idx_t { }
 pub type hts_idx_t = Struct___hts_idx_t;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed4 {
     pub u: uint64_t,
     pub v: uint64_t,
@@ -202,7 +203,7 @@ pub type hts_readrec_func =
          tid: *mut ::libc::c_int, beg: *mut ::libc::c_int,
          end: *mut ::libc::c_int) -> ::libc::c_int;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed5 {
     pub readres_finished_dummy: uint32_t,
     pub tid: ::libc::c_int,
@@ -222,7 +223,7 @@ impl ::std::default::Default for Struct_Unnamed5 {
     fn default() -> Struct_Unnamed5 { unsafe { ::std::mem::zeroed() } }
 }
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed6 {
     pub n: ::libc::c_int,
     pub m: ::libc::c_int,
@@ -248,7 +249,7 @@ pub type hts_itr_query_func =
              *mut ::std::option::Option<extern "C" fn() -> ::libc::c_int>)
         -> *mut hts_itr_t;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed7 {
     pub n_targets: int32_t,
     pub ignore_sam_err: int32_t,
@@ -264,7 +265,7 @@ impl ::std::default::Default for Struct_Unnamed7 {
 }
 pub type bam_hdr_t = Struct_Unnamed7;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed8 {
     pub tid: int32_t,
     pub pos: int32_t,
@@ -283,7 +284,7 @@ impl ::std::default::Default for Struct_Unnamed8 {
 }
 pub type bam1_core_t = Struct_Unnamed8;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed9 {
     pub core: bam1_core_t,
     pub l_data: ::libc::c_int,
@@ -297,7 +298,7 @@ impl ::std::default::Default for Struct_Unnamed9 {
 pub type bam1_t = Struct_Unnamed9;
 pub type samFile = htsFile;
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Struct_Unnamed10 {
     pub b: *mut bam1_t,
     pub qpos: int32_t,
