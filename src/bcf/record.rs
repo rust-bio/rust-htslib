@@ -82,6 +82,9 @@ impl Drop for Record {
 }
 
 
+unsafe impl Send for Record {}
+
+
 pub struct Info<'a> {
     record: &'a mut Record,
     tag: &'a [u8],
