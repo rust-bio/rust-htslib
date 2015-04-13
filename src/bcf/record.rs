@@ -85,7 +85,7 @@ pub struct Info<'a> {
 
 
 impl<'a> Info<'a> {
-    fn data(&mut self, data_type: i32) -> Result<(usize, i32), InfoError> {
+    fn data(&mut self, data_type: i32) -> Result<(usize, i32), TagError> {
         let mut n: i32 = 0;
         match unsafe {
             htslib::vcf::bcf_get_info_values(
@@ -97,32 +97,32 @@ impl<'a> Info<'a> {
                 data_type
             )
         } {
-            -1 => Err(InfoError::UndefinedTag),
-            -2 => Err(InfoError::UnexpectedType),
-            -3 => Err(InfoError::MissingTag),
+            -1 => Err(TagError::UndefinedTag),
+            -2 => Err(TagError::UnexpectedType),
+            -3 => Err(TagError::MissingTag),
             ret  => Ok((n as usize, ret)),
         }
     }
 
-    pub fn integer(&mut self) -> Result<&[i32], InfoError> {
+    pub fn integer(&mut self) -> Result<&[i32], TagError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
             unsafe { slice::from_raw_parts(self.record.buffer as *mut i32, n) }
         })
     }
 
-    pub fn float(&mut self) -> Result<&[f32], InfoError> {
+    pub fn float(&mut self) -> Result<&[f32], TagError> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
             unsafe { slice::from_raw_parts(self.record.buffer as *mut f32, n) }
         })
     }
 
-    pub fn flag(&mut self) -> Result<bool, InfoError> {
+    pub fn flag(&mut self) -> Result<bool, TagError> {
         self.data(htslib::vcf::BCF_HT_FLAG).map(|(_, ret)| {
             ret == 1
         })
     }
 
-    pub fn string(&mut self) -> Result<&[u8], InfoError> {
+    pub fn string(&mut self) -> Result<&[u8], TagError> {
         self.data(htslib::vcf::BCF_HT_STR).map(|(_, ret)| {
             unsafe { slice::from_raw_parts(self.record.buffer as *mut u8, ret as usize) }
         })
@@ -152,7 +152,7 @@ impl<'a> Format<'a> {
         unsafe { (*self.inner).n as usize }
     }
 
-    fn data(&mut self, data_type: i32) -> Result<(usize, i32), InfoError> {
+    fn data(&mut self, data_type: i32) -> Result<(usize, i32), TagError> {
         let mut n: i32 = 0;
         match unsafe {
             htslib::vcf::bcf_get_format_values(
@@ -164,14 +164,14 @@ impl<'a> Format<'a> {
                 data_type
             )
         } {
-            -1 => Err(InfoError::UndefinedTag),
-            -2 => Err(InfoError::UnexpectedType),
-            -3 => Err(InfoError::MissingTag),
+            -1 => Err(TagError::UndefinedTag),
+            -2 => Err(TagError::UnexpectedType),
+            -3 => Err(TagError::MissingTag),
             ret  => Ok((n as usize, ret)),
         }
     }
 
-    pub fn integer(&mut self) -> Result<Vec<&[i32]>, InfoError> {
+    pub fn integer(&mut self) -> Result<Vec<&[i32]>, TagError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts(self.record.buffer as *mut i32, n)
@@ -179,7 +179,7 @@ impl<'a> Format<'a> {
         })
     }
 
-    pub fn float(&mut self) -> Result<Vec<&[f32]>, InfoError> {
+    pub fn float(&mut self) -> Result<Vec<&[f32]>, TagError> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts(self.record.buffer as *mut f32, n)
@@ -189,7 +189,7 @@ impl<'a> Format<'a> {
 }
 
 
-pub enum InfoError {
+pub enum TagError {
     UndefinedTag,
     UnexpectedType,
     MissingTag,
