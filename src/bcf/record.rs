@@ -61,6 +61,10 @@ impl Record {
         self.inner().n_fmt_n_sample & 0xffffff
     }
 
+    pub fn allele_count(&self) -> u16 {
+        self.inner().n_allele
+    }
+
     /// Get the value of the given format tag for each sample.
     pub fn format<'a>(&'a mut self, tag: &'a [u8]) -> Format {
         Format::new(self, tag)
