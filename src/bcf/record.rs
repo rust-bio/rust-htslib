@@ -57,9 +57,13 @@ impl Record {
         Info { record: self, tag: tag }
     }
 
+    pub fn sample_count(&self) -> u32 {
+        self.inner().n_fmt_n_sample & 0xffffff
+    }
+
     /// Get the value of the given format tag for each sample.
     pub fn format<'a>(&'a mut self, tag: &'a [u8]) -> Format {
-        Format { record: self, tag: tag }
+        Format::new(self, tag)
     }
 }
 
@@ -130,10 +134,24 @@ impl<'a> Info<'a> {
 pub struct Format<'a> {
     record: &'a mut Record,
     tag: &'a [u8],
+    inner: *mut htslib::vcf::bcf_fmt_t,
 }
 
 
 impl<'a> Format<'a> {
+    fn new(record: &'a mut Record, tag: &'a [u8]) -> Format<'a> {
+        let inner = unsafe { htslib::vcf::bcf_get_fmt(
+            record.header,
+            record.inner,
+            ffi::CString::new(tag).unwrap().as_ptr() as *mut i8
+        ) };
+        Format { record: record, tag: tag, inner: inner }
+    }
+
+    fn values_per_sample(&self) -> usize {
+        unsafe { (*self.inner).n as usize }
+    }
+
     fn data(&mut self, data_type: i32) -> Result<(usize, i32), InfoError> {
         let mut n: i32 = 0;
         match unsafe {
@@ -153,15 +171,19 @@ impl<'a> Format<'a> {
         }
     }
 
-    pub fn integer(&mut self) -> Result<&[i32], InfoError> {
+    pub fn integer(&mut self) -> Result<Vec<&[i32]>, InfoError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
-            unsafe { slice::from_raw_parts(self.record.buffer as *mut i32, n) }
+            unsafe {
+                slice::from_raw_parts(self.record.buffer as *mut i32, n)
+            }.chunks(self.values_per_sample()).collect()
         })
     }
 
-    pub fn float(&mut self) -> Result<&[f32], InfoError> {
+    pub fn float(&mut self) -> Result<Vec<&[f32]>, InfoError> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
-            unsafe { slice::from_raw_parts(self.record.buffer as *mut f32, n) }
+            unsafe {
+                slice::from_raw_parts(self.record.buffer as *mut f32, n)
+            }.chunks(self.values_per_sample()).collect()
         })
     }
 }

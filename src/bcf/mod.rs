@@ -95,19 +95,26 @@ mod tests {
         let bcf = Reader::new(&"test.bcf");
         for (i, rec) in bcf.records().enumerate() {
             let mut record = rec.ok().expect("Error reading record.");
+
             assert_eq!(record.rid().expect("Error reading rid."), 0);
             assert_eq!(record.pos(), 10021 + i as u32);
             assert_eq!(record.qual(), 0f32);
             assert_eq!(record.info(b"MQ0F").float().ok().expect("Error reading info."), [1.0]);
             if i == 59 {
                 assert_eq!(record.info(b"SGB").float().ok().expect("Error reading info."), [-0.379885]);
-                assert_eq!(record.format(b"PL").integer().ok().expect("Error reading format.").len(), 6);
-            }
-            else {
-                assert_eq!(record.format(b"PL").integer().ok().expect("Error reading format.").len(), 3);
             }
             // the artificial "not observed" allele is present in each record.
             assert_eq!(record.alleles().iter().last().unwrap(), b"<X>");
+
+            let mut fmt = record.format(b"PL");
+            let pl = fmt.integer().ok().expect("Error reading format.");
+            assert_eq!(pl.len(), 1);            
+            if i == 59 {
+                assert_eq!(pl[0].len(), 6);
+            }
+            else {
+                assert_eq!(pl[0].len(), 3);
+            }
         }
     }
 }
