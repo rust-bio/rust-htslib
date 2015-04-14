@@ -75,6 +75,39 @@ impl Drop for Reader {
 }
 
 
+pub struct Writer<'a> {
+    inner: *mut htslib::vcf::htsFile,
+    header: &'a HeaderView,
+}
+
+
+impl<'a> Writer<'a> {
+    pub fn with_template<P: AsRef<Path>>(template: &'a Reader, path: &P) -> Self {
+        let htsfile = bcf_open(path, b"w");
+        unsafe { htslib::vcf::bcf_hdr_write(htsfile, template.header.inner) };
+        Writer { inner: htsfile, header: &template.header }
+    }
+
+    pub fn write(&mut self, record: &record::Record) -> Result<(), ()> {
+        if unsafe { htslib::vcf::bcf_write(self.inner, self.header.inner, record.inner) } == -1 {
+            Err(())
+        }
+        else {
+            Ok(())
+        }
+    }
+}
+
+
+impl<'a> Drop for Writer<'a> {
+    fn drop(&mut self) {
+        unsafe {
+            htslib::vcf::hts_close(self.inner);
+        }
+    }
+}
+
+
 pub struct Records<'a> {
     reader: &'a Reader,
 }
@@ -114,11 +147,12 @@ pub enum ReadError {
 
 #[cfg(test)]
 mod tests {
+    extern crate tempdir;
     use super::*;
+    use std::path::Path;
 
-    #[test]
-    fn test_read() {
-        let bcf = Reader::new(&"test.bcf");
+    fn _test_read<P: AsRef<Path>>(path: &P) {
+        let bcf = Reader::new(path);
         assert_eq!(bcf.header.samples(), [b"NA12878.subsample-0.25-0"]);
 
         for (i, rec) in bcf.records().enumerate() {
@@ -144,5 +178,28 @@ mod tests {
                 assert_eq!(pl[0].len(), 3);
             }
         }
+    }
+
+    #[test]
+    fn test_read() {
+        _test_read(&"test.bcf");
+    }
+
+    #[test]
+    fn test_write() {
+        let bcf = Reader::new(&"test.bcf");
+        let tmp = tempdir::TempDir::new("rust-htslib").ok().expect("Cannot create temp dir");
+        let bcfpath = tmp.path().join("test.bcf");
+        println!("{:?}", bcfpath);
+        {
+            let mut writer = Writer::with_template(&bcf, &bcfpath);
+            for record in bcf.records() {
+                writer.write(&record.ok().expect("Error reading record.")).ok().expect("Error writing record");
+            }
+        }
+        {
+            _test_read(&bcfpath);
+        }
+        tmp.close().ok().expect("Failed to delete temp dir");
     }
 }
