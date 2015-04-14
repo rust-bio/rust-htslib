@@ -3,29 +3,55 @@ use std::ffi;
 use std::ffi::AsOsStr;
 use std::convert::AsRef;
 use std::path::Path;
-
+use std::slice;
 
 pub mod record;
 
 use htslib;
 
 
+pub struct HeaderView {
+    inner: *mut htslib::vcf::bcf_hdr_t,
+}
+
+
+impl HeaderView {
+    fn new(inner: *mut htslib::vcf::bcf_hdr_t) -> Self {
+        HeaderView { inner: inner }
+    }
+
+    #[inline]
+    fn inner(&self) -> htslib::vcf::bcf_hdr_t {
+        unsafe { (*self.inner) }
+    }
+
+    pub fn sample_count(&self) -> u32 {
+        self.inner().n[htslib::vcf::BCF_DT_SAMPLE as usize] as u32
+    }
+
+    pub fn samples(&self) -> Vec<&[u8]> {
+        let names = unsafe { slice::from_raw_parts(self.inner().samples, self.sample_count() as usize) };
+        names.iter().map(|name| unsafe { ffi::CStr::from_ptr(*name).to_bytes() }).collect()
+    }
+}
+
+
 pub struct Reader {
     inner: *mut htslib::vcf::htsFile,
-    header: *mut htslib::vcf::bcf_hdr_t,
+    header: HeaderView,
 }
 
 impl Reader {
    pub fn new<P: AsRef<Path>>(path: &P) -> Self {
         let htsfile = bcf_open(path, b"r");
         let header = unsafe { htslib::vcf::bcf_hdr_read(htsfile) };
-        Reader { inner: htsfile, header: header }
+        Reader { inner: htsfile, header: HeaderView::new(header) }
     }
 
     pub fn read(&self, record: &mut record::Record) -> Result<(), ReadError> {
-        match unsafe { htslib::vcf::bcf_read(self.inner, self.header, record.inner) } {
+        match unsafe { htslib::vcf::bcf_read(self.inner, self.header.inner, record.inner) } {
             0  => {
-                record.header = self.header;
+                record.header = self.header.inner;
                 Ok(())
             },
             -1 => Err(ReadError::NoMoreRecord),
@@ -42,7 +68,7 @@ impl Reader {
 impl Drop for Reader {
     fn drop(&mut self) {
         unsafe {
-            htslib::vcf::bcf_hdr_destroy(self.header);
+            htslib::vcf::bcf_hdr_destroy(self.header.inner);
             htslib::vcf::hts_close(self.inner);
         }
     }
@@ -93,6 +119,8 @@ mod tests {
     #[test]
     fn test_read() {
         let bcf = Reader::new(&"test.bcf");
+        assert_eq!(bcf.header.samples(), [b"NA12878.subsample-0.25-0"]);
+
         for (i, rec) in bcf.records().enumerate() {
             let mut record = rec.ok().expect("Error reading record.");
 

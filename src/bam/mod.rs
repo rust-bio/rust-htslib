@@ -360,6 +360,11 @@ impl HeaderView {
         HeaderView { inner: inner }
     }
 
+    #[inline]
+    fn inner(&self) -> htslib::bam_hdr_t {
+        unsafe { (*self.inner) }
+    }
+
     pub fn tid(&self, name: &[u8]) -> Option<u32> {
         let tid = unsafe {
             htslib::bam_name2id(
@@ -373,6 +378,15 @@ impl HeaderView {
         else {
             Some(tid as u32)
         }
+    }
+
+    pub fn target_count(&self) -> u32 {
+        self.inner().n_targets as u32
+    }
+
+    pub fn target_names(&self) -> Vec<&[u8]> {
+        let names = unsafe { slice::from_raw_parts(self.inner().target_name, self.target_count() as usize) };
+        names.iter().map(|name| unsafe { ffi::CStr::from_ptr(*name).to_bytes() }).collect()
     }
 
     pub fn target_len(&self, tid: u32) -> Option<u32> {
