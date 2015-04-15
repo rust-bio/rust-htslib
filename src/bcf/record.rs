@@ -115,15 +115,15 @@ impl<'a> Info<'a> {
         }
     }
 
-    pub fn integer(&mut self) -> Result<&[i32], TagError> {
+    pub fn integer(&mut self) -> Result<&mut [i32], TagError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
-            unsafe { slice::from_raw_parts(self.record.buffer as *mut i32, n) }
+            unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut i32, n) }
         })
     }
 
-    pub fn float(&mut self) -> Result<&[f32], TagError> {
+    pub fn float(&mut self) -> Result<&mut [f32], TagError> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
-            unsafe { slice::from_raw_parts(self.record.buffer as *mut f32, n) }
+            unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut f32, n) }
         })
     }
 
@@ -133,9 +133,9 @@ impl<'a> Info<'a> {
         })
     }
 
-    pub fn string(&mut self) -> Result<&[u8], TagError> {
+    pub fn string(&mut self) -> Result<&mut [u8], TagError> {
         self.data(htslib::vcf::BCF_HT_STR).map(|(_, ret)| {
-            unsafe { slice::from_raw_parts(self.record.buffer as *mut u8, ret as usize) }
+            unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut u8, ret as usize) }
         })
     }
 }
@@ -182,19 +182,19 @@ impl<'a> Format<'a> {
         }
     }
 
-    pub fn integer(&mut self) -> Result<Vec<&[i32]>, TagError> {
+    pub fn integer(&mut self) -> Result<Vec<&mut [i32]>, TagError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
             unsafe {
-                slice::from_raw_parts(self.record.buffer as *mut i32, n)
-            }.chunks(self.values_per_sample()).collect()
+                slice::from_raw_parts_mut(self.record.buffer as *mut i32, n)
+            }.chunks_mut(self.values_per_sample()).collect()
         })
     }
 
-    pub fn float(&mut self) -> Result<Vec<&[f32]>, TagError> {
+    pub fn float(&mut self) -> Result<Vec<&mut [f32]>, TagError> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
             unsafe {
-                slice::from_raw_parts(self.record.buffer as *mut f32, n)
-            }.chunks(self.values_per_sample()).collect()
+                slice::from_raw_parts_mut(self.record.buffer as *mut f32, n)
+            }.chunks_mut(self.values_per_sample()).collect()
         })
     }
 }
