@@ -3,38 +3,13 @@ use std::ffi;
 use std::ffi::AsOsStr;
 use std::convert::AsRef;
 use std::path::Path;
-use std::slice;
 
 pub mod record;
+pub mod header;
 
 use htslib;
-
-
-pub struct HeaderView {
-    inner: *mut htslib::vcf::bcf_hdr_t,
-}
-
-
-impl HeaderView {
-    fn new(inner: *mut htslib::vcf::bcf_hdr_t) -> Self {
-        HeaderView { inner: inner }
-    }
-
-    #[inline]
-    fn inner(&self) -> htslib::vcf::bcf_hdr_t {
-        unsafe { (*self.inner) }
-    }
-
-    pub fn sample_count(&self) -> u32 {
-        self.inner().n[htslib::vcf::BCF_DT_SAMPLE as usize] as u32
-    }
-
-    pub fn samples(&self) -> Vec<&[u8]> {
-        let names = unsafe { slice::from_raw_parts(self.inner().samples, self.sample_count() as usize) };
-        names.iter().map(|name| unsafe { ffi::CStr::from_ptr(*name).to_bytes() }).collect()
-    }
-}
-
+use bcf::header::HeaderView;
+pub use bcf::header::Header;
 
 pub struct Reader {
     inner: *mut htslib::vcf::htsFile,
@@ -75,17 +50,17 @@ impl Drop for Reader {
 }
 
 
-pub struct Writer<'a> {
+pub struct Writer {
     inner: *mut htslib::vcf::htsFile,
-    header: &'a HeaderView,
+    header: HeaderView,
 }
 
 
-impl<'a> Writer<'a> {
-    pub fn with_template<P: AsRef<Path>>(template: &'a Reader, path: &P) -> Self {
+impl Writer {
+    pub fn new<P: AsRef<Path>>(path: &P, header: &Header) -> Self {
         let htsfile = bcf_open(path, b"w");
-        unsafe { htslib::vcf::bcf_hdr_write(htsfile, template.header.inner) };
-        Writer { inner: htsfile, header: &template.header }
+        unsafe { htslib::vcf::bcf_hdr_write(htsfile, header.inner) };
+        Writer { inner: htsfile, header: HeaderView::new(unsafe { htslib::vcf::bcf_hdr_dup(header.inner) }) }
     }
 
     pub fn write(&mut self, record: &record::Record) -> Result<(), ()> {
@@ -99,9 +74,10 @@ impl<'a> Writer<'a> {
 }
 
 
-impl<'a> Drop for Writer<'a> {
+impl Drop for Writer {
     fn drop(&mut self) {
         unsafe {
+            htslib::vcf::bcf_hdr_destroy(self.header.inner);
             htslib::vcf::hts_close(self.inner);
         }
     }
@@ -192,7 +168,8 @@ mod tests {
         let bcfpath = tmp.path().join("test.bcf");
         println!("{:?}", bcfpath);
         {
-            let mut writer = Writer::with_template(&bcf, &bcfpath);
+            let header = Header::with_template(&bcf.header);
+            let mut writer = Writer::new(&bcfpath, &header);
             for record in bcf.records() {
                 writer.write(&record.ok().expect("Error reading record.")).ok().expect("Error writing record");
             }

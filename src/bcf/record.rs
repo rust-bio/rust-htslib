@@ -69,6 +69,10 @@ impl Record {
     pub fn format<'a>(&'a mut self, tag: &'a [u8]) -> Format {
         Format::new(self, tag)
     }
+
+    pub fn set_qual(&mut self, qual: f32) {
+        self.inner().qual = qual;
+    }
 }
 
 
