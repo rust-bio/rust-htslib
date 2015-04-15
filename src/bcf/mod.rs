@@ -13,7 +13,7 @@ pub use bcf::header::Header;
 
 pub struct Reader {
     inner: *mut htslib::vcf::htsFile,
-    header: HeaderView,
+    pub header: HeaderView,
 }
 
 impl Reader {
@@ -52,7 +52,7 @@ impl Drop for Reader {
 
 pub struct Writer {
     inner: *mut htslib::vcf::htsFile,
-    header: HeaderView,
+    pub header: HeaderView,
 }
 
 
