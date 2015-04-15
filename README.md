@@ -13,7 +13,7 @@ ensuring that the HTSlib submodule is fetched, too.
 # Resources
 
 * Homepage: https://github.com/christopher-schroeder/rust-htslib
-* API documentation: http://christopher-schroeder.github.io/rust_htslib
+* API documentation: http://christopher-schroeder.github.io/rust-htslib
 * Continuous integration tests: https://travis-ci.org/christopher-schroeder/rust-htslib
 
 # Usage
