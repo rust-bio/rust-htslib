@@ -70,6 +70,39 @@ impl Record {
         Format::new(self, tag)
     }
 
+    /// Add an integer format tag. Data is a two dimensional array of integers.
+    /// The first dimension contains one array for each sample.
+    pub fn push_format_integer(&mut self, tag: &[u8], data: &[&[i32]]) -> Result<(), ()> {
+        self.push_format(tag, data)
+    }
+
+    /// Add a float format tag. Data is a two dimensional array of floats.
+    /// The first dimension contains one array for each sample.
+    pub fn push_format_float(&mut self, tag: &[u8], data: &[&[f32]]) -> Result<(), ()> {
+        self.push_format(tag, data)
+    }
+
+    /// Add a format tag. Data is a two dimensional array.
+    /// The first dimension contains one array for each sample.
+    fn push_format<T>(&mut self, tag: &[u8], data: &[&[T]]) -> Result<(), ()> {
+        assert!(data.len() != 0 && data[0].len() != 0);
+        unsafe {
+            if htslib::vcf::bcf_update_format(
+                self.header,
+                self.inner, 
+                ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
+                data.as_ptr() as *mut ::libc::c_void,
+                (data.len() * data[0].len()) as i32,
+                htslib::vcf::BCF_HT_INT
+            ) == 0 {
+                Ok(())
+            }
+            else {
+                Err(())
+            }
+        }
+    }
+
     pub fn set_qual(&mut self, qual: f32) {
         self.inner().qual = qual;
     }
