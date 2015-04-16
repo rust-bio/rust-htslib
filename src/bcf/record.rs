@@ -23,7 +23,7 @@ impl Record {
         Record { inner: inner, header: ptr::null_mut(), buffer: ptr::null_mut() }
     }
 
-    pub fn translate(&mut self, header: HeaderView) {
+    pub fn translate(&mut self, header: &HeaderView) {
         unsafe {
             htslib::vcf::bcf_translate(header.inner, self.header, self.inner);
         }
