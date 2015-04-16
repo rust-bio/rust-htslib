@@ -8,7 +8,7 @@ use std::slice;
 use std::ffi;
 
 use htslib;
-
+use bcf::header::HeaderView;
 
 pub struct Record {
     pub inner: *mut htslib::vcf::bcf1_t,
@@ -21,6 +21,13 @@ impl Record {
     pub fn new() -> Self {
         let inner = unsafe { htslib::vcf::bcf_init() };
         Record { inner: inner, header: ptr::null_mut(), buffer: ptr::null_mut() }
+    }
+
+    pub fn translate(&mut self, header: HeaderView) {
+        unsafe {
+            htslib::vcf::bcf_translate(header.inner, self.header, self.inner);
+        }
+        self.header = header.inner;
     }
 
     #[inline]
@@ -72,12 +79,14 @@ impl Record {
 
     /// Add an integer format tag. Data is a flattened two-dimensional array.
     /// The first dimension contains one array for each sample.
+    /// Returns error if tag is not present in header.
     pub fn push_format_integer(&mut self, tag: &[u8], data: &[i32]) -> Result<(), ()> {
         self.push_format(tag, data, htslib::vcf::BCF_HT_INT)
     }
 
     /// Add a float format tag. Data is a flattened two-dimensional array.
     /// The first dimension contains one array for each sample.
+    /// Returns error if tag is not present in header.
     pub fn push_format_float(&mut self, tag: &[u8], data: &[f32]) -> Result<(), ()> {
         self.push_format(tag, data, htslib::vcf::BCF_HT_REAL)
     }
