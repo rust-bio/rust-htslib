@@ -117,7 +117,6 @@ fn bcf_open<P: AsRef<Path>>(path: &P, mode: &[u8]) -> *mut htslib::vcf::htsFile 
 
 
 pub enum ReadError {
-    Truncated,
     Invalid,
     NoMoreRecord,
 }
