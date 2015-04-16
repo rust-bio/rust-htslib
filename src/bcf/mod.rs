@@ -59,8 +59,15 @@ pub struct Writer {
 
 
 impl Writer {
-    pub fn new<P: AsRef<Path>>(path: &P, header: &Header) -> Self {
-        let htsfile = bcf_open(path, b"w");
+    pub fn new<P: AsRef<Path>>(path: &P, header: &Header, uncompressed: bool, vcf: bool) -> Self {
+        let mode: &[u8] = match (uncompressed, vcf) {
+            (true, true)   => b"w",
+            (false, true)  => b"wz",
+            (true, false)  => b"wu",
+            (false, false) => b"wb",
+        };
+
+        let htsfile = bcf_open(path, mode);
         unsafe { htslib::vcf::bcf_hdr_write(htsfile, header.inner) };
         Writer { inner: htsfile, header: HeaderView::new(unsafe { htslib::vcf::bcf_hdr_dup(header.inner) }) }
     }
@@ -170,7 +177,7 @@ mod tests {
         println!("{:?}", bcfpath);
         {
             let header = Header::with_template(&bcf.header);
-            let mut writer = Writer::new(&bcfpath, &header);
+            let mut writer = Writer::new(&bcfpath, &header, false, false);
             for record in bcf.records() {
                 writer.write(&record.ok().expect("Error reading record.")).ok().expect("Error writing record");
             }
