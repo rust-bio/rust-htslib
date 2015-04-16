@@ -9,7 +9,9 @@ pub mod header;
 
 use htslib;
 use bcf::header::HeaderView;
+
 pub use bcf::header::Header;
+pub use bcf::record::Record;
 
 pub struct Reader {
     inner: *mut htslib::vcf::htsFile,
