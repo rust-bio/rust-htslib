@@ -141,6 +141,7 @@ mod tests {
 
         for (i, rec) in bcf.records().enumerate() {
             let mut record = rec.ok().expect("Error reading record.");
+            assert_eq!(record.sample_count(), 1);
 
             assert_eq!(record.rid().expect("Error reading rid."), 0);
             assert_eq!(record.pos(), 10021 + i as u32);

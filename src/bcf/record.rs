@@ -65,7 +65,7 @@ impl Record {
     }
 
     pub fn sample_count(&self) -> u32 {
-        self.inner().n_fmt_n_sample & 0xffffff
+        self.inner().n_fmt_n_sample >> 8
     }
 
     pub fn allele_count(&self) -> u16 {
