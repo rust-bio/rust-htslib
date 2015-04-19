@@ -179,8 +179,9 @@ mod tests {
         {
             let header = Header::with_template(&bcf.header);
             let mut writer = Writer::new(&bcfpath, &header, false, false);
-            for record in bcf.records() {
-                writer.write(&record.ok().expect("Error reading record.")).ok().expect("Error writing record");
+            for rec in bcf.records() {
+                let record = rec.ok().expect("Error reading record.");
+                writer.write(&record).ok().expect("Error writing record");
             }
         }
         {
