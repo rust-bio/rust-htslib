@@ -4,6 +4,13 @@
 #![allow(raw_pointer_derive)]
 
 
+pub const BCF_HL_FLT: ::libc::c_int = 0;
+pub const BCF_HL_INFO: ::libc::c_int = 1;
+pub const BCF_HL_FMT: ::libc::c_int = 2;
+pub const BCF_HL_CTG: ::libc::c_int = 3;
+pub const BCF_HL_STR: ::libc::c_int = 4;
+pub const BCF_HL_GEN: ::libc::c_int = 5;
+
 pub const BCF_HT_FLAG: ::libc::c_int = 0;
 pub const BCF_HT_INT: ::libc::c_int = 1;
 pub const BCF_HT_REAL: ::libc::c_int = 2;

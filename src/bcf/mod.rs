@@ -77,8 +77,8 @@ impl Writer {
         }
     }
 
-    pub fn write(&mut self, record: &mut record::Record) -> Result<(), ()> {
-        // tranlate record to used header
+    /// Translate record to header of this writer.
+    pub fn translate(&mut self, record: &mut record::Record) {
         match self.subset {
             Some(ref mut subset) => unsafe { 
                 htslib::vcf::bcf_subset(self.header.inner, record.inner, subset.len() as i32, subset.as_mut_ptr());
@@ -89,7 +89,9 @@ impl Writer {
             htslib::vcf::bcf_translate(self.header.inner, record.header, record.inner);
         }
         record.header = self.header.inner;
+    }
 
+    pub fn write(&mut self, record: &record::Record) -> Result<(), ()> {
         if unsafe { htslib::vcf::bcf_write(self.inner, self.header.inner, record.inner) } == -1 {
             Err(())
         }
@@ -198,7 +200,9 @@ mod tests {
             let mut writer = Writer::new(&bcfpath, &header, false, false);
             for rec in bcf.records() {
                 let mut record = rec.ok().expect("Error reading record.");
-                writer.write(&mut record).ok().expect("Error writing record");
+                writer.translate(&mut record);
+                record.trim_alleles().ok().expect("Error trimming alleles.");
+                writer.write(&record).ok().expect("Error writing record");
             }
         }
         {

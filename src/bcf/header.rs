@@ -51,6 +51,20 @@ impl Header {
         unsafe { htslib::vcf::bcf_hdr_append(self.inner, ffi::CString::new(record).unwrap().as_ptr()) };
         self
     }
+
+    pub fn remove_info(&mut self, tag: &[u8]) -> &mut Self {
+        unsafe {
+            htslib::vcf::bcf_hdr_remove(self.inner, htslib::vcf::BCF_HL_INFO, tag.as_ptr() as *const i8);
+        }
+        self
+    }
+
+    pub fn remove_format(&mut self, tag: &[u8]) -> &mut Self {
+        unsafe {
+            htslib::vcf::bcf_hdr_remove(self.inner, htslib::vcf::BCF_HL_FMT, tag.as_ptr() as *const i8);
+        }
+        self
+    }
 }
 
 
