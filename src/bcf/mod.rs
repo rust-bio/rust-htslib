@@ -79,16 +79,20 @@ impl Writer {
 
     /// Translate record to header of this writer.
     pub fn translate(&mut self, record: &mut record::Record) {
+        unsafe {
+            htslib::vcf::bcf_translate(self.header.inner, record.header, record.inner);
+        }
+        record.header = self.header.inner;
+    }
+
+    /// Subset samples of record to match header of this writer.
+    pub fn subset(&mut self, record: &mut record::Record) {
         match self.subset {
             Some(ref mut subset) => unsafe { 
                 htslib::vcf::bcf_subset(self.header.inner, record.inner, subset.len() as i32, subset.as_mut_ptr());
             },
             None         => ()
         }
-        unsafe {
-            htslib::vcf::bcf_translate(self.header.inner, record.header, record.inner);
-        }
-        record.header = self.header.inner;
     }
 
     pub fn write(&mut self, record: &record::Record) -> Result<(), ()> {
@@ -201,6 +205,7 @@ mod tests {
             for rec in bcf.records() {
                 let mut record = rec.ok().expect("Error reading record.");
                 writer.translate(&mut record);
+                writer.subset(&mut record);
                 record.trim_alleles().ok().expect("Error trimming alleles.");
                 writer.write(&record).ok().expect("Error writing record");
             }
