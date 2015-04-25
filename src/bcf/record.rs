@@ -111,8 +111,8 @@ impl Record {
     /// Remove unused alleles.
     pub fn trim_alleles(&mut self) -> Result<(), ()> {
         match unsafe { htslib::vcfutils::bcf_trim_alleles(self.header, self.inner) } {
-            0 => Ok(()),
-            _ => Err(())
+            -1 => Err(()),
+            _  => Ok(())
         }
     }
 }

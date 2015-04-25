@@ -33,12 +33,17 @@ impl Header {
         Header { inner: unsafe { htslib::vcf::bcf_hdr_dup(header.inner) }, subset: None }
     }
 
-    pub fn subset_template(header: &HeaderView, samples: &[&[u8]]) -> Self {
+    pub fn subset_template(header: &HeaderView, samples: &[&[u8]]) -> Result<Self, ()> {
         let mut imap = vec![0; samples.len()];
         let inner = unsafe {
             htslib::vcf::bcf_hdr_subset(header.inner, samples.len() as i32, samples.as_ptr() as *const *mut i8, imap.as_mut_ptr() as *mut i32)
         };
-        Header { inner: inner, subset: Some(imap) }
+        if inner.is_null() {
+            Err(())
+        }
+        else {
+            Ok(Header { inner: inner, subset: Some(imap) })
+        }
     }
 
     pub fn push_sample(&mut self, sample: &[u8]) -> &mut Self {

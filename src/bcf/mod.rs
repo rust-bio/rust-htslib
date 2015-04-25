@@ -200,7 +200,7 @@ mod tests {
         let bcfpath = tmp.path().join("test.bcf");
         println!("{:?}", bcfpath);
         {
-            let header = Header::with_template(&bcf.header);
+            let header = Header::subset_template(&bcf.header, &[b"NA12878.subsample-0.25-0"]).ok().expect("Error subsetting samples.");
             let mut writer = Writer::new(&bcfpath, &header, false, false);
             for rec in bcf.records() {
                 let mut record = rec.ok().expect("Error reading record.");
