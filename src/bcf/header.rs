@@ -10,20 +10,35 @@ use std::ffi;
 use htslib;
 
 
+pub type SampleSubset = Vec<i32>;
+
+
 /// A BCF header.
 pub struct Header {
     pub inner: *mut htslib::vcf::bcf_hdr_t,
+    pub subset: Option<SampleSubset>,
 }
 
 
 impl Header {
     /// Create a new header.
     pub fn new() -> Self {
-        Header { inner: unsafe { htslib::vcf::bcf_hdr_init(ffi::CString::new(&b"w"[..]).unwrap().as_ptr()) } }
+        Header {
+            inner: unsafe { htslib::vcf::bcf_hdr_init(ffi::CString::new(&b"w"[..]).unwrap().as_ptr()) },
+            subset: None,
+        }
     }
 
     pub fn with_template(header: &HeaderView) -> Self {
-        Header { inner: unsafe { htslib::vcf::bcf_hdr_dup(header.inner) } }
+        Header { inner: unsafe { htslib::vcf::bcf_hdr_dup(header.inner) }, subset: None }
+    }
+
+    pub fn subset_template(header: &HeaderView, samples: &[&[u8]]) -> Self {
+        let mut imap = vec![0; samples.len()];
+        let inner = unsafe {
+            htslib::vcf::bcf_hdr_subset(header.inner, samples.len() as i32, samples.as_ptr() as *const *mut i8, imap.as_mut_ptr() as *mut i32)
+        };
+        Header { inner: inner, subset: Some(imap) }
     }
 
     pub fn push_sample(&mut self, sample: &[u8]) -> &mut Self {

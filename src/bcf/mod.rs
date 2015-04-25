@@ -8,7 +8,7 @@ pub mod record;
 pub mod header;
 
 use htslib;
-use bcf::header::HeaderView;
+use bcf::header::{HeaderView, SampleSubset};
 
 pub use bcf::header::Header;
 pub use bcf::record::Record;
@@ -55,6 +55,7 @@ impl Drop for Reader {
 pub struct Writer {
     inner: *mut htslib::vcf::htsFile,
     pub header: HeaderView,
+    subset: Option<SampleSubset>,
 }
 
 
@@ -69,10 +70,22 @@ impl Writer {
 
         let htsfile = bcf_open(path, mode);
         unsafe { htslib::vcf::bcf_hdr_write(htsfile, header.inner) };
-        Writer { inner: htsfile, header: HeaderView::new(unsafe { htslib::vcf::bcf_hdr_dup(header.inner) }) }
+        Writer { inner: htsfile, header: HeaderView::new(header.inner), subset: header.subset.clone() }
     }
 
-    pub fn write(&mut self, record: &record::Record) -> Result<(), ()> {
+    pub fn write(&mut self, record: &mut record::Record) -> Result<(), ()> {
+        // tranlate record to used header
+        match self.subset {
+            Some(ref mut subset) => unsafe { 
+                htslib::vcf::bcf_subset(self.header.inner, record.inner, subset.len() as i32, subset.as_mut_ptr());
+            },
+            None         => ()
+        }
+        unsafe {
+            htslib::vcf::bcf_translate(self.header.inner, record.header, record.inner);
+        }
+        record.header = self.header.inner;
+
         if unsafe { htslib::vcf::bcf_write(self.inner, self.header.inner, record.inner) } == -1 {
             Err(())
         }
@@ -180,8 +193,8 @@ mod tests {
             let header = Header::with_template(&bcf.header);
             let mut writer = Writer::new(&bcfpath, &header, false, false);
             for rec in bcf.records() {
-                let record = rec.ok().expect("Error reading record.");
-                writer.write(&record).ok().expect("Error writing record");
+                let mut record = rec.ok().expect("Error reading record.");
+                writer.write(&mut record).ok().expect("Error writing record");
             }
         }
         {

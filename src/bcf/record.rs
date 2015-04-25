@@ -8,7 +8,6 @@ use std::slice;
 use std::ffi;
 
 use htslib;
-use bcf::header::HeaderView;
 
 pub struct Record {
     pub inner: *mut htslib::vcf::bcf1_t,
@@ -21,13 +20,6 @@ impl Record {
     pub fn new() -> Self {
         let inner = unsafe { htslib::vcf::bcf_init() };
         Record { inner: inner, header: ptr::null_mut(), buffer: ptr::null_mut() }
-    }
-
-    pub fn translate(&mut self, header: &HeaderView) {
-        unsafe {
-            htslib::vcf::bcf_translate(header.inner, self.header, self.inner);
-        }
-        self.header = header.inner;
     }
 
     pub fn rid(&self) -> Option<u32> {
