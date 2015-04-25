@@ -5,7 +5,6 @@
 
 
 #![feature(libc)]
-#![feature(std_misc)]
 #![feature(core)]
 #![feature(collections)]
 #![feature(step_by)]

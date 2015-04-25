@@ -1,6 +1,5 @@
 
 use std::ffi;
-use std::ffi::AsOsStr;
 use std::convert::AsRef;
 use std::path::Path;
 
