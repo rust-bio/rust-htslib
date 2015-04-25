@@ -70,7 +70,11 @@ impl Writer {
 
         let htsfile = bcf_open(path, mode);
         unsafe { htslib::vcf::bcf_hdr_write(htsfile, header.inner) };
-        Writer { inner: htsfile, header: HeaderView::new(header.inner), subset: header.subset.clone() }
+        Writer {
+            inner: htsfile,
+            header: HeaderView::new(unsafe { htslib::vcf::bcf_hdr_dup(header.inner) }),
+            subset: header.subset.clone()
+        }
     }
 
     pub fn write(&mut self, record: &mut record::Record) -> Result<(), ()> {
