@@ -12,10 +12,15 @@ use bcf::header::{HeaderView, SampleSubset};
 pub use bcf::header::Header;
 pub use bcf::record::Record;
 
+
 pub struct Reader {
     inner: *mut htslib::vcf::htsFile,
     pub header: HeaderView,
 }
+
+
+unsafe impl Send for Reader {}
+
 
 impl Reader {
    pub fn new<P: AsRef<Path>>(path: &P) -> Self {
@@ -56,6 +61,9 @@ pub struct Writer {
     pub header: HeaderView,
     subset: Option<SampleSubset>,
 }
+
+
+unsafe impl Send for Writer {}
 
 
 impl Writer {

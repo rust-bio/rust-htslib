@@ -49,6 +49,9 @@ pub struct Reader {
 }
 
 
+unsafe impl Send for Reader {}
+
+
 impl Reader {
     /// Create a new Reader.
     ///
@@ -119,6 +122,9 @@ pub struct IndexedReader {
     idx: *mut htslib::hts_idx_t,
     itr: Option<*mut htslib:: hts_itr_t>,
 }
+
+
+unsafe impl Send for IndexedReader {}
 
 
 impl IndexedReader {
@@ -225,6 +231,9 @@ pub struct Writer {
     f: *mut htslib::Struct_BGZF,
     pub header: HeaderView,
 }
+
+
+unsafe impl Send for Writer {}
 
 
 impl Writer {

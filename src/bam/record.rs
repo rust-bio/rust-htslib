@@ -33,6 +33,9 @@ pub struct Record {
 }
 
 
+unsafe impl Send for Record {}
+
+
 impl Record {
     /// Create an empty BAM record.
     pub fn new() -> Self {
