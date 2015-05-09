@@ -95,7 +95,7 @@ impl Writer {
     /// Subset samples of record to match header of this writer.
     pub fn subset(&mut self, record: &mut record::Record) {
         match self.subset {
-            Some(ref mut subset) => unsafe { 
+            Some(ref mut subset) => unsafe {
                 htslib::vcf::bcf_subset(self.header.inner, record.inner, subset.len() as i32, subset.as_mut_ptr());
             },
             None         => ()
@@ -185,7 +185,7 @@ mod tests {
 
             let mut fmt = record.format(b"PL");
             let pl = fmt.integer().ok().expect("Error reading format.");
-            assert_eq!(pl.len(), 1);            
+            assert_eq!(pl.len(), 1);
             if i == 59 {
                 assert_eq!(pl[0].len(), 6);
             }
@@ -202,7 +202,7 @@ mod tests {
 
     #[test]
     fn test_write() {
-        let bcf = Reader::new(&"test.bcf");
+        let bcf = Reader::new(&"test_multi.bcf");
         let tmp = tempdir::TempDir::new("rust-htslib").ok().expect("Cannot create temp dir");
         let bcfpath = tmp.path().join("test.bcf");
         println!("{:?}", bcfpath);

@@ -35,9 +35,10 @@ impl Header {
 
     pub fn subset_template(header: &HeaderView, samples: &[&[u8]]) -> Result<Self, ()> {
         let mut imap = vec![0; samples.len()];
-        let names: Vec<_> = samples.iter().map(|&s| ffi::CString::new(s).unwrap().as_ptr() as *mut i8).collect();
+        let names: Vec<_> = samples.iter().map(|&s| ffi::CString::new(s).unwrap()).collect();
+        let name_pointers: Vec<_> = names.iter().map(|s| s.as_ptr() as *mut i8).collect();
         let inner = unsafe {
-            htslib::vcf::bcf_hdr_subset(header.inner, samples.len() as i32, names.as_ptr(), imap.as_mut_ptr() as *mut i32)
+            htslib::vcf::bcf_hdr_subset(header.inner, samples.len() as i32, name_pointers.as_ptr(), imap.as_mut_ptr() as *mut i32)
         };
         if inner.is_null() {
             Err(())
