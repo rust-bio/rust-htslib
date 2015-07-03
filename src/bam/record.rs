@@ -149,7 +149,7 @@ impl Record {
         self.inner.l_data = (qname.len() + 1 + cigar.len() * 4 + seq.len() / 2 + qual.len()) as i32;
 
         if self.inner.m_data < self.inner.l_data {
-            
+
             self.inner.m_data = self.inner.l_data;
             self.inner.m_data += 32 - self.inner.m_data % 32;
             unsafe {
@@ -222,7 +222,7 @@ impl Record {
 
     /// Get read sequence.
     pub fn seq(&self) -> Seq {
-        Seq { 
+        Seq {
             encoded: &self.data()
                         [self.qname_len() + self.cigar_len()*4..]
                         [..(self.seq_len() + 1) / 2]
@@ -239,6 +239,9 @@ impl Record {
         let aux = unsafe { htslib::bam_aux_get(&self.inner, ffi::CString::new(tag).unwrap().as_ptr() as *mut i8 ) };
 
         unsafe {
+            if aux.is_null() {
+                return None;
+            }
             match *aux {
                 b'c'|b'C'|b's'|b'S'|b'i'|b'I' => Some(Aux::Integer(htslib::bam_aux2i(aux))),
                 b'f'|b'd' => Some(Aux::Float(htslib::bam_aux2f(aux))),
