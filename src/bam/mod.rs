@@ -491,6 +491,7 @@ mod tests {
             // fix qual offset
             let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
             assert_eq!(rec.qual(), qual.as_slice());
+            assert_eq!(rec.aux(b"NotAvailableAux"), None);
         }
 
         // seek to empty position
