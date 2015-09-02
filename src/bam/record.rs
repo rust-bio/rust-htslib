@@ -35,6 +35,9 @@ pub struct Record {
 
 unsafe impl Send for Record {}
 
+pub unsafe fn copy_lifetime<'a, S: ?Sized, T: ?Sized + 'a>(_ptr: &'a S, ptr: &T) -> &'a T {
+    mem::transmute(ptr)
+}
 
 impl Record {
     /// Create an empty BAM record.
@@ -233,7 +236,7 @@ impl Record {
     pub fn qual(&self) -> &[u8] {
         &self.data()[self.qname_len() + self.cigar_len()*4 + (self.seq_len()+1)/2..][..self.seq_len()]
     }
-
+    
     /// Get auxiliary data (tags).
     pub fn aux(&self, tag: &[u8]) -> Option<Aux> {
         let aux = unsafe { htslib::bam_aux_get(&self.inner, ffi::CString::new(tag).unwrap().as_ptr() as *mut i8 ) };
@@ -249,7 +252,7 @@ impl Record {
                 b'Z'|b'H' => {
                     let f = aux.offset(1) as *const i8;
                     let x = ffi::CStr::from_ptr(f).to_bytes();
-                    Some(Aux::String(mem::copy_lifetime(self, x)))
+                    Some(Aux::String(copy_lifetime(self, x)))
                 },
                 _ => None,
             }
