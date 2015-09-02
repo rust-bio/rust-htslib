@@ -7,7 +7,7 @@ description = "This library provides HTSlib bindings and a high level Rust API f
 readme = "README.md"
 keywords = ["htslib", "bam", "bioinformatics", "pileup", "sequencing"]
 license = "MIT"
-repository = "https://github.com/christopher-schroeder/rust-htslib.git"
+repository = "https://github.com/rust-bio/rust-htslib.git"
 
 [dev-dependencies]
 tempdir = "*"
