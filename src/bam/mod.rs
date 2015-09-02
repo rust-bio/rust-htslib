@@ -18,7 +18,7 @@ use htslib;
 
 
 /// A trait for a BAM reader with a read method.
-pub trait Read {
+pub trait Read: Sized {
     /// Read next BAM record into given record.
     /// Use this method in combination with a single allocated record to avoid the reallocations
     /// occurring with the iterator.

@@ -24,12 +24,12 @@ impl Header {
 
     /// Add a comment to the header.
     pub fn push_comment(&mut self, comment: &[u8]) -> &mut Self {
-        self.records.push([&b"@CO"[..], comment].connect(&b'\t'));
+        self.records.push([&b"@CO"[..], comment].join(&b'\t'));
         self
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
-        self.records.connect(&b'\n')
+        self.records.join(&b'\n')
     }
 }
 

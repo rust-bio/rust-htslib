@@ -6,7 +6,6 @@
 
 use std::slice;
 use std::ffi;
-use std::mem;
 use std::ops;
 
 use htslib;
@@ -249,7 +248,7 @@ impl Record {
                 b'Z'|b'H' => {
                     let f = aux.offset(1) as *const i8;
                     let x = ffi::CStr::from_ptr(f).to_bytes();
-                    Some(Aux::String(mem::copy_lifetime(self, x)))
+                    Some(Aux::String(x))
                 },
                 _ => None,
             }

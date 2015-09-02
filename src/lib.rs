@@ -8,7 +8,6 @@
 #![feature(step_by)]
 #![feature(convert)]
 #![feature(vec_push_all)]
-#![feature(copy_lifetime)]
 #![feature(slice_bytes)]
 
 extern crate libc;
