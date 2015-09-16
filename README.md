@@ -70,8 +70,12 @@ bam.seek(bam.header.tid(b"chr1"), 50000, 100000).ok().expect("Error seeking BAM 
 
 # Authors
 
-* Christopher Schröder (christopher.schroeder@tu-dortmund.de)
-* Johannes Köster (johannes.koester@tu-dortmund.de)
+* [Christopher Schröder](https://github.com/christopher.schroeder)
+* [Johannes Köster](https://github.com/johanneskoester)
+
+# Contributors
+
+* [Fedor Gusev](https://github.com/gusevfe)
 
 
 ## License
