@@ -259,8 +259,15 @@ impl<'a> Format<'a> {
             }.chunks_mut(self.values_per_sample()).collect()
         })
     }
-}
 
+    pub fn string(&mut self) -> Result<Vec<&mut [u8]>, TagError> {
+        self.data(htslib::vcf::BCF_HT_STR).map(|(n, _)| {
+            unsafe { 
+                slice::from_raw_parts_mut(self.record.buffer as *mut u8, n) 
+            }.chunks_mut(self.values_per_sample()).collect()
+        })
+    }
+}
 
 pub enum TagError {
     UndefinedTag,
