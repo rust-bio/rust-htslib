@@ -108,6 +108,26 @@ impl Record {
         }
     }
 
+    /// Add a info tag. 
+    pub fn push_info<T>(&mut self, tag: &[u8], data: &[T], ht: i32) -> Result<(), ()> {
+        assert!(data.len() > 0);
+        unsafe {
+            if htslib::vcf::bcf_update_info(
+                self.header,
+                self.inner, 
+                ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
+                data.as_ptr() as *const ::libc::c_void,
+                data.len() as i32,
+                ht
+            ) == 0 {
+                Ok(())
+            }
+            else {
+                Err(())
+            }
+        }
+    }
+
     /// Remove unused alleles.
     pub fn trim_alleles(&mut self) -> Result<(), ()> {
         match unsafe { htslib::vcfutils::bcf_trim_alleles(self.header, self.inner) } {
