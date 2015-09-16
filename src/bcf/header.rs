@@ -106,4 +106,12 @@ impl HeaderView {
         let names = unsafe { slice::from_raw_parts(self.inner().samples, self.sample_count() as usize) };
         names.iter().map(|name| unsafe { ffi::CStr::from_ptr(*name).to_bytes() }).collect()
     }
+
+    pub fn rid2name(&self, rid: u32) -> &[u8] {
+        unsafe { 
+            let dict = self.inner().id[htslib::vcf::BCF_DT_CTG as usize]; 
+            let ptr = (*dict.offset(rid as isize)).key;
+            ffi::CStr::from_ptr(ptr).to_bytes()
+        }
+    }
 }
