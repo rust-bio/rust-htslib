@@ -94,7 +94,7 @@ impl Record {
         unsafe {
             if htslib::vcf::bcf_update_format(
                 self.header,
-                self.inner, 
+                self.inner,
                 ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
                 data.as_ptr() as *const ::libc::c_void,
                 data.len() as i32,
@@ -108,13 +108,13 @@ impl Record {
         }
     }
 
-    /// Add a info tag. 
+    /// Add a info tag.
     pub fn push_info<T>(&mut self, tag: &[u8], data: &[T], ht: i32) -> Result<(), ()> {
         assert!(data.len() > 0);
         unsafe {
             if htslib::vcf::bcf_update_info(
                 self.header,
-                self.inner, 
+                self.inner,
                 ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
                 data.as_ptr() as *const ::libc::c_void,
                 data.len() as i32,
@@ -177,13 +177,25 @@ impl<'a> Info<'a> {
         }
     }
 
-    pub fn integer(&mut self) -> Result<&mut [i32], TagError> {
+    pub fn integer(&mut self) -> Result<&[i32], TagError> {
+        self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
+            unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) }
+        })
+    }
+
+    pub fn integer_mut(&mut self) -> Result<&mut [i32], TagError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
             unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut i32, n) }
         })
     }
 
-    pub fn float(&mut self) -> Result<&mut [f32], TagError> {
+    pub fn float(&mut self) -> Result<&[f32], TagError> {
+        self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
+            unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) }
+        })
+    }
+
+    pub fn float_mut(&mut self) -> Result<&mut [f32], TagError> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
             unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut f32, n) }
         })
@@ -195,9 +207,21 @@ impl<'a> Info<'a> {
         })
     }
 
-    pub fn string(&mut self) -> Result<&mut [u8], TagError> {
-        self.data(htslib::vcf::BCF_HT_STR).map(|(_, ret)| {
-            unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut u8, ret as usize) }
+    pub fn string(&mut self) -> Result<Vec<&[u8]>, TagError> {
+        self.data(htslib::vcf::BCF_HT_STR).map(|(n, ret)| {
+            unsafe {
+                slice::from_raw_parts(self.record.buffer as *const u8, ret as usize)
+            }.chunks(n).map(|s| {
+                unsafe { ffi::CStr::from_ptr(s.as_ptr() as *const i8).to_bytes() }
+            }).collect()
+        })
+    }
+
+    pub fn string_mut(&mut self) -> Result<Vec<&mut [u8]>, TagError> {
+        self.data(htslib::vcf::BCF_HT_STR).map(|(n, ret)| {
+            unsafe {
+                slice::from_raw_parts_mut(self.record.buffer as *mut u8, ret as usize)
+            }.chunks_mut(n).collect()
         })
     }
 }
@@ -244,7 +268,15 @@ impl<'a> Format<'a> {
         }
     }
 
-    pub fn integer(&mut self) -> Result<Vec<&mut [i32]>, TagError> {
+    pub fn integer(&mut self) -> Result<Vec<&[i32]>, TagError> {
+        self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
+            unsafe {
+                slice::from_raw_parts(self.record.buffer as *const i32, n)
+            }.chunks(self.values_per_sample()).collect()
+        })
+    }
+
+    pub fn integer_mut(&mut self) -> Result<Vec<&mut [i32]>, TagError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts_mut(self.record.buffer as *mut i32, n)
@@ -252,7 +284,15 @@ impl<'a> Format<'a> {
         })
     }
 
-    pub fn float(&mut self) -> Result<Vec<&mut [f32]>, TagError> {
+    pub fn float(&mut self) -> Result<Vec<&[f32]>, TagError> {
+        self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
+            unsafe {
+                slice::from_raw_parts(self.record.buffer as *const f32, n)
+            }.chunks(self.values_per_sample()).collect()
+        })
+    }
+
+    pub fn float_mut(&mut self) -> Result<Vec<&mut [f32]>, TagError> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts_mut(self.record.buffer as *mut f32, n)
@@ -260,10 +300,20 @@ impl<'a> Format<'a> {
         })
     }
 
-    pub fn string(&mut self) -> Result<Vec<&mut [u8]>, TagError> {
+    pub fn string(&mut self) -> Result<Vec<&[u8]>, TagError> {
         self.data(htslib::vcf::BCF_HT_STR).map(|(n, _)| {
-            unsafe { 
-                slice::from_raw_parts_mut(self.record.buffer as *mut u8, n) 
+            unsafe {
+                slice::from_raw_parts(self.record.buffer as *const u8, n)
+            }.chunks(self.values_per_sample()).map(|s| {
+                unsafe { ffi::CStr::from_ptr(s.as_ptr() as *const i8).to_bytes() }
+            }).collect()
+        })
+    }
+
+    pub fn string_mut(&mut self) -> Result<Vec<&mut [u8]>, TagError> {
+        self.data(htslib::vcf::BCF_HT_STR).map(|(n, _)| {
+            unsafe {
+                slice::from_raw_parts_mut(self.record.buffer as *mut u8, n)
             }.chunks_mut(self.values_per_sample()).collect()
         })
     }
