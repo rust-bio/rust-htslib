@@ -197,12 +197,12 @@ mod tests {
 
     #[test]
     fn test_read() {
-        _test_read(&"test.bcf");
+        _test_read(&"test/test.bcf");
     }
 
     #[test]
     fn test_write() {
-        let bcf = Reader::new(&"test_multi.bcf");
+        let bcf = Reader::new(&"test/test_multi.bcf");
         let tmp = tempdir::TempDir::new("rust-htslib").ok().expect("Cannot create temp dir");
         let bcfpath = tmp.path().join("test.bcf");
         println!("{:?}", bcfpath);

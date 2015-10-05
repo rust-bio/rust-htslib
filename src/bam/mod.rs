@@ -452,7 +452,7 @@ mod tests {
     #[test]
     fn test_read() {
         let (names, flags, seqs, quals, cigars) = gold();
-        let bam = Reader::new(&"test.bam");
+        let bam = Reader::new(&"test/test.bam");
 
         for (i, record) in bam.records().enumerate() {
             let rec = record.ok().expect("Expected valid record");
@@ -470,7 +470,7 @@ mod tests {
     #[test]
     fn test_read_indexed() {
         let (names, flags, seqs, quals, cigars) = gold();
-        let mut bam = IndexedReader::new(&"test.bam").ok().expect("Expected valid index.");
+        let mut bam = IndexedReader::new(&"test/test.bam").ok().expect("Expected valid index.");
 
         let tid = bam.header.tid(b"CHROMOSOME_I").expect("Expected tid.");
         assert!(bam.header.target_len(tid).expect("Expected target len.") == 15072423);
@@ -560,7 +560,7 @@ mod tests {
     fn test_pileup() {
         let (_, _, seqs, quals, _) = gold();
 
-        let bam = Reader::new(&"test.bam");
+        let bam = Reader::new(&"test/test.bam");
         let pileups = bam.pileup();
         for pileup in pileups.take(26) {
             let _pileup = pileup.ok().expect("Expected successful pileup.");
