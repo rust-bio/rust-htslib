@@ -222,4 +222,17 @@ mod tests {
         }
         tmp.close().ok().expect("Failed to delete temp dir");
     }
+
+    #[test]
+    fn test_strings() {
+        let vcf = Reader::new(&"test/test_string.vcf");
+        let fs1 = [&b"LongString1"[..], &b"LongString2"[..], &b"."[..], &b"LongString4"[..], &b"evenlength"[..], &b"ss6"[..]];
+        for (i, rec) in vcf.records().enumerate() {
+            println!("record {}", i);
+            let mut record = rec.ok().expect("Error reading record.");
+            assert_eq!(record.info(b"S1").string().ok().expect("Error reading string.")[0], format!("string{}", i + 1).as_bytes());
+            println!("{}", String::from_utf8_lossy(record.format(b"FS1").string().ok().expect("Error reading string.")[0]));
+            assert_eq!(record.format(b"FS1").string().ok().expect("Error reading string.")[0], fs1[i]);
+        }
+    }
 }

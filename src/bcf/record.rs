@@ -212,7 +212,8 @@ impl<'a> Info<'a> {
             unsafe {
                 slice::from_raw_parts(self.record.buffer as *const u8, ret as usize)
             }.chunks(n).map(|s| {
-                unsafe { ffi::CStr::from_ptr(s.as_ptr() as *const i8).to_bytes() }
+                // stop at zero character
+                s.split(|c| *c == 0u8).next().expect("Bug: returned string should not be empty.")
             }).collect()
         })
     }
@@ -305,7 +306,8 @@ impl<'a> Format<'a> {
             unsafe {
                 slice::from_raw_parts(self.record.buffer as *const u8, n)
             }.chunks(self.values_per_sample()).map(|s| {
-                unsafe { ffi::CStr::from_ptr(s.as_ptr() as *const i8).to_bytes() }
+                // stop at zero character
+                s.split(|c| *c == 0u8).next().expect("Bug: returned string should not be empty.")
             }).collect()
         })
     }
@@ -319,6 +321,8 @@ impl<'a> Format<'a> {
     }
 }
 
+
+#[derive(Debug)]
 pub enum TagError {
     UndefinedTag,
     UnexpectedType,
