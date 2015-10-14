@@ -6,8 +6,15 @@
 use std::ptr;
 use std::slice;
 use std::ffi;
+use std::i32;
+use std::f32;
 
 use htslib;
+
+pub const MISSING_INTEGER: i32 = i32::MIN;
+pub const MISSING_FLOAT: f32 = f32::NAN;
+pub const VECTOR_END_INTEGER: i32 = i32::MIN + 1;
+pub const VECTOR_END_FLOAT: f32 = 2.139095e+09;
 
 pub struct Record {
     pub inner: *mut htslib::vcf::bcf1_t,
@@ -179,7 +186,10 @@ impl<'a> Info<'a> {
 
     pub fn integer(&mut self) -> Result<&[i32], TagError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
-            unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) }
+            trim_slice(
+                unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) },
+                VECTOR_END_INTEGER
+            )
         })
     }
 
@@ -191,7 +201,10 @@ impl<'a> Info<'a> {
 
     pub fn float(&mut self) -> Result<&[f32], TagError> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
-            unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) }
+            trim_slice(
+                unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) },
+                VECTOR_END_FLOAT
+            )
         })
     }
 
@@ -225,6 +238,11 @@ impl<'a> Info<'a> {
             }.chunks_mut(n).collect()
         })
     }
+}
+
+
+fn trim_slice<T: PartialEq>(s: &[T], end_value: T) -> &[T] {
+    s.split(|v| *v == end_value).next().expect("Bug: returned slice should not be empty.")
 }
 
 
@@ -273,7 +291,7 @@ impl<'a> Format<'a> {
         self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts(self.record.buffer as *const i32, n)
-            }.chunks(self.values_per_sample()).collect()
+            }.chunks(self.values_per_sample()).map(|s| trim_slice(s, VECTOR_END_INTEGER)).collect()
         })
     }
 
@@ -289,7 +307,7 @@ impl<'a> Format<'a> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts(self.record.buffer as *const f32, n)
-            }.chunks(self.values_per_sample()).collect()
+            }.chunks(self.values_per_sample()).map(|s| trim_slice(s, VECTOR_END_FLOAT)).collect()
         })
     }
 

@@ -235,4 +235,16 @@ mod tests {
             assert_eq!(record.format(b"FS1").string().ok().expect("Error reading string.")[0], fs1[i]);
         }
     }
+
+    #[test]
+    fn test_missing() {
+        let vcf = Reader::new(&"test/test_missing.vcf");
+        let fn4 = [&[record::MISSING_INTEGER, record::MISSING_INTEGER, record::MISSING_INTEGER, record::MISSING_INTEGER][..], &[record::MISSING_INTEGER][..]];
+        let f1 = [false, true];
+        for (i, rec) in vcf.records().enumerate() {
+            let mut record = rec.ok().expect("Error reading record.");
+            assert_eq!(record.info(b"F1").float().ok().expect("Error reading float.")[0].is_nan(), f1[i]);
+            assert_eq!(record.format(b"FN4").integer().ok().expect("Error reading integer.")[1], fn4[i]);
+        }
+    }
 }
