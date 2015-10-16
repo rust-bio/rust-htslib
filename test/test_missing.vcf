@@ -5,6 +5,7 @@
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
 ##FORMAT=<ID=FS1,Number=1,Type=String,Description="Single FORMAT string">
 ##FORMAT=<ID=FN4,Number=4,Type=Integer,Description="Multiple FORMAT integer">
+##FORMAT=<ID=FF4,Number=4,Type=Float,Description="Multiple FORMAT integer">
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	one	two
-19	3114951	rs1234	A	AG	.	PASS	S1=string1;N1=1;F1=1.0	GT:FS1:FN4	1/1:fourall:1,2,3,4	1/1:fourmissall:.,.,.,.
-19	3114952	rs1234	A	AG	.	PASS	S1=string1;N1=1;F1=.	GT:FS1:FN4	1/1:fourall:1,2,3,4	1/1:fourmiss:.
+19	3114951	rs1234	A	AG	.	PASS	S1=string1;N1=1;F1=1.0	GT:FS1:FN4:FF4	1/1:fourall:1,2,3,4:0.0,0.0,0.0,0.0	1/1:fourmissall:.,.,.,.:.,.,.,.
+19	3114952	rs1234	A	AG	.	PASS	S1=string1;N1=1;F1=.	GT:FS1:FN4:FF4	1/1:fourall:1,2,3,4:0.0,0.0,0.0,0.0	1/1:fourmiss:.:.
