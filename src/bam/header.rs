@@ -61,11 +61,11 @@ impl<'a> HeaderRecord<'a> {
 
     fn to_bytes(&self) -> Vec<u8> {
         let mut out = Vec::new();
-        out.push_all(&self.rec_type);
+        out.extend(self.rec_type.iter());
         for &(tag, ref value) in self.tags.iter() {
             out.push(b'\t');
-            out.push_all(tag);
-            out.push_all(&value);
+            out.extend(tag.iter());
+            out.extend(value.iter());
         }
         out
     }

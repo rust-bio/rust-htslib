@@ -9,5 +9,11 @@ keywords = ["htslib", "bam", "bioinformatics", "pileup", "sequencing"]
 license = "MIT"
 repository = "https://github.com/rust-bio/rust-htslib.git"
 
+
+[dependencies]
+libc = "*"
+itertools = "*"
+
+
 [dev-dependencies]
 tempdir = "*"

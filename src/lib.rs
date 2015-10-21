@@ -4,13 +4,10 @@
 // except according to those terms.
 
 
-#![feature(libc)]
-#![feature(step_by)]
-#![feature(convert)]
-#![feature(vec_push_all)]
-#![feature(slice_bytes)]
-
 extern crate libc;
+extern crate itertools;
+
 pub mod htslib;
 pub mod bam;
 pub mod bcf;
+pub mod utils;

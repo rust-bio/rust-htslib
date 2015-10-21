@@ -8,6 +8,7 @@ pub mod header;
 
 use htslib;
 use bcf::header::{HeaderView, SampleSubset};
+use utils;
 
 pub use bcf::header::Header;
 pub use bcf::record::Record;
@@ -23,10 +24,10 @@ unsafe impl Send for Reader {}
 
 
 impl Reader {
-   pub fn new<P: AsRef<Path>>(path: &P) -> Self {
-        let htsfile = bcf_open(path, b"r");
+   pub fn new<P: AsRef<Path>>(path: &P) -> Result<Self, BCFError> {
+        let htsfile = try!(bcf_open(path, b"r"));
         let header = unsafe { htslib::vcf::bcf_hdr_read(htsfile) };
-        Reader { inner: htsfile, header: HeaderView::new(header) }
+        Ok(Reader { inner: htsfile, header: HeaderView::new(header) })
     }
 
     pub fn read(&self, record: &mut record::Record) -> Result<(), ReadError> {
@@ -67,7 +68,7 @@ unsafe impl Send for Writer {}
 
 
 impl Writer {
-    pub fn new<P: AsRef<Path>>(path: &P, header: &Header, uncompressed: bool, vcf: bool) -> Self {
+    pub fn new<P: AsRef<Path>>(path: &P, header: &Header, uncompressed: bool, vcf: bool) -> Result<Self, BCFError> {
         let mode: &[u8] = match (uncompressed, vcf) {
             (true, true)   => b"w",
             (false, true)  => b"wz",
@@ -75,13 +76,13 @@ impl Writer {
             (false, false) => b"wb",
         };
 
-        let htsfile = bcf_open(path, mode);
+        let htsfile = try!(bcf_open(path, mode));
         unsafe { htslib::vcf::bcf_hdr_write(htsfile, header.inner) };
-        Writer {
+        Ok(Writer {
             inner: htsfile,
             header: HeaderView::new(unsafe { htslib::vcf::bcf_hdr_dup(header.inner) }),
             subset: header.subset.clone()
-        }
+        })
     }
 
     /// Translate record to header of this writer.
@@ -142,13 +143,23 @@ impl<'a> Iterator for Records<'a> {
 }
 
 
+pub enum BCFError {
+    InvalidPath
+}
+
+
 /// Wrapper for opening a BCF file.
-fn bcf_open<P: AsRef<Path>>(path: &P, mode: &[u8]) -> *mut htslib::vcf::htsFile {
-    unsafe {
-        htslib::vcf::hts_open(
-            path.as_ref().as_os_str().to_cstring().unwrap().as_ptr(),
-            ffi::CString::new(mode).unwrap().as_ptr()
-        )
+fn bcf_open<P: AsRef<Path>>(path: &P, mode: &[u8]) -> Result<*mut htslib::vcf::htsFile, BCFError> {
+    if let Some(p) = utils::path_to_cstring(path) {
+        Ok(unsafe {
+            htslib::vcf::hts_open(
+                p.as_ptr(),
+                ffi::CString::new(mode).unwrap().as_ptr()
+            )
+        })
+    }
+    else {
+        Err(BCFError::InvalidPath)
     }
 }
 
@@ -166,7 +177,7 @@ mod tests {
     use std::path::Path;
 
     fn _test_read<P: AsRef<Path>>(path: &P) {
-        let bcf = Reader::new(path);
+        let bcf = Reader::new(path).ok().expect("Error opening file.");
         assert_eq!(bcf.header.samples(), [b"NA12878.subsample-0.25-0"]);
 
         for (i, rec) in bcf.records().enumerate() {
@@ -202,13 +213,13 @@ mod tests {
 
     #[test]
     fn test_write() {
-        let bcf = Reader::new(&"test/test_multi.bcf");
+        let bcf = Reader::new(&"test/test_multi.bcf").ok().expect("Error opening file.");
         let tmp = tempdir::TempDir::new("rust-htslib").ok().expect("Cannot create temp dir");
         let bcfpath = tmp.path().join("test.bcf");
         println!("{:?}", bcfpath);
         {
             let header = Header::subset_template(&bcf.header, &[b"NA12878.subsample-0.25-0"]).ok().expect("Error subsetting samples.");
-            let mut writer = Writer::new(&bcfpath, &header, false, false);
+            let mut writer = Writer::new(&bcfpath, &header, false, false).ok().expect("Error opening file.");
             for rec in bcf.records() {
                 let mut record = rec.ok().expect("Error reading record.");
                 writer.translate(&mut record);
@@ -225,7 +236,7 @@ mod tests {
 
     #[test]
     fn test_strings() {
-        let vcf = Reader::new(&"test/test_string.vcf");
+        let vcf = Reader::new(&"test/test_string.vcf").ok().expect("Error opening file.");
         let fs1 = [&b"LongString1"[..], &b"LongString2"[..], &b"."[..], &b"LongString4"[..], &b"evenlength"[..], &b"ss6"[..]];
         for (i, rec) in vcf.records().enumerate() {
             println!("record {}", i);
@@ -238,7 +249,7 @@ mod tests {
 
     #[test]
     fn test_missing() {
-        let vcf = Reader::new(&"test/test_missing.vcf");
+        let vcf = Reader::new(&"test/test_missing.vcf").ok().expect("Error opening file.");
         let fn4 = [&[record::MISSING_INTEGER, record::MISSING_INTEGER, record::MISSING_INTEGER, record::MISSING_INTEGER][..], &[record::MISSING_INTEGER][..]];
         let f1 = [false, true];
         for (i, rec) in vcf.records().enumerate() {

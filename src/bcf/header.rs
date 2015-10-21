@@ -108,8 +108,8 @@ impl HeaderView {
     }
 
     pub fn rid2name(&self, rid: u32) -> &[u8] {
-        unsafe { 
-            let dict = self.inner().id[htslib::vcf::BCF_DT_CTG as usize]; 
+        unsafe {
+            let dict = self.inner().id[htslib::vcf::BCF_DT_CTG as usize];
             let ptr = (*dict.offset(rid as isize)).key;
             ffi::CStr::from_ptr(ptr).to_bytes()
         }

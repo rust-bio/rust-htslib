@@ -8,7 +8,10 @@ use std::slice;
 use std::ffi;
 use std::ops;
 
+use itertools::Itertools;
+
 use htslib;
+use utils;
 
 
 /// A macro creating methods for flag access.
@@ -160,7 +163,7 @@ impl Record {
 
         let mut data = unsafe { slice::from_raw_parts_mut(self.inner.data, self.inner.l_data as usize) };
         // qname
-        slice::bytes::copy_memory(qname, data);
+        utils::copy_memory(qname, data);
         data[qname.len()] = b'\0';
         let mut i = qname.len() + 1;
         self.inner.core.l_qname = i as u8;
@@ -179,7 +182,7 @@ impl Record {
 
         // seq
         {
-            for j in (0..seq.len()).step_by(2) {
+            for j in (0..seq.len()).step(2) {
                 data[i + j / 2] = ENCODE_BASE[seq[j] as usize] << 4 | ENCODE_BASE[seq[j + 1] as usize];
             }
             self.inner.core.l_qseq = seq.len() as i32;
@@ -187,7 +190,7 @@ impl Record {
         }
 
         // qual
-        slice::bytes::copy_memory(qual, &mut data[i..]);
+        utils::copy_memory(qual, &mut data[i..]);
     }
 
     fn cigar_len(&self) -> usize {
