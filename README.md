@@ -9,6 +9,7 @@ git clone --recursive https://github.com/christopher-schroeder/rust-htslib.git
 ```
 
 ensuring that the HTSlib submodule is fetched, too.
+If you only want to use the library, there is no need to clone the repository. Go on to the **Usage** section in this case.
 
 # Resources
 
