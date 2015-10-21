@@ -1,3 +1,8 @@
+[![Crates.io](https://img.shields.io/crates/d/rust-htslib.svg?style=flat-square)](https://crates.io/crates/rust-htslib)
+[![Crates.io](https://img.shields.io/crates/v/rust-htslib.svg?style=flat-square)](https://crates.io/crates/rust-htslib)
+[![Crates.io](https://img.shields.io/crates/l/rust-htslib.svg?style=flat-square)](https://crates.io/crates/rust-htslib)
+[![Travis](https://img.shields.io/travis/rust-bio/rust-htslib.svg?style=flat-square)](https://travis-ci.org/rust-bio/rust-htslib)
+
 # HTSlib bindings for Rust
 
 This library provides HTSlib bindings and a high level Rust API for reading and writing BAM files.
@@ -5,7 +10,7 @@ This library provides HTSlib bindings and a high level Rust API for reading and 
 To clone this repository, issue
 
 ```
-git clone --recursive https://github.com/christopher-schroeder/rust-htslib.git
+git clone --recursive https://github.com/rust-bio/rust-htslib.git
 ```
 
 ensuring that the HTSlib submodule is fetched, too.
