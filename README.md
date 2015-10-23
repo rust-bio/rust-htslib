@@ -27,8 +27,8 @@ If you only want to use the library, there is no need to clone the repository. G
 To use Rust-HTSlib in your Rust project, import the crate from your source code:
 
 ```rust
-extern crate htslib;
-use htslib::bam;
+extern crate rust_htslib;
+use rust_htslib::bam;
 ```
 
 Rust-HTSlib provides a high level BAM API.
