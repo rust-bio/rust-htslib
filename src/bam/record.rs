@@ -227,7 +227,8 @@ impl Record {
         Seq {
             encoded: &self.data()
                         [self.qname_len() + self.cigar_len()*4..]
-                        [..(self.seq_len() + 1) / 2]
+                        [..(self.seq_len() + 1) / 2],
+            len: self.seq_len()
         }
     }
 
@@ -366,7 +367,8 @@ static ENCODE_BASE: [u8; 256] = [
 
 
 pub struct Seq<'a> {
-    pub encoded: &'a [u8]
+    pub encoded: &'a [u8],
+    len: usize
 }
 
 
@@ -381,7 +383,7 @@ impl<'a> Seq<'a> {
     }
 
     pub fn len(&self) -> usize {
-        self.encoded.len() * 2
+        self.len
     }
 }
 
