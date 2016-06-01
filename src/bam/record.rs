@@ -22,7 +22,7 @@ macro_rules! flag {
         }
 
         pub fn $set(&mut self) {
-            self.inner().core.flag |= $bit;
+            self.inner_mut().core.flag |= $bit;
         }
     )
 }
@@ -55,8 +55,13 @@ impl Record {
     }
 
     #[inline]
-    pub fn inner(&self) -> htslib::bam1_t {
-        unsafe { *self.inner }
+    pub fn inner_mut(&mut self) -> &mut htslib::bam1_t {
+        unsafe { &mut *self.inner }
+    }
+
+    #[inline]
+    pub fn inner(&self) -> &htslib::bam1_t {
+        unsafe { &*self.inner }
     }
 
     /// Get target id.
@@ -66,7 +71,7 @@ impl Record {
 
     /// Set target id.
     pub fn set_tid(&mut self, tid: i32) {
-        self.inner().core.tid = tid;
+        self.inner_mut().core.tid = tid;
     }
 
     /// Get position.
@@ -76,7 +81,7 @@ impl Record {
 
     /// Set position.
     pub fn set_pos(&mut self, pos: i32) {
-        self.inner().core.pos = pos;
+        self.inner_mut().core.pos = pos;
     }
 
     pub fn bin(&self) -> u16 {
@@ -84,7 +89,7 @@ impl Record {
     }
 
     pub fn set_bin(&mut self, bin: u16) {
-        self.inner().core.bin = bin;
+        self.inner_mut().core.bin = bin;
     }
 
     /// Get MAPQ.
@@ -94,7 +99,7 @@ impl Record {
 
     /// Set MAPQ.
     pub fn set_mapq(&mut self, mapq: u8) {
-        self.inner().core.qual = mapq;
+        self.inner_mut().core.qual = mapq;
     }
 
     /// Get raw flags.
@@ -104,12 +109,12 @@ impl Record {
 
     /// Set raw flags.
     pub fn set_flags(&mut self, flags: u16) {
-        self.inner().core.flag = flags;
+        self.inner_mut().core.flag = flags;
     }
 
     /// Unset all flags.
     pub fn unset_flags(&mut self) {
-        self.inner().core.flag = 0;
+        self.inner_mut().core.flag = 0;
     }
 
     /// Get target id of mate.
@@ -119,7 +124,7 @@ impl Record {
 
     /// Set target id of mate.
     pub fn set_mtid(&mut self, mtid: i32) {
-        self.inner().core.mtid = mtid;
+        self.inner_mut().core.mtid = mtid;
     }
 
     /// Get mate position.
@@ -129,7 +134,7 @@ impl Record {
 
     /// Set mate position.
     pub fn set_mpos(&mut self, mpos: i32) {
-        self.inner().core.mpos = mpos;
+        self.inner_mut().core.mpos = mpos;
     }
 
     /// Get insert size.
@@ -139,7 +144,7 @@ impl Record {
 
     /// Set insert size.
     pub fn set_insert_size(&mut self, insert_size: i32) {
-        self.inner().core.isize = insert_size;
+        self.inner_mut().core.isize = insert_size;
     }
 
     fn qname_len(&self) -> usize {
@@ -153,25 +158,25 @@ impl Record {
 
     /// Set variable length data (qname, cigar, seq, qual).
     pub fn set(&mut self, qname: &[u8], cigar: &[Cigar], seq: &[u8], qual: &[u8]) {
-        self.inner().l_data = (qname.len() + 1 + cigar.len() * 4 + seq.len() / 2 + qual.len()) as i32;
+        self.inner_mut().l_data = (qname.len() + 1 + cigar.len() * 4 + seq.len() / 2 + qual.len()) as i32;
 
         if self.inner().m_data < self.inner().l_data {
 
-            self.inner().m_data = self.inner().l_data;
-            self.inner().m_data += 32 - self.inner().m_data % 32;
+            self.inner_mut().m_data = self.inner().l_data;
+            self.inner_mut().m_data += 32 - self.inner().m_data % 32;
             unsafe {
-                self.inner().data = ::libc::realloc(
+                self.inner_mut().data = ::libc::realloc(
                     self.inner().data as *mut ::libc::c_void, self.inner().m_data as usize
                 ) as *mut u8;
             }
         }
 
-        let mut data = unsafe { slice::from_raw_parts_mut(self.inner().data, self.inner().l_data as usize) };
+        let mut data = unsafe { slice::from_raw_parts_mut((*self.inner).data, self.inner().l_data as usize) };
         // qname
         utils::copy_memory(qname, data);
         data[qname.len()] = b'\0';
         let mut i = qname.len() + 1;
-        self.inner().core.l_qname = i as u8;
+        self.inner_mut().core.l_qname = i as u8;
 
         // cigar
         {
@@ -181,7 +186,7 @@ impl Record {
             for (i, c) in cigar.iter().enumerate() {
                 cigar_data[i] = c.encode();
             }
-            self.inner().core.n_cigar = cigar.len() as u16;
+            self.inner_mut().core.n_cigar = cigar.len() as u16;
             i += cigar.len() * 4;
         }
 
@@ -190,7 +195,7 @@ impl Record {
             for j in (0..seq.len()).step(2) {
                 data[i + j / 2] = ENCODE_BASE[seq[j] as usize] << 4 | ENCODE_BASE[seq[j + 1] as usize];
             }
-            self.inner().core.l_qseq = seq.len() as i32;
+            self.inner_mut().core.l_qseq = seq.len() as i32;
             i += (seq.len() + 1) / 2;
         }
 
