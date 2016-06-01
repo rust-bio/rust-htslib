@@ -1,6 +1,5 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
-#![allow(raw_pointer_derive)]
 
 /* manually added */
 // bgzf.h

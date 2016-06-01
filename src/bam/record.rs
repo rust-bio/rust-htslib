@@ -18,11 +18,11 @@ use utils;
 macro_rules! flag {
     ($get:ident, $set:ident, $bit:expr) => (
         pub fn $get(&self) -> bool {
-            self.inner.core.flag & $bit != 0
+            self.inner().core.flag & $bit != 0
         }
 
         pub fn $set(&mut self) {
-            self.inner.core.flag |= $bit;
+            self.inner_mut().core.flag |= $bit;
         }
     )
 }
@@ -30,7 +30,7 @@ macro_rules! flag {
 
 /// A BAM record.
 pub struct Record {
-    pub inner: htslib::bam1_t,
+    pub inner: *mut htslib::bam1_t,
     own: bool,
 }
 
@@ -41,109 +41,115 @@ unsafe impl Send for Record {}
 impl Record {
     /// Create an empty BAM record.
     pub fn new() -> Self {
-        let mut inner;
-        unsafe {
-            let aux = htslib::bam_init1();
-            inner = *aux;
-            ::libc::free(aux as *mut ::libc::c_void);
-        }
-        inner.m_data = 0;
-        Record { inner: inner, own: true }
+        let inner = unsafe { htslib::bam_init1() };
+        let mut record = Record { inner: inner, own: true };
+        record.inner_mut().m_data = 0;
+        record
     }
 
     pub fn from_inner(inner: *mut htslib::bam1_t) -> Self {
-        Record { inner: unsafe { *inner }, own: false }
+        Record { inner: inner, own: false }
     }
 
     fn data(&self) -> &[u8] {
-        unsafe { slice::from_raw_parts(self.inner.data, self.inner.l_data as usize) }
+        unsafe { slice::from_raw_parts(self.inner().data, self.inner().l_data as usize) }
+    }
+
+    #[inline]
+    pub fn inner_mut(&mut self) -> &mut htslib::bam1_t {
+        unsafe { &mut *self.inner }
+    }
+
+    #[inline]
+    pub fn inner(&self) -> &htslib::bam1_t {
+        unsafe { &*self.inner }
     }
 
     /// Get target id.
     pub fn tid(&self) -> i32 {
-        self.inner.core.tid
+        self.inner().core.tid
     }
 
     /// Set target id.
     pub fn set_tid(&mut self, tid: i32) {
-        self.inner.core.tid = tid;
+        self.inner_mut().core.tid = tid;
     }
 
     /// Get position.
     pub fn pos(&self) -> i32 {
-        self.inner.core.pos
+        self.inner().core.pos
     }
 
     /// Set position.
     pub fn set_pos(&mut self, pos: i32) {
-        self.inner.core.pos = pos;
+        self.inner_mut().core.pos = pos;
     }
 
     pub fn bin(&self) -> u16 {
-        self.inner.core.bin
+        self.inner().core.bin
     }
 
     pub fn set_bin(&mut self, bin: u16) {
-        self.inner.core.bin = bin;
+        self.inner_mut().core.bin = bin;
     }
 
     /// Get MAPQ.
     pub fn mapq(&self) -> u8 {
-        self.inner.core.qual
+        self.inner().core.qual
     }
 
     /// Set MAPQ.
     pub fn set_mapq(&mut self, mapq: u8) {
-        self.inner.core.qual = mapq;
+        self.inner_mut().core.qual = mapq;
     }
 
     /// Get raw flags.
     pub fn flags(&self) -> u16 {
-        self.inner.core.flag
+        self.inner().core.flag
     }
 
     /// Set raw flags.
     pub fn set_flags(&mut self, flags: u16) {
-        self.inner.core.flag = flags;
+        self.inner_mut().core.flag = flags;
     }
 
     /// Unset all flags.
     pub fn unset_flags(&mut self) {
-        self.inner.core.flag = 0;
+        self.inner_mut().core.flag = 0;
     }
 
     /// Get target id of mate.
     pub fn mtid(&self) -> i32 {
-        self.inner.core.mtid
+        self.inner().core.mtid
     }
 
     /// Set target id of mate.
     pub fn set_mtid(&mut self, mtid: i32) {
-        self.inner.core.mtid = mtid;
+        self.inner_mut().core.mtid = mtid;
     }
 
     /// Get mate position.
     pub fn mpos(&self) -> i32 {
-        self.inner.core.mpos
+        self.inner().core.mpos
     }
 
     /// Set mate position.
     pub fn set_mpos(&mut self, mpos: i32) {
-        self.inner.core.mpos = mpos;
+        self.inner_mut().core.mpos = mpos;
     }
 
     /// Get insert size.
     pub fn insert_size(&self) -> i32 {
-        self.inner.core.isize
+        self.inner().core.isize
     }
 
     /// Set insert size.
     pub fn set_insert_size(&mut self, insert_size: i32) {
-        self.inner.core.isize = insert_size;
+        self.inner_mut().core.isize = insert_size;
     }
 
     fn qname_len(&self) -> usize {
-        self.inner.core.l_qname as usize
+        self.inner().core.l_qname as usize
     }
 
     /// Get qname (read name).
@@ -153,25 +159,25 @@ impl Record {
 
     /// Set variable length data (qname, cigar, seq, qual).
     pub fn set(&mut self, qname: &[u8], cigar: &[Cigar], seq: &[u8], qual: &[u8]) {
-        self.inner.l_data = (qname.len() + 1 + cigar.len() * 4 + seq.len() / 2 + qual.len()) as i32;
+        self.inner_mut().l_data = (qname.len() + 1 + cigar.len() * 4 + seq.len() / 2 + qual.len()) as i32;
 
-        if self.inner.m_data < self.inner.l_data {
+        if self.inner().m_data < self.inner().l_data {
 
-            self.inner.m_data = self.inner.l_data;
-            self.inner.m_data += 32 - self.inner.m_data % 32;
+            self.inner_mut().m_data = self.inner().l_data;
+            self.inner_mut().m_data += 32 - self.inner().m_data % 32;
             unsafe {
-                self.inner.data = ::libc::realloc(
-                    self.inner.data as *mut ::libc::c_void, self.inner.m_data as usize
+                self.inner_mut().data = ::libc::realloc(
+                    self.inner().data as *mut ::libc::c_void, self.inner().m_data as usize
                 ) as *mut u8;
             }
         }
 
-        let mut data = unsafe { slice::from_raw_parts_mut(self.inner.data, self.inner.l_data as usize) };
+        let mut data = unsafe { slice::from_raw_parts_mut((*self.inner).data, self.inner().l_data as usize) };
         // qname
         utils::copy_memory(qname, data);
         data[qname.len()] = b'\0';
         let mut i = qname.len() + 1;
-        self.inner.core.l_qname = i as u8;
+        self.inner_mut().core.l_qname = i as u8;
 
         // cigar
         {
@@ -181,7 +187,7 @@ impl Record {
             for (i, c) in cigar.iter().enumerate() {
                 cigar_data[i] = c.encode();
             }
-            self.inner.core.n_cigar = cigar.len() as u16;
+            self.inner_mut().core.n_cigar = cigar.len() as u16;
             i += cigar.len() * 4;
         }
 
@@ -190,7 +196,7 @@ impl Record {
             for j in (0..seq.len()).step(2) {
                 data[i + j / 2] = ENCODE_BASE[seq[j] as usize] << 4 | ENCODE_BASE[seq[j + 1] as usize];
             }
-            self.inner.core.l_qseq = seq.len() as i32;
+            self.inner_mut().core.l_qseq = seq.len() as i32;
             i += (seq.len() + 1) / 2;
         }
 
@@ -199,7 +205,7 @@ impl Record {
     }
 
     fn cigar_len(&self) -> usize {
-        self.inner.core.n_cigar as usize
+        self.inner().core.n_cigar as usize
     }
 
     /// Get cigar sequence.
@@ -224,7 +230,7 @@ impl Record {
     }
 
     fn seq_len(&self) -> usize {
-        self.inner.core.l_qseq as usize
+        self.inner().core.l_qseq as usize
     }
 
     /// Get read sequence.
@@ -244,7 +250,7 @@ impl Record {
 
     /// Get auxiliary data (tags).
     pub fn aux(&self, tag: &[u8]) -> Option<Aux> {
-        let aux = unsafe { htslib::bam_aux_get(&self.inner, ffi::CString::new(tag).unwrap().as_ptr() as *mut i8 ) };
+        let aux = unsafe { htslib::bam_aux_get(self.inner, ffi::CString::new(tag).unwrap().as_ptr() as *mut i8 ) };
 
         unsafe {
             if aux.is_null() {
@@ -269,11 +275,11 @@ impl Record {
         let ctag = tag.as_ptr() as *mut i8;
         unsafe {
             match *value {
-                Aux::Integer(v) => htslib::bam_aux_append(&mut self.inner, ctag, b'i' as i8, 4, [v].as_mut_ptr() as *mut u8),
-                Aux::Float(v) => htslib::bam_aux_append(&mut self.inner, ctag, b'f' as i8, 4, [v].as_mut_ptr() as *mut u8),
-                Aux::Char(v) => htslib::bam_aux_append(&mut self.inner, ctag, b'A' as i8, 1, [v].as_mut_ptr() as *mut u8),
+                Aux::Integer(v) => htslib::bam_aux_append(self.inner, ctag, b'i' as i8, 4, [v].as_mut_ptr() as *mut u8),
+                Aux::Float(v) => htslib::bam_aux_append(self.inner, ctag, b'f' as i8, 4, [v].as_mut_ptr() as *mut u8),
+                Aux::Char(v) => htslib::bam_aux_append(self.inner, ctag, b'A' as i8, 1, [v].as_mut_ptr() as *mut u8),
                 Aux::String(v) => htslib::bam_aux_append(
-                    &mut self.inner,
+                    self.inner,
                     ctag,
                     b'Z' as i8,
                     (v.len() + 1) as i32,
@@ -301,7 +307,7 @@ impl Record {
 impl Drop for Record {
     fn drop(&mut self) {
         if self.own {
-            unsafe { ::libc::free(self.inner.data as *mut ::libc::c_void) };
+            unsafe { htslib::bam_destroy1(self.inner) };
         }
     }
 }

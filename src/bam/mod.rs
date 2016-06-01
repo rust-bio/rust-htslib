@@ -74,7 +74,7 @@ impl Reader {
 
 impl Read for Reader {
     fn read(&self, record: &mut record::Record) -> Result<(), ReadError> {
-        match unsafe { htslib::bam_read1(self.bgzf, &mut record.inner) } {
+        match unsafe { htslib::bam_read1(self.bgzf, record.inner) } {
             -1 => Err(ReadError::NoMoreRecord),
             -2 => Err(ReadError::Truncated),
             -4 => Err(ReadError::Invalid),
@@ -188,7 +188,7 @@ impl IndexedReader {
 impl Read for IndexedReader {
     fn read(&self, record: &mut record::Record) -> Result<(), ReadError> {
         match self.itr {
-            Some(itr) => match itr_next(self.bgzf, itr, &mut record.inner) {
+            Some(itr) => match itr_next(self.bgzf, itr, record.inner) {
                 -1 => Err(ReadError::NoMoreRecord),
                 -2 => Err(ReadError::Truncated),
                 -4 => Err(ReadError::Invalid),
@@ -294,7 +294,7 @@ impl Writer {
     ///
     /// * `record` - the record to write
     pub fn write(&mut self, record: &record::Record) -> Result<(), ()> {
-        if unsafe { htslib::bam_write1(self.f, &record.inner) } == -1 {
+        if unsafe { htslib::bam_write1(self.f, record.inner) } == -1 {
             Err(())
         }
         else {
