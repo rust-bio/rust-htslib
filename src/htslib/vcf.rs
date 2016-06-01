@@ -1,7 +1,6 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 #![allow(non_snake_case)]
-#![allow(raw_pointer_derive)]
 
 
 pub const BCF_HL_FLT: ::libc::c_int = 0;

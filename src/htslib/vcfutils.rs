@@ -1,7 +1,6 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 #![allow(non_snake_case)]
-#![allow(raw_pointer_derive)]
 
 
 use htslib::vcf::{bcf1_t, bcf_hdr_t};
