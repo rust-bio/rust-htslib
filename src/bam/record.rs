@@ -42,8 +42,9 @@ impl Record {
     /// Create an empty BAM record.
     pub fn new() -> Self {
         let inner = unsafe { htslib::bam_init1() };
-        unsafe { *inner }.m_data = 0;
-        Record { inner: inner, own: true }
+        let mut record = Record { inner: inner, own: true };
+        record.inner_mut().m_data = 0;
+        record
     }
 
     pub fn from_inner(inner: *mut htslib::bam1_t) -> Self {
