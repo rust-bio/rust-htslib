@@ -29,8 +29,16 @@ impl Record {
         Record { inner: inner, header: ptr::null_mut(), buffer: ptr::null_mut() }
     }
 
+    pub fn inner(&self) -> &htslib::vcf::bcf1_t {
+        unsafe { &*self.inner }
+    }
+
+    pub fn inner_mut(&mut self) -> &mut htslib::vcf::bcf1_t {
+        unsafe { &mut *self.inner }
+    }
+
     pub fn rid(&self) -> Option<u32> {
-        match unsafe { *self.inner }.rid {
+        match self.inner().rid {
             -1  => None,
             rid => Some(rid as u32)
         }
@@ -38,28 +46,28 @@ impl Record {
 
     // 0-based position.
     pub fn pos(&self) -> u32 {
-        unsafe { *self.inner }.pos as u32
+        self.inner().pos as u32
     }
 
 
     pub fn set_pos(&mut self, pos: i32) {
-        unsafe { (*self.inner).pos = pos; }
+        self.inner_mut().pos = pos;
     }
 
     pub fn alleles(&self) -> Vec<&[u8]> {
         unsafe { htslib::vcf::bcf_unpack(self.inner, htslib::vcf::BCF_UN_STR) };
-        let n = unsafe { *self.inner }.n_allele as usize;
-        let dec = unsafe { *self.inner }.d;
+        let n = self.inner().n_allele as usize;
+        let dec = self.inner().d;
         let alleles = unsafe { slice::from_raw_parts(dec.allele, n) };
         (0..n).map(|i| unsafe { ffi::CStr::from_ptr(alleles[i]).to_bytes() }).collect()
     }
 
     pub fn qual(&self) -> f32 {
-        unsafe { *self.inner }.qual
+        self.inner().qual
     }
 
     pub fn set_qual(&mut self, qual: f32) {
-        unsafe { (*self.inner).qual = qual; }
+        self.inner_mut().qual = qual;
     }
 
     /// Get the value of the given info tag.
@@ -68,11 +76,11 @@ impl Record {
     }
 
     pub fn sample_count(&self) -> u32 {
-        unsafe { *self.inner }.n_fmt_n_sample >> 8
+        self.inner().n_fmt_n_sample >> 8
     }
 
     pub fn allele_count(&self) -> u16 {
-        unsafe { *self.inner }.n_allele
+        self.inner().n_allele
     }
 
     /// Get the value of the given format tag for each sample.
@@ -264,8 +272,16 @@ impl<'a> Format<'a> {
         Format { record: record, tag: tag, inner: inner }
     }
 
+    pub fn inner(&self) -> &htslib::vcf::bcf_fmt_t {
+        unsafe { &*self.inner }
+    }
+
+    pub fn inner_mut(&mut self) -> &mut htslib::vcf::bcf_fmt_t {
+        unsafe { &mut *self.inner }
+    }
+
     fn values_per_sample(&self) -> usize {
-        unsafe { (*self.inner).n as usize }
+        self.inner().n as usize
     }
 
     fn data(&mut self, data_type: i32) -> Result<(usize, i32), TagError> {
