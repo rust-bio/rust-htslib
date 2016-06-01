@@ -41,7 +41,12 @@ unsafe impl Send for Record {}
 impl Record {
     /// Create an empty BAM record.
     pub fn new() -> Self {
-        let mut inner = unsafe { *htslib::bam_init1() };
+        let mut inner;
+        unsafe {
+            let aux = htslib::bam_init1();
+            inner = *aux;
+            ::libc::free(aux as *mut ::libc::c_void);
+        }
         inner.m_data = 0;
         Record { inner: inner, own: true }
     }
