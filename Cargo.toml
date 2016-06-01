@@ -11,9 +11,9 @@ repository = "https://github.com/rust-bio/rust-htslib.git"
 
 
 [dependencies]
-libc = ">=0.2.2"
-itertools = ">=0.4.1"
+libc = "=0.2.*"
+itertools = "=0.4.*"
 
 
 [dev-dependencies]
-tempdir = "*"
+tempdir = "=0.3.*"
