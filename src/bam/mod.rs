@@ -601,11 +601,12 @@ mod tests {
     fn test_pileup() {
         let (_, _, seqs, quals, _) = gold();
 
-        let bam = Reader::new(&"test/test.bam").ok().expect("Error opening file.");
+        let bam = Reader::new(&"test/test2.bam").ok().expect("Error opening file.");
         let pileups = bam.pileup();
         for pileup in pileups.take(26) {
             let _pileup = pileup.ok().expect("Expected successful pileup.");
             let pos = _pileup.pos() as usize;
+            assert_eq!(_pileup.depth(), 6);
             assert!(_pileup.tid() == 0);
             for (i, a) in _pileup.alignments().enumerate() {
                 assert_eq!(a.indel(), pileup::Indel::None);
