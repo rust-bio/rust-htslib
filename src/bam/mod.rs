@@ -60,6 +60,14 @@ impl Reader {
     ///
     /// * `path` - the path. Use "-" for stdin.
     pub fn new<P: AsRef<Path>>(path: &P) -> Result<Self, BGZFError> {
+        if !path.as_ref().exists() {
+            if let Some(path) = path.as_ref().to_str() {
+                if path != "-" {
+                    // path does not exist and is not a - representing stdin
+                    return Err(BGZFError::InvalidPath);
+                }
+            }
+        }
         let bgzf = try!(bgzf_open(path, b"r"));
         let header = unsafe { htslib::bam_hdr_read(bgzf) };
         Ok(Reader { bgzf: bgzf, header: HeaderView::new(header) })
@@ -135,6 +143,14 @@ impl IndexedReader {
     ///
     /// * `path` - the path. Use "-" for stdin.
     pub fn new<P: AsRef<Path>>(path: &P) -> Result<Self, IndexError> {
+        if !path.as_ref().exists() {
+            if let Some(path) = path.as_ref().to_str() {
+                if path != "-" {
+                    // path does not exist and is not a - representing stdin
+                    return Err(IndexError::InvalidPath);
+                }
+            }
+        }
         if let Ok(bgzf) = bgzf_open(path, b"r") {
             if let Some(path) = utils::path_to_cstring(path) {
 
@@ -343,7 +359,7 @@ pub enum ReadError {
 
 pub enum IndexError {
     InvalidIndex,
-    InvalidPath,
+    InvalidPath
 }
 
 
