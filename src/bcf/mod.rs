@@ -143,6 +143,7 @@ impl<'a> Iterator for Records<'a> {
 }
 
 
+#[derive(Debug)]
 pub enum BCFError {
     InvalidPath
 }
@@ -164,6 +165,7 @@ fn bcf_open<P: AsRef<Path>>(path: &P, mode: &[u8]) -> Result<*mut htslib::vcf::h
 }
 
 
+#[derive(Debug)]
 pub enum ReadError {
     Invalid,
     NoMoreRecord,

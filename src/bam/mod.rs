@@ -350,6 +350,7 @@ impl<'a, R: Read> Iterator for Records<'a, R> {
 }
 
 
+#[derive(Debug)]
 pub enum ReadError {
     Truncated,
     Invalid,
@@ -357,12 +358,14 @@ pub enum ReadError {
 }
 
 
+#[derive(Debug)]
 pub enum IndexError {
     InvalidIndex,
     InvalidPath
 }
 
 
+#[derive(Debug)]
 pub enum BGZFError {
     InvalidPath
 }
