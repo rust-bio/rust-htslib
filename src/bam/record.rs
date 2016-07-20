@@ -75,12 +75,12 @@ impl Record {
         self.inner_mut().core.tid = tid;
     }
 
-    /// Get position.
+    /// Get position (0-based).
     pub fn pos(&self) -> i32 {
         self.inner().core.pos
     }
 
-    /// Set position.
+    /// Set position (0-based).
     pub fn set_pos(&mut self, pos: i32) {
         self.inner_mut().core.pos = pos;
     }
