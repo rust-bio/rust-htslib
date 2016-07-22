@@ -16,6 +16,7 @@ pub const MISSING_FLOAT: f32 = f32::NAN;
 pub const VECTOR_END_INTEGER: i32 = i32::MIN + 1;
 pub const VECTOR_END_FLOAT: f32 = 2.139095e+09;
 
+
 pub struct Record {
     pub inner: *mut htslib::vcf::bcf1_t,
     pub header: *mut htslib::vcf::bcf_hdr_t,
@@ -164,6 +165,7 @@ impl Drop for Record {
 
 
 unsafe impl Send for Record {}
+unsafe impl Sync for Record {}
 
 
 pub struct Info<'a> {
@@ -247,6 +249,10 @@ impl<'a> Info<'a> {
         })
     }
 }
+
+
+unsafe impl<'a> Send for Info<'a> {}
+unsafe impl<'a> Sync for Info<'a> {}
 
 
 fn trim_slice<T: PartialEq>(s: &[T], end_value: T) -> &[T] {
@@ -354,6 +360,10 @@ impl<'a> Format<'a> {
         })
     }
 }
+
+
+unsafe impl<'a> Send for Format<'a> {}
+unsafe impl<'a> Sync for Format<'a> {}
 
 
 #[derive(Debug)]

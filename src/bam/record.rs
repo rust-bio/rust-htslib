@@ -36,6 +36,7 @@ pub struct Record {
 
 
 unsafe impl Send for Record {}
+unsafe impl Sync for Record {}
 
 
 impl Record {
@@ -356,6 +357,10 @@ impl<'a> Aux<'a> {
 }
 
 
+unsafe impl<'a> Send for Aux<'a> {}
+unsafe impl<'a> Sync for Aux<'a> {}
+
+
 static DECODE_BASE: &'static [u8] = b"=ACMGRSVTWYHKDBN";
 static ENCODE_BASE: [u8; 256] = [
 15,15,15,15, 15,15,15,15, 15,15,15,15, 15,15,15,15,
@@ -408,8 +413,11 @@ impl<'a> ops::Index<usize> for Seq<'a> {
 }
 
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+unsafe impl<'a> Send for Seq<'a> {}
+unsafe impl<'a> Sync for Seq<'a> {}
+
+
+#[derive(PartialEq, Debug)]
 pub enum Cigar {
     Match(u32),  // M
     Ins(u32),  // I
@@ -440,3 +448,7 @@ impl Cigar {
         }
     }
 }
+
+
+unsafe impl Send for Cigar {}
+unsafe impl Sync for Cigar {}

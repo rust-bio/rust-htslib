@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.6.2] - 2016-07-22
+### Changed
+- Mark all records as Send and Sync.
+
 ## [0.6.1] - 2016-07-20
 ### Changed
 - Improved error messages.
