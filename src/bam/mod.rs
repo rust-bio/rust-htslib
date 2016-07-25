@@ -17,6 +17,9 @@ use std::path::Path;
 use htslib;
 use utils;
 
+pub use bam::record::Record;
+pub use bam::header::Header;
+
 
 /// A trait for a BAM reader with a read method.
 pub trait Read: Sized {
