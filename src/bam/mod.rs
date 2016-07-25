@@ -502,7 +502,7 @@ mod tests {
             assert_eq!(rec.flags(), flags[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
             assert_eq!(rec.cigar(), cigars[i]);
-            assert_eq!(rec.end_pos(), rec.pos() + 100);
+            assert_eq!(rec.end_pos(&rec.cigar()), rec.pos() + 100);
             // fix qual offset
             let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
             assert_eq!(rec.qual(), &qual[..]);

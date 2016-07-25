@@ -86,12 +86,12 @@ impl Record {
         self.inner_mut().core.pos = pos;
     }
 
-    pub fn end_pos(&self) -> i32 {
+    pub fn end_pos(&self, cigar: &[Cigar]) -> i32 {
         let mut pos = self.pos();
-        for c in self.cigar() {
+        for c in cigar {
             match c {
-                Cigar::Match(l) | Cigar::RefSkip(l) | Cigar::Equal(l) | Cigar::Diff(l) => pos += l as i32,
-                Cigar::Back(l) => pos -= l as i32,
+                &Cigar::Match(l) | &Cigar::RefSkip(l) | &Cigar::Equal(l) | &Cigar::Diff(l) => pos += l as i32,
+                &Cigar::Back(l) => pos -= l as i32,
                 _ => ()
             }
         }
@@ -221,9 +221,13 @@ impl Record {
         self.inner().core.n_cigar as usize
     }
 
+    fn raw_cigar(&self) -> &[u32] {
+        unsafe { slice::from_raw_parts(self.data()[self.qname_len()..].as_ptr() as *const u32, self.cigar_len()) }
+    }
+
     /// Get cigar sequence.
     pub fn cigar(&self) -> Vec<Cigar> {
-        let raw = unsafe { slice::from_raw_parts(self.data()[self.qname_len()..].as_ptr() as *const u32, self.cigar_len()) };
+        let raw = self.raw_cigar();
         raw.iter().map(|&c| {
             let len = c >> 4;
             match c & 0b1111 {
