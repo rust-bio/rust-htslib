@@ -459,8 +459,8 @@ impl HeaderView {
 mod tests {
     extern crate tempdir;
     use super::*;
-    use super::record::*;
-    use super::header::*;
+    use super::record::{Cigar,Aux};
+    use super::header::HeaderRecord;
     use std::str;
 
     fn gold() -> ([&'static [u8]; 6], [u16; 6], [&'static [u8]; 6], [&'static [u8]; 6], [[Cigar; 3]; 6]) {
