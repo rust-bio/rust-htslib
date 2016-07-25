@@ -86,6 +86,18 @@ impl Record {
         self.inner_mut().core.pos = pos;
     }
 
+    pub fn end_pos(&self) -> i32 {
+        let mut pos = self.pos();
+        for c in self.cigar() {
+            match c {
+                Cigar::Match(l) | Cigar::RefSkip(l) | Cigar::Equal(l) | Cigar::Diff(l) => pos += l as i32,
+                Cigar::Back(l) => pos -= l as i32,
+                _ => ()
+            }
+        }
+        pos
+    }
+
     pub fn bin(&self) -> u16 {
         self.inner().core.bin
     }
