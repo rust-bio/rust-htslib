@@ -124,7 +124,17 @@ impl Record {
         }
     }
 
-    /// Add a info tag.
+    /// Add an integer info tag.
+    pub fn push_info_integer(&mut self, tag: &[u8], data: &[i32]) -> Result<(), ()> {
+        self.push_info(tag, data, htslib::vcf::BCF_HT_INT)
+    }
+
+    /// Add a float info tag.
+    pub fn push_info_float(&mut self, tag: &[u8], data: &[f32]) -> Result<(), ()> {
+        self.push_info(tag, data, htslib::vcf::BCF_HT_REAL)
+    }
+
+    /// Add an info tag.
     pub fn push_info<T>(&mut self, tag: &[u8], data: &[T], ht: i32) -> Result<(), ()> {
         assert!(data.len() > 0);
         unsafe {
