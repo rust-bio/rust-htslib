@@ -190,6 +190,7 @@ pub enum ReadError {
 }
 
 impl ReadError {
+    /// Returns true if no record has been read because the end of the file was reached.
     pub fn is_eof(&self) -> bool {
         match self {
             &ReadError::NoMoreRecord => true,
