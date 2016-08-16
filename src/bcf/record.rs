@@ -8,6 +8,8 @@ use std::slice;
 use std::ffi;
 use std::i32;
 use std::f32;
+use std::fmt;
+use std::error::Error;
 
 use htslib;
 
@@ -381,4 +383,22 @@ pub enum TagError {
     UndefinedTag,
     UnexpectedType,
     MissingTag,
+}
+
+
+impl fmt::Display for TagError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.description().fmt(f)
+    }
+}
+
+
+impl Error for TagError {
+    fn description(&self) -> &str {
+        match self {
+            &TagError::UndefinedTag => "tag undefined in header",
+            &TagError::UnexpectedType => "tag type differs from header definition",
+            &TagError::MissingTag => "tag missing from record",
+        }
+    }
 }

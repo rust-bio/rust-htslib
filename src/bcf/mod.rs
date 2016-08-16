@@ -2,6 +2,8 @@
 use std::ffi;
 use std::convert::AsRef;
 use std::path::Path;
+use std::fmt;
+use std::error::Error;
 
 pub mod record;
 pub mod header;
@@ -149,6 +151,22 @@ pub enum BCFError {
 }
 
 
+impl fmt::Display for BCFError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.description().fmt(f)
+    }
+}
+
+
+impl Error for BCFError {
+    fn description(&self) -> &str {
+        match self {
+            &BCFError::InvalidPath => "invalid path"
+        }
+    }
+}
+
+
 /// Wrapper for opening a BCF file.
 fn bcf_open<P: AsRef<Path>>(path: &P, mode: &[u8]) -> Result<*mut htslib::vcf::htsFile, BCFError> {
     if let Some(p) = utils::path_to_cstring(path) {
@@ -169,6 +187,32 @@ fn bcf_open<P: AsRef<Path>>(path: &P, mode: &[u8]) -> Result<*mut htslib::vcf::h
 pub enum ReadError {
     Invalid,
     NoMoreRecord,
+}
+
+impl ReadError {
+    pub fn is_eof(&self) -> bool {
+        match self {
+            &ReadError::NoMoreRecord => true,
+            _ => false
+        }
+    }
+}
+
+
+impl fmt::Display for ReadError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.description().fmt(f)
+    }
+}
+
+
+impl Error for ReadError {
+    fn description(&self) -> &str {
+        match self {
+            &ReadError::Invalid => "invalid record",
+            &ReadError::NoMoreRecord => "no more record"
+        }
+    }
 }
 
 

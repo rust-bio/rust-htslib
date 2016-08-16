@@ -13,6 +13,8 @@ use std::ptr;
 use std::slice;
 use std::convert::AsRef;
 use std::path::Path;
+use std::error::Error;
+use std::fmt;
 
 use htslib;
 use utils;
@@ -361,6 +363,34 @@ pub enum ReadError {
 }
 
 
+impl ReadError {
+    pub fn is_eof(&self) -> bool {
+        match self {
+            &ReadError::NoMoreRecord => true,
+            _ => false
+        }
+    }
+}
+
+
+impl fmt::Display for ReadError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.description().fmt(f)
+    }
+}
+
+
+impl Error for ReadError {
+    fn description(&self) -> &str {
+        match self {
+            &ReadError::Truncated => "truncated record",
+            &ReadError::Invalid => "invalid record",
+            &ReadError::NoMoreRecord => "no more record"
+        }
+    }
+}
+
+
 #[derive(Debug)]
 pub enum IndexError {
     InvalidIndex,
@@ -368,9 +398,42 @@ pub enum IndexError {
 }
 
 
+impl fmt::Display for IndexError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.description().fmt(f)
+    }
+}
+
+
+impl Error for IndexError {
+    fn description(&self) -> &str {
+        match self {
+            &IndexError::InvalidIndex => "invalid index",
+            &IndexError::InvalidPath => "invalid path"
+        }
+    }
+}
+
+
 #[derive(Debug)]
 pub enum BGZFError {
     InvalidPath
+}
+
+
+impl fmt::Display for BGZFError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.description().fmt(f)
+    }
+}
+
+
+impl Error for BGZFError {
+    fn description(&self) -> &str {
+        match self {
+            &BGZFError::InvalidPath => "invalid path"
+        }
+    }
 }
 
 

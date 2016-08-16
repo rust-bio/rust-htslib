@@ -312,8 +312,8 @@ impl Record {
     flag!(is_mate_unmapped, set_mate_unmapped, 8u16);
     flag!(is_reverse, set_reverse, 16u16);
     flag!(is_mate_reverse, set_mate_reverse, 32u16);
-    flag!(is_first_in_pair, set_first_in_pair, 64u16);
-    flag!(is_second_in_pair, set_second_in_pair, 128u16);
+    flag!(is_first_in_template, set_first_in_template, 64u16);
+    flag!(is_last_in_template, set_last_in_template, 128u16);
     flag!(is_secondary, set_secondary, 256u16);
     flag!(is_quality_check_failed, set_quality_check_failed, 512u16);
     flag!(is_duplicate, set_duplicate, 1024u16);
