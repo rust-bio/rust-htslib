@@ -13,8 +13,6 @@ use std::ptr;
 use std::slice;
 use std::convert::AsRef;
 use std::path::Path;
-use std::error::Error;
-use std::fmt;
 
 use htslib;
 use utils;
@@ -182,13 +180,13 @@ impl IndexedReader {
         }
     }
 
-    pub fn seek(&mut self, tid: u32, beg: u32, end: u32) -> Result<(), ()> {
+    pub fn seek(&mut self, tid: u32, beg: u32, end: u32) -> Result<(), SeekError> {
         let itr = unsafe {
             htslib::sam_itr_queryi(self.idx, tid as i32, beg as i32, end as i32)
         };
         if itr.is_null() {
             self.itr = None;
-            Err(())
+            Err(SeekError::Some)
         }
         else {
             self.itr = Some(itr);
@@ -314,9 +312,9 @@ impl Writer {
     /// # Arguments
     ///
     /// * `record` - the record to write
-    pub fn write(&mut self, record: &record::Record) -> Result<(), ()> {
+    pub fn write(&mut self, record: &record::Record) -> Result<(), WriteError> {
         if unsafe { htslib::bam_write1(self.f, record.inner) } == -1 {
-            Err(())
+            Err(WriteError::Some)
         }
         else {
             Ok(())
@@ -355,84 +353,60 @@ impl<'a, R: Read> Iterator for Records<'a, R> {
 }
 
 
-#[derive(Debug)]
-pub enum ReadError {
-    Truncated,
-    Invalid,
-    NoMoreRecord,
-}
-
-
-impl ReadError {
-    /// Returns true if no record has been read because the end of the file was reached.
-    pub fn is_eof(&self) -> bool {
-        match self {
-            &ReadError::NoMoreRecord => true,
-            _ => false
+quick_error! {
+    #[derive(Debug)]
+    pub enum ReadError {
+        Truncated {
+            description("truncated record")
+        }
+        Invalid {
+            description("invalid record")
+        }
+        NoMoreRecord {
+            description("no more record")
         }
     }
 }
 
 
-impl fmt::Display for ReadError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.description().fmt(f)
-    }
-}
-
-
-impl Error for ReadError {
-    fn description(&self) -> &str {
-        match self {
-            &ReadError::Truncated => "truncated record",
-            &ReadError::Invalid => "invalid record",
-            &ReadError::NoMoreRecord => "no more record"
+quick_error! {
+    #[derive(Debug)]
+    pub enum IndexError {
+        InvalidIndex {
+            description("invalid index")
+        }
+        InvalidPath {
+            description("invalid path")
         }
     }
 }
 
 
-#[derive(Debug)]
-pub enum IndexError {
-    InvalidIndex,
-    InvalidPath
-}
-
-
-impl fmt::Display for IndexError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.description().fmt(f)
-    }
-}
-
-
-impl Error for IndexError {
-    fn description(&self) -> &str {
-        match self {
-            &IndexError::InvalidIndex => "invalid index",
-            &IndexError::InvalidPath => "invalid path"
+quick_error! {
+    #[derive(Debug)]
+    pub enum BGZFError {
+        InvalidPath {
+            description("invalid path")
         }
     }
 }
 
 
-#[derive(Debug)]
-pub enum BGZFError {
-    InvalidPath
-}
-
-
-impl fmt::Display for BGZFError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.description().fmt(f)
+quick_error! {
+    #[derive(Debug)]
+    pub enum WriteError {
+        Some {
+            description("error writing record")
+        }
     }
 }
 
 
-impl Error for BGZFError {
-    fn description(&self) -> &str {
-        match self {
-            &BGZFError::InvalidPath => "invalid path"
+quick_error! {
+    #[derive(Debug)]
+    pub enum SeekError {
+        Some {
+            description("error seeking to locus")
         }
     }
 }

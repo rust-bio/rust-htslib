@@ -2,8 +2,6 @@
 use std::ffi;
 use std::convert::AsRef;
 use std::path::Path;
-use std::fmt;
-use std::error::Error;
 
 pub mod record;
 pub mod header;
@@ -105,9 +103,9 @@ impl Writer {
         }
     }
 
-    pub fn write(&mut self, record: &record::Record) -> Result<(), ()> {
+    pub fn write(&mut self, record: &record::Record) -> Result<(), WriteError> {
         if unsafe { htslib::vcf::bcf_write(self.inner, self.header.inner, record.inner) } == -1 {
-            Err(())
+            Err(WriteError::WriteError)
         }
         else {
             Ok(())
@@ -145,23 +143,11 @@ impl<'a> Iterator for Records<'a> {
 }
 
 
-#[derive(Debug)]
-pub enum BCFError {
-    InvalidPath
-}
-
-
-impl fmt::Display for BCFError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.description().fmt(f)
-    }
-}
-
-
-impl Error for BCFError {
-    fn description(&self) -> &str {
-        match self {
-            &BCFError::InvalidPath => "invalid path"
+quick_error! {
+    #[derive(Debug)]
+    pub enum BCFError {
+        InvalidPath {
+            description("invalid path")
         }
     }
 }
@@ -183,11 +169,18 @@ fn bcf_open<P: AsRef<Path>>(path: &P, mode: &[u8]) -> Result<*mut htslib::vcf::h
 }
 
 
-#[derive(Debug)]
-pub enum ReadError {
-    Invalid,
-    NoMoreRecord,
+quick_error! {
+    #[derive(Debug)]
+    pub enum ReadError {
+        Invalid {
+            description("invalid record")
+        }
+        NoMoreRecord {
+            description("no more record")
+        }
+    }
 }
+
 
 impl ReadError {
     /// Returns true if no record has been read because the end of the file was reached.
@@ -200,18 +193,11 @@ impl ReadError {
 }
 
 
-impl fmt::Display for ReadError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.description().fmt(f)
-    }
-}
-
-
-impl Error for ReadError {
-    fn description(&self) -> &str {
-        match self {
-            &ReadError::Invalid => "invalid record",
-            &ReadError::NoMoreRecord => "no more record"
+quick_error! {
+    #[derive(Debug)]
+    pub enum WriteError {
+        WriteError {
+            description("failed to write record")
         }
     }
 }

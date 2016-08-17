@@ -8,8 +8,6 @@ use std::slice;
 use std::ffi;
 use std::i32;
 use std::f32;
-use std::fmt;
-use std::error::Error;
 
 use htslib;
 
@@ -94,20 +92,20 @@ impl Record {
     /// Add an integer format tag. Data is a flattened two-dimensional array.
     /// The first dimension contains one array for each sample.
     /// Returns error if tag is not present in header.
-    pub fn push_format_integer(&mut self, tag: &[u8], data: &[i32]) -> Result<(), ()> {
+    pub fn push_format_integer(&mut self, tag: &[u8], data: &[i32]) -> Result<(), TagWriteError> {
         self.push_format(tag, data, htslib::vcf::BCF_HT_INT)
     }
 
     /// Add a float format tag. Data is a flattened two-dimensional array.
     /// The first dimension contains one array for each sample.
     /// Returns error if tag is not present in header.
-    pub fn push_format_float(&mut self, tag: &[u8], data: &[f32]) -> Result<(), ()> {
+    pub fn push_format_float(&mut self, tag: &[u8], data: &[f32]) -> Result<(), TagWriteError> {
         self.push_format(tag, data, htslib::vcf::BCF_HT_REAL)
     }
 
     /// Add a format tag. Data is a flattened two-dimensional array.
     /// The first dimension contains one array for each sample.
-    fn push_format<T>(&mut self, tag: &[u8], data: &[T], ht: i32) -> Result<(), ()> {
+    fn push_format<T>(&mut self, tag: &[u8], data: &[T], ht: i32) -> Result<(), TagWriteError> {
         assert!(data.len() > 0);
         unsafe {
             if htslib::vcf::bcf_update_format(
@@ -121,23 +119,23 @@ impl Record {
                 Ok(())
             }
             else {
-                Err(())
+                Err(TagWriteError::Some)
             }
         }
     }
 
     /// Add an integer info tag.
-    pub fn push_info_integer(&mut self, tag: &[u8], data: &[i32]) -> Result<(), ()> {
+    pub fn push_info_integer(&mut self, tag: &[u8], data: &[i32]) -> Result<(), TagWriteError> {
         self.push_info(tag, data, htslib::vcf::BCF_HT_INT)
     }
 
     /// Add a float info tag.
-    pub fn push_info_float(&mut self, tag: &[u8], data: &[f32]) -> Result<(), ()> {
+    pub fn push_info_float(&mut self, tag: &[u8], data: &[f32]) -> Result<(), TagWriteError> {
         self.push_info(tag, data, htslib::vcf::BCF_HT_REAL)
     }
 
     /// Add an info tag.
-    pub fn push_info<T>(&mut self, tag: &[u8], data: &[T], ht: i32) -> Result<(), ()> {
+    pub fn push_info<T>(&mut self, tag: &[u8], data: &[T], ht: i32) -> Result<(), TagWriteError> {
         assert!(data.len() > 0);
         unsafe {
             if htslib::vcf::bcf_update_info(
@@ -151,15 +149,15 @@ impl Record {
                 Ok(())
             }
             else {
-                Err(())
+                Err(TagWriteError::Some)
             }
         }
     }
 
     /// Remove unused alleles.
-    pub fn trim_alleles(&mut self) -> Result<(), ()> {
+    pub fn trim_alleles(&mut self) -> Result<(), TrimAllelesError> {
         match unsafe { htslib::vcfutils::bcf_trim_alleles(self.header, self.inner) } {
-            -1 => Err(()),
+            -1 => Err(TrimAllelesError::Some),
             _  => Ok(())
         }
     }
@@ -187,7 +185,7 @@ pub struct Info<'a> {
 
 
 impl<'a> Info<'a> {
-    fn data(&mut self, data_type: i32) -> Result<(usize, i32), TagError> {
+    fn data(&mut self, data_type: i32) -> Result<(usize, i32), TagReadError> {
         let mut n: i32 = 0;
         match unsafe {
             htslib::vcf::bcf_get_info_values(
@@ -199,14 +197,14 @@ impl<'a> Info<'a> {
                 data_type
             )
         } {
-            -1 => Err(TagError::UndefinedTag),
-            -2 => Err(TagError::UnexpectedType),
-            -3 => Err(TagError::MissingTag),
+            -1 => Err(TagReadError::UndefinedTag),
+            -2 => Err(TagReadError::UnexpectedType),
+            -3 => Err(TagReadError::MissingTag),
             ret  => Ok((n as usize, ret)),
         }
     }
 
-    pub fn integer(&mut self) -> Result<&[i32], TagError> {
+    pub fn integer(&mut self) -> Result<&[i32], TagReadError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
             trim_slice(
                 unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) },
@@ -215,13 +213,13 @@ impl<'a> Info<'a> {
         })
     }
 
-    pub fn integer_mut(&mut self) -> Result<&mut [i32], TagError> {
+    pub fn integer_mut(&mut self) -> Result<&mut [i32], TagReadError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
             unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut i32, n) }
         })
     }
 
-    pub fn float(&mut self) -> Result<&[f32], TagError> {
+    pub fn float(&mut self) -> Result<&[f32], TagReadError> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
             trim_slice(
                 unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) },
@@ -230,19 +228,19 @@ impl<'a> Info<'a> {
         })
     }
 
-    pub fn float_mut(&mut self) -> Result<&mut [f32], TagError> {
+    pub fn float_mut(&mut self) -> Result<&mut [f32], TagReadError> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
             unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut f32, n) }
         })
     }
 
-    pub fn flag(&mut self) -> Result<bool, TagError> {
+    pub fn flag(&mut self) -> Result<bool, TagReadError> {
         self.data(htslib::vcf::BCF_HT_FLAG).map(|(_, ret)| {
             ret == 1
         })
     }
 
-    pub fn string(&mut self) -> Result<Vec<&[u8]>, TagError> {
+    pub fn string(&mut self) -> Result<Vec<&[u8]>, TagReadError> {
         self.data(htslib::vcf::BCF_HT_STR).map(|(n, ret)| {
             unsafe {
                 slice::from_raw_parts(self.record.buffer as *const u8, ret as usize)
@@ -253,7 +251,7 @@ impl<'a> Info<'a> {
         })
     }
 
-    pub fn string_mut(&mut self) -> Result<Vec<&mut [u8]>, TagError> {
+    pub fn string_mut(&mut self) -> Result<Vec<&mut [u8]>, TagReadError> {
         self.data(htslib::vcf::BCF_HT_STR).map(|(n, ret)| {
             unsafe {
                 slice::from_raw_parts_mut(self.record.buffer as *mut u8, ret as usize)
@@ -302,7 +300,7 @@ impl<'a> Format<'a> {
         self.inner().n as usize
     }
 
-    fn data(&mut self, data_type: i32) -> Result<(usize, i32), TagError> {
+    fn data(&mut self, data_type: i32) -> Result<(usize, i32), TagReadError> {
         let mut n: i32 = 0;
         match unsafe {
             htslib::vcf::bcf_get_format_values(
@@ -314,14 +312,14 @@ impl<'a> Format<'a> {
                 data_type
             )
         } {
-            -1 => Err(TagError::UndefinedTag),
-            -2 => Err(TagError::UnexpectedType),
-            -3 => Err(TagError::MissingTag),
+            -1 => Err(TagReadError::UndefinedTag),
+            -2 => Err(TagReadError::UnexpectedType),
+            -3 => Err(TagReadError::MissingTag),
             ret  => Ok((n as usize, ret)),
         }
     }
 
-    pub fn integer(&mut self) -> Result<Vec<&[i32]>, TagError> {
+    pub fn integer(&mut self) -> Result<Vec<&[i32]>, TagReadError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts(self.record.buffer as *const i32, n)
@@ -329,7 +327,7 @@ impl<'a> Format<'a> {
         })
     }
 
-    pub fn integer_mut(&mut self) -> Result<Vec<&mut [i32]>, TagError> {
+    pub fn integer_mut(&mut self) -> Result<Vec<&mut [i32]>, TagReadError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts_mut(self.record.buffer as *mut i32, n)
@@ -337,7 +335,7 @@ impl<'a> Format<'a> {
         })
     }
 
-    pub fn float(&mut self) -> Result<Vec<&[f32]>, TagError> {
+    pub fn float(&mut self) -> Result<Vec<&[f32]>, TagReadError> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts(self.record.buffer as *const f32, n)
@@ -345,7 +343,7 @@ impl<'a> Format<'a> {
         })
     }
 
-    pub fn float_mut(&mut self) -> Result<Vec<&mut [f32]>, TagError> {
+    pub fn float_mut(&mut self) -> Result<Vec<&mut [f32]>, TagReadError> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts_mut(self.record.buffer as *mut f32, n)
@@ -353,7 +351,7 @@ impl<'a> Format<'a> {
         })
     }
 
-    pub fn string(&mut self) -> Result<Vec<&[u8]>, TagError> {
+    pub fn string(&mut self) -> Result<Vec<&[u8]>, TagReadError> {
         self.data(htslib::vcf::BCF_HT_STR).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts(self.record.buffer as *const u8, n)
@@ -364,7 +362,7 @@ impl<'a> Format<'a> {
         })
     }
 
-    pub fn string_mut(&mut self) -> Result<Vec<&mut [u8]>, TagError> {
+    pub fn string_mut(&mut self) -> Result<Vec<&mut [u8]>, TagReadError> {
         self.data(htslib::vcf::BCF_HT_STR).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts_mut(self.record.buffer as *mut u8, n)
@@ -378,27 +376,37 @@ unsafe impl<'a> Send for Format<'a> {}
 unsafe impl<'a> Sync for Format<'a> {}
 
 
-#[derive(Debug)]
-pub enum TagError {
-    UndefinedTag,
-    UnexpectedType,
-    MissingTag,
-}
-
-
-impl fmt::Display for TagError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.description().fmt(f)
+quick_error! {
+    #[derive(Debug)]
+    pub enum TagReadError {
+        UndefinedTag {
+            description("tag undefined in header")
+        }
+        UnexpectedType {
+            description("tag type differs from header definition")
+        }
+        MissingTag {
+            description("tag missing from record")
+        }
     }
 }
 
 
-impl Error for TagError {
-    fn description(&self) -> &str {
-        match self {
-            &TagError::UndefinedTag => "tag undefined in header",
-            &TagError::UnexpectedType => "tag type differs from header definition",
-            &TagError::MissingTag => "tag missing from record",
+quick_error! {
+    #[derive(Debug)]
+    pub enum TagWriteError {
+        Some {
+            description("error writing tag to record")
+        }
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug)]
+    pub enum TrimAllelesError {
+        Some {
+            description("error trimming alleles")
         }
     }
 }

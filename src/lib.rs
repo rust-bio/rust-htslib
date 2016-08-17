@@ -61,6 +61,8 @@
 
 extern crate libc;
 extern crate itertools;
+#[macro_use]
+extern crate quick_error;
 
 pub mod htslib;
 pub mod bam;
