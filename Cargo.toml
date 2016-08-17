@@ -8,6 +8,7 @@ readme = "README.md"
 keywords = ["htslib", "bam", "bioinformatics", "pileup", "sequencing"]
 license = "MIT"
 repository = "https://github.com/rust-bio/rust-htslib.git"
+documentation = "http://rust-bio.github.io/rust-htslib"
 
 
 [dependencies]
