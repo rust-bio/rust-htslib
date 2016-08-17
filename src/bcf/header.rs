@@ -33,7 +33,7 @@ impl Header {
         Header { inner: unsafe { htslib::vcf::bcf_hdr_dup(header.inner) }, subset: None }
     }
 
-    pub fn subset_template(header: &HeaderView, samples: &[&[u8]]) -> Result<Self, ()> {
+    pub fn subset_template(header: &HeaderView, samples: &[&[u8]]) -> Result<Self, SubsetError> {
         let mut imap = vec![0; samples.len()];
         let names: Vec<_> = samples.iter().map(|&s| ffi::CString::new(s).unwrap()).collect();
         let name_pointers: Vec<_> = names.iter().map(|s| s.as_ptr() as *mut i8).collect();
@@ -41,7 +41,7 @@ impl Header {
             htslib::vcf::bcf_hdr_subset(header.inner, samples.len() as i32, name_pointers.as_ptr(), imap.as_mut_ptr() as *mut i32)
         };
         if inner.is_null() {
-            Err(())
+            Err(SubsetError::DuplicateSampleName)
         }
         else {
             Ok(Header { inner: inner, subset: Some(imap) })
@@ -112,6 +112,16 @@ impl HeaderView {
             let dict = self.inner().id[htslib::vcf::BCF_DT_CTG as usize];
             let ptr = (*dict.offset(rid as isize)).key;
             ffi::CStr::from_ptr(ptr).to_bytes()
+        }
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug)]
+    pub enum SubsetError {
+        DuplicateSampleName {
+            description("duplicate sample name when subsetting header")
         }
     }
 }

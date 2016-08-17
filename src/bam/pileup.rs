@@ -109,16 +109,16 @@ impl Pileups {
 
 
 impl Iterator for Pileups {
-    type Item = Result<Pileup, ()>;
+    type Item = Result<Pileup, PileupError>;
 
-    fn next(&mut self) -> Option<Result<Pileup, ()>> {
+    fn next(&mut self) -> Option<Result<Pileup, PileupError>> {
         let (mut tid, mut pos, mut depth) = (0i32, 0i32, 0i32);
         let inner = unsafe {
             htslib::bam_plp_auto(self.itr, &mut tid, &mut pos, &mut depth)
         };
 
         match inner.is_null() {
-            true if depth == -1 => Some(Err(())),
+            true if depth == -1 => Some(Err(PileupError::Some)),
             true              => None,
             false             => Some(Ok(
                     Pileup {
@@ -138,6 +138,16 @@ impl Drop for Pileups {
         unsafe {
             htslib::bam_plp_reset(self.itr);
             htslib::bam_plp_destroy(self.itr);
+        }
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug)]
+    pub enum PileupError {
+        Some {
+            description("error generating pileup")
         }
     }
 }
