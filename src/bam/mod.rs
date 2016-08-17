@@ -369,6 +369,17 @@ quick_error! {
 }
 
 
+impl ReadError {
+    /// Returns true if no record has been read because the end of the file was reached.
+    pub fn is_eof(&self) -> bool {
+        match self {
+            &ReadError::NoMoreRecord => true,
+            _ => false
+        }
+    }
+}
+
+
 quick_error! {
     #[derive(Debug)]
     pub enum IndexError {
