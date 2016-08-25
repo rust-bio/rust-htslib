@@ -22,6 +22,13 @@ pub const BCF_DT_ID: ::libc::c_int = 0;
 pub const BCF_DT_CTG: ::libc::c_int = 1;
 pub const BCF_DT_SAMPLE: ::libc::c_int = 2;
 
+pub const BCF_VL_FIXED: ::libc::c_int = 0;
+pub const BCF_VL_VAR: ::libc::c_int = 1;
+pub const BCF_VL_A: ::libc::c_int = 2;
+pub const BCF_VL_G: ::libc::c_int = 3;
+pub const BCF_VL_R: ::libc::c_int = 4;
+
+
 extern "C" {
     pub fn bcf_read1_core(fp: *mut BGZF, v: *mut bcf1_t) -> ::libc::c_int;
 }

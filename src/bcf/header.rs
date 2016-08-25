@@ -115,16 +115,16 @@ impl HeaderView {
         }
     }
 
-    pub fn info_type(&self, tag: &[u8]) -> Result<TagType, TagTypeError> {
+    pub fn info_type(&self, tag: &[u8]) -> Result<(TagType, TagLength), TagTypeError> {
         self.tag_type(tag, htslib::vcf::BCF_HL_INFO)
     }
 
-    pub fn format_type(&self, tag: &[u8]) -> Result<TagType, TagTypeError> {
+    pub fn format_type(&self, tag: &[u8]) -> Result<(TagType, TagLength), TagTypeError> {
         self.tag_type(tag, htslib::vcf::BCF_HL_FMT)
     }
 
-    fn tag_type(&self, tag: &[u8], hdr_type: ::libc::c_int) -> Result<TagType, TagTypeError> {
-        let t = unsafe {
+    fn tag_type(&self, tag: &[u8], hdr_type: ::libc::c_int) -> Result<(TagType, TagLength), TagTypeError> {
+        let (_type, length) = unsafe {
             let id = htslib::vcf::bcf_hdr_id2int(
                 self.inner,
                 htslib::vcf::BCF_DT_ID,
@@ -133,15 +133,25 @@ impl HeaderView {
             let n = (*self.inner).n[htslib::vcf::BCF_DT_ID as usize] as usize;
             let entry = slice::from_raw_parts((*self.inner).id[htslib::vcf::BCF_DT_ID as usize], n);
             let d = (*entry[id as usize].val).info[hdr_type as usize];
-            d >> 4 & 0xf // get type as int
+            (d >> 4 & 0xf, d >> 8 & 0xf)
         };
-        match t as ::libc::c_int {
-            htslib::vcf::BCF_HT_FLAG => Ok(TagType::Flag),
-            htslib::vcf::BCF_HT_INT => Ok(TagType::Integer),
-            htslib::vcf::BCF_HT_REAL => Ok(TagType::Float),
-            htslib::vcf::BCF_HT_STR => Ok(TagType::String),
-            _ => Err(TagTypeError::UnexpectedTagType)
-        }
+        let _type = match _type as ::libc::c_int {
+            htslib::vcf::BCF_HT_FLAG => TagType::Flag,
+            htslib::vcf::BCF_HT_INT => TagType::Integer,
+            htslib::vcf::BCF_HT_REAL => TagType::Float,
+            htslib::vcf::BCF_HT_STR => TagType::String,
+            _ => return Err(TagTypeError::UnexpectedTagType)
+        };
+        let length = match length as ::libc::c_int {
+            htslib::vcf::BCF_VL_FIXED => TagLength::Fixed,
+            htslib::vcf::BCF_VL_VAR => TagLength::Variable,
+            htslib::vcf::BCF_VL_A => TagLength::AltAlleles,
+            htslib::vcf::BCF_VL_R => TagLength::Alleles,
+            htslib::vcf::BCF_VL_G => TagLength::Genotypes,
+            _ => return Err(TagTypeError::UnexpectedTagType)
+        };
+
+        Ok((_type, length))
     }
 }
 
@@ -150,6 +160,15 @@ pub enum TagType {
     Integer,
     Float,
     String
+}
+
+
+pub enum TagLength {
+    Fixed,
+    AltAlleles,
+    Alleles,
+    Genotypes,
+    Variable
 }
 
 
