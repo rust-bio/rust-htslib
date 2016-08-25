@@ -114,6 +114,42 @@ impl HeaderView {
             ffi::CStr::from_ptr(ptr).to_bytes()
         }
     }
+
+    pub fn info_type(&self, tag: &[u8]) -> Result<TagType, TagTypeError> {
+        self.tag_type(tag, htslib::vcf::BCF_HL_INFO)
+    }
+
+    pub fn format_type(&self, tag: &[u8]) -> Result<TagType, TagTypeError> {
+        self.tag_type(tag, htslib::vcf::BCF_HL_FMT)
+    }
+
+    fn tag_type(&self, tag: &[u8], hdr_type: ::libc::c_int) -> Result<TagType, TagTypeError> {
+        let t = unsafe {
+            let id = htslib::vcf::bcf_hdr_id2int(
+                self.inner,
+                htslib::vcf::BCF_DT_ID,
+                ffi::CString::new(tag).unwrap().as_ptr() as *mut i8
+            );
+            let n = (*self.inner).n[htslib::vcf::BCF_DT_ID as usize] as usize;
+            let entry = slice::from_raw_parts((*self.inner).id[htslib::vcf::BCF_DT_ID as usize], n);
+            let d = (*entry[id as usize].val).info[hdr_type as usize];
+            d >> 4 & 0xf // get type as int
+        };
+        match t as ::libc::c_int {
+            htslib::vcf::BCF_HT_FLAG => Ok(TagType::Flag),
+            htslib::vcf::BCF_HT_INT => Ok(TagType::Integer),
+            htslib::vcf::BCF_HT_REAL => Ok(TagType::Float),
+            htslib::vcf::BCF_HT_STR => Ok(TagType::String),
+            _ => Err(TagTypeError::UnexpectedTagType)
+        }
+    }
+}
+
+pub enum TagType {
+    Flag,
+    Integer,
+    Float,
+    String
 }
 
 
@@ -122,6 +158,16 @@ quick_error! {
     pub enum SubsetError {
         DuplicateSampleName {
             description("duplicate sample name when subsetting header")
+        }
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug)]
+    pub enum TagTypeError {
+        UnexpectedTagType {
+            description("unexpected tag type in header")
         }
     }
 }
