@@ -14,11 +14,6 @@ pub use bcf::header::Header;
 pub use bcf::record::Record;
 
 
-pub const MISSING_FLOAT: f32 = 0x7F800001 as f32;
-#[allow(overflowing_literals)]
-pub const MISSING_INTEGER: i32 = 0x80000000;
-
-
 pub struct Reader {
     inner: *mut htslib::vcf::htsFile,
     pub header: HeaderView,
@@ -225,9 +220,9 @@ mod tests {
             assert_eq!(record.rid().expect("Error reading rid."), 0);
             assert_eq!(record.pos(), 10021 + i as u32);
             assert_eq!(record.qual(), 0f32);
-            assert_eq!(record.info(b"MQ0F").float().ok().expect("Error reading info."), [1.0]);
+            assert_eq!(record.info(b"MQ0F").float().ok().expect("Error reading info.").expect("Missing tag"), [1.0]);
             if i == 59 {
-                assert_eq!(record.info(b"SGB").float().ok().expect("Error reading info."), [-0.379885]);
+                assert_eq!(record.info(b"SGB").float().ok().expect("Error reading info.").expect("Missing tag"), [-0.379885]);
             }
             // the artificial "not observed" allele is present in each record.
             assert_eq!(record.alleles().iter().last().unwrap(), b"<X>");
@@ -279,7 +274,7 @@ mod tests {
         for (i, rec) in vcf.records().enumerate() {
             println!("record {}", i);
             let mut record = rec.ok().expect("Error reading record.");
-            assert_eq!(record.info(b"S1").string().ok().expect("Error reading string.")[0], format!("string{}", i + 1).as_bytes());
+            assert_eq!(record.info(b"S1").string().ok().expect("Error reading string.").expect("Missing tag")[0], format!("string{}", i + 1).as_bytes());
             println!("{}", String::from_utf8_lossy(record.format(b"FS1").string().ok().expect("Error reading string.")[0]));
             assert_eq!(record.format(b"FS1").string().ok().expect("Error reading string.")[0], fs1[i]);
         }
@@ -292,7 +287,7 @@ mod tests {
         let f1 = [false, true];
         for (i, rec) in vcf.records().enumerate() {
             let mut record = rec.ok().expect("Error reading record.");
-            assert_eq!(record.info(b"F1").float().ok().expect("Error reading float.")[0].is_nan(), f1[i]);
+            assert_eq!(record.info(b"F1").float().ok().expect("Error reading float.").expect("Missing tag")[0].is_nan(), f1[i]);
             assert_eq!(record.format(b"FN4").integer().ok().expect("Error reading integer.")[1], fn4[i]);
             println!("{:?}", record.format(b"FF4").float().ok().expect("Error reading float.")[1]);
             assert!(record.format(b"FF4").float().ok().expect("Error reading float.")[1].iter().all(|v| v.is_nan()));
