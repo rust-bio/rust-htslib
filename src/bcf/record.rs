@@ -8,6 +8,8 @@ use std::slice;
 use std::ffi;
 use std::i32;
 use std::f32;
+use std::ops::Deref;
+use std::fmt;
 
 use itertools::Itertools;
 
@@ -86,10 +88,13 @@ impl Record {
         self.inner().n_allele
     }
 
-    /// Get genotypes as pair of allele indices, pointing to first and second allele (counting starts from ref allele 0).
-    pub fn genotypes(&mut self) -> Result<Vec<(i32, i32)>, TagReadError> {
+    /// Get genotypes as vector of vectors of `GenotypeAllele` indices.
+    pub fn genotypes(&mut self) -> Result<Vec<Vec<GenotypeAllele>>, TagReadError> {
         self.format(b"GT").integer().map(|values| {
-            values.into_iter().map(|igt| bcf_gt2alleles(igt[0])).collect_vec()
+            values.into_iter().map(|igt| {
+                let (i, j) = bcf_gt2alleles(igt[0]);
+                vec![GenotypeAllele::from_encoded(i), GenotypeAllele::from_encoded(j)]
+            }).collect_vec()
         })
     }
 
@@ -169,6 +174,43 @@ impl Record {
             -1 => Err(TrimAllelesError::Some),
             _  => Ok(())
         }
+    }
+}
+
+
+/// Phased or unphased alleles, represented as indices.
+pub enum GenotypeAllele {
+    Unphased(i32),
+    Phased(i32)
+}
+
+
+impl GenotypeAllele {
+    /// Decode given integer according to BCF standard.
+    pub fn from_encoded(encoded: i32) -> Self {
+        match encoded & 1 {
+            1 => GenotypeAllele::Phased((encoded >> 1) - 1),
+            0 => GenotypeAllele::Unphased((encoded >> 1) - 1),
+            _ => panic!("unexpected phasing type")
+        }
+    }
+}
+
+
+impl Deref for GenotypeAllele {
+    type Target = i32;
+    fn deref(&self) -> &Self::Target {
+        match self {
+            &GenotypeAllele::Unphased(ref i) => i,
+            &GenotypeAllele::Phased(ref i) => i
+        }
+    }
+}
+
+
+impl fmt::Display for GenotypeAllele {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", *self)
     }
 }
 
