@@ -242,7 +242,7 @@ pub struct Genotypes<'a> {
 impl<'a> Genotypes<'a> {
 
     /// Get genotype of ith sample. So far, only supports diploid genotypes.
-    pub fn get(&mut self, i: usize) -> Genotype {
+    pub fn get(&self, i: usize) -> Genotype {
         let igt = self.encoded[i];
         let (a, b) = bcf_gt2alleles(igt[0]);
         Genotype(vec![GenotypeAllele::from_encoded(a), GenotypeAllele::from_encoded(b)])
