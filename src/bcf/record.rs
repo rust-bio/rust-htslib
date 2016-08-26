@@ -9,6 +9,8 @@ use std::ffi;
 use std::i32;
 use std::f32;
 
+use itertools::Itertools;
+
 use htslib;
 
 pub const MISSING_INTEGER: i32 = i32::MIN;
@@ -82,6 +84,13 @@ impl Record {
 
     pub fn allele_count(&self) -> u16 {
         self.inner().n_allele
+    }
+
+    /// Get genotypes as pair of allele indices, pointing to first and second allele (counting starts from ref allele 0).
+    pub fn genotypes(&mut self) -> Result<Vec<(i32, i32)>, TagReadError> {
+        self.format(b"GT").integer().map(|values| {
+            values.into_iter().map(|igt| bcf_gt2alleles(igt[0])).collect_vec()
+        })
     }
 
     /// Get the value of the given format tag for each sample.
@@ -369,6 +378,19 @@ impl<'a> Format<'a> {
             }.chunks_mut(self.values_per_sample()).collect()
         })
     }
+}
+
+
+fn bcf_gt2alleles(igt: i32) -> (i32, i32) {
+    let mut k = 0;
+    let mut dk = 1;
+    while k<igt {
+        dk += 1;
+        k += dk;
+    }
+    let b = dk - 1;
+    let a = igt - k + b;
+    (a, b)
 }
 
 
