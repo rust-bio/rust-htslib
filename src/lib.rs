@@ -65,6 +65,8 @@ extern crate itertools;
 extern crate quick_error;
 #[macro_use]
 extern crate newtype_derive;
+#[macro_use]
+extern crate custom_derive;
 
 pub mod htslib;
 pub mod bam;

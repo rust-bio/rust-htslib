@@ -16,6 +16,7 @@ libc = "=0.2.*"
 itertools = "=0.4.*"
 quick-error = "1.1.*"
 newtype_derive = "0.1.*"
+custom_derive = "0.1.*"
 
 
 [dev-dependencies]

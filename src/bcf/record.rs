@@ -11,8 +11,6 @@ use std::f32;
 use std::ops::Deref;
 use std::fmt;
 
-use itertools::Itertools;
-
 use htslib;
 
 pub const MISSING_INTEGER: i32 = i32::MIN;
@@ -88,13 +86,10 @@ impl Record {
         self.inner().n_allele
     }
 
-    /// Get genotypes as vector of vectors of `GenotypeAllele` indices.
-    pub fn genotypes(&mut self) -> Result<Vec<Vec<GenotypeAllele>>, TagReadError> {
-        self.format(b"GT").integer().map(|values| {
-            values.into_iter().map(|igt| {
-                let (i, j) = bcf_gt2alleles(igt[0]);
-                vec![GenotypeAllele::from_encoded(i), GenotypeAllele::from_encoded(j)]
-            }).collect_vec()
+    /// Get genotypes as vector of one `Genotype` per sample.
+    pub fn genotypes(&mut self) -> Result<Genotypes, TagReadError> {
+        Ok(Genotypes {
+            encoded: try!(self.format(b"GT").integer())
         })
     }
 
@@ -215,6 +210,46 @@ impl fmt::Display for GenotypeAllele {
 }
 
 
+custom_derive! {
+    /// Genotype representation as a vector of `GenotypeAllele`.
+    #[derive(NewtypeDeref)]
+    pub struct Genotype(Vec<GenotypeAllele>);
+}
+
+
+impl fmt::Display for Genotype {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let alleles = &*self;
+        try!(write!(f, "{}", alleles[0]));
+        for a in &alleles[1..] {
+            let sep = match a {
+                &GenotypeAllele::Phased(_) => '|',
+                &GenotypeAllele::Unphased(_) => '/'
+            };
+            try!(write!(f, "{}{}", sep, a));
+        }
+        Ok(())
+    }
+}
+
+
+/// Lazy representation of genotypes, that does no computation until a particular genotype is queried.
+pub struct Genotypes<'a> {
+    encoded: Vec<&'a [i32]>
+}
+
+
+impl<'a> Genotypes<'a> {
+
+    /// Get genotype of ith sample. So far, only supports diploid genotypes.
+    pub fn get(&mut self, i: usize) -> Genotype {
+        let igt = self.encoded[i];
+        let (a, b) = bcf_gt2alleles(igt[0]);
+        Genotype(vec![GenotypeAllele::from_encoded(a), GenotypeAllele::from_encoded(b)])
+    }
+}
+
+
 impl Drop for Record {
     fn drop(&mut self) {
         if !self.buffer.is_null() {
@@ -255,7 +290,7 @@ impl<'a> Info<'a> {
         }
     }
 
-    pub fn integer(&mut self) -> Result<&[i32], TagReadError> {
+    pub fn integer(&mut self) -> Result<&'a [i32], TagReadError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
             trim_slice(
                 unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) },
@@ -264,13 +299,13 @@ impl<'a> Info<'a> {
         })
     }
 
-    pub fn integer_mut(&mut self) -> Result<&mut [i32], TagReadError> {
+    pub fn integer_mut(&mut self) -> Result<&'a mut [i32], TagReadError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
             unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut i32, n) }
         })
     }
 
-    pub fn float(&mut self) -> Result<&[f32], TagReadError> {
+    pub fn float(&mut self) -> Result<&'a [f32], TagReadError> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
             trim_slice(
                 unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) },
@@ -279,7 +314,7 @@ impl<'a> Info<'a> {
         })
     }
 
-    pub fn float_mut(&mut self) -> Result<&mut [f32], TagReadError> {
+    pub fn float_mut(&mut self) -> Result<&'a mut [f32], TagReadError> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
             unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut f32, n) }
         })
@@ -291,7 +326,7 @@ impl<'a> Info<'a> {
         })
     }
 
-    pub fn string(&mut self) -> Result<Vec<&[u8]>, TagReadError> {
+    pub fn string(&mut self) -> Result<Vec<&'a [u8]>, TagReadError> {
         self.data(htslib::vcf::BCF_HT_STR).map(|(n, ret)| {
             unsafe {
                 slice::from_raw_parts(self.record.buffer as *const u8, ret as usize)
@@ -302,7 +337,7 @@ impl<'a> Info<'a> {
         })
     }
 
-    pub fn string_mut(&mut self) -> Result<Vec<&mut [u8]>, TagReadError> {
+    pub fn string_mut(&mut self) -> Result<Vec<&'a mut [u8]>, TagReadError> {
         self.data(htslib::vcf::BCF_HT_STR).map(|(n, ret)| {
             unsafe {
                 slice::from_raw_parts_mut(self.record.buffer as *mut u8, ret as usize)
@@ -370,7 +405,7 @@ impl<'a> Format<'a> {
         }
     }
 
-    pub fn integer(&mut self) -> Result<Vec<&[i32]>, TagReadError> {
+    pub fn integer(&mut self) -> Result<Vec<&'a [i32]>, TagReadError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts(self.record.buffer as *const i32, n)
@@ -378,7 +413,7 @@ impl<'a> Format<'a> {
         })
     }
 
-    pub fn integer_mut(&mut self) -> Result<Vec<&mut [i32]>, TagReadError> {
+    pub fn integer_mut(&mut self) -> Result<Vec<&'a mut [i32]>, TagReadError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts_mut(self.record.buffer as *mut i32, n)
@@ -386,7 +421,7 @@ impl<'a> Format<'a> {
         })
     }
 
-    pub fn float(&mut self) -> Result<Vec<&[f32]>, TagReadError> {
+    pub fn float(&mut self) -> Result<Vec<&'a [f32]>, TagReadError> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts(self.record.buffer as *const f32, n)
@@ -394,7 +429,7 @@ impl<'a> Format<'a> {
         })
     }
 
-    pub fn float_mut(&mut self) -> Result<Vec<&mut [f32]>, TagReadError> {
+    pub fn float_mut(&mut self) -> Result<Vec<&'a mut [f32]>, TagReadError> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts_mut(self.record.buffer as *mut f32, n)
@@ -402,7 +437,7 @@ impl<'a> Format<'a> {
         })
     }
 
-    pub fn string(&mut self) -> Result<Vec<&[u8]>, TagReadError> {
+    pub fn string(&mut self) -> Result<Vec<&'a [u8]>, TagReadError> {
         self.data(htslib::vcf::BCF_HT_STR).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts(self.record.buffer as *const u8, n)
@@ -413,7 +448,7 @@ impl<'a> Format<'a> {
         })
     }
 
-    pub fn string_mut(&mut self) -> Result<Vec<&mut [u8]>, TagReadError> {
+    pub fn string_mut(&mut self) -> Result<Vec<&'a mut [u8]>, TagReadError> {
         self.data(htslib::vcf::BCF_HT_STR).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts_mut(self.record.buffer as *mut u8, n)
