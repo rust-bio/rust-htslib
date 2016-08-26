@@ -297,7 +297,7 @@ mod tests {
     #[test]
     fn test_genotypes() {
         let vcf = Reader::new(&"test/test_string.vcf").ok().expect("Error opening file.");
-        let expected = ["./1", "1|1", "0/1", "0|1", "1/1", "1/1"];
+        let expected = ["./1", "1|1", "0/1", "0|1", "1|.", "1/1"];
         for (rec, exp_gt) in vcf.records().zip(expected.into_iter()) {
             let mut rec = rec.ok().expect("Error reading record.");
             let genotypes = rec.genotypes().expect("Error reading genotypes");

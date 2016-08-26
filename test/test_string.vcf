@@ -11,5 +11,5 @@
 19	3113255	rs2345	G	GC	.	PASS	S1=string2;N1=2;F1=2.0	GT:FS1:FN1	1|1:LongString2:1	1/1:ss2:2
 19	3113259	rs2345	G	GC	.	PASS	S1=string3;N1=3;F1=3.0	GT:FS1:FN1	0/1:.:1	1/1:ss3:2
 19	3113262	rs2345	G	GC	.	PASS	S1=string4;N1=4;F1=4.0	GT:FS1:FN1	0|1:LongString4:1	1/1:.:2
-19	3113268	rs2345	G	GC	.	PASS	S1=string5;N1=5;F1=5.0	GT:FS1:FN1	1/1:evenlength:1	1/1:veenlength:2
+19	3113268	rs2345	G	GC	.	PASS	S1=string5;N1=5;F1=5.0	GT:FS1:FN1	1|.:evenlength:1	1/1:veenlength:2
 19	3113272	rs2345	G	GC	.	PASS	S1=string6;N1=6;F1=6.0	GT:FS1:FN1	1/1:ss6:1	1/1:longstring6:2

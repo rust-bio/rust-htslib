@@ -179,17 +179,19 @@ impl Record {
 pub enum GenotypeAllele {
     Unphased(i32),
     Phased(i32),
-    Missing
+    UnphasedMissing,
+    PhasedMissing
 }
 
 
 impl GenotypeAllele {
     /// Decode given integer according to BCF standard.
     pub fn from_encoded(encoded: i32) -> Self {
-        match encoded & 1 {
-            _ if encoded == 0 => GenotypeAllele::Missing,
-            1 => GenotypeAllele::Phased((encoded >> 1) - 1),
-            0 => GenotypeAllele::Unphased((encoded >> 1) - 1),
+        match (encoded, encoded & 1) {
+            (0, 0) => GenotypeAllele::UnphasedMissing,
+            (1, 1) => GenotypeAllele::PhasedMissing,
+            (e, 1) => GenotypeAllele::Phased((e >> 1) - 1),
+            (e, 0) => GenotypeAllele::Unphased((e >> 1) - 1),
             _ => panic!("unexpected phasing type")
         }
     }
@@ -198,7 +200,8 @@ impl GenotypeAllele {
         match self {
             &GenotypeAllele::Unphased(i) => Some(i as u32),
             &GenotypeAllele::Phased(i) => Some(i as u32),
-            &GenotypeAllele::Missing => None
+            &GenotypeAllele::UnphasedMissing => None,
+            &GenotypeAllele::PhasedMissing => None
         }
     }
 }
@@ -229,7 +232,8 @@ impl fmt::Display for Genotype {
             let sep = match a {
                 &GenotypeAllele::Phased(_) => '|',
                 &GenotypeAllele::Unphased(_) => '/',
-                &GenotypeAllele::Missing => '/'
+                &GenotypeAllele::UnphasedMissing => '/',
+                &GenotypeAllele::PhasedMissing => '|'
             };
             try!(write!(f, "{}{}", sep, a));
         }
