@@ -14,6 +14,11 @@ pub use bcf::header::Header;
 pub use bcf::record::Record;
 
 
+pub const MISSING_FLOAT: f32 = 0x7F800001 as f32;
+#[allow(overflowing_literals)]
+pub const MISSING_INTEGER: i32 = 0x80000000;
+
+
 pub struct Reader {
     inner: *mut htslib::vcf::htsFile,
     pub header: HeaderView,
