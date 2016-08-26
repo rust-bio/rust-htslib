@@ -8,8 +8,9 @@ use std::slice;
 use std::ffi;
 use std::i32;
 use std::f32;
-use std::ops::Deref;
 use std::fmt;
+
+use itertools::Itertools;
 
 use htslib;
 
@@ -174,9 +175,11 @@ impl Record {
 
 
 /// Phased or unphased alleles, represented as indices.
+#[derive(Debug)]
 pub enum GenotypeAllele {
     Unphased(i32),
-    Phased(i32)
+    Phased(i32),
+    Missing
 }
 
 
@@ -184,20 +187,18 @@ impl GenotypeAllele {
     /// Decode given integer according to BCF standard.
     pub fn from_encoded(encoded: i32) -> Self {
         match encoded & 1 {
+            _ if encoded == 0 => GenotypeAllele::Missing,
             1 => GenotypeAllele::Phased((encoded >> 1) - 1),
             0 => GenotypeAllele::Unphased((encoded >> 1) - 1),
             _ => panic!("unexpected phasing type")
         }
     }
-}
 
-
-impl Deref for GenotypeAllele {
-    type Target = i32;
-    fn deref(&self) -> &Self::Target {
+    pub fn index(&self) -> Option<u32> {
         match self {
-            &GenotypeAllele::Unphased(ref i) => i,
-            &GenotypeAllele::Phased(ref i) => i
+            &GenotypeAllele::Unphased(i) => Some(i as u32),
+            &GenotypeAllele::Phased(i) => Some(i as u32),
+            &GenotypeAllele::Missing => None
         }
     }
 }
@@ -205,26 +206,30 @@ impl Deref for GenotypeAllele {
 
 impl fmt::Display for GenotypeAllele {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", *self)
+        match self.index() {
+            Some(a) => write!(f, "{}", a),
+            None => write!(f, ".")
+        }
     }
 }
 
 
 custom_derive! {
     /// Genotype representation as a vector of `GenotypeAllele`.
-    #[derive(NewtypeDeref)]
+    #[derive(NewtypeDeref, Debug)]
     pub struct Genotype(Vec<GenotypeAllele>);
 }
 
 
 impl fmt::Display for Genotype {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let alleles = &*self;
+        let &Genotype(ref alleles) = self;
         try!(write!(f, "{}", alleles[0]));
         for a in &alleles[1..] {
             let sep = match a {
                 &GenotypeAllele::Phased(_) => '|',
-                &GenotypeAllele::Unphased(_) => '/'
+                &GenotypeAllele::Unphased(_) => '/',
+                &GenotypeAllele::Missing => '/'
             };
             try!(write!(f, "{}{}", sep, a));
         }
@@ -234,6 +239,7 @@ impl fmt::Display for Genotype {
 
 
 /// Lazy representation of genotypes, that does no computation until a particular genotype is queried.
+#[derive(Debug)]
 pub struct Genotypes<'a> {
     encoded: Vec<&'a [i32]>
 }
@@ -244,8 +250,8 @@ impl<'a> Genotypes<'a> {
     /// Get genotype of ith sample. So far, only supports diploid genotypes.
     pub fn get(&self, i: usize) -> Genotype {
         let igt = self.encoded[i];
-        let (a, b) = bcf_gt2alleles(igt[0]);
-        Genotype(vec![GenotypeAllele::from_encoded(a), GenotypeAllele::from_encoded(b)])
+        let gt = Genotype(igt.into_iter().map(|&e| GenotypeAllele::from_encoded(e)).collect_vec());
+        gt
     }
 }
 
@@ -455,19 +461,6 @@ impl<'a> Format<'a> {
             }.chunks_mut(self.values_per_sample()).collect()
         })
     }
-}
-
-
-fn bcf_gt2alleles(igt: i32) -> (i32, i32) {
-    let mut k = 0;
-    let mut dk = 1;
-    while k<igt {
-        dk += 1;
-        k += dk;
-    }
-    let b = dk - 1;
-    let a = igt - k + b;
-    (a, b)
 }
 
 
