@@ -6,6 +6,7 @@
 
 use std::slice;
 use std::ffi;
+use std::str;
 
 use htslib;
 
@@ -115,6 +116,19 @@ impl HeaderView {
         }
     }
 
+    pub fn name2rid(&self, name: &[u8]) -> Result<u32, RidError> {
+        unsafe {
+            match htslib::vcf::bcf_hdr_id2int(
+                self.inner,
+                htslib::vcf::BCF_DT_CTG,
+                ffi::CString::new(name).unwrap().as_ptr() as *mut i8
+            ) {
+                -1 => Err(RidError::UnknownSequence(str::from_utf8(name).unwrap().to_owned())),
+                i  => Ok(i as u32)
+            }
+        }
+    }
+
     pub fn info_type(&self, tag: &[u8]) -> Result<(TagType, TagLength), TagTypeError> {
         self.tag_type(tag, htslib::vcf::BCF_HL_INFO)
     }
@@ -169,6 +183,17 @@ pub enum TagLength {
     Alleles,
     Genotypes,
     Variable
+}
+
+
+quick_error! {
+    #[derive(Debug)]
+    pub enum RidError {
+        UnknownSequence(name: String) {
+            description("unknown sequence")
+            display("sequence {} not found in header", name)
+        }
+    }
 }
 
 
