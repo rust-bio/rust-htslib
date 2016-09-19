@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `Writer` struct in crate `rust_htslib`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, Writer">
+
+    <title>rust_htslib::bcf::Writer - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'><a href='../index.html'>rust_htslib</a>::<wbr><a href='index.html'>bcf</a></p><script>window.sidebarCurrent = {name: 'Writer', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='../index.html'>rust_htslib</a>::<wbr><a href='index.html'>bcf</a>::<wbr><a class='struct' href=''>Writer</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-4306' class='srclink' href='../../src/rust_htslib/src/bcf/mod.rs.html#60-64' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct Writer {
+    pub header: <a class='struct' href='../../rust_htslib/bcf/header/struct.HeaderView.html' title='rust_htslib::bcf::header::HeaderView'>HeaderView</a>,
+    // some fields omitted
+}</pre><h2 class='fields'>Fields</h2><span id='structfield.header' class='structfield'>
+                           <span id='header.v' class='invisible'>
+                           <code>header: <a class='struct' href='../../rust_htslib/bcf/header/struct.HeaderView.html' title='rust_htslib::bcf::header::HeaderView'>HeaderView</a></code>
+                           </span></span><span class='stab '></span><h2 id='methods'>Methods</h2><h3 class='impl'><span class='in-band'><code>impl <a class='struct' href='../../rust_htslib/bcf/struct.Writer.html' title='rust_htslib::bcf::Writer'>Writer</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-4311' class='srclink' href='../../src/rust_htslib/src/bcf/mod.rs.html#70-114' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.new' class='method'><span id='new.v' class='invisible'><code>fn <a href='#method.new' class='fnname'>new</a>&lt;P:&nbsp;<a class='trait' href='https://doc.rust-lang.org/nightly/core/convert/trait.AsRef.html' title='core::convert::AsRef'>AsRef</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/std/path/struct.Path.html' title='std::path::Path'>Path</a>&gt;&gt;(path: &amp;P, header: &amp;<a class='struct' href='../../rust_htslib/bcf/header/struct.Header.html' title='rust_htslib::bcf::header::Header'>Header</a>, uncompressed: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a>, vcf: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a>) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;Self,&nbsp;<a class='enum' href='../../rust_htslib/bcf/enum.BCFError.html' title='rust_htslib::bcf::BCFError'>BCFError</a>&gt;</code></span></h4>
+<h4 id='method.translate' class='method'><span id='translate.v' class='invisible'><code>fn <a href='#method.translate' class='fnname'>translate</a>(&amp;mut self, record: &amp;mut <a class='struct' href='../../rust_htslib/bcf/record/struct.Record.html' title='rust_htslib::bcf::record::Record'>Record</a>)</code></span></h4>
+<div class='docblock'><p>Translate record to header of this writer.</p>
+</div><h4 id='method.subset' class='method'><span id='subset.v' class='invisible'><code>fn <a href='#method.subset' class='fnname'>subset</a>(&amp;mut self, record: &amp;mut <a class='struct' href='../../rust_htslib/bcf/record/struct.Record.html' title='rust_htslib::bcf::record::Record'>Record</a>)</code></span></h4>
+<div class='docblock'><p>Subset samples of record to match header of this writer.</p>
+</div><h4 id='method.write' class='method'><span id='write.v' class='invisible'><code>fn <a href='#method.write' class='fnname'>write</a>(&amp;mut self, record: &amp;<a class='struct' href='../../rust_htslib/bcf/record/struct.Record.html' title='rust_htslib::bcf::record::Record'>Record</a>) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>,&nbsp;<a class='enum' href='../../rust_htslib/bcf/enum.WriteError.html' title='rust_htslib::bcf::WriteError'>WriteError</a>&gt;</code></span></h4>
+</div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Send.html' title='core::marker::Send'>Send</a> for <a class='struct' href='../../rust_htslib/bcf/struct.Writer.html' title='rust_htslib::bcf::Writer'>Writer</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-4310' class='srclink' href='../../src/rust_htslib/src/bcf/mod.rs.html#67' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html' title='core::ops::Drop'>Drop</a> for <a class='struct' href='../../rust_htslib/bcf/struct.Writer.html' title='rust_htslib::bcf::Writer'>Writer</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-4333' class='srclink' href='../../src/rust_htslib/src/bcf/mod.rs.html#117-124' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.drop' class='method'><span id='drop.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html#tymethod.drop' class='fnname'>drop</a>(&amp;mut self)</code></span></h4>
+<div class='docblock'><p>A method called when the value goes out of scope. <a href="https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html#tymethod.drop">Read more</a></p>
+</div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "rust_htslib";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../../jquery.js"></script>
+    <script src="../../main.js"></script>
+    
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>

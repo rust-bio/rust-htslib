@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `newtype_derive` crate.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, newtype_derive">
+
+    <title>newtype_derive - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'></p><script>window.sidebarCurrent = {name: 'newtype_derive', ty: 'mod', relpath: '../'};</script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content mod">
+<h1 class='fqn'><span class='in-band'>Crate <a class='mod' href=''>newtype_derive</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-0' class='srclink' href='../src/newtype_derive/lib.rs.html#10-1171' title='goto source code'>[src]</a></span></h1>
+<div class='docblock'><p>This crate provides several macros for deriving implementations of various traits for &quot;newtype&quot; wrappers (<em>i.e.</em> tuple structs with a single element).  That is, given a tuple struct with exactly one field (<em>e.g.</em> <code>struct Buckets(i32)</code>), these macros will derive &quot;obvious&quot; implementations of traits such as <code>Add</code>, <code>Neg</code>, <code>Index</code>, <code>Deref</code>, <code>From</code>, etc.</p>
+
+<p>All of these macros are designed to be used with the <a href="https://crates.io/crates/custom_derive"><code>custom_derive</code></a> crate, though they can be used independent of it.</p>
+
+<h1 id='example' class='section-header'><a href='#example'>Example</a></h1>
+<p>Create a simple integer wrapper with some arithmetic operators:</p>
+
+<pre class='rust rust-example-rendered'>
+<span class='attribute'>#[<span class='ident'>macro_use</span>]</span> <span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>custom_derive</span>;
+<span class='attribute'>#[<span class='ident'>macro_use</span>]</span> <span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>newtype_derive</span>;
+
+<span class='macro'>custom_derive</span><span class='macro'>!</span> {
+    <span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>NewtypeFrom</span>, <span class='ident'>NewtypeAdd</span>, <span class='ident'>NewtypeMul</span>(<span class='ident'>i32</span>))]</span>
+    <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Happy</span>(<span class='ident'>i32</span>);
+}
+
+<span class='comment'>// Let&#39;s add some happy little ints.</span>
+<span class='kw'>let</span> <span class='ident'>a</span> <span class='op'>=</span> <span class='ident'>Happy</span>::<span class='ident'>from</span>(<span class='number'>6</span>);
+<span class='kw'>let</span> <span class='ident'>b</span> <span class='op'>=</span> <span class='ident'>Happy</span>::<span class='ident'>from</span>(<span class='number'>7</span>);
+<span class='kw'>let</span> <span class='ident'>c</span> <span class='op'>=</span> (<span class='ident'>a</span> <span class='op'>+</span> <span class='ident'>b</span>) <span class='op'>*</span> <span class='number'>3</span>;
+<span class='kw'>let</span> <span class='ident'>d</span>: <span class='ident'>i32</span> <span class='op'>=</span> <span class='ident'>c</span>.<span class='ident'>into</span>();
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>d</span>, <span class='number'>39</span>);<a class='test-arrow' target='_blank' href=''>Run</a></pre>
+
+<p>Create a &quot;deref-transparent&quot; wrapper around a type:</p>
+
+<pre class='rust rust-example-rendered'>
+<span class='attribute'>#[<span class='ident'>macro_use</span>]</span> <span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>custom_derive</span>;
+<span class='attribute'>#[<span class='ident'>macro_use</span>]</span> <span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>newtype_derive</span>;
+
+<span class='macro'>custom_derive</span><span class='macro'>!</span> {
+    <span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>NewtypeFrom</span>,
+        <span class='ident'>NewtypeDeref</span>, <span class='ident'>NewtypeDerefMut</span>,
+        <span class='ident'>NewtypeIndex</span>(<span class='ident'>usize</span>), <span class='ident'>NewtypeIndexMut</span>(<span class='ident'>usize</span>)
+        )]</span>
+    <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>I32Array</span>(<span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>i32</span><span class='op'>&gt;</span>);
+}
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>arr</span> <span class='op'>=</span> <span class='ident'>I32Array</span>::<span class='ident'>from</span>(<span class='macro'>vec</span><span class='macro'>!</span>[<span class='number'>1</span>, <span class='number'>2</span>, <span class='number'>3</span>]);
+<span class='ident'>arr</span>.<span class='ident'>push</span>(<span class='number'>4</span>);
+<span class='ident'>arr</span>[<span class='number'>2</span>] <span class='op'>=</span> <span class='number'>5</span>;
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='kw-2'>&amp;</span><span class='op'>*</span><span class='op'>*</span><span class='ident'>arr</span>, <span class='kw-2'>&amp;</span>[<span class='number'>1</span>, <span class='number'>2</span>, <span class='number'>5</span>, <span class='number'>4</span>]);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>arr</span>.<span class='ident'>len</span>(), <span class='number'>4</span>);<a class='test-arrow' target='_blank' href=''>Run</a></pre>
+
+<h1 id='overview' class='section-header'><a href='#overview'>Overview</a></h1>
+<p>This crate provides macros to derive implementations of the following traits for newtype structs:</p>
+
+<ul>
+<li>Binary Arithmetic Operators: Add, BitAnd, BitOr, BitXor, Div, Mul, Rem, Sub, Shl, Shr, plus the corresponding *Assign traits.</li>
+<li>Unary Arithmetic Operators: Neg, Not.</li>
+<li>Other Operators: Deref, DerefMut, Index, IndexMut.</li>
+<li>Formatting: Binary, Debug, Display, LowerExp, LowerHex, Octal, Pointer, UpperExp, UpperHex.</li>
+<li>Miscellaneous: From.</li>
+<li>Unstable: One, Product, Sum, Zero (requires the <code>std-unstable</code> feature).</li>
+</ul>
+
+<p>All of these macros are named <code>Newtype$Trait</code>.</p>
+
+<p>None of these macros currently support generic newtype structs.</p>
+
+<h2 id='binary-arithmetic-operators' class='section-header'><a href='#binary-arithmetic-operators'>Binary Arithmetic Operators</a></h2>
+<p>Each of the binary arithmetic operators accept several deriving forms.  To use <code>Add</code> on a struct <code>T</code> as an example:</p>
+
+<ul>
+<li><code>NewtypeAdd</code>: <code>impl Add&lt;T, Output=T&gt; for T</code></li>
+<li><code>NewtypeAdd(&amp;self)</code>: <code>impl&lt;&#39;a&gt; Add&lt;&amp;&#39;a T, Output=T&gt; for &amp;&#39;a T</code></li>
+<li><code>NewtypeAdd(U)</code>: <code>impl Add&lt;U, Output=T&gt; for T</code></li>
+<li><code>NewtypeAdd(&amp;self, U)</code>: <code>impl&lt;&#39;a&gt; Add&lt;U, Output=T&gt; for &amp;&#39;a T</code></li>
+<li><code>NewtypeAdd(*)</code>: All four combinations of <code>T</code> and <code>&amp;T</code></li>
+</ul>
+
+<p>The <code>*Assign</code> variants accept zero or one argument only.  For example:</p>
+
+<ul>
+<li><code>NewtypeAddAssign</code>: <code>impl AddAssign&lt;T&gt; for T</code></li>
+<li><code>NewtypeAddAssign(&amp;Self)</code>: <code>impl&lt;&#39;a&gt; Add&lt;&amp;&#39;a T&gt; for &amp;&#39;a T</code></li>
+<li><code>NewtypeAddAssign(U)</code>: <code>impl Add&lt;U&gt; for T</code></li>
+<li><code>NewtypeAddAssign(*)</code>: Implements for <code>T</code> and <code>&amp;T</code>.</li>
+</ul>
+
+<p>In all cases, the implementation unwraps the newtype (where necessary), forwards to the wrapped value&#39;s implementation, then re-wraps the result in the newtype.</p>
+
+<h2 id='unary-arithmetic-operators' class='section-header'><a href='#unary-arithmetic-operators'>Unary Arithmetic Operators</a></h2>
+<p>Each of the binary arithmetic operators accept several deriving forms.  To use <code>Neg</code> on a struct <code>T</code> as an example:</p>
+
+<ul>
+<li><code>NewtypeNeg</code>: <code>impl Neg&lt;Output=T&gt; for T</code></li>
+<li><code>NewtypeNeg(&amp;self)</code>: <code>impl&lt;&#39;a&gt; Neg&lt;Output=T&gt; for &amp;&#39;a T</code></li>
+<li><code>NewtypeNeg(*)</code>: both of the above</li>
+</ul>
+
+<p>In all cases, the implementation unwraps the newtype, forwards to the wrapped value&#39;s implementation, then re-wraps the result in the newtype.</p>
+
+<h2 id='other-operators' class='section-header'><a href='#other-operators'>Other Operators</a></h2>
+<p><code>NewtypeDeref</code> and <code>NewtypeDerefMut</code> only support the argument-less form, and implements the corresponding trait such that the newtype structure derefs to a pointer to the wrapped value.</p>
+
+<p><code>NewtypeIndex</code> and <code>NewtypeIndexMut</code> must be used as <code>NewtypeIndex(usize)</code>, where the argument is the type to use for indexing.  The call is forwarded to the wrapped value&#39;s implementation.</p>
+
+<h2 id='formatting' class='section-header'><a href='#formatting'>Formatting</a></h2>
+<p>The deriving macros for the formatting traits in <a href="http://doc.rust-lang.org/std/fmt/index.html"><code>std::fmt</code></a> forward to the wrapped value&#39;s implementation.</p>
+
+<h2 id='miscellaneous' class='section-header'><a href='#miscellaneous'>Miscellaneous</a></h2>
+<p><code>NewtypeFrom</code> implements <code>std::convert::From</code> twice: once for converting from the wrapped type to the newtype, and once for converting from the newtype to the wrapped type.</p>
+
+<p><code>NewtypeProduct</code> and <code>NewtypeSum</code> optionally support specifying <code>&amp;Self</code> as an argument to generate an implementation that accepts an iterator of borrowed pointers (<em>e.g.</em> <code>NewtypeSum(&amp;Self)</code>).</p>
+
+<h2 id='using-without-custom_derive' class='section-header'><a href='#using-without-custom_derive'>Using Without <code>custom_derive!</code></a></h2>
+<p>Although designed to be used with <code>custom_derive!</code>, all of the macros in this crate can be used without it.  The following:</p>
+
+<pre class='rust rust-example-rendered'>
+<span class='macro'>custom_derive</span><span class='macro'>!</span> {
+    <span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Copy</span>, <span class='ident'>Clone</span>, <span class='ident'>Debug</span>, <span class='ident'>NewtypeFrom</span>, <span class='ident'>NewtypeAdd</span>, <span class='ident'>NewtypeAdd</span>(<span class='ident'>f32</span>))]</span>
+    <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Meters</span>(<span class='ident'>f32</span>);
+}<a class='test-arrow' target='_blank' href=''>Run</a></pre>
+
+<p>Can also be written as:</p>
+
+<pre class='rust rust-example-rendered'>
+<span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Copy</span>, <span class='ident'>Clone</span>, <span class='ident'>Debug</span>)]</span>
+<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Meters</span>(<span class='ident'>f32</span>);
+
+<span class='macro'>NewtypeFrom</span><span class='macro'>!</span> { () <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Meters</span>(<span class='ident'>f32</span>); }
+<span class='macro'>NewtypeAdd</span><span class='macro'>!</span> { () <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Meters</span>(<span class='ident'>f32</span>); }
+<span class='macro'>NewtypeAdd</span><span class='macro'>!</span> { (<span class='ident'>f32</span>) <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Meters</span>(<span class='ident'>f32</span>); }<a class='test-arrow' target='_blank' href=''>Run</a></pre>
+</div><h2 id='macros' class='section-header'><a href="#macros">Macros</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeAdd.html'
+                                  title='newtype_derive::NewtypeAdd'>NewtypeAdd</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeAddAssign.html'
+                                  title='newtype_derive::NewtypeAddAssign'>NewtypeAddAssign</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeBinary.html'
+                                  title='newtype_derive::NewtypeBinary'>NewtypeBinary</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeBitAnd.html'
+                                  title='newtype_derive::NewtypeBitAnd'>NewtypeBitAnd</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeBitAndAssign.html'
+                                  title='newtype_derive::NewtypeBitAndAssign'>NewtypeBitAndAssign</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeBitOr.html'
+                                  title='newtype_derive::NewtypeBitOr'>NewtypeBitOr</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeBitOrAssign.html'
+                                  title='newtype_derive::NewtypeBitOrAssign'>NewtypeBitOrAssign</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeBitXor.html'
+                                  title='newtype_derive::NewtypeBitXor'>NewtypeBitXor</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeBitXorAssign.html'
+                                  title='newtype_derive::NewtypeBitXorAssign'>NewtypeBitXorAssign</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeDebug.html'
+                                  title='newtype_derive::NewtypeDebug'>NewtypeDebug</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeDeref.html'
+                                  title='newtype_derive::NewtypeDeref'>NewtypeDeref</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeDerefMut.html'
+                                  title='newtype_derive::NewtypeDerefMut'>NewtypeDerefMut</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeDisplay.html'
+                                  title='newtype_derive::NewtypeDisplay'>NewtypeDisplay</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeDiv.html'
+                                  title='newtype_derive::NewtypeDiv'>NewtypeDiv</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeDivAssign.html'
+                                  title='newtype_derive::NewtypeDivAssign'>NewtypeDivAssign</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeFrom.html'
+                                  title='newtype_derive::NewtypeFrom'>NewtypeFrom</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeIndex.html'
+                                  title='newtype_derive::NewtypeIndex'>NewtypeIndex</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeIndexMut.html'
+                                  title='newtype_derive::NewtypeIndexMut'>NewtypeIndexMut</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeLowerExp.html'
+                                  title='newtype_derive::NewtypeLowerExp'>NewtypeLowerExp</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeLowerHex.html'
+                                  title='newtype_derive::NewtypeLowerHex'>NewtypeLowerHex</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeMul.html'
+                                  title='newtype_derive::NewtypeMul'>NewtypeMul</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeMulAssign.html'
+                                  title='newtype_derive::NewtypeMulAssign'>NewtypeMulAssign</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeNeg.html'
+                                  title='newtype_derive::NewtypeNeg'>NewtypeNeg</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeNot.html'
+                                  title='newtype_derive::NewtypeNot'>NewtypeNot</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeOctal.html'
+                                  title='newtype_derive::NewtypeOctal'>NewtypeOctal</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypePointer.html'
+                                  title='newtype_derive::NewtypePointer'>NewtypePointer</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeRem.html'
+                                  title='newtype_derive::NewtypeRem'>NewtypeRem</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeRemAssign.html'
+                                  title='newtype_derive::NewtypeRemAssign'>NewtypeRemAssign</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeShl.html'
+                                  title='newtype_derive::NewtypeShl'>NewtypeShl</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeShlAssign.html'
+                                  title='newtype_derive::NewtypeShlAssign'>NewtypeShlAssign</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeShr.html'
+                                  title='newtype_derive::NewtypeShr'>NewtypeShr</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeShrAssign.html'
+                                  title='newtype_derive::NewtypeShrAssign'>NewtypeShrAssign</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeSub.html'
+                                  title='newtype_derive::NewtypeSub'>NewtypeSub</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeSubAssign.html'
+                                  title='newtype_derive::NewtypeSubAssign'>NewtypeSubAssign</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeUpperExp.html'
+                                  title='newtype_derive::NewtypeUpperExp'>NewtypeUpperExp</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='macro' href='macro.NewtypeUpperHex.html'
+                                  title='newtype_derive::NewtypeUpperHex'>NewtypeUpperHex</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr></table></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "newtype_derive";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../jquery.js"></script>
+    <script src="../main.js"></script>
+    
+    <script defer src="../search-index.js"></script>
+</body>
+</html>

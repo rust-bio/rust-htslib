@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `Info` struct in crate `rust_htslib`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, Info">
+
+    <title>rust_htslib::bcf::record::Info - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'><a href='../../index.html'>rust_htslib</a>::<wbr><a href='../index.html'>bcf</a>::<wbr><a href='index.html'>record</a></p><script>window.sidebarCurrent = {name: 'Info', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='../../index.html'>rust_htslib</a>::<wbr><a href='../index.html'>bcf</a>::<wbr><a href='index.html'>record</a>::<wbr><a class='struct' href=''>Info</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-3881' class='srclink' href='../../../src/rust_htslib/src/bcf/record.rs.html#277-280' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct Info&lt;'a&gt; { /* fields omitted */ }</pre><h2 id='methods'>Methods</h2><h3 class='impl'><span class='in-band'><code>impl&lt;'a&gt; <a class='struct' href='../../../rust_htslib/bcf/record/struct.Info.html' title='rust_htslib::bcf::record::Info'>Info</a>&lt;'a&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a id='src-3885' class='srclink' href='../../../src/rust_htslib/src/bcf/record.rs.html#283-360' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.integer' class='method'><span id='integer.v' class='invisible'><code>fn <a href='#method.integer' class='fnname'>integer</a>(&amp;mut self) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;<a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;'a [</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>&gt;,&nbsp;<a class='enum' href='../../../rust_htslib/bcf/record/enum.InfoReadError.html' title='rust_htslib::bcf::record::InfoReadError'>InfoReadError</a>&gt;</code></span></h4>
+<h4 id='method.integer_mut' class='method'><span id='integer_mut.v' class='invisible'><code>fn <a href='#method.integer_mut' class='fnname'>integer_mut</a>(&amp;mut self) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;<a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;'a mut [</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>&gt;,&nbsp;<a class='enum' href='../../../rust_htslib/bcf/record/enum.InfoReadError.html' title='rust_htslib::bcf::record::InfoReadError'>InfoReadError</a>&gt;</code></span></h4>
+<h4 id='method.float' class='method'><span id='float.v' class='invisible'><code>fn <a href='#method.float' class='fnname'>float</a>(&amp;mut self) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;<a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;'a [</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.f32.html'>f32</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>&gt;,&nbsp;<a class='enum' href='../../../rust_htslib/bcf/record/enum.InfoReadError.html' title='rust_htslib::bcf::record::InfoReadError'>InfoReadError</a>&gt;</code></span></h4>
+<h4 id='method.float_mut' class='method'><span id='float_mut.v' class='invisible'><code>fn <a href='#method.float_mut' class='fnname'>float_mut</a>(&amp;mut self) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;<a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;'a mut [</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.f32.html'>f32</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>&gt;,&nbsp;<a class='enum' href='../../../rust_htslib/bcf/record/enum.InfoReadError.html' title='rust_htslib::bcf::record::InfoReadError'>InfoReadError</a>&gt;</code></span></h4>
+<h4 id='method.flag' class='method'><span id='flag.v' class='invisible'><code>fn <a href='#method.flag' class='fnname'>flag</a>(&amp;mut self) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a>,&nbsp;<a class='enum' href='../../../rust_htslib/bcf/record/enum.InfoReadError.html' title='rust_htslib::bcf::record::InfoReadError'>InfoReadError</a>&gt;</code></span></h4>
+<h4 id='method.string' class='method'><span id='string.v' class='invisible'><code>fn <a href='#method.string' class='fnname'>string</a>(&amp;mut self) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;<a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;'a [</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>&gt;&gt;,&nbsp;<a class='enum' href='../../../rust_htslib/bcf/record/enum.InfoReadError.html' title='rust_htslib::bcf::record::InfoReadError'>InfoReadError</a>&gt;</code></span></h4>
+<h4 id='method.string_mut' class='method'><span id='string_mut.v' class='invisible'><code>fn <a href='#method.string_mut' class='fnname'>string_mut</a>(&amp;mut self) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;<a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;'a mut [</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>&gt;&gt;,&nbsp;<a class='enum' href='../../../rust_htslib/bcf/record/enum.InfoReadError.html' title='rust_htslib::bcf::record::InfoReadError'>InfoReadError</a>&gt;</code></span></h4>
+</div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><span class='in-band'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Send.html' title='core::marker::Send'>Send</a> for <a class='struct' href='../../../rust_htslib/bcf/record/struct.Info.html' title='rust_htslib::bcf::record::Info'>Info</a>&lt;'a&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a id='src-3940' class='srclink' href='../../../src/rust_htslib/src/bcf/record.rs.html#363' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'></div><h3 class='impl'><span class='in-band'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html' title='core::marker::Sync'>Sync</a> for <a class='struct' href='../../../rust_htslib/bcf/record/struct.Info.html' title='rust_htslib::bcf::record::Info'>Info</a>&lt;'a&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a id='src-3942' class='srclink' href='../../../src/rust_htslib/src/bcf/record.rs.html#364' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../../";
+        window.currentCrate = "rust_htslib";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../../../jquery.js"></script>
+    <script src="../../../main.js"></script>
+    
+    <script defer src="../../../search-index.js"></script>
+</body>
+</html>

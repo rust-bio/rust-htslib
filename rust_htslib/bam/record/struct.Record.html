@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `Record` struct in crate `rust_htslib`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, Record">
+
+    <title>rust_htslib::bam::record::Record - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'><a href='../../index.html'>rust_htslib</a>::<wbr><a href='../index.html'>bam</a>::<wbr><a href='index.html'>record</a></p><script>window.sidebarCurrent = {name: 'Record', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='../../index.html'>rust_htslib</a>::<wbr><a href='../index.html'>bam</a>::<wbr><a href='index.html'>record</a>::<wbr><a class='struct' href=''>Record</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-2863' class='srclink' href='../../../src/rust_htslib/src/bam/record.rs.html#32-35' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct Record {
+    pub inner: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../../rust_htslib/htslib/type.bam1_t.html' title='rust_htslib::htslib::bam1_t'>bam1_t</a>,
+    // some fields omitted
+}</pre><div class='docblock'><p>A BAM record.</p>
+</div><h2 class='fields'>Fields</h2><span id='structfield.inner' class='structfield'>
+                           <span id='inner.v' class='invisible'>
+                           <code>inner: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../../rust_htslib/htslib/type.bam1_t.html' title='rust_htslib::htslib::bam1_t'>bam1_t</a></code>
+                           </span></span><span class='stab '></span><h2 id='methods'>Methods</h2><h3 class='impl'><span class='in-band'><code>impl <a class='struct' href='../../../rust_htslib/bam/record/struct.Record.html' title='rust_htslib::bam::record::Record'>Record</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-2868' class='srclink' href='../../../src/rust_htslib/src/bam/record.rs.html#42-321' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.new' class='method'><span id='new.v' class='invisible'><code>fn <a href='#method.new' class='fnname'>new</a>() -&gt; Self</code></span></h4>
+<div class='docblock'><p>Create an empty BAM record.</p>
+</div><h4 id='method.from_inner' class='method'><span id='from_inner.v' class='invisible'><code>fn <a href='#method.from_inner' class='fnname'>from_inner</a>(inner: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../../rust_htslib/htslib/type.bam1_t.html' title='rust_htslib::htslib::bam1_t'>bam1_t</a>) -&gt; Self</code></span></h4>
+<h4 id='method.inner_mut' class='method'><span id='inner_mut.v' class='invisible'><code>fn <a href='#method.inner_mut' class='fnname'>inner_mut</a>(&amp;mut self) -&gt; &amp;mut <a class='type' href='../../../rust_htslib/htslib/type.bam1_t.html' title='rust_htslib::htslib::bam1_t'>bam1_t</a></code></span></h4>
+<h4 id='method.inner' class='method'><span id='inner.v-1' class='invisible'><code>fn <a href='#method.inner' class='fnname'>inner</a>(&amp;self) -&gt; &amp;<a class='type' href='../../../rust_htslib/htslib/type.bam1_t.html' title='rust_htslib::htslib::bam1_t'>bam1_t</a></code></span></h4>
+<h4 id='method.tid' class='method'><span id='tid.v' class='invisible'><code>fn <a href='#method.tid' class='fnname'>tid</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a></code></span></h4>
+<div class='docblock'><p>Get target id.</p>
+</div><h4 id='method.set_tid' class='method'><span id='set_tid.v' class='invisible'><code>fn <a href='#method.set_tid' class='fnname'>set_tid</a>(&amp;mut self, tid: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a>)</code></span></h4>
+<div class='docblock'><p>Set target id.</p>
+</div><h4 id='method.pos' class='method'><span id='pos.v' class='invisible'><code>fn <a href='#method.pos' class='fnname'>pos</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a></code></span></h4>
+<div class='docblock'><p>Get position (0-based).</p>
+</div><h4 id='method.set_pos' class='method'><span id='set_pos.v' class='invisible'><code>fn <a href='#method.set_pos' class='fnname'>set_pos</a>(&amp;mut self, pos: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a>)</code></span></h4>
+<div class='docblock'><p>Set position (0-based).</p>
+</div><h4 id='method.end_pos' class='method'><span id='end_pos.v' class='invisible'><code>fn <a href='#method.end_pos' class='fnname'>end_pos</a>(&amp;self, cigar: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[</a><a class='enum' href='../../../rust_htslib/bam/record/enum.Cigar.html' title='rust_htslib::bam::record::Cigar'>Cigar</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a></code></span></h4>
+<h4 id='method.bin' class='method'><span id='bin.v' class='invisible'><code>fn <a href='#method.bin' class='fnname'>bin</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u16.html'>u16</a></code></span></h4>
+<h4 id='method.set_bin' class='method'><span id='set_bin.v' class='invisible'><code>fn <a href='#method.set_bin' class='fnname'>set_bin</a>(&amp;mut self, bin: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u16.html'>u16</a>)</code></span></h4>
+<h4 id='method.mapq' class='method'><span id='mapq.v' class='invisible'><code>fn <a href='#method.mapq' class='fnname'>mapq</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a></code></span></h4>
+<div class='docblock'><p>Get MAPQ.</p>
+</div><h4 id='method.set_mapq' class='method'><span id='set_mapq.v' class='invisible'><code>fn <a href='#method.set_mapq' class='fnname'>set_mapq</a>(&amp;mut self, mapq: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span></h4>
+<div class='docblock'><p>Set MAPQ.</p>
+</div><h4 id='method.flags' class='method'><span id='flags.v' class='invisible'><code>fn <a href='#method.flags' class='fnname'>flags</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u16.html'>u16</a></code></span></h4>
+<div class='docblock'><p>Get raw flags.</p>
+</div><h4 id='method.set_flags' class='method'><span id='set_flags.v' class='invisible'><code>fn <a href='#method.set_flags' class='fnname'>set_flags</a>(&amp;mut self, flags: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u16.html'>u16</a>)</code></span></h4>
+<div class='docblock'><p>Set raw flags.</p>
+</div><h4 id='method.unset_flags' class='method'><span id='unset_flags.v' class='invisible'><code>fn <a href='#method.unset_flags' class='fnname'>unset_flags</a>(&amp;mut self)</code></span></h4>
+<div class='docblock'><p>Unset all flags.</p>
+</div><h4 id='method.mtid' class='method'><span id='mtid.v' class='invisible'><code>fn <a href='#method.mtid' class='fnname'>mtid</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a></code></span></h4>
+<div class='docblock'><p>Get target id of mate.</p>
+</div><h4 id='method.set_mtid' class='method'><span id='set_mtid.v' class='invisible'><code>fn <a href='#method.set_mtid' class='fnname'>set_mtid</a>(&amp;mut self, mtid: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a>)</code></span></h4>
+<div class='docblock'><p>Set target id of mate.</p>
+</div><h4 id='method.mpos' class='method'><span id='mpos.v' class='invisible'><code>fn <a href='#method.mpos' class='fnname'>mpos</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a></code></span></h4>
+<div class='docblock'><p>Get mate position.</p>
+</div><h4 id='method.set_mpos' class='method'><span id='set_mpos.v' class='invisible'><code>fn <a href='#method.set_mpos' class='fnname'>set_mpos</a>(&amp;mut self, mpos: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a>)</code></span></h4>
+<div class='docblock'><p>Set mate position.</p>
+</div><h4 id='method.insert_size' class='method'><span id='insert_size.v' class='invisible'><code>fn <a href='#method.insert_size' class='fnname'>insert_size</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a></code></span></h4>
+<div class='docblock'><p>Get insert size.</p>
+</div><h4 id='method.set_insert_size' class='method'><span id='set_insert_size.v' class='invisible'><code>fn <a href='#method.set_insert_size' class='fnname'>set_insert_size</a>(&amp;mut self, insert_size: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a>)</code></span></h4>
+<div class='docblock'><p>Set insert size.</p>
+</div><h4 id='method.qname' class='method'><span id='qname.v' class='invisible'><code>fn <a href='#method.qname' class='fnname'>qname</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a></code></span></h4>
+<div class='docblock'><p>Get qname (read name).</p>
+</div><h4 id='method.set' class='method'><span id='set.v' class='invisible'><code>fn <a href='#method.set' class='fnname'>set</a>(&amp;mut self, qname: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>, cigar: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[</a><a class='enum' href='../../../rust_htslib/bam/record/enum.Cigar.html' title='rust_htslib::bam::record::Cigar'>Cigar</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>, seq: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>, qual: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>)</code></span></h4>
+<div class='docblock'><p>Set variable length data (qname, cigar, seq, qual).</p>
+</div><h4 id='method.cigar' class='method'><span id='cigar.v' class='invisible'><code>fn <a href='#method.cigar' class='fnname'>cigar</a>(&amp;self) -&gt; <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='enum' href='../../../rust_htslib/bam/record/enum.Cigar.html' title='rust_htslib::bam::record::Cigar'>Cigar</a>&gt;</code></span></h4>
+<div class='docblock'><p>Get cigar sequence.</p>
+</div><h4 id='method.seq' class='method'><span id='seq.v' class='invisible'><code>fn <a href='#method.seq' class='fnname'>seq</a>(&amp;self) -&gt; <a class='struct' href='../../../rust_htslib/bam/record/struct.Seq.html' title='rust_htslib::bam::record::Seq'>Seq</a></code></span></h4>
+<div class='docblock'><p>Get read sequence.</p>
+</div><h4 id='method.qual' class='method'><span id='qual.v' class='invisible'><code>fn <a href='#method.qual' class='fnname'>qual</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a></code></span></h4>
+<div class='docblock'><p>Get base qualities.</p>
+</div><h4 id='method.aux' class='method'><span id='aux.v' class='invisible'><code>fn <a href='#method.aux' class='fnname'>aux</a>(&amp;self, tag: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='enum' href='../../../rust_htslib/bam/record/enum.Aux.html' title='rust_htslib::bam::record::Aux'>Aux</a>&gt;</code></span></h4>
+<div class='docblock'><p>Get auxiliary data (tags).</p>
+</div><h4 id='method.push_aux' class='method'><span id='push_aux.v' class='invisible'><code>fn <a href='#method.push_aux' class='fnname'>push_aux</a>(&amp;mut self, tag: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>, value: &amp;<a class='enum' href='../../../rust_htslib/bam/record/enum.Aux.html' title='rust_htslib::bam::record::Aux'>Aux</a>)</code></span></h4>
+<div class='docblock'><p>Add auxiliary data.</p>
+</div><h4 id='method.is_paired' class='method'><span id='is_paired.v' class='invisible'><code>fn <a href='#method.is_paired' class='fnname'>is_paired</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<h4 id='method.set_paired' class='method'><span id='set_paired.v' class='invisible'><code>fn <a href='#method.set_paired' class='fnname'>set_paired</a>(&amp;mut self)</code></span></h4>
+<h4 id='method.is_proper_pair' class='method'><span id='is_proper_pair.v' class='invisible'><code>fn <a href='#method.is_proper_pair' class='fnname'>is_proper_pair</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<h4 id='method.set_proper_pair' class='method'><span id='set_proper_pair.v' class='invisible'><code>fn <a href='#method.set_proper_pair' class='fnname'>set_proper_pair</a>(&amp;mut self)</code></span></h4>
+<h4 id='method.is_unmapped' class='method'><span id='is_unmapped.v' class='invisible'><code>fn <a href='#method.is_unmapped' class='fnname'>is_unmapped</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<h4 id='method.set_unmapped' class='method'><span id='set_unmapped.v' class='invisible'><code>fn <a href='#method.set_unmapped' class='fnname'>set_unmapped</a>(&amp;mut self)</code></span></h4>
+<h4 id='method.is_mate_unmapped' class='method'><span id='is_mate_unmapped.v' class='invisible'><code>fn <a href='#method.is_mate_unmapped' class='fnname'>is_mate_unmapped</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<h4 id='method.set_mate_unmapped' class='method'><span id='set_mate_unmapped.v' class='invisible'><code>fn <a href='#method.set_mate_unmapped' class='fnname'>set_mate_unmapped</a>(&amp;mut self)</code></span></h4>
+<h4 id='method.is_reverse' class='method'><span id='is_reverse.v' class='invisible'><code>fn <a href='#method.is_reverse' class='fnname'>is_reverse</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<h4 id='method.set_reverse' class='method'><span id='set_reverse.v' class='invisible'><code>fn <a href='#method.set_reverse' class='fnname'>set_reverse</a>(&amp;mut self)</code></span></h4>
+<h4 id='method.is_mate_reverse' class='method'><span id='is_mate_reverse.v' class='invisible'><code>fn <a href='#method.is_mate_reverse' class='fnname'>is_mate_reverse</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<h4 id='method.set_mate_reverse' class='method'><span id='set_mate_reverse.v' class='invisible'><code>fn <a href='#method.set_mate_reverse' class='fnname'>set_mate_reverse</a>(&amp;mut self)</code></span></h4>
+<h4 id='method.is_first_in_template' class='method'><span id='is_first_in_template.v' class='invisible'><code>fn <a href='#method.is_first_in_template' class='fnname'>is_first_in_template</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<h4 id='method.set_first_in_template' class='method'><span id='set_first_in_template.v' class='invisible'><code>fn <a href='#method.set_first_in_template' class='fnname'>set_first_in_template</a>(&amp;mut self)</code></span></h4>
+<h4 id='method.is_last_in_template' class='method'><span id='is_last_in_template.v' class='invisible'><code>fn <a href='#method.is_last_in_template' class='fnname'>is_last_in_template</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<h4 id='method.set_last_in_template' class='method'><span id='set_last_in_template.v' class='invisible'><code>fn <a href='#method.set_last_in_template' class='fnname'>set_last_in_template</a>(&amp;mut self)</code></span></h4>
+<h4 id='method.is_secondary' class='method'><span id='is_secondary.v' class='invisible'><code>fn <a href='#method.is_secondary' class='fnname'>is_secondary</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<h4 id='method.set_secondary' class='method'><span id='set_secondary.v' class='invisible'><code>fn <a href='#method.set_secondary' class='fnname'>set_secondary</a>(&amp;mut self)</code></span></h4>
+<h4 id='method.is_quality_check_failed' class='method'><span id='is_quality_check_failed.v' class='invisible'><code>fn <a href='#method.is_quality_check_failed' class='fnname'>is_quality_check_failed</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<h4 id='method.set_quality_check_failed' class='method'><span id='set_quality_check_failed.v' class='invisible'><code>fn <a href='#method.set_quality_check_failed' class='fnname'>set_quality_check_failed</a>(&amp;mut self)</code></span></h4>
+<h4 id='method.is_duplicate' class='method'><span id='is_duplicate.v' class='invisible'><code>fn <a href='#method.is_duplicate' class='fnname'>is_duplicate</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<h4 id='method.set_duplicate' class='method'><span id='set_duplicate.v' class='invisible'><code>fn <a href='#method.set_duplicate' class='fnname'>set_duplicate</a>(&amp;mut self)</code></span></h4>
+<h4 id='method.is_supplementary' class='method'><span id='is_supplementary.v' class='invisible'><code>fn <a href='#method.is_supplementary' class='fnname'>is_supplementary</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<h4 id='method.set_supplementary' class='method'><span id='set_supplementary.v' class='invisible'><code>fn <a href='#method.set_supplementary' class='fnname'>set_supplementary</a>(&amp;mut self)</code></span></h4>
+</div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Send.html' title='core::marker::Send'>Send</a> for <a class='struct' href='../../../rust_htslib/bam/record/struct.Record.html' title='rust_htslib::bam::record::Record'>Record</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-2866' class='srclink' href='../../../src/rust_htslib/src/bam/record.rs.html#38' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html' title='core::marker::Sync'>Sync</a> for <a class='struct' href='../../../rust_htslib/bam/record/struct.Record.html' title='rust_htslib::bam::record::Record'>Record</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-2867' class='srclink' href='../../../src/rust_htslib/src/bam/record.rs.html#39' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html' title='core::ops::Drop'>Drop</a> for <a class='struct' href='../../../rust_htslib/bam/record/struct.Record.html' title='rust_htslib::bam::record::Record'>Record</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-3028' class='srclink' href='../../../src/rust_htslib/src/bam/record.rs.html#324-330' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.drop' class='method'><span id='drop.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html#tymethod.drop' class='fnname'>drop</a>(&amp;mut self)</code></span></h4>
+<div class='docblock'><p>A method called when the value goes out of scope. <a href="https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html#tymethod.drop">Read more</a></p>
+</div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../../";
+        window.currentCrate = "rust_htslib";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../../../jquery.js"></script>
+    <script src="../../../main.js"></script>
+    
+    <script defer src="../../../search-index.js"></script>
+</body>
+</html>
