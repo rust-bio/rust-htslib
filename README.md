@@ -19,7 +19,7 @@ If you only want to use the library, there is no need to clone the repository. G
 # Resources
 
 * Homepage: https://github.com/rust-bio/rust-htslib
-* API documentation: http://rust-bio.github.io/rust-htslib
+* API documentation: https://docs.rs/rust-htslib
 * Continuous integration tests: https://travis-ci.org/rust-bio/rust-htslib
 
 # Usage
