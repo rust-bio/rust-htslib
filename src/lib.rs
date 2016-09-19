@@ -9,9 +9,10 @@
 //! ```
 //! use rust_htslib::bam;
 //! use rust_htslib::bam::Read;
+//! use std::path::Path;
 //!
-//! let bam = bam::Reader::new(&"test/test.bam").ok().expect("Error opening bam.");
-//! let mut out = bam::Writer::with_template(&"test/test.bam", &"test/out.bam").ok().expect("Error opening bam.");
+//! let bam = bam::Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening bam.");
+//! let mut out = bam::Writer::from_path_with_template(&Path::new("test/test.bam"), &Path::new("test/out.bam")).ok().expect("Error opening bam.");
 //!
 //! // copy reverse reads to new BAM file
 //! for r in bam.records() {
@@ -27,8 +28,9 @@
 //! ```
 //! use rust_htslib::bam;
 //! use rust_htslib::bam::Read;
+//! use std::path::Path;
 //!
-//! let bam = bam::Reader::new(&"test/test.bam").ok().expect("Error opening bam.");
+//! let bam = bam::Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening bam.");
 //!
 //! // pileup over all covered sites
 //! for p in bam.pileup() {
@@ -49,8 +51,9 @@
 //!
 //! ```
 //! use rust_htslib::bam;
+//! use std::path::Path;
 //!
-//! let mut bam = bam::IndexedReader::new(&"test/test.bam").ok().expect("Error opening indexed BAM.");
+//! let mut bam = bam::IndexedReader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening indexed BAM.");
 //!
 //! // seek to chr1:50000-100000
 //! let tid = bam.header.tid(b"CHROMOSOME_I").unwrap();
@@ -67,6 +70,7 @@ extern crate quick_error;
 extern crate newtype_derive;
 #[macro_use]
 extern crate custom_derive;
+extern crate url;
 
 pub mod htslib;
 pub mod bam;
