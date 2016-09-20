@@ -11,14 +11,14 @@
 //! use rust_htslib::bam::Read;
 //! use std::path::Path;
 //!
-//! let bam = bam::Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening bam.");
-//! let mut out = bam::Writer::from_path_with_template(&Path::new("test/test.bam"), &Path::new("test/out.bam")).ok().expect("Error opening bam.");
+//! let bam = bam::Reader::from_path(&Path::new("test/test.bam")).unwrap();
+//! let mut out = bam::Writer::from_path_with_template(&Path::new("test/test.bam"), &Path::new("test/out.bam")).unwrap();
 //!
 //! // copy reverse reads to new BAM file
 //! for r in bam.records() {
-//!     let record = r.ok().expect("Error reading BAM file.");
+//!     let record = r.unwrap();
 //!     if record.is_reverse() {
-//!         out.write(&record).ok().expect("Error writing BAM file.");
+//!         out.write(&record).unwrap();
 //!     }
 //! }
 //! ```
@@ -30,11 +30,11 @@
 //! use rust_htslib::bam::Read;
 //! use std::path::Path;
 //!
-//! let bam = bam::Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening bam.");
+//! let bam = bam::Reader::from_path(&Path::new("test/test.bam")).unwrap();
 //!
 //! // pileup over all covered sites
 //! for p in bam.pileup() {
-//!     let pileup = p.ok().expect("Error reading BAM file.");
+//!     let pileup = p.unwrap();
 //!     println!("{}:{} depth {}", pileup.tid(), pileup.pos(), pileup.depth());
 //!
 //!     for alignment in pileup.alignments() {
@@ -53,11 +53,11 @@
 //! use rust_htslib::bam;
 //! use std::path::Path;
 //!
-//! let mut bam = bam::IndexedReader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening indexed BAM.");
+//! let mut bam = bam::IndexedReader::from_path(&Path::new("test/test.bam")).unwrap();
 //!
 //! // seek to chr1:50000-100000
 //! let tid = bam.header.tid(b"CHROMOSOME_I").unwrap();
-//! bam.seek(tid, 0, 20).ok().expect("Error seeking BAM file.");
+//! bam.seek(tid, 0, 20).unwrap();
 //! // afterwards, read or pileup in this region
 //! ```
 
