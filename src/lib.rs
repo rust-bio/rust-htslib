@@ -12,7 +12,7 @@
 //! use std::path::Path;
 //!
 //! let bam = bam::Reader::from_path(&Path::new("test/test.bam")).unwrap();
-//! let mut out = bam::Writer::from_path_with_template(&Path::new("test/test.bam"), &Path::new("test/out.bam")).unwrap();
+//! let mut out = bam::Writer::from_path_with_template(&Path::new("test/out.bam"), &Path::new("test/test.bam")).unwrap();
 //!
 //! // copy reverse reads to new BAM file
 //! for r in bam.records() {
