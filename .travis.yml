@@ -21,4 +21,5 @@ after_success: ! '[ $TRAVIS_BRANCH = master ] &&
 '
 env:
   global:
-    secure: ioWAhmR9VNa96Zn3UvY46bzys5LY6rHezT/nxsX6Wc0tZ3s/pk45wRKl9mU+oX+29EXMl2EXZZzsUlmY9AWNS34uQdBJ5HB68k2l2Cl44f/R4fQiFbkucCaCuTLDDshRsQInHTrsIjiB0tvjCG1tkNWQlgDIB4yeqPcL+YrmeMs=
+    - secure: ioWAhmR9VNa96Zn3UvY46bzys5LY6rHezT/nxsX6Wc0tZ3s/pk45wRKl9mU+oX+29EXMl2EXZZzsUlmY9AWNS34uQdBJ5HB68k2l2Cl44f/R4fQiFbkucCaCuTLDDshRsQInHTrsIjiB0tvjCG1tkNWQlgDIB4yeqPcL+YrmeMs=
+    - RUST_BACKTRACE=1
