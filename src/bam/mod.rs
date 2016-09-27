@@ -388,7 +388,7 @@ impl Writer {
     ///
     /// * `path` - the path. Use "-" for stdin.
     /// * `template` - the template BAM. Use "-" for stdin.
-    fn with_template_bytes(template: &[u8], path: &[u8]) -> Result<Self, BGZFError> {
+    fn with_template_bytes(path: &[u8], template: &[u8]) -> Result<Self, BGZFError> {
         let t = try!(bgzf_open(&ffi::CString::new(template).unwrap(), b"r"));
         let header = unsafe { htslib::bam_hdr_read(t) };
 
