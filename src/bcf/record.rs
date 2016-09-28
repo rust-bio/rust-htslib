@@ -15,7 +15,7 @@ use itertools::Itertools;
 use htslib;
 
 pub const MISSING_INTEGER: i32 = i32::MIN;
-pub const MISSING_FLOAT: f32 = f32::NAN;
+pub const MISSING_FLOAT: f32 = -2147483600.0;
 pub const VECTOR_END_INTEGER: i32 = i32::MIN + 1;
 pub const VECTOR_END_FLOAT: f32 = 2.139095e+09;
 
