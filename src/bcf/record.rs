@@ -15,10 +15,10 @@ use itertools::Itertools;
 
 use htslib;
 
-pub const MISSING_INTEGER: i32 = i32::MIN;
+const MISSING_INTEGER: i32 = i32::MIN;
 const VECTOR_END_INTEGER: i32 = i32::MIN + 1;
 lazy_static!{
-    pub static ref MISSING_FLOAT: f32 = f32::from_bits(0x7F800001);
+    static ref MISSING_FLOAT: f32 = f32::from_bits(0x7F800001);
     static ref VECTOR_END_FLOAT: f32 = f32::from_bits(0x7F800002);
 }
 
@@ -27,6 +27,8 @@ lazy_static!{
 pub trait Numeric {
     /// Return true if entry is a missing value
     fn is_missing(&self) -> bool;
+
+    fn missing() -> Self;
 }
 
 
@@ -34,12 +36,20 @@ impl Numeric for f32 {
     fn is_missing(&self) -> bool {
         self.bits() == MISSING_FLOAT.bits()
     }
+
+    fn missing() -> f32 {
+        *MISSING_FLOAT
+    }
 }
 
 
 impl Numeric for i32 {
     fn is_missing(&self) -> bool {
         *self == MISSING_INTEGER
+    }
+
+    fn missing() -> i32 {
+        MISSING_INTEGER
     }
 }
 

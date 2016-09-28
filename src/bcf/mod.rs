@@ -284,7 +284,7 @@ mod tests {
     #[test]
     fn test_missing() {
         let vcf = Reader::new(&"test/test_missing.vcf").ok().expect("Error opening file.");
-        let fn4 = [&[record::MISSING_INTEGER, record::MISSING_INTEGER, record::MISSING_INTEGER, record::MISSING_INTEGER][..], &[record::MISSING_INTEGER][..]];
+        let fn4 = [&[i32::missing(), i32::missing(), i32::missing(), i32::missing()][..], &[i32::missing()][..]];
         let f1 = [false, true];
         for (i, rec) in vcf.records().enumerate() {
             let mut record = rec.ok().expect("Error reading record.");
