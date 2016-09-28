@@ -3,22 +3,6 @@ rust:
   - stable
   - beta
   - nightly
-after_success: ! '[ $TRAVIS_BRANCH = master ] &&
-
-  [ $TRAVIS_PULL_REQUEST = false ] &&
-
-  cargo doc &&
-
-  echo "<meta http-equiv=refresh content=0;url=rust_htslib/index.html>" > target/doc/index.html
-  &&
-
-  sudo pip install ghp-import &&
-
-  ghp-import -n target/doc &&
-
-  git push -fq https://${GH_TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git gh-pages
-
-'
 env:
   global:
     secure: ioWAhmR9VNa96Zn3UvY46bzys5LY6rHezT/nxsX6Wc0tZ3s/pk45wRKl9mU+oX+29EXMl2EXZZzsUlmY9AWNS34uQdBJ5HB68k2l2Cl44f/R4fQiFbkucCaCuTLDDshRsQInHTrsIjiB0tvjCG1tkNWQlgDIB4yeqPcL+YrmeMs=
