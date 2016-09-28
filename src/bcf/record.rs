@@ -28,6 +28,7 @@ pub trait Numeric {
     /// Return true if entry is a missing value
     fn is_missing(&self) -> bool;
 
+    /// Return missing value for storage in BCF record.
     fn missing() -> Self;
 }
 
