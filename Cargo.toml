@@ -17,6 +17,8 @@ itertools = "=0.4.*"
 quick-error = "1.1.*"
 newtype_derive = "0.1.*"
 custom_derive = "0.1.*"
+ieee754 = "0.1"
+lazy_static = "0.1.*"
 
 
 [dev-dependencies]

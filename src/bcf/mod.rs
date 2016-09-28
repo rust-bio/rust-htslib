@@ -208,6 +208,7 @@ mod tests {
     extern crate tempdir;
     use super::*;
     use std::path::Path;
+    use bcf::record::Numeric;
 
     fn _test_read<P: AsRef<Path>>(path: &P) {
         let bcf = Reader::new(path).ok().expect("Error opening file.");
@@ -289,8 +290,7 @@ mod tests {
             let mut record = rec.ok().expect("Error reading record.");
             assert_eq!(record.info(b"F1").float().ok().expect("Error reading float.").expect("Missing tag")[0].is_nan(), f1[i]);
             assert_eq!(record.format(b"FN4").integer().ok().expect("Error reading integer.")[1], fn4[i]);
-            let f = record.format(b"FF4").float().ok().expect("Error reading float.")[1][0];
-            assert!(record.format(b"FF4").float().ok().expect("Error reading float.")[1].iter().all(|&v| (v as i32) as f32 == record::MISSING_FLOAT));
+            assert!(record.format(b"FF4").float().ok().expect("Error reading float.")[1].iter().all(|&v| v.is_missing()));
         }
     }
 

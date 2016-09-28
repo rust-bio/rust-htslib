@@ -67,6 +67,9 @@ extern crate quick_error;
 extern crate newtype_derive;
 #[macro_use]
 extern crate custom_derive;
+extern crate ieee754;
+#[macro_use]
+extern crate lazy_static;
 
 pub mod htslib;
 pub mod bam;
