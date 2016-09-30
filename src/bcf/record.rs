@@ -355,6 +355,8 @@ impl<'a> Info<'a> {
         }
     }
 
+    /// Get integers from tag. `None` if tag not present in record.
+    /// Import `bcf::record::Numeric` for missing value handling.
     pub fn integer(&mut self) -> Result<Option<&'a [i32]>, InfoReadError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|data| data.map(|(n, _)| {
             trim_slice(
@@ -363,12 +365,16 @@ impl<'a> Info<'a> {
         }))
     }
 
+    /// Get mutable integers from tag. `None` if tag not present in record.
+    /// Import `bcf::record::Numeric` for missing value handling.
     pub fn integer_mut(&mut self) -> Result<Option<&'a mut [i32]>, InfoReadError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|data| data.map(|(n, _)| {
             unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut i32, n) }
         }))
     }
 
+    /// Get floats from tag. `None` if tag not present in record.
+    /// Import `bcf::record::Numeric` for missing value handling.
     pub fn float(&mut self) -> Result<Option<&'a [f32]>, InfoReadError> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|data| data.map(|(n, _)| {
             trim_slice(
@@ -377,6 +383,8 @@ impl<'a> Info<'a> {
         }))
     }
 
+    /// Get mutable floats from tag. `None` if tag not present in record.
+    /// Import `bcf::record::Numeric` for missing value handling.
     pub fn float_mut(&mut self) -> Result<Option<&'a mut [f32]>, InfoReadError> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|data| data.map(|(n, _)| {
             unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut f32, n) }
@@ -392,6 +400,7 @@ impl<'a> Info<'a> {
         })
     }
 
+    /// Get strings from tag. `None` if tag not present in record.
     pub fn string(&mut self) -> Result<Option<Vec<&'a [u8]>>, InfoReadError> {
         self.data(htslib::vcf::BCF_HT_STR).map(|data| data.map(|(n, ret)| {
             unsafe {
@@ -403,6 +412,7 @@ impl<'a> Info<'a> {
         }))
     }
 
+    /// Get mutable strings from tag. `None` if tag not present in record.
     pub fn string_mut(&mut self) -> Result<Option<Vec<&'a mut [u8]>>, InfoReadError> {
         self.data(htslib::vcf::BCF_HT_STR).map(|data| data.map(|(n, ret)| {
             unsafe {
