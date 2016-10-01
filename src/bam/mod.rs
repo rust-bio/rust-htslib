@@ -181,6 +181,9 @@ impl IndexedReader {
     }
 
     pub fn seek(&mut self, tid: u32, beg: u32, end: u32) -> Result<(), SeekError> {
+        if let Some(itr) = self.itr {
+            unsafe { htslib::hts_itr_destroy(itr) }
+        }
         let itr = unsafe {
             htslib::sam_itr_queryi(self.idx, tid as i32, beg as i32, end as i32)
         };
