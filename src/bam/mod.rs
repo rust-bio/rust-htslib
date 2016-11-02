@@ -572,6 +572,16 @@ mod tests {
     }
 
     #[test]
+    fn test_read_sam_header() {
+        let bam = Reader::new(&"test/test.bam").ok().expect("Error opening file.");
+
+        let true_header = "@SQ\tSN:CHROMOSOME_I\tLN:15072423\n@SQ\tSN:CHROMOSOME_II\tLN:15279345\n@SQ\tSN:CHROMOSOME_III\tLN:13783700\n@SQ\tSN:CHROMOSOME_IV\tLN:17493793\n@SQ\tSN:CHROMOSOME_V\tLN:20924149\n";
+        let header_text = bam.header.text().unwrap();
+        assert_eq!(header_text, true_header);
+    }
+
+
+    #[test]
     fn test_read_indexed() {
         let (names, flags, seqs, quals, cigars) = gold();
         let mut bam = IndexedReader::new(&"test/test.bam").ok().expect("Expected valid index.");
