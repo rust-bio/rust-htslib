@@ -13,6 +13,7 @@ use std::ptr;
 use std::slice;
 use std::convert::AsRef;
 use std::path::Path;
+use std::string::FromUtf8Error;
 
 use htslib;
 use utils;
@@ -503,6 +504,12 @@ impl HeaderView {
         else {
             None
         }
+    }
+
+    /// Retrieve the textual SAM header as a String
+    pub fn text(&self) -> Result<String, FromUtf8Error> {
+        let text_bytes = unsafe{ ffi::CStr::from_ptr((*self.inner).text).to_bytes() };
+        String::from_utf8(Vec::from(text_bytes))
     }
 }
 
