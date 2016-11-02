@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.9.0] - 2016-11-02
+### Changed
+- improved genotype handling
+- improved error handling
+- improved missing value handling
+
 ## [0.8.1] - 2016-08-17
 ### Changed
 - Finally converted the last unit error types to real error types (really now!).
