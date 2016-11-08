@@ -13,7 +13,6 @@ use std::ptr;
 use std::slice;
 use std::convert::AsRef;
 use std::path::Path;
-use std::string::FromUtf8Error;
 
 use htslib;
 use utils;
@@ -507,9 +506,9 @@ impl HeaderView {
     }
 
     /// Retrieve the textual SAM header as a String
-    pub fn text(&self) -> Result<String, FromUtf8Error> {
+    pub fn text(&self) -> Vec<u8> {
         let text_bytes = unsafe{ ffi::CStr::from_ptr((*self.inner).text).to_bytes() };
-        String::from_utf8(Vec::from(text_bytes))
+        Vec::from(text_bytes)
     }
 }
 
@@ -575,8 +574,8 @@ mod tests {
     fn test_read_sam_header() {
         let bam = Reader::new(&"test/test.bam").ok().expect("Error opening file.");
 
-        let true_header = "@SQ\tSN:CHROMOSOME_I\tLN:15072423\n@SQ\tSN:CHROMOSOME_II\tLN:15279345\n@SQ\tSN:CHROMOSOME_III\tLN:13783700\n@SQ\tSN:CHROMOSOME_IV\tLN:17493793\n@SQ\tSN:CHROMOSOME_V\tLN:20924149\n";
-        let header_text = bam.header.text().unwrap();
+        let true_header = "@SQ\tSN:CHROMOSOME_I\tLN:15072423\n@SQ\tSN:CHROMOSOME_II\tLN:15279345\n@SQ\tSN:CHROMOSOME_III\tLN:13783700\n@SQ\tSN:CHROMOSOME_IV\tLN:17493793\n@SQ\tSN:CHROMOSOME_V\tLN:20924149\n".to_string();
+        let header_text = String::from_utf8(bam.header.text()).unwrap();
         assert_eq!(header_text, true_header);
     }
 
