@@ -506,9 +506,8 @@ impl HeaderView {
     }
 
     /// Retrieve the textual SAM header as a String
-    pub fn text(&self) -> Vec<u8> {
-        let text_bytes = unsafe{ ffi::CStr::from_ptr((*self.inner).text).to_bytes() };
-        Vec::from(text_bytes)
+    pub fn text<'a>(&'a self) -> &'a [u8] {
+        unsafe{ ffi::CStr::from_ptr((*self.inner).text).to_bytes() }
     }
 }
 
@@ -575,7 +574,7 @@ mod tests {
         let bam = Reader::new(&"test/test.bam").ok().expect("Error opening file.");
 
         let true_header = "@SQ\tSN:CHROMOSOME_I\tLN:15072423\n@SQ\tSN:CHROMOSOME_II\tLN:15279345\n@SQ\tSN:CHROMOSOME_III\tLN:13783700\n@SQ\tSN:CHROMOSOME_IV\tLN:17493793\n@SQ\tSN:CHROMOSOME_V\tLN:20924149\n".to_string();
-        let header_text = String::from_utf8(bam.header.text()).unwrap();
+        let header_text = String::from_utf8(Vec::from(bam.header.text())).unwrap();
         assert_eq!(header_text, true_header);
     }
 
