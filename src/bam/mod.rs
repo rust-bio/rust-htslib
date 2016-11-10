@@ -11,11 +11,10 @@ pub mod pileup;
 use std::ffi;
 use std::ptr;
 use std::slice;
-use std::convert::AsRef;
 use std::path::Path;
+use url::Url;
 
 use htslib;
-use utils;
 
 pub use bam::record::Record;
 pub use bam::header::Header;
@@ -43,13 +42,16 @@ pub trait Read: Sized {
 
     /// Return the BGZF struct
     fn bgzf(&self) -> *mut htslib::Struct_BGZF;
+
+    /// Return the header.
+    fn header(&self) -> &HeaderView;
 }
 
 
 /// A BAM reader.
 pub struct Reader {
     bgzf: *mut htslib::Struct_BGZF,
-    pub header: HeaderView,
+    header: HeaderView,
 }
 
 
@@ -57,21 +59,39 @@ unsafe impl Send for Reader {}
 
 
 impl Reader {
+    /// Create a new Reader from path.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - the path to open.
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, ReaderPathError> {
+        match path.as_ref().to_str() {
+            Some(p) if path.as_ref().exists() => {
+                Ok(try!(Self::new(p.as_bytes())))
+            },
+            _ => {
+                Err(ReaderPathError::InvalidPath)
+            }
+        }
+    }
+
+    /// Create a new Reader from STDIN.
+    pub fn from_stdin() -> Result<Self, BGZFError> {
+        Self::new(b"-")
+    }
+
+    /// Create a new Reader from URL.
+    pub fn from_url(url: &Url) -> Result<Self, BGZFError> {
+        Self::new(url.as_str().as_bytes())
+    }
+
     /// Create a new Reader.
     ///
     /// # Arguments
     ///
-    /// * `path` - the path. Use "-" for stdin.
-    pub fn new<P: AsRef<Path>>(path: &P) -> Result<Self, BGZFError> {
-        if !path.as_ref().exists() {
-            if let Some(path) = path.as_ref().to_str() {
-                if path != "-" {
-                    // path does not exist and is not a - representing stdin
-                    return Err(BGZFError::InvalidPath);
-                }
-            }
-        }
-        let bgzf = try!(bgzf_open(path, b"r"));
+    /// * `path` - the path to open. Use "-" for stdin.
+    fn new(path: &[u8]) -> Result<Self, BGZFError> {
+        let bgzf = try!(bgzf_open(&ffi::CString::new(path).unwrap(), b"r"));
         let header = unsafe { htslib::bam_hdr_read(bgzf) };
         Ok(Reader { bgzf: bgzf, header: HeaderView::new(header) })
     }
@@ -115,6 +135,10 @@ impl Read for Reader {
     fn bgzf(&self) -> *mut htslib::Struct_BGZF {
         self.bgzf
     }
+
+    fn header(&self) -> &HeaderView {
+        &self.header
+    }
 }
 
 
@@ -140,43 +164,45 @@ unsafe impl Send for IndexedReader {}
 
 
 impl IndexedReader {
+
+    /// Create a new Reader from path.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - the path to open.
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, IndexedReaderPathError> {
+        match path.as_ref().to_str() {
+            Some(p) if path.as_ref().exists() => {
+                Ok(try!(Self::new(&ffi::CString::new(p).unwrap())))
+            },
+            _ => {
+                Err(IndexedReaderPathError::InvalidPath)
+            }
+        }
+    }
+
+    pub fn from_url(url: &Url) -> Result<Self, IndexedReaderError> {
+        Self::new(&ffi::CString::new(url.as_str()).unwrap())
+    }
+
     /// Create a new Reader.
     ///
     /// # Arguments
     ///
     /// * `path` - the path. Use "-" for stdin.
-    pub fn new<P: AsRef<Path>>(path: &P) -> Result<Self, IndexError> {
-        if !path.as_ref().exists() {
-            if let Some(path) = path.as_ref().to_str() {
-                if path != "-" {
-                    // path does not exist and is not a - representing stdin
-                    return Err(IndexError::InvalidPath);
-                }
-            }
-        }
-        if let Ok(bgzf) = bgzf_open(path, b"r") {
-            if let Some(path) = utils::path_to_cstring(path) {
-
-                let header = unsafe { htslib::bam_hdr_read(bgzf) };
-                let idx = unsafe {
-                    htslib::hts_idx_load(
-                        path.as_ptr(),
-                        htslib::HTS_FMT_BAI
-                    )
-                };
-                if idx.is_null() {
-                    Err(IndexError::InvalidIndex)
-                }
-                else {
-                    Ok(IndexedReader { bgzf: bgzf, header : HeaderView::new(header), idx: idx, itr: None })
-                }
-            }
-            else {
-                Err(IndexError::InvalidPath)
-            }
-        }
-        else {
-            Err(IndexError::InvalidPath)
+    fn new(path: &ffi::CStr) -> Result<Self, IndexedReaderError> {
+        let bgzf = try!(bgzf_open(path, b"r"));
+        let header = unsafe { htslib::bam_hdr_read(bgzf) };
+        let idx = unsafe {
+            htslib::hts_idx_load(
+                path.as_ptr(),
+                htslib::HTS_FMT_BAI
+            )
+        };
+        if idx.is_null() {
+            Err(IndexedReaderError::InvalidIndex)
+        } else {
+            Ok(IndexedReader { bgzf: bgzf, header : HeaderView::new(header), idx: idx, itr: None })
         }
     }
 
@@ -242,6 +268,10 @@ impl Read for IndexedReader {
     fn bgzf(&self) -> *mut htslib::Struct_BGZF {
         self.bgzf
     }
+
+    fn header(&self) -> &HeaderView {
+        &self.header
+    }
 }
 
 
@@ -262,7 +292,7 @@ impl Drop for IndexedReader {
 /// A BAM writer.
 pub struct Writer {
     f: *mut htslib::Struct_BGZF,
-    pub header: HeaderView,
+    header: HeaderView,
 }
 
 
@@ -274,10 +304,33 @@ impl Writer {
     ///
     /// # Arguments
     ///
+    /// * `path` - the path.
+    /// * `header` - header definition to use
+    pub fn from_path<P: AsRef<Path>>(path: P, header: &header::Header) -> Result<Self, WriterPathError> {
+        if let Some(p) = path.as_ref().to_str() {
+                Ok(try!(Self::new(p.as_bytes(), header)))
+        } else {
+            Err(WriterPathError::InvalidPath)
+        }
+    }
+
+    /// Create a new BAM file at STDOUT.
+    ///
+    /// # Arguments
+    ///
+    /// * `header` - header definition to use
+    pub fn from_stdout(header: &header::Header) -> Result<Self, BGZFError> {
+        Self::new(b"-", header)
+    }
+
+    /// Create a new BAM file.
+    ///
+    /// # Arguments
+    ///
     /// * `path` - the path. Use "-" for stdin.
     /// * `header` - header definition to use
-    pub fn new<P: AsRef<Path>>(path: &P, header: &header::Header) -> Result<Self, BGZFError> {
-        let f = try!(bgzf_open(path, b"w"));
+    fn new(path: &[u8], header: &header::Header) -> Result<Self, BGZFError> {
+        let f = try!(bgzf_open(&ffi::CString::new(path).unwrap(), b"w"));
 
         let header_record = unsafe {
             let header_string = header.to_bytes();
@@ -292,24 +345,6 @@ impl Writer {
         Ok(Writer { f: f, header: HeaderView::new(header_record) })
     }
 
-    /// Create a new BAM file from template.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - the path. Use "-" for stdin.
-    /// * `template` - the template BAM. Use "-" for stdin.
-    pub fn with_template<P: AsRef<Path>, T: AsRef<Path>>(template: &T, path: &P) -> Result<Self, BGZFError> {
-        let t = try!(bgzf_open(template, b"r"));
-        let header = unsafe { htslib::bam_hdr_read(t) };
-
-        let f = try!(bgzf_open(path, b"w"));
-        unsafe { htslib::bam_hdr_write(f, header); }
-
-        unsafe { htslib::bgzf_close(t); }
-
-        Ok(Writer { f: f, header: HeaderView::new(header) })
-    }
-
     /// Write record to BAM.
     ///
     /// # Arguments
@@ -322,6 +357,12 @@ impl Writer {
         else {
             Ok(())
         }
+    }
+
+
+    /// Return the header.
+    pub fn header(&self) -> &HeaderView {
+        &self.header
     }
 }
 
@@ -385,12 +426,38 @@ impl ReadError {
 
 quick_error! {
     #[derive(Debug)]
-    pub enum IndexError {
+    pub enum IndexedReaderError {
         InvalidIndex {
             description("invalid index")
         }
+        BGZFError(err: BGZFError) {
+            from()
+        }
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug)]
+    pub enum WriterPathError {
         InvalidPath {
             description("invalid path")
+        }
+        BGZFError(err: BGZFError) {
+            from()
+        }
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug)]
+    pub enum IndexedReaderPathError {
+        InvalidPath {
+            description("invalid path")
+        }
+        IndexedReaderError(err: IndexedReaderError) {
+            from()
         }
     }
 }
@@ -399,8 +466,21 @@ quick_error! {
 quick_error! {
     #[derive(Debug)]
     pub enum BGZFError {
+        Some {
+            description("error reading BGZF file")
+        }
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug)]
+    pub enum ReaderPathError {
         InvalidPath {
             description("invalid path")
+        }
+        BGZFError(err: BGZFError) {
+            from()
         }
     }
 }
@@ -427,17 +507,17 @@ quick_error! {
 
 
 /// Wrapper for opening a BAM file.
-fn bgzf_open<P: AsRef<Path>>(path: &P, mode: &[u8]) -> Result<*mut htslib::Struct_BGZF, BGZFError> {
-    if let Some(p) = utils::path_to_cstring(path) {
-        Ok(unsafe {
-            htslib::bgzf_open(
-                p.as_ptr(),
-                ffi::CString::new(mode).unwrap().as_ptr()
-            )
-        })
-    }
-    else {
-        Err(BGZFError::InvalidPath)
+fn bgzf_open(path: &ffi::CStr, mode: &[u8]) -> Result<*mut htslib::Struct_BGZF, BGZFError> {
+    let ret = unsafe {
+        htslib::bgzf_open(
+            path.as_ptr(),
+            ffi::CString::new(mode).unwrap().as_ptr()
+        )
+    };
+    if ret.is_null() {
+        Err(BGZFError::Some)
+    } else {
+        Ok(ret)
     }
 }
 
@@ -505,8 +585,8 @@ impl HeaderView {
         }
     }
 
-    /// Retrieve the textual SAM header as a String
-    pub fn text<'a>(&'a self) -> &'a [u8] {
+    /// Retrieve the textual SAM header as bytes
+    pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
         unsafe{ ffi::CStr::from_ptr((*self.inner).text).to_bytes() }
     }
 }
@@ -519,6 +599,7 @@ mod tests {
     use super::record::{Cigar,Aux};
     use super::header::HeaderRecord;
     use std::str;
+    use std::path::Path;
 
     fn gold() -> ([&'static [u8]; 6], [u16; 6], [&'static [u8]; 6], [&'static [u8]; 6], [[Cigar; 3]; 6]) {
         let names = [&b"I"[..], &b"II.14978392"[..], &b"III"[..], &b"IV"[..], &b"V"[..], &b"VI"[..]];
@@ -553,7 +634,7 @@ mod tests {
     #[test]
     fn test_read() {
         let (names, flags, seqs, quals, cigars) = gold();
-        let bam = Reader::new(&"test/test.bam").ok().expect("Error opening file.");
+        let bam = Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening file.");
 
         for (i, record) in bam.records().enumerate() {
             let rec = record.ok().expect("Expected valid record");
@@ -571,10 +652,10 @@ mod tests {
 
     #[test]
     fn test_read_sam_header() {
-        let bam = Reader::new(&"test/test.bam").ok().expect("Error opening file.");
+        let bam = Reader::from_path(&"test/test.bam").ok().expect("Error opening file.");
 
         let true_header = "@SQ\tSN:CHROMOSOME_I\tLN:15072423\n@SQ\tSN:CHROMOSOME_II\tLN:15279345\n@SQ\tSN:CHROMOSOME_III\tLN:13783700\n@SQ\tSN:CHROMOSOME_IV\tLN:17493793\n@SQ\tSN:CHROMOSOME_V\tLN:20924149\n".to_string();
-        let header_text = String::from_utf8(Vec::from(bam.header.text())).unwrap();
+        let header_text = String::from_utf8(bam.header.as_bytes().to_owned()).unwrap();
         assert_eq!(header_text, true_header);
     }
 
@@ -582,7 +663,7 @@ mod tests {
     #[test]
     fn test_read_indexed() {
         let (names, flags, seqs, quals, cigars) = gold();
-        let mut bam = IndexedReader::new(&"test/test.bam").ok().expect("Expected valid index.");
+        let mut bam = IndexedReader::from_path(&"test/test.bam").ok().expect("Expected valid index.");
 
         let tid = bam.header.tid(b"CHROMOSOME_I").expect("Expected tid.");
         assert!(bam.header.target_len(tid).expect("Expected target len.") == 15072423);
@@ -637,7 +718,7 @@ mod tests {
         let bampath = tmp.path().join("test.bam");
         println!("{:?}", bampath);
         {
-            let mut bam = Writer::new(
+            let mut bam = Writer::from_path(
                 &bampath,
                 Header::new().push_record(
                     HeaderRecord::new(b"SQ").push_tag(b"SN", &"chr1")
@@ -653,7 +734,7 @@ mod tests {
         }
 
         {
-            let bam = Reader::new(&bampath).ok().expect("Error opening file.");
+            let bam = Reader::from_path(&bampath).ok().expect("Error opening file.");
 
             let mut rec = record::Record::new();
             bam.read(&mut rec).ok().expect("Failed to read record.");
@@ -672,7 +753,7 @@ mod tests {
     fn test_pileup() {
         let (_, _, seqs, quals, _) = gold();
 
-        let bam = Reader::new(&"test/test.bam").ok().expect("Error opening file.");
+        let bam = Reader::from_path(&"test/test.bam").ok().expect("Error opening file.");
         let pileups = bam.pileup();
         for pileup in pileups.take(26) {
             let _pileup = pileup.ok().expect("Expected successful pileup.");

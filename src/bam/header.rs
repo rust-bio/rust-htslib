@@ -3,6 +3,8 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use bam::HeaderView;
+
 
 /// A BAM header.
 pub struct Header {
@@ -14,6 +16,10 @@ impl Header {
     /// Create a new header.
     pub fn new() -> Self {
         Header { records: Vec::new() }
+    }
+
+    pub fn from_template(header: &HeaderView) -> Self {
+        Header { records: vec![header.as_bytes().to_owned()] }
     }
 
     /// Add a record to the header.
