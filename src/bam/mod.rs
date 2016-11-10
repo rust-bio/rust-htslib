@@ -42,13 +42,16 @@ pub trait Read: Sized {
 
     /// Return the BGZF struct
     fn bgzf(&self) -> *mut htslib::Struct_BGZF;
+
+    /// Return the header.
+    fn header(&self) -> &HeaderView;
 }
 
 
 /// A BAM reader.
 pub struct Reader {
     bgzf: *mut htslib::Struct_BGZF,
-    pub header: HeaderView,
+    header: HeaderView,
 }
 
 
@@ -61,9 +64,9 @@ impl Reader {
     /// # Arguments
     ///
     /// * `path` - the path to open.
-    pub fn from_path(path: &Path) -> Result<Self, ReaderPathError> {
-        match path.to_str() {
-            Some(p) if path.exists() => {
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, ReaderPathError> {
+        match path.as_ref().to_str() {
+            Some(p) if path.as_ref().exists() => {
                 Ok(try!(Self::new(p.as_bytes())))
             },
             _ => {
@@ -132,6 +135,10 @@ impl Read for Reader {
     fn bgzf(&self) -> *mut htslib::Struct_BGZF {
         self.bgzf
     }
+
+    fn header(&self) -> &HeaderView {
+        &self.header
+    }
 }
 
 
@@ -163,9 +170,9 @@ impl IndexedReader {
     /// # Arguments
     ///
     /// * `path` - the path to open.
-    pub fn from_path(path: &Path) -> Result<Self, IndexedReaderPathError> {
-        match path.to_str() {
-            Some(p) if path.exists() => {
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, IndexedReaderPathError> {
+        match path.as_ref().to_str() {
+            Some(p) if path.as_ref().exists() => {
                 Ok(try!(Self::new(&ffi::CString::new(p).unwrap())))
             },
             _ => {
@@ -200,6 +207,9 @@ impl IndexedReader {
     }
 
     pub fn seek(&mut self, tid: u32, beg: u32, end: u32) -> Result<(), SeekError> {
+        if let Some(itr) = self.itr {
+            unsafe { htslib::hts_itr_destroy(itr) }
+        }
         let itr = unsafe {
             htslib::sam_itr_queryi(self.idx, tid as i32, beg as i32, end as i32)
         };
@@ -258,6 +268,10 @@ impl Read for IndexedReader {
     fn bgzf(&self) -> *mut htslib::Struct_BGZF {
         self.bgzf
     }
+
+    fn header(&self) -> &HeaderView {
+        &self.header
+    }
 }
 
 
@@ -278,7 +292,7 @@ impl Drop for IndexedReader {
 /// A BAM writer.
 pub struct Writer {
     f: *mut htslib::Struct_BGZF,
-    pub header: HeaderView,
+    header: HeaderView,
 }
 
 
@@ -292,39 +306,9 @@ impl Writer {
     ///
     /// * `path` - the path.
     /// * `header` - header definition to use
-    pub fn from_path(path: &Path, header: &header::Header) -> Result<Self, WriterPathError> {
-        if let Some(p) = path.to_str() {
+    pub fn from_path<P: AsRef<Path>>(path: P, header: &header::Header) -> Result<Self, WriterPathError> {
+        if let Some(p) = path.as_ref().to_str() {
                 Ok(try!(Self::new(p.as_bytes(), header)))
-        } else {
-            Err(WriterPathError::InvalidPath)
-        }
-    }
-
-    /// Create a new BAM file from template.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - the path.
-    /// * `template_path` - path to header definition to use
-    pub fn from_path_with_template(path: &Path, template_path: &Path) -> Result<Self, WriterPathError> {
-        match (path.to_str(), template_path.to_str()) {
-            (Some(p), Some(t)) if template_path.exists() => {
-                Ok(try!(Self::with_template_bytes(p.as_bytes(), t.as_bytes())))
-            },
-            _ => {
-                Err(WriterPathError::InvalidPath)
-            }
-        }
-    }
-
-    /// Create a new BAM file with template read from stdin.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - the path.
-    pub fn from_path_with_template_from_stdin(path: &Path) -> Result<Self, WriterPathError> {
-        if let Some(p) = path.to_str() {
-            Ok(try!(Self::with_template_bytes(p.as_bytes(), b"-")))
         } else {
             Err(WriterPathError::InvalidPath)
         }
@@ -337,27 +321,6 @@ impl Writer {
     /// * `header` - header definition to use
     pub fn from_stdout(header: &header::Header) -> Result<Self, BGZFError> {
         Self::new(b"-", header)
-    }
-
-    /// Create a new BAM file at STDOUT with given template.
-    ///
-    /// # Arguments
-    ///
-    /// * `template_path` - template definition to use
-    pub fn from_stdout_with_template(template_path: &Path) -> Result<Self, WriterPathError> {
-        match template_path.to_str() {
-            Some(p) if template_path.exists() => {
-                Ok(try!(Self::with_template_bytes(p.as_bytes(), b"-")))
-            },
-            _ => {
-                Err(WriterPathError::InvalidPath)
-            }
-        }
-    }
-
-    /// Create a new BAM file at STDOUT with header read from STDIN.
-    pub fn from_stdout_with_template_from_stdin() -> Result<Self, BGZFError> {
-        Self::with_template_bytes(b"-", b"-")
     }
 
     /// Create a new BAM file.
@@ -382,24 +345,6 @@ impl Writer {
         Ok(Writer { f: f, header: HeaderView::new(header_record) })
     }
 
-    /// Create a new BAM file from template.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - the path. Use "-" for stdin.
-    /// * `template` - the template BAM. Use "-" for stdin.
-    fn with_template_bytes(path: &[u8], template: &[u8]) -> Result<Self, BGZFError> {
-        let t = try!(bgzf_open(&ffi::CString::new(template).unwrap(), b"r"));
-        let header = unsafe { htslib::bam_hdr_read(t) };
-
-        let f = try!(bgzf_open(&ffi::CString::new(path).unwrap(), b"w"));
-        unsafe { htslib::bam_hdr_write(f, header); }
-
-        unsafe { htslib::bgzf_close(t); }
-
-        Ok(Writer { f: f, header: HeaderView::new(header) })
-    }
-
     /// Write record to BAM.
     ///
     /// # Arguments
@@ -412,6 +357,12 @@ impl Writer {
         else {
             Ok(())
         }
+    }
+
+
+    /// Return the header.
+    pub fn header(&self) -> &HeaderView {
+        &self.header
     }
 }
 
@@ -633,6 +584,11 @@ impl HeaderView {
             None
         }
     }
+
+    /// Retrieve the textual SAM header as bytes
+    pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
+        unsafe{ ffi::CStr::from_ptr((*self.inner).text).to_bytes() }
+    }
 }
 
 
@@ -695,9 +651,19 @@ mod tests {
     }
 
     #[test]
+    fn test_read_sam_header() {
+        let bam = Reader::from_path(&"test/test.bam").ok().expect("Error opening file.");
+
+        let true_header = "@SQ\tSN:CHROMOSOME_I\tLN:15072423\n@SQ\tSN:CHROMOSOME_II\tLN:15279345\n@SQ\tSN:CHROMOSOME_III\tLN:13783700\n@SQ\tSN:CHROMOSOME_IV\tLN:17493793\n@SQ\tSN:CHROMOSOME_V\tLN:20924149\n".to_string();
+        let header_text = String::from_utf8(bam.header.as_bytes().to_owned()).unwrap();
+        assert_eq!(header_text, true_header);
+    }
+
+
+    #[test]
     fn test_read_indexed() {
         let (names, flags, seqs, quals, cigars) = gold();
-        let mut bam = IndexedReader::from_path(&Path::new("test/test.bam")).ok().expect("Expected valid index.");
+        let mut bam = IndexedReader::from_path(&"test/test.bam").ok().expect("Expected valid index.");
 
         let tid = bam.header.tid(b"CHROMOSOME_I").expect("Expected tid.");
         assert!(bam.header.target_len(tid).expect("Expected target len.") == 15072423);
@@ -787,7 +753,7 @@ mod tests {
     fn test_pileup() {
         let (_, _, seqs, quals, _) = gold();
 
-        let bam = Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening file.");
+        let bam = Reader::from_path(&"test/test.bam").ok().expect("Error opening file.");
         let pileups = bam.pileup();
         for pileup in pileups.take(26) {
             let _pileup = pileup.ok().expect("Expected successful pileup.");

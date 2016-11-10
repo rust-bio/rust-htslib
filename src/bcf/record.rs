@@ -10,14 +10,69 @@ use std::i32;
 use std::f32;
 use std::fmt;
 
+use ieee754::Ieee754;
 use itertools::Itertools;
 
 use htslib;
 
-pub const MISSING_INTEGER: i32 = i32::MIN;
-pub const MISSING_FLOAT: f32 = f32::NAN;
-pub const VECTOR_END_INTEGER: i32 = i32::MIN + 1;
-pub const VECTOR_END_FLOAT: f32 = 2.139095e+09;
+const MISSING_INTEGER: i32 = i32::MIN;
+const VECTOR_END_INTEGER: i32 = i32::MIN + 1;
+lazy_static!{
+    static ref MISSING_FLOAT: f32 = f32::from_bits(0x7F800001);
+    static ref VECTOR_END_FLOAT: f32 = f32::from_bits(0x7F800002);
+}
+
+
+/// Common methods for numeric INFO and FORMAT entries
+pub trait Numeric {
+    /// Return true if entry is a missing value
+    fn is_missing(&self) -> bool;
+
+    /// Return missing value for storage in BCF record.
+    fn missing() -> Self;
+}
+
+
+impl Numeric for f32 {
+    fn is_missing(&self) -> bool {
+        self.bits() == MISSING_FLOAT.bits()
+    }
+
+    fn missing() -> f32 {
+        *MISSING_FLOAT
+    }
+}
+
+
+impl Numeric for i32 {
+    fn is_missing(&self) -> bool {
+        *self == MISSING_INTEGER
+    }
+
+    fn missing() -> i32 {
+        MISSING_INTEGER
+    }
+}
+
+
+trait NumericUtils {
+    /// Return true if entry marks the end of the record.
+    fn is_vector_end(&self) -> bool;
+}
+
+
+impl NumericUtils for f32 {
+    fn is_vector_end(&self) -> bool {
+        self.bits() == VECTOR_END_FLOAT.bits()
+    }
+}
+
+
+impl NumericUtils for i32 {
+    fn is_vector_end(&self) -> bool {
+        *self == VECTOR_END_INTEGER
+    }
+}
 
 
 pub struct Record {
@@ -300,30 +355,36 @@ impl<'a> Info<'a> {
         }
     }
 
+    /// Get integers from tag. `None` if tag not present in record.
+    /// Import `bcf::record::Numeric` for missing value handling.
     pub fn integer(&mut self) -> Result<Option<&'a [i32]>, InfoReadError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|data| data.map(|(n, _)| {
             trim_slice(
-                unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) },
-                VECTOR_END_INTEGER
+                unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) }
             )
         }))
     }
 
+    /// Get mutable integers from tag. `None` if tag not present in record.
+    /// Import `bcf::record::Numeric` for missing value handling.
     pub fn integer_mut(&mut self) -> Result<Option<&'a mut [i32]>, InfoReadError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|data| data.map(|(n, _)| {
             unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut i32, n) }
         }))
     }
 
+    /// Get floats from tag. `None` if tag not present in record.
+    /// Import `bcf::record::Numeric` for missing value handling.
     pub fn float(&mut self) -> Result<Option<&'a [f32]>, InfoReadError> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|data| data.map(|(n, _)| {
             trim_slice(
-                unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) },
-                VECTOR_END_FLOAT
+                unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) }
             )
         }))
     }
 
+    /// Get mutable floats from tag. `None` if tag not present in record.
+    /// Import `bcf::record::Numeric` for missing value handling.
     pub fn float_mut(&mut self) -> Result<Option<&'a mut [f32]>, InfoReadError> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|data| data.map(|(n, _)| {
             unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut f32, n) }
@@ -339,6 +400,7 @@ impl<'a> Info<'a> {
         })
     }
 
+    /// Get strings from tag. `None` if tag not present in record.
     pub fn string(&mut self) -> Result<Option<Vec<&'a [u8]>>, InfoReadError> {
         self.data(htslib::vcf::BCF_HT_STR).map(|data| data.map(|(n, ret)| {
             unsafe {
@@ -350,6 +412,7 @@ impl<'a> Info<'a> {
         }))
     }
 
+    /// Get mutable strings from tag. `None` if tag not present in record.
     pub fn string_mut(&mut self) -> Result<Option<Vec<&'a mut [u8]>>, InfoReadError> {
         self.data(htslib::vcf::BCF_HT_STR).map(|data| data.map(|(n, ret)| {
             unsafe {
@@ -364,8 +427,8 @@ unsafe impl<'a> Send for Info<'a> {}
 unsafe impl<'a> Sync for Info<'a> {}
 
 
-fn trim_slice<T: PartialEq>(s: &[T], end_value: T) -> &[T] {
-    s.split(|v| *v == end_value).next().expect("Bug: returned slice should not be empty.")
+fn trim_slice<T: PartialEq + NumericUtils>(s: &[T]) -> &[T] {
+    s.split(|v| v.is_vector_end()).next().expect("Bug: returned slice should not be empty.")
 }
 
 
@@ -422,7 +485,7 @@ impl<'a> Format<'a> {
         self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts(self.record.buffer as *const i32, n)
-            }.chunks(self.values_per_sample()).map(|s| trim_slice(s, VECTOR_END_INTEGER)).collect()
+            }.chunks(self.values_per_sample()).map(|s| trim_slice(s)).collect()
         })
     }
 
@@ -438,7 +501,7 @@ impl<'a> Format<'a> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts(self.record.buffer as *const f32, n)
-            }.chunks(self.values_per_sample()).map(|s| trim_slice(s, VECTOR_END_FLOAT)).collect()
+            }.chunks(self.values_per_sample()).map(|s| trim_slice(s)).collect()
         })
     }
 

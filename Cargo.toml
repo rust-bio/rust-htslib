@@ -1,6 +1,6 @@
 [package]
 name = "rust-htslib"
-version = "0.8.1"
+version = "0.9.0"
 authors = ["Christopher Schröder <christopher.schroeder@tu-dortmund.de>", "Johannes Köster <johannes.koester@tu-dortmund.de>"]
 build = "build.rs"
 description = "This library provides HTSlib bindings and a high level Rust API for reading and writing BAM files."
@@ -18,6 +18,8 @@ quick-error = "1.1.*"
 newtype_derive = "0.1.*"
 custom_derive = "0.1.*"
 url = "1.2.*"
+ieee754 = "0.1"
+lazy_static = "0.1.*"
 
 
 [dev-dependencies]

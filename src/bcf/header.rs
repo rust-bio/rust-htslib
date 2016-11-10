@@ -144,6 +144,9 @@ impl HeaderView {
                 htslib::vcf::BCF_DT_ID,
                 ffi::CString::new(tag).unwrap().as_ptr() as *mut i8
             );
+            if id < 0 {
+                return Err(TagTypeError::UndefinedTag(str::from_utf8(tag).unwrap().to_owned()));
+            }
             let n = (*self.inner).n[htslib::vcf::BCF_DT_ID as usize] as usize;
             let entry = slice::from_raw_parts((*self.inner).id[htslib::vcf::BCF_DT_ID as usize], n);
             let d = (*entry[id as usize].val).info[hdr_type as usize];
@@ -212,6 +215,10 @@ quick_error! {
     pub enum TagTypeError {
         UnexpectedTagType {
             description("unexpected tag type in header")
+        }
+        UndefinedTag(name: String) {
+            description("undefined tag")
+            display("tag {} is undefined in header", name)
         }
     }
 }

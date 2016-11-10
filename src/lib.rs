@@ -8,11 +8,11 @@
 //!
 //! ```
 //! use rust_htslib::bam;
-//! use rust_htslib::bam::Read;
-//! use std::path::Path;
+//! use rust_htslib::prelude::*;
 //!
-//! let bam = bam::Reader::from_path(&Path::new("test/test.bam")).unwrap();
-//! let mut out = bam::Writer::from_path_with_template(&Path::new("test/out.bam"), &Path::new("test/test.bam")).unwrap();
+//! let bam = bam::Reader::from_path(&"test/test.bam").unwrap();
+//! let header = bam::Header::from_template(bam.header());
+//! let mut out = bam::Writer::from_path(&"test/out.bam", &header).unwrap();
 //!
 //! // copy reverse reads to new BAM file
 //! for r in bam.records() {
@@ -27,10 +27,9 @@
 //!
 //! ```
 //! use rust_htslib::bam;
-//! use rust_htslib::bam::Read;
-//! use std::path::Path;
+//! use rust_htslib::prelude::*;
 //!
-//! let bam = bam::Reader::from_path(&Path::new("test/test.bam")).unwrap();
+//! let bam = bam::Reader::from_path(&"test/test.bam").unwrap();
 //!
 //! // pileup over all covered sites
 //! for p in bam.pileup() {
@@ -51,9 +50,9 @@
 //!
 //! ```
 //! use rust_htslib::bam;
-//! use std::path::Path;
+//! use rust_htslib::prelude::*;
 //!
-//! let mut bam = bam::IndexedReader::from_path(&Path::new("test/test.bam")).unwrap();
+//! let mut bam = bam::IndexedReader::from_path(&"test/test.bam").unwrap();
 //!
 //! // seek to chr1:50000-100000
 //! let tid = bam.header.tid(b"CHROMOSOME_I").unwrap();
@@ -71,8 +70,12 @@ extern crate newtype_derive;
 #[macro_use]
 extern crate custom_derive;
 extern crate url;
+extern crate ieee754;
+#[macro_use]
+extern crate lazy_static;
 
 pub mod htslib;
 pub mod bam;
 pub mod bcf;
 pub mod utils;
+pub mod prelude;

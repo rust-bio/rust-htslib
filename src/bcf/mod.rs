@@ -25,9 +25,9 @@ unsafe impl Send for Reader {}
 
 impl Reader {
 
-    pub fn from_path(path: &Path) -> Result<Self, BCFPathError> {
-        match path.to_str() {
-            Some(p) if path.exists() => {
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, BCFPathError> {
+        match path.as_ref().to_str() {
+            Some(p) if path.as_ref().exists() => {
                 Ok(try!(Self::new(p.as_bytes())))
             },
             _ => {
@@ -88,8 +88,8 @@ unsafe impl Send for Writer {}
 
 
 impl Writer {
-    pub fn from_path(path: &Path, header: &Header, uncompressed: bool, vcf: bool) -> Result<Self, BCFPathError> {
-        if let Some(p) = path.to_str() {
+    pub fn from_path<P: AsRef<Path>>(path: P, header: &Header, uncompressed: bool, vcf: bool) -> Result<Self, BCFPathError> {
+        if let Some(p) = path.as_ref().to_str() {
             Ok(try!(Self::new(p.as_bytes(), header, uncompressed, vcf)))
         } else {
             Err(BCFPathError::InvalidPath)
@@ -258,9 +258,10 @@ mod tests {
     extern crate tempdir;
     use super::*;
     use std::path::Path;
+    use bcf::record::Numeric;
 
     fn _test_read<P: AsRef<Path>>(path: &P) {
-        let bcf = Reader::from_path(path.as_ref()).ok().expect("Error opening file.");
+        let bcf = Reader::from_path(path).ok().expect("Error opening file.");
         assert_eq!(bcf.header.samples(), [b"NA12878.subsample-0.25-0"]);
 
         for (i, rec) in bcf.records().enumerate() {
@@ -296,7 +297,7 @@ mod tests {
 
     #[test]
     fn test_write() {
-        let bcf = Reader::from_path(&Path::new("test/test_multi.bcf")).ok().expect("Error opening file.");
+        let bcf = Reader::from_path(&"test/test_multi.bcf").ok().expect("Error opening file.");
         let tmp = tempdir::TempDir::new("rust-htslib").ok().expect("Cannot create temp dir");
         let bcfpath = tmp.path().join("test.bcf");
         println!("{:?}", bcfpath);
@@ -319,7 +320,7 @@ mod tests {
 
     #[test]
     fn test_strings() {
-        let vcf = Reader::from_path(&Path::new("test/test_string.vcf")).ok().expect("Error opening file.");
+        let vcf = Reader::from_path(&"test/test_string.vcf").ok().expect("Error opening file.");
         let fs1 = [&b"LongString1"[..], &b"LongString2"[..], &b"."[..], &b"LongString4"[..], &b"evenlength"[..], &b"ss6"[..]];
         for (i, rec) in vcf.records().enumerate() {
             println!("record {}", i);
@@ -332,21 +333,20 @@ mod tests {
 
     #[test]
     fn test_missing() {
-        let vcf = Reader::from_path(&Path::new("test/test_missing.vcf")).ok().expect("Error opening file.");
-        let fn4 = [&[record::MISSING_INTEGER, record::MISSING_INTEGER, record::MISSING_INTEGER, record::MISSING_INTEGER][..], &[record::MISSING_INTEGER][..]];
+        let vcf = Reader::from_path(&"test/test_missing.vcf").ok().expect("Error opening file.");
+        let fn4 = [&[i32::missing(), i32::missing(), i32::missing(), i32::missing()][..], &[i32::missing()][..]];
         let f1 = [false, true];
         for (i, rec) in vcf.records().enumerate() {
             let mut record = rec.ok().expect("Error reading record.");
             assert_eq!(record.info(b"F1").float().ok().expect("Error reading float.").expect("Missing tag")[0].is_nan(), f1[i]);
             assert_eq!(record.format(b"FN4").integer().ok().expect("Error reading integer.")[1], fn4[i]);
-            println!("{:?}", record.format(b"FF4").float().ok().expect("Error reading float.")[1]);
-            assert!(record.format(b"FF4").float().ok().expect("Error reading float.")[1].iter().all(|v| v.is_nan()));
+            assert!(record.format(b"FF4").float().ok().expect("Error reading float.")[1].iter().all(|&v| v.is_missing()));
         }
     }
 
     #[test]
     fn test_genotypes() {
-        let vcf = Reader::from_path(&Path::new("test/test_string.vcf")).ok().expect("Error opening file.");
+        let vcf = Reader::from_path(&"test/test_string.vcf").ok().expect("Error opening file.");
         let expected = ["./1", "1|1", "0/1", "0|1", "1|.", "1/1"];
         for (rec, exp_gt) in vcf.records().zip(expected.into_iter()) {
             let mut rec = rec.ok().expect("Error reading record.");
