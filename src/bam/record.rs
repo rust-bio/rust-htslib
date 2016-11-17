@@ -306,6 +306,19 @@ impl Record {
         }
     }
 
+    // Delete auxiliary tag. Return false if tag doesn't exist
+    pub fn del_aux(&self, tag: &[u8]) -> bool {
+        let aux = unsafe { htslib::bam_aux_get(self.inner, ffi::CString::new(tag).unwrap().as_ptr() as *mut i8 ) };
+        unsafe {
+            if aux.is_null() {
+                false
+            } else {
+                htslib::bam_aux_del(self.inner, aux);
+                true
+            }
+        }
+    }
+
     flag!(is_paired, set_paired, 1u16);
     flag!(is_proper_pair, set_proper_pair, 2u16);
     flag!(is_unmapped, set_unmapped, 4u16);

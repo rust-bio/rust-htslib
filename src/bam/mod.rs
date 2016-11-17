@@ -711,6 +711,30 @@ mod tests {
     }
 
     #[test]
+    fn test_del_aux() {
+        let bam = Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening file.");
+
+        for record in bam.records() {
+            let rec = record.ok().expect("Expected valid record");
+
+            if rec.aux(b"XS").is_some() {
+		    assert_eq!(rec.del_aux(b"XS"), true);
+            }
+
+            if rec.aux(b"YT").is_some() {
+	        assert_eq!(rec.del_aux(b"YT"), true);
+            }
+
+	    assert_eq!(rec.del_aux(b"ab"), false);
+
+	    assert_eq!(rec.aux(b"XS"), None);
+	    assert_eq!(rec.aux(b"YT"), None);
+        }
+    }
+
+
+
+    #[test]
     fn test_write() {
         let (names, _, seqs, quals, cigars) = gold();
 
