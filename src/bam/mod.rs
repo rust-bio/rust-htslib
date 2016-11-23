@@ -711,21 +711,21 @@ mod tests {
     }
 
     #[test]
-    fn test_del_aux() {
+    fn test_remove_aux() {
         let bam = Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening file.");
 
         for record in bam.records() {
             let rec = record.ok().expect("Expected valid record");
 
             if rec.aux(b"XS").is_some() {
-		    assert_eq!(rec.del_aux(b"XS"), true);
+                rec.remove_aux(b"XS")
             }
 
             if rec.aux(b"YT").is_some() {
-	        assert_eq!(rec.del_aux(b"YT"), true);
+	            rec.remove_aux(b"YT");
             }
 
-	    assert_eq!(rec.del_aux(b"ab"), false);
+	    rec.remove_aux(b"ab");
 
 	    assert_eq!(rec.aux(b"XS"), None);
 	    assert_eq!(rec.aux(b"YT"), None);
