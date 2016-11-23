@@ -718,7 +718,7 @@ mod tests {
             let rec = record.ok().expect("Expected valid record");
 
             if rec.aux(b"XS").is_some() {
-                rec.remove_aux(b"XS")
+                rec.remove_aux(b"XS");
             }
 
             if rec.aux(b"YT").is_some() {

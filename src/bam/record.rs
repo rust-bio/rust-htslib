@@ -307,11 +307,14 @@ impl Record {
     }
 
     // Delete auxiliary tag.
-    pub fn remove_aux(&self, tag: &[u8]) {
+    pub fn remove_aux(&self, tag: &[u8]) -> bool {
         let aux = unsafe { htslib::bam_aux_get(self.inner, ffi::CString::new(tag).unwrap().as_ptr() as *mut i8 ) };
         unsafe {
-            if !aux.is_null() {
+            if aux.is_null() {
+                false
+            } else {
                 htslib::bam_aux_del(self.inner, aux);
+                true
             }
         }
     }
