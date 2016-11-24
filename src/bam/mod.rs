@@ -145,7 +145,6 @@ impl Read for Reader {
 impl Drop for Reader {
     fn drop(&mut self) {
         unsafe {
-            htslib::bam_hdr_destroy(self.header.inner);
             htslib::bgzf_close(self.bgzf);
         }
     }
@@ -282,7 +281,6 @@ impl Drop for IndexedReader {
                 htslib::hts_itr_destroy(self.itr.unwrap());
             }
             htslib::hts_idx_destroy(self.idx);
-            htslib::bam_hdr_destroy(self.header.inner);
             htslib::bgzf_close(self.bgzf);
         }
     }
@@ -332,14 +330,29 @@ impl Writer {
     fn new(path: &[u8], header: &header::Header) -> Result<Self, BGZFError> {
         let f = try!(bgzf_open(&ffi::CString::new(path).unwrap(), b"w"));
 
+        // sam_hdr_parse does not populate the text and l_text fields of the header_record.
+        // This causes non-SQ headers to be dropped in the output BAM file.
+        // To avoid this, we copy the full header to a new C-string that is allocated with malloc,
+        // and set this into header_record manually.
         let header_record = unsafe {
             let header_string = header.to_bytes();
+
+            let l_text = header_string.len();
+            let text = ::libc::malloc(l_text + 1);
+            ::libc::memset(text, 0, l_text + 1);
+            ::libc::memcpy(text, header_string.as_ptr() as *const ::libc::c_void, header_string.len());
+
             //println!("{}", str::from_utf8(&header_string).unwrap());
-            htslib::sam_hdr_parse(
-                (header_string.len() + 1) as i32,
-                ffi::CString::new(header_string).unwrap().as_ptr()
-            )
+            let rec = htslib::sam_hdr_parse(
+                (l_text + 1) as i32,
+                text as *const i8,
+            );
+
+            (*rec).text = text as *mut i8;
+            (*rec).l_text = l_text as u32;
+            rec
         };
+
         unsafe { htslib::bam_hdr_write(f, header_record); }
 
         Ok(Writer { f: f, header: HeaderView::new(header_record) })
@@ -370,7 +383,6 @@ impl Writer {
 impl Drop for Writer {
     fn drop(&mut self) {
         unsafe {
-            htslib::bam_hdr_destroy(self.header.inner);
             htslib::bgzf_close(self.f);
         }
     }
@@ -537,12 +549,23 @@ fn itr_next(bgzf: *mut htslib::Struct_BGZF, itr: *mut htslib:: hts_itr_t, record
 
 pub struct HeaderView {
     inner: *mut htslib::bam_hdr_t,
+    owned: bool,
 }
 
 
 impl HeaderView {
     fn new(inner: *mut htslib::bam_hdr_t) -> Self {
-        HeaderView { inner: inner }
+        HeaderView { 
+            inner: inner,
+            owned: true,
+        }
+    }
+
+    fn borrow(inner: *mut htslib::bam_hdr_t) -> Self {
+        HeaderView { 
+            inner: inner,
+            owned: false,
+        }
     }
 
     #[inline]
@@ -591,6 +614,13 @@ impl HeaderView {
     }
 }
 
+impl Drop for HeaderView {
+    fn drop(&mut self) {
+        if self.owned {
+            unsafe { htslib::bam_hdr_destroy(self.inner); }
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -772,6 +802,40 @@ mod tests {
 
         tmp.close().ok().expect("Failed to delete temp dir");
     }
+
+
+    #[test]
+    fn test_copy_template() {
+        // Verify that BAM headers are transmitted correctly when using an existing BAM as a template for headers.
+
+        let tmp = tempdir::TempDir::new("rust-htslib").ok().expect("Cannot create temp dir");
+        let bampath = tmp.path().join("test.bam");
+        println!("{:?}", bampath);
+
+        let input_bam = Reader::from_path(&"test/test.bam").ok().expect("Error opening file.");
+
+        {
+            let mut bam = Writer::from_path(
+                &bampath,
+                &Header::from_template(&input_bam.header()),
+            ).ok().expect("Error opening file.");
+
+            for rec in input_bam.records() {
+                bam.write(&rec.unwrap()).ok().expect("Failed to write record.");
+            }
+        }
+
+        {
+            let copy_bam = Reader::from_path(&bampath).ok().expect("Error opening file.");
+
+            // Verify that the header came across correctly
+            assert_eq!(input_bam.header().as_bytes(), copy_bam.header().as_bytes());
+        }
+
+        tmp.close().ok().expect("Failed to delete temp dir");
+    }
+
+
 
     #[test]
     fn test_pileup() {
