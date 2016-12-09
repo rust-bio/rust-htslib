@@ -358,6 +358,11 @@ impl Writer {
         Ok(Writer { f: f, header: HeaderView::new(header_record) })
     }
 
+    /// Activate multi-threaded BAM write support in htslib. This should permit faster
+    /// writing of large BAM files.
+    /// # Arguments
+    ///
+    /// * `n_threads` - number of background writer threads to use
     pub fn set_threads(&mut self, n_threads: usize) -> Result<(), WriteError> {
         let r = unsafe { htslib::bgzf_mt(self.f, n_threads as ::libc::c_int, 256) };
         if r != 0 {
@@ -828,7 +833,7 @@ mod tests {
                                             .push_tag(b"LN", &15072423)
                 )
             ).ok().expect("Error opening file.");
-            bam.set_threads(4);
+            bam.set_threads(4).ok();
 
             for i in 0 .. 10000 {
                 let mut rec = record::Record::new();
@@ -847,7 +852,7 @@ mod tests {
             for (i, _rec) in bam.records().enumerate() {
                 let idx = i % names.len();
 
-                let mut rec = _rec.expect("Failed to read record.");
+                let rec = _rec.expect("Failed to read record.");
 
                 assert_eq!(rec.pos(), i as i32);
                 assert_eq!(rec.qname(), names[idx]);
