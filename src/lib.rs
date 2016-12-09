@@ -8,16 +8,17 @@
 //!
 //! ```
 //! use rust_htslib::bam;
-//! use rust_htslib::bam::Read;
+//! use rust_htslib::prelude::*;
 //!
-//! let bam = bam::Reader::new(&"test/test.bam").ok().expect("Error opening bam.");
-//! let mut out = bam::Writer::with_template(&"test/test.bam", &"test/out.bam").ok().expect("Error opening bam.");
+//! let bam = bam::Reader::from_path(&"test/test.bam").unwrap();
+//! let header = bam::Header::from_template(bam.header());
+//! let mut out = bam::Writer::from_path(&"test/out.bam", &header).unwrap();
 //!
 //! // copy reverse reads to new BAM file
 //! for r in bam.records() {
-//!     let record = r.ok().expect("Error reading BAM file.");
+//!     let record = r.unwrap();
 //!     if record.is_reverse() {
-//!         out.write(&record).ok().expect("Error writing BAM file.");
+//!         out.write(&record).unwrap();
 //!     }
 //! }
 //! ```
@@ -26,13 +27,13 @@
 //!
 //! ```
 //! use rust_htslib::bam;
-//! use rust_htslib::bam::Read;
+//! use rust_htslib::prelude::*;
 //!
-//! let bam = bam::Reader::new(&"test/test.bam").ok().expect("Error opening bam.");
+//! let bam = bam::Reader::from_path(&"test/test.bam").unwrap();
 //!
 //! // pileup over all covered sites
 //! for p in bam.pileup() {
-//!     let pileup = p.ok().expect("Error reading BAM file.");
+//!     let pileup = p.unwrap();
 //!     println!("{}:{} depth {}", pileup.tid(), pileup.pos(), pileup.depth());
 //!
 //!     for alignment in pileup.alignments() {
@@ -49,12 +50,13 @@
 //!
 //! ```
 //! use rust_htslib::bam;
+//! use rust_htslib::prelude::*;
 //!
-//! let mut bam = bam::IndexedReader::new(&"test/test.bam").ok().expect("Error opening indexed BAM.");
+//! let mut bam = bam::IndexedReader::from_path(&"test/test.bam").unwrap();
 //!
 //! // seek to chr1:50000-100000
 //! let tid = bam.header.tid(b"CHROMOSOME_I").unwrap();
-//! bam.seek(tid, 0, 20).ok().expect("Error seeking BAM file.");
+//! bam.seek(tid, 0, 20).unwrap();
 //! // afterwards, read or pileup in this region
 //! ```
 
@@ -67,6 +69,7 @@ extern crate quick_error;
 extern crate newtype_derive;
 #[macro_use]
 extern crate custom_derive;
+extern crate url;
 extern crate ieee754;
 #[macro_use]
 extern crate lazy_static;
@@ -75,3 +78,4 @@ pub mod htslib;
 pub mod bam;
 pub mod bcf;
 pub mod utils;
+pub mod prelude;

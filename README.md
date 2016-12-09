@@ -1,7 +1,8 @@
-[![Crates.io](https://img.shields.io/crates/d/rust-htslib.svg?style=flat-square)](https://crates.io/crates/rust-htslib)
-[![Crates.io](https://img.shields.io/crates/v/rust-htslib.svg?style=flat-square)](https://crates.io/crates/rust-htslib)
-[![Crates.io](https://img.shields.io/crates/l/rust-htslib.svg?style=flat-square)](https://crates.io/crates/rust-htslib)
-[![Travis](https://img.shields.io/travis/rust-bio/rust-htslib.svg?style=flat-square)](https://travis-ci.org/rust-bio/rust-htslib)
+[![Crates.io](https://img.shields.io/crates/d/rust-htslib.svg)](https://crates.io/crates/rust-htslib)
+[![Crates.io](https://img.shields.io/crates/v/rust-htslib.svg)](https://crates.io/crates/rust-htslib)
+[![Crates.io](https://img.shields.io/crates/l/rust-htslib.svg)](https://crates.io/crates/rust-htslib)
+[![docs.rs](https://docs.rs/rust-htslib/badge.svg)](https://docs.rs/rust-htslib)
+[![Travis](https://img.shields.io/travis/rust-bio/rust-htslib.svg)](https://travis-ci.org/rust-bio/rust-htslib)
 
 # HTSlib bindings for Rust
 
