@@ -16,83 +16,14 @@ git clone --recursive https://github.com/rust-bio/rust-htslib.git
 ensuring that the HTSlib submodule is fetched, too.
 If you only want to use the library, there is no need to clone the repository. Go on to the **Usage** section in this case.
 
-# Resources
-
-* Homepage: https://github.com/rust-bio/rust-htslib
-* API documentation: https://docs.rs/rust-htslib
-* Continuous integration tests: https://travis-ci.org/rust-bio/rust-htslib
-
-# Usage
-
-To use Rust-HTSlib in your Rust project, import the crate from your source code:
-
-```rust
-extern crate rust_htslib;
-```
-
-Rust-HTSlib provides a high level BAM API.
-Reading and writing BAM files is as easy as
-
-```rust
-use rust_htslib::bam;
-use rust_htslib::bam::Read;
-
-let bam = bam::Reader::new(&"test/test.bam").ok().expect("Error opening bam.");
-let mut out = bam::Writer::with_template(&"test/test.bam", &"test/out.bam").ok().expect("Error opening bam.");
-
-// copy reverse reads to new BAM file
-for r in bam.records() {
-    let record = r.ok().expect("Error reading BAM file.");
-    if record.is_reverse() {
-        out.write(&record).ok().expect("Error writing BAM file.");
-    }
-}
-```
-
-Pileups can be performed with
-
-```rust
-use rust_htslib::bam;
-use rust_htslib::bam::Read;
-
-let bam = bam::Reader::new(&"test/test.bam").ok().expect("Error opening bam.");
-
-// pileup over all covered sites
-for p in bam.pileup() {
- let pileup = p.ok().expect("Error reading BAM file.");
- println!("{}:{} depth {}", pileup.tid(), pileup.pos(), pileup.depth());
-
- for alignment in pileup.alignments() {
-     match alignment.indel() {
-         bam::pileup::Indel::Ins(len) => println!("Insertion of length {}", len),
-         bam::pileup::Indel::Del(len) => println!("Deletion of length {}", len),
-         _ => println!("Base {}", alignment.record().seq()[alignment.qpos()])
-     }
- }
-}
-```
-In both cases, indexed BAM files can be seeked for specific regions, constraining either the record iterator or the pileups:
-
-```rust
-use rust_htslib::bam;
-
-let mut bam = bam::IndexedReader::new(&"test/test.bam").ok().expect("Error opening indexed BAM.");
-
-// seek to chr1:50000-100000
-let tid = bam.header.tid(b"CHROMOSOME_I").unwrap();
-bam.seek(tid, 0, 20).ok().expect("Error seeking BAM file.");
-// afterwards, read or pileup in this region
-```
+For information how to use Rust-Htslib, please see the [docs](https://docs.rs/rust-htslib).
 
 # Authors
 
 * [Christopher Schröder](https://github.com/christopher-schroeder)
 * [Johannes Köster](https://github.com/johanneskoester)
 
-# Contributors
-
-* [Fedor Gusev](https://github.com/gusevfe)
-
+For other contributors, see [here](https://github.com/rust-bio/rust-htslib/graphs/contributors).
 
 ## License
 
