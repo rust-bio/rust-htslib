@@ -363,10 +363,10 @@ impl Writer {
     /// # Arguments
     ///
     /// * `n_threads` - number of background writer threads to use
-    pub fn set_threads(&mut self, n_threads: usize) -> Result<(), WriteError> {
+    pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
         let r = unsafe { htslib::bgzf_mt(self.f, n_threads as ::libc::c_int, 256) };
         if r != 0 {
-            Err(WriteError::Some)
+            Err(ThreadingError::Some)
         } else {
             Ok(())
         }
@@ -511,6 +511,15 @@ quick_error! {
     }
 }
 
+
+quick_error! {
+    #[derive(Debug)]
+    pub enum ThreadingError {
+        Some {
+            description("error setting threads for multi-threaded writing")
+        }
+    }
+}
 
 quick_error! {
     #[derive(Debug)]
@@ -833,7 +842,7 @@ mod tests {
                                             .push_tag(b"LN", &15072423)
                 )
             ).ok().expect("Error opening file.");
-            bam.set_threads(4).ok();
+            bam.set_threads(4).unwrap();
 
             for i in 0 .. 10000 {
                 let mut rec = record::Record::new();
