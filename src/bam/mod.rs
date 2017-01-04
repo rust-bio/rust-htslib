@@ -358,6 +358,20 @@ impl Writer {
         Ok(Writer { f: f, header: HeaderView::new(header_record) })
     }
 
+    /// Activate multi-threaded BAM write support in htslib. This should permit faster
+    /// writing of large BAM files.
+    /// # Arguments
+    ///
+    /// * `n_threads` - number of background writer threads to use
+    pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
+        let r = unsafe { htslib::bgzf_mt(self.f, n_threads as ::libc::c_int, 256) };
+        if r != 0 {
+            Err(ThreadingError::Some)
+        } else {
+            Ok(())
+        }
+    }
+
     /// Write record to BAM.
     ///
     /// # Arguments
@@ -497,6 +511,15 @@ quick_error! {
     }
 }
 
+
+quick_error! {
+    #[derive(Debug)]
+    pub enum ThreadingError {
+        Some {
+            description("error setting threads for multi-threaded writing")
+        }
+    }
+}
 
 quick_error! {
     #[derive(Debug)]
@@ -802,6 +825,56 @@ mod tests {
 
         tmp.close().ok().expect("Failed to delete temp dir");
     }
+
+
+    #[test]
+    fn test_write_threaded() {
+        let (names, _, seqs, quals, cigars) = gold();
+
+        let tmp = tempdir::TempDir::new("rust-htslib").ok().expect("Cannot create temp dir");
+        let bampath = tmp.path().join("test.bam");
+        println!("{:?}", bampath);
+        {
+            let mut bam = Writer::from_path(
+                &bampath,
+                Header::new().push_record(
+                    HeaderRecord::new(b"SQ").push_tag(b"SN", &"chr1")
+                                            .push_tag(b"LN", &15072423)
+                )
+            ).ok().expect("Error opening file.");
+            bam.set_threads(4).unwrap();
+
+            for i in 0 .. 10000 {
+                let mut rec = record::Record::new();
+                let idx = i % names.len();
+                rec.set(names[idx], &cigars[idx], seqs[idx], quals[idx]);
+                rec.push_aux(b"NM", &Aux::Integer(15));
+                rec.set_pos(i as i32);
+
+                bam.write(&mut rec).ok().expect("Failed to write record.");
+            }
+        }
+
+        {
+            let bam = Reader::from_path(&bampath).ok().expect("Error opening file.");
+
+            for (i, _rec) in bam.records().enumerate() {
+                let idx = i % names.len();
+
+                let rec = _rec.expect("Failed to read record.");
+
+                assert_eq!(rec.pos(), i as i32);
+                assert_eq!(rec.qname(), names[idx]);
+                assert_eq!(rec.cigar(), cigars[idx]);
+                assert_eq!(rec.seq().as_bytes(), seqs[idx]);
+                assert_eq!(rec.qual(), quals[idx]);
+                assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+            }
+        }
+
+        tmp.close().ok().expect("Failed to delete temp dir");
+    }
+
 
 
     #[test]

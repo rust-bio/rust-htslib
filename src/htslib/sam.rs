@@ -8,6 +8,7 @@ pub type BGZF = Struct_BGZF;
 
 extern "C" {
     pub fn bgzf_close(fp: *mut BGZF) -> ::libc::c_int;
+    pub fn bgzf_mt(fp: *mut BGZF, n_threads: ::libc::c_int, n_sub_blks: ::libc::c_int) -> ::libc::c_int;
 }
 
 // hts.h
