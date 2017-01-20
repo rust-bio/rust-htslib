@@ -71,6 +71,7 @@ impl<'a> HeaderRecord<'a> {
         for &(tag, ref value) in self.tags.iter() {
             out.push(b'\t');
             out.extend(tag.iter());
+            out.push(b':');
             out.extend(value.iter());
         }
         out
