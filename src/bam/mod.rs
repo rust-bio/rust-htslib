@@ -803,24 +803,28 @@ mod tests {
                 )
             ).ok().expect("Error opening file.");
 
-            let mut rec = record::Record::new();
-            rec.set(names[0], &cigars[0], seqs[0], quals[0]);
-            rec.push_aux(b"NM", &Aux::Integer(15));
+            for i in 0..names.len() {
+                let mut rec = record::Record::new();
+                rec.set(names[i], &cigars[i], seqs[i], quals[i]);
+                rec.push_aux(b"NM", &Aux::Integer(15));
 
-            bam.write(&mut rec).ok().expect("Failed to write record.");
+                bam.write(&mut rec).ok().expect("Failed to write record.");
+            }
         }
 
         {
             let bam = Reader::from_path(&bampath).ok().expect("Error opening file.");
 
-            let mut rec = record::Record::new();
-            bam.read(&mut rec).ok().expect("Failed to read record.");
+            for i in 0..names.len() {
+                let mut rec = record::Record::new();
+                bam.read(&mut rec).ok().expect("Failed to read record.");
 
-            assert_eq!(rec.qname(), names[0]);
-            assert_eq!(rec.cigar(), cigars[0]);
-            assert_eq!(rec.seq().as_bytes(), seqs[0]);
-            assert_eq!(rec.qual(), quals[0]);
-            assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+                assert_eq!(rec.qname(), names[i]);
+                assert_eq!(rec.cigar(), cigars[i]);
+                assert_eq!(rec.seq().as_bytes(), seqs[i]);
+                assert_eq!(rec.qual(), quals[i]);
+                assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+            }
         }
 
         tmp.close().ok().expect("Failed to delete temp dir");

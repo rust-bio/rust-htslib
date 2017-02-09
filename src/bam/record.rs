@@ -172,8 +172,8 @@ impl Record {
 
     /// Set variable length data (qname, cigar, seq, qual).
     pub fn set(&mut self, qname: &[u8], cigar: &[Cigar], seq: &[u8], qual: &[u8]) {
-        self.inner_mut().l_data = (qname.len() + 1 + cigar.len() * 4 + seq.len() / 2 + qual.len()) as i32;
-
+        self.inner_mut().l_data = (qname.len() + 1 + cigar.len() * 4 + ((seq.len() as f32 / 2.0).ceil() as usize) + qual.len()) as i32;
+        
         if self.inner().m_data < self.inner().l_data {
 
             self.inner_mut().m_data = self.inner().l_data;
@@ -184,7 +184,7 @@ impl Record {
                 ) as *mut u8;
             }
         }
-
+        
         let mut data = unsafe { slice::from_raw_parts_mut((*self.inner).data, self.inner().l_data as usize) };
         // qname
         utils::copy_memory(qname, data);
@@ -207,7 +207,7 @@ impl Record {
         // seq
         {
             for j in (0..seq.len()).step(2) {
-                data[i + j / 2] = ENCODE_BASE[seq[j] as usize] << 4 | ENCODE_BASE[seq[j + 1] as usize];
+                data[i + j / 2] = ENCODE_BASE[seq[j] as usize] << 4 | (if j + 1 < seq.len() { ENCODE_BASE[seq[j + 1] as usize] } else { 0 });
             }
             self.inner_mut().core.l_qseq = seq.len() as i32;
             i += (seq.len() + 1) / 2;
