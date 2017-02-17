@@ -35,7 +35,9 @@ impl Header {
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
-        self.records.join(&b'\n')
+        let mut bytes = self.records.join(&b'\n');
+        bytes.push(b'\n');
+        bytes
     }
 }
 
