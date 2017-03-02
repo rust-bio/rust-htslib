@@ -37,10 +37,14 @@
 //!     println!("{}:{} depth {}", pileup.tid(), pileup.pos(), pileup.depth());
 //!
 //!     for alignment in pileup.alignments() {
+//!         if !alignment.is_del() && !alignment.is_refskip() {
+//!             println!("Base {}", alignment.record().seq()[alignment.qpos().unwrap()]);
+//!         }
+//!         // mark indel start
 //!         match alignment.indel() {
-//!             bam::pileup::Indel::Ins(len) => println!("Insertion of length {}", len),
-//!             bam::pileup::Indel::Del(len) => println!("Deletion of length {}", len),
-//!             _ => println!("Base {}", alignment.record().seq()[alignment.qpos()])
+//!             bam::pileup::Indel::Ins(len) => println!("Insertion of length {} between this and next position.", len),
+//!             bam::pileup::Indel::Del(len) => println!("Deletion of length {} between this and next position.", len),
+//!             bam::pileup::Indel::None => ()
 //!         }
 //!     }
 //! }
@@ -73,6 +77,8 @@ extern crate url;
 extern crate ieee754;
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate bitflags;
 
 pub mod htslib;
 pub mod bam;

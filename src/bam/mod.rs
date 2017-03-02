@@ -13,6 +13,7 @@ use std::ptr;
 use std::slice;
 use std::path::Path;
 use url::Url;
+use libc;
 
 use htslib;
 
@@ -339,8 +340,8 @@ impl Writer {
 
             let l_text = header_string.len();
             let text = ::libc::malloc(l_text + 1);
-            ::libc::memset(text, 0, l_text + 1);
-            ::libc::memcpy(text, header_string.as_ptr() as *const ::libc::c_void, header_string.len());
+            libc::memset(text, 0, l_text + 1);
+            libc::memcpy(text, header_string.as_ptr() as *const ::libc::c_void, header_string.len());
 
             //println!("{}", str::from_utf8(&header_string).unwrap());
             let rec = htslib::sam_hdr_parse(
@@ -578,14 +579,14 @@ pub struct HeaderView {
 
 impl HeaderView {
     fn new(inner: *mut htslib::bam_hdr_t) -> Self {
-        HeaderView { 
+        HeaderView {
             inner: inner,
             owned: true,
         }
     }
 
     fn borrow(inner: *mut htslib::bam_hdr_t) -> Self {
-        HeaderView { 
+        HeaderView {
             inner: inner,
             owned: false,
         }
@@ -927,9 +928,10 @@ mod tests {
             assert!(_pileup.tid() == 0);
             for (i, a) in _pileup.alignments().enumerate() {
                 assert_eq!(a.indel(), pileup::Indel::None);
-                assert_eq!(a.qpos(), pos - 1);
-                assert_eq!(a.record().seq()[a.qpos()], seqs[i][a.qpos()]);
-                assert_eq!(a.record().qual()[a.qpos()], quals[i][a.qpos()] - 33);
+                let qpos = a.qpos().unwrap();
+                assert_eq!(qpos, pos - 1);
+                assert_eq!(a.record().seq()[qpos], seqs[i][qpos]);
+                assert_eq!(a.record().qual()[qpos], quals[i][qpos] - 33);
             }
         }
     }

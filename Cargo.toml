@@ -12,15 +12,15 @@ documentation = "http://rust-bio.github.io/rust-htslib"
 
 
 [dependencies]
-libc = "=0.2.*"
-itertools = "=0.4.*"
+libc = "0.2.*"
+itertools = "0.4.*"
 quick-error = "1.1.*"
 newtype_derive = "0.1.*"
 custom_derive = "0.1.*"
 url = "1.2.*"
 ieee754 = "0.1"
 lazy_static = "0.1.*"
-
+bitflags = "0.8.*"
 
 [dev-dependencies]
 tempdir = "=0.3.*"
