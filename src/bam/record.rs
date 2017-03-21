@@ -165,7 +165,7 @@ impl Record {
         self.inner().core.l_qname as usize
     }
 
-    /// Get qname (read name).
+    /// Get qname (read name). Complexity: O(1).
     pub fn qname(&self) -> &[u8] {
         &self.data()[..self.qname_len()-1] // -1 ignores the termination symbol
     }
@@ -173,7 +173,7 @@ impl Record {
     /// Set variable length data (qname, cigar, seq, qual).
     pub fn set(&mut self, qname: &[u8], cigar: &[Cigar], seq: &[u8], qual: &[u8]) {
         self.inner_mut().l_data = (qname.len() + 1 + cigar.len() * 4 + ((seq.len() as f32 / 2.0).ceil() as usize) + qual.len()) as i32;
-        
+
         if self.inner().m_data < self.inner().l_data {
 
             self.inner_mut().m_data = self.inner().l_data;
@@ -184,7 +184,7 @@ impl Record {
                 ) as *mut u8;
             }
         }
-        
+
         let mut data = unsafe { slice::from_raw_parts_mut((*self.inner).data, self.inner().l_data as usize) };
         // qname
         utils::copy_memory(qname, data);
@@ -225,7 +225,7 @@ impl Record {
         unsafe { slice::from_raw_parts(self.data()[self.qname_len()..].as_ptr() as *const u32, self.cigar_len()) }
     }
 
-    /// Get cigar sequence.
+    /// Get cigar sequence. Complexity: O(k) with k being the length of the cigar string.
     pub fn cigar(&self) -> Vec<Cigar> {
         let raw = self.raw_cigar();
         raw.iter().map(|&c| {
@@ -250,7 +250,7 @@ impl Record {
         self.inner().core.l_qseq as usize
     }
 
-    /// Get read sequence.
+    /// Get read sequence. Complexity: O(1).
     pub fn seq(&self) -> Seq {
         Seq {
             encoded: &self.data()
@@ -260,7 +260,7 @@ impl Record {
         }
     }
 
-    /// Get base qualities.
+    /// Get base qualities. Complexity: O(1).
     pub fn qual(&self) -> &[u8] {
         &self.data()[self.qname_len() + self.cigar_len()*4 + (self.seq_len()+1)/2..][..self.seq_len()]
     }
