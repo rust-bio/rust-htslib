@@ -411,6 +411,7 @@ static ENCODE_BASE: [u8; 256] = [
 ];
 
 
+/// The sequence of a record.
 pub struct Seq<'a> {
     pub encoded: &'a [u8],
     len: usize
@@ -418,15 +419,18 @@ pub struct Seq<'a> {
 
 
 impl<'a> Seq<'a> {
+    /// Return encoded base. Complexity: O(1).
     #[inline]
     pub fn encoded_base(&self, i: usize) -> u8 {
         (self.encoded[i / 2] >> ((! i & 1) << 2)) & 0b1111
     }
 
+    /// Return decoded sequence. Complexity: O(m) with m being the read length.
     pub fn as_bytes(&self) -> Vec<u8> {
         (0..self.len()).map(|i| self[i]).collect()
     }
 
+    /// Return length (in bases) of the sequence.
     pub fn len(&self) -> usize {
         self.len
     }
@@ -436,6 +440,7 @@ impl<'a> Seq<'a> {
 impl<'a> ops::Index<usize> for Seq<'a> {
     type Output = u8;
 
+    /// Return decoded base at given position within read. Complexity: O(1).
     fn index(&self, index: usize) -> &u8 {
         &DECODE_BASE[self.encoded_base(index) as usize]
     }
