@@ -79,3 +79,4 @@ pub mod bam;
 pub mod bcf;
 pub mod utils;
 pub mod prelude;
+pub mod sam;
