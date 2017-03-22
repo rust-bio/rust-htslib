@@ -109,47 +109,7 @@ impl SAMWriter {
         }
     }
 
-    /// Read bam file. For each record apply f to it, and write to sam file if f returned Some(true), skip record if Some(false) if None then terminate iteration
-    ///
-    /// # Arguments
-    ///
-    /// * `bamfile` - the bam file to read from
-    /// * `samfile` - the sam file to write
-    /// * `f` - the predicate to apply
-    pub fn from_bam_with_filter<'a, 'b, F>(bamfile:&'a str, samfile:&'b str, f:F) -> Result<(), SAMError> where F:Fn(&record::Record) -> Option<bool> {
-        let bam_reader = if bamfile != "-" {
-            match Reader::from_path(bamfile) {
-                Ok(bam) => bam,
-                Err(_) => return Err(SAMError::IOError)
-            }
-        } else {
-            match Reader::from_stdin() {
-                Ok(bam) => bam,
-                Err(_) => return Err(SAMError::IOError)
-            }
 
-        };
-        let header = header::Header::from_template(bam_reader.header());
-        let mut sam_writer = if samfile != "-" {
-                SAMWriter::from_path(samfile, &header)?
-            } else {
-                SAMWriter::from_stdout(&header)?
-            };
-        for record in bam_reader.records() {
-            if record.is_err() {
-                return Err(SAMError::IOError)
-            } 
-            let parsed = record.unwrap();
-            match f(&parsed) {
-                None => return Ok(()),
-                Some(false) => {},
-                Some(true) => if let Err(_) = sam_writer.write(&parsed) {
-                    return Err(SAMError::IOError);
-                }
-            }
-        }
-        Ok(())
-    }
 
 }
 
