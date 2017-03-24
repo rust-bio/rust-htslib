@@ -9,15 +9,15 @@ use bam::Reader;
 use bam::Read;
 
 // new on bam::HeaderView is not public
-pub struct SAMHeaderView {
+pub struct HeaderView {
     inner: *mut htslib::bam_hdr_t,
     owned: bool,
 }
 
 
-impl SAMHeaderView {
+impl HeaderView {
     fn new(inner: *mut htslib::bam_hdr_t) -> Self {
-        SAMHeaderView { 
+        HeaderView { 
             inner: inner,
             owned: true,
         }
@@ -30,13 +30,13 @@ impl SAMHeaderView {
 
 
 /// SAM writer.
-pub struct SAMWriter {
+pub struct Writer {
     f: *mut htslib::htsFile,
-    header: SAMHeaderView,
+    header: HeaderView,
 }
 
 /// Wrapper for opening a SAM file.
-fn hts_open(path: &ffi::CStr, mode: &[u8]) -> Result<*mut htslib::htsFile, SAMError> {
+fn hts_open(path: &ffi::CStr, mode: &[u8]) -> Result<*mut htslib::htsFile, WriterError> {
     let ret = unsafe {
         htslib::hts_open(
             path.as_ptr(),
@@ -44,24 +44,24 @@ fn hts_open(path: &ffi::CStr, mode: &[u8]) -> Result<*mut htslib::htsFile, SAMEr
         )
     };
     if ret.is_null() {
-        Err(SAMError::IOError)
+        Err(WriterError::IOError)
     } else {
         Ok(ret)
     }
 }
 
-impl SAMWriter {
+impl Writer {
     /// Create new SAM file writer.
     ///
     /// # Arguments
     ///
     /// * `path` - the path.
     /// * `header` - header definition to use
-    pub fn from_path<P: AsRef<Path>>(path: P, header: &header::Header) -> Result<Self, SAMError> {
+    pub fn from_path<P: AsRef<Path>>(path: P, header: &header::Header) -> Result<Self, WriterError> {
         if let Some(p) = path.as_ref().to_str() {
             Ok(try!(Self::new(p.as_bytes(), header)))
         } else {
-            Err(SAMError::IOError)
+            Err(WriterError::IOError)
         }
     }
 
@@ -70,11 +70,11 @@ impl SAMWriter {
     /// # Arguments
     ///
     /// * `header` - header definition to use
-    pub fn from_stdout(header: &header::Header) -> Result<Self, SAMError> {
+    pub fn from_stdout(header: &header::Header) -> Result<Self, WriterError> {
         Self::new(b"-", header)
     }
 
-    fn new(path: &[u8], header: &header::Header) -> Result<Self, SAMError> {
+    fn new(path: &[u8], header: &header::Header) -> Result<Self, WriterError> {
         let f = try!(hts_open(&ffi::CString::new(path).unwrap(), b"w"));
         let header_record = unsafe {
             let header_string = header.to_bytes();
@@ -92,7 +92,7 @@ impl SAMWriter {
             rec
         };
         unsafe { htslib::sam_hdr_write(f, header_record); }
-        Ok(SAMWriter { f: f, header: SAMHeaderView::new(header_record) })
+        Ok(Writer { f: f, header: HeaderView::new(header_record) })
     }
 
     /// Write record to SAM.
@@ -113,7 +113,7 @@ impl SAMWriter {
 
 }
 
-impl Drop for SAMWriter {
+impl Drop for Writer {
     fn drop(&mut self) {
         unsafe {
             htslib::hts_close(self.f);
@@ -123,7 +123,7 @@ impl Drop for SAMWriter {
 
 quick_error! {
     #[derive(Debug)]
-    pub enum SAMError {
+    pub enum WriterError {
         IOError {}
     }
 }
@@ -133,7 +133,7 @@ fn test_sam_writer_example() {
     fn from_bam_with_filter<'a, 'b, F>(bamfile:&'a str, samfile:&'b str, f:F) -> bool where F:Fn(&record::Record) -> Option<bool> {
         let bam_reader = Reader::from_path(bamfile).unwrap(); // internal functions, just unwarp
         let header = header::Header::from_template(bam_reader.header());
-        let mut sam_writer = SAMWriter::from_path(samfile, &header).unwrap();
+        let mut sam_writer = Writer::from_path(samfile, &header).unwrap();
         for record in bam_reader.records() {
             if record.is_err() {
                 return false;
