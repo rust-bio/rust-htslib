@@ -691,6 +691,7 @@ mod tests {
     fn test_read() {
         let (names, flags, seqs, quals, cigars) = gold();
         let bam = Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening file.");
+        let del_len = [1, 1, 1, 1, 1, 100000];
 
         for (i, record) in bam.records().enumerate() {
             let rec = record.ok().expect("Expected valid record");
@@ -699,7 +700,7 @@ mod tests {
             assert_eq!(rec.flags(), flags[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
             assert_eq!(rec.cigar(), cigars[i]);
-            assert_eq!(rec.end_pos(&rec.cigar()), rec.pos() + 100);
+            assert_eq!(rec.end_pos(&rec.cigar()), rec.pos() + 100 + del_len[i]);
             // fix qual offset
             let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
             assert_eq!(rec.qual(), &qual[..]);
