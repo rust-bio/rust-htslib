@@ -90,9 +90,11 @@ impl Record {
         let mut pos = self.pos();
         for c in cigar {
             match c {
-                &Cigar::Match(l) | &Cigar::RefSkip(l) | &Cigar::Equal(l) | &Cigar::Diff(l) => pos += l as i32,
+                &Cigar::Match(l) | &Cigar::RefSkip(l) | &Cigar::Del(l) |
+                &Cigar::Equal(l) | &Cigar::Diff(l) => pos += l as i32,
                 &Cigar::Back(l) => pos -= l as i32,
-                _ => ()
+                // these don't add to end_pos on reference
+                &Cigar::Ins(_) | &Cigar::SoftClip(_) | &Cigar::HardClip(_) | &Cigar::Pad(_) => ()
             }
         }
         pos
