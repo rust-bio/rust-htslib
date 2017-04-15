@@ -5,29 +5,7 @@ use htslib;
 
 use bam::header;
 use bam::record;
-use bam::Reader;
-use bam::Read;
-
-// new on bam::HeaderView is not public
-pub struct HeaderView {
-    inner: *mut htslib::bam_hdr_t,
-    owned: bool,
-}
-
-
-impl HeaderView {
-    fn new(inner: *mut htslib::bam_hdr_t) -> Self {
-        HeaderView { 
-            inner: inner,
-            owned: true,
-        }
-    }
-    #[inline]
-    fn inner(&self) -> htslib::bam_hdr_t {
-        unsafe { (*self.inner) }
-    }
-}
-
+use bam::HeaderView;
 
 /// SAM writer.
 pub struct Writer {
@@ -108,9 +86,6 @@ impl Writer {
             Ok(())
         }
     }
-
-
-
 }
 
 impl Drop for Writer {
@@ -128,47 +103,59 @@ quick_error! {
     }
 }
 
-#[test]
-fn test_sam_writer_example() {
-    fn from_bam_with_filter<'a, 'b, F>(bamfile:&'a str, samfile:&'b str, f:F) -> bool where F:Fn(&record::Record) -> Option<bool> {
-        let bam_reader = Reader::from_path(bamfile).unwrap(); // internal functions, just unwarp
-        let header = header::Header::from_template(bam_reader.header());
-        let mut sam_writer = Writer::from_path(samfile, &header).unwrap();
-        for record in bam_reader.records() {
-            if record.is_err() {
-                return false;
-            } 
-            let parsed = record.unwrap();
-            match f(&parsed) {
-                None => return true,
-                Some(false) => {},
-                Some(true) => if let Err(_) = sam_writer.write(&parsed) {
-                    return false;
-                }
-            }
-        }
-        true
-    }
-    use std::fs::File;
-    use std::io::Read;
-    let bamfile = "./test/bam2sam_test.bam";
-    let samfile = "./test/bam2sam_out.sam";
-    let expectedfile = "./test/bam2sam_expected.sam";
-    let result = from_bam_with_filter(bamfile, samfile, |_|{Some(true)});
-    assert!(result);
-    let mut expected = Vec::new();
-    let mut written = Vec::new();
-    assert!(File::open(expectedfile).unwrap().read_to_end(&mut expected).is_ok()); 
-    assert!(File::open(samfile).unwrap().read_to_end(&mut written).is_ok());
-    assert_eq!(expected, written);
-}
-
 quick_error! {
     #[derive(Debug)]
     pub enum WriteError {
         Some {
             description("error writing record")
         }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use bam::record;
+    use bam::header;
+    use bam::Reader;
+    use bam::Read;
+    use sam::Writer;
+
+
+
+    #[test]
+    fn test_sam_writer_example() {
+        fn from_bam_with_filter<'a, 'b, F>(bamfile:&'a str, samfile:&'b str, f:F) -> bool where F:Fn(&record::Record) -> Option<bool> {
+            let bam_reader = Reader::from_path(bamfile).unwrap(); // internal functions, just unwarp
+            let header = header::Header::from_template(bam_reader.header());
+            let mut sam_writer = Writer::from_path(samfile, &header).unwrap();
+            for record in bam_reader.records() {
+                if record.is_err() {
+                    return false;
+                } 
+                let parsed = record.unwrap();
+                match f(&parsed) {
+                    None => return true,
+                    Some(false) => {},
+                    Some(true) => if let Err(_) = sam_writer.write(&parsed) {
+                        return false;
+                    }
+                }
+            }
+            true
+        }
+        use std::fs::File;
+        use std::io::Read;
+        let bamfile = "./test/bam2sam_test.bam";
+        let samfile = "./test/bam2sam_out.sam";
+        let expectedfile = "./test/bam2sam_expected.sam";
+        let result = from_bam_with_filter(bamfile, samfile, |_|{Some(true)});
+        assert!(result);
+        let mut expected = Vec::new();
+        let mut written = Vec::new();
+        assert!(File::open(expectedfile).unwrap().read_to_end(&mut expected).is_ok()); 
+        assert!(File::open(samfile).unwrap().read_to_end(&mut written).is_ok());
+        assert_eq!(expected, written);
     }
 }
 

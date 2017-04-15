@@ -585,7 +585,7 @@ pub struct HeaderView {
 
 
 impl HeaderView {
-    fn new(inner: *mut htslib::bam_hdr_t) -> Self {
+    pub fn new(inner: *mut htslib::bam_hdr_t) -> Self {
         HeaderView { 
             inner: inner,
             owned: true,
@@ -600,7 +600,7 @@ impl HeaderView {
     }
 
     #[inline]
-    fn inner(&self) -> htslib::bam_hdr_t {
+    pub fn inner(&self) -> htslib::bam_hdr_t {
         unsafe { (*self.inner) }
     }
 
