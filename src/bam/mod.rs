@@ -403,14 +403,6 @@ impl Drop for Writer {
 }
 
 
-
-
-
-
-
-
-
-
 /// Iterator over the records of a BAM.
 pub struct Records<'a, R: 'a + Read> {
     reader: &'a R
