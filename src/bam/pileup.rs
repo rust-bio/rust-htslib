@@ -61,18 +61,43 @@ impl<'a> Alignment<'a> {
         Alignment { inner: inner }
     }
 
-    /// Position within the read.
-    pub fn qpos(&self) -> usize {
-        self.inner.qpos as usize
+    /// Position within the read. None if either `is_del` or `is_refskip`.
+    pub fn qpos(&self) -> Option<usize> {
+        if self.is_del() || self.is_refskip() {
+            // there is no alignment position in such a case
+            None
+        } else {
+            Some(self.inner.qpos as usize)
+        }
     }
 
-    /// Insertion, deletion (with length) or None if no indel.
+    /// Insertion, deletion (with length) if indel starts at next base or None otherwise.
     pub fn indel(&self) -> Indel {
         match self.inner.indel {
             len if len < 0 => Indel::Del(-len as u32),
             len if len > 0 => Indel::Ins(len as u32),
             _              => Indel::None
         }
+    }
+
+    /// Whether there is a deletion in the alignment at this position.
+    pub fn is_del(&self) -> bool {
+        (self.inner.isdel_ishead_istail_isrefskip_isaux & 0b1) != 0
+    }
+
+    /// Whether the alignment starts at this position.
+    pub fn is_head(&self) -> bool {
+        (self.inner.isdel_ishead_istail_isrefskip_isaux & 0b10) != 0
+    }
+
+    /// Whether the alignment ends at this position.
+    pub fn is_tail(&self) -> bool {
+        (self.inner.isdel_ishead_istail_isrefskip_isaux & 0b100) != 0
+    }
+
+    /// Whether this position is marked as refskip in the CIGAR string.
+    pub fn is_refskip(&self) -> bool {
+        (self.inner.isdel_ishead_istail_isrefskip_isaux & 0b1000) != 0
     }
 
     /// The corresponding record.

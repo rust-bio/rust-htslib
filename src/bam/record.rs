@@ -90,9 +90,11 @@ impl Record {
         let mut pos = self.pos();
         for c in cigar {
             match c {
-                &Cigar::Match(l) | &Cigar::RefSkip(l) | &Cigar::Equal(l) | &Cigar::Diff(l) => pos += l as i32,
+                &Cigar::Match(l) | &Cigar::RefSkip(l) | &Cigar::Del(l) |
+                &Cigar::Equal(l) | &Cigar::Diff(l) => pos += l as i32,
                 &Cigar::Back(l) => pos -= l as i32,
-                _ => ()
+                // these don't add to end_pos on reference
+                &Cigar::Ins(_) | &Cigar::SoftClip(_) | &Cigar::HardClip(_) | &Cigar::Pad(_) => ()
             }
         }
         pos
@@ -165,7 +167,7 @@ impl Record {
         self.inner().core.l_qname as usize
     }
 
-    /// Get qname (read name).
+    /// Get qname (read name). Complexity: O(1).
     pub fn qname(&self) -> &[u8] {
         &self.data()[..self.qname_len()-1] // -1 ignores the termination symbol
     }
@@ -173,7 +175,7 @@ impl Record {
     /// Set variable length data (qname, cigar, seq, qual).
     pub fn set(&mut self, qname: &[u8], cigar: &[Cigar], seq: &[u8], qual: &[u8]) {
         self.inner_mut().l_data = (qname.len() + 1 + cigar.len() * 4 + ((seq.len() as f32 / 2.0).ceil() as usize) + qual.len()) as i32;
-        
+
         if self.inner().m_data < self.inner().l_data {
 
             self.inner_mut().m_data = self.inner().l_data;
@@ -184,7 +186,7 @@ impl Record {
                 ) as *mut u8;
             }
         }
-        
+
         let mut data = unsafe { slice::from_raw_parts_mut((*self.inner).data, self.inner().l_data as usize) };
         // qname
         utils::copy_memory(qname, data);
@@ -225,7 +227,7 @@ impl Record {
         unsafe { slice::from_raw_parts(self.data()[self.qname_len()..].as_ptr() as *const u32, self.cigar_len()) }
     }
 
-    /// Get cigar sequence.
+    /// Get cigar sequence. Complexity: O(k) with k being the length of the cigar string.
     pub fn cigar(&self) -> Vec<Cigar> {
         let raw = self.raw_cigar();
         raw.iter().map(|&c| {
@@ -250,7 +252,7 @@ impl Record {
         self.inner().core.l_qseq as usize
     }
 
-    /// Get read sequence.
+    /// Get read sequence. Complexity: O(1).
     pub fn seq(&self) -> Seq {
         Seq {
             encoded: &self.data()
@@ -260,7 +262,7 @@ impl Record {
         }
     }
 
-    /// Get base qualities.
+    /// Get base qualities. Complexity: O(1).
     pub fn qual(&self) -> &[u8] {
         &self.data()[self.qname_len() + self.cigar_len()*4 + (self.seq_len()+1)/2..][..self.seq_len()]
     }
@@ -411,6 +413,7 @@ static ENCODE_BASE: [u8; 256] = [
 ];
 
 
+/// The sequence of a record.
 pub struct Seq<'a> {
     pub encoded: &'a [u8],
     len: usize
@@ -418,15 +421,18 @@ pub struct Seq<'a> {
 
 
 impl<'a> Seq<'a> {
+    /// Return encoded base. Complexity: O(1).
     #[inline]
     pub fn encoded_base(&self, i: usize) -> u8 {
         (self.encoded[i / 2] >> ((! i & 1) << 2)) & 0b1111
     }
 
+    /// Return decoded sequence. Complexity: O(m) with m being the read length.
     pub fn as_bytes(&self) -> Vec<u8> {
         (0..self.len()).map(|i| self[i]).collect()
     }
 
+    /// Return length (in bases) of the sequence.
     pub fn len(&self) -> usize {
         self.len
     }
@@ -436,6 +442,7 @@ impl<'a> Seq<'a> {
 impl<'a> ops::Index<usize> for Seq<'a> {
     type Output = u8;
 
+    /// Return decoded base at given position within read. Complexity: O(1).
     fn index(&self, index: usize) -> &u8 {
         &DECODE_BASE[self.encoded_base(index) as usize]
     }

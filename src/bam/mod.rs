@@ -13,6 +13,7 @@ use std::ptr;
 use std::slice;
 use std::path::Path;
 use url::Url;
+use libc;
 
 use htslib;
 
@@ -335,12 +336,14 @@ impl Writer {
         // To avoid this, we copy the full header to a new C-string that is allocated with malloc,
         // and set this into header_record manually.
         let header_record = unsafe {
-            let header_string = header.to_bytes();
-
+            let mut header_string = header.to_bytes();
+            if !header_string.is_empty() && header_string[header_string.len() - 1] != b'\n' {
+                header_string.push(b'\n');
+            }
             let l_text = header_string.len();
             let text = ::libc::malloc(l_text + 1);
-            ::libc::memset(text, 0, l_text + 1);
-            ::libc::memcpy(text, header_string.as_ptr() as *const ::libc::c_void, header_string.len());
+            libc::memset(text, 0, l_text + 1);
+            libc::memcpy(text, header_string.as_ptr() as *const ::libc::c_void, header_string.len());
 
             //println!("{}", str::from_utf8(&header_string).unwrap());
             let rec = htslib::sam_hdr_parse(
@@ -578,14 +581,14 @@ pub struct HeaderView {
 
 impl HeaderView {
     pub fn new(inner: *mut htslib::bam_hdr_t) -> Self {
-        HeaderView { 
+        HeaderView {
             inner: inner,
             owned: true,
         }
     }
 
     fn borrow(inner: *mut htslib::bam_hdr_t) -> Self {
-        HeaderView { 
+        HeaderView {
             inner: inner,
             owned: false,
         }
@@ -690,6 +693,7 @@ mod tests {
     fn test_read() {
         let (names, flags, seqs, quals, cigars) = gold();
         let bam = Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening file.");
+        let del_len = [1, 1, 1, 1, 1, 100000];
 
         for (i, record) in bam.records().enumerate() {
             let rec = record.ok().expect("Expected valid record");
@@ -698,7 +702,7 @@ mod tests {
             assert_eq!(rec.flags(), flags[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
             assert_eq!(rec.cigar(), cigars[i]);
-            assert_eq!(rec.end_pos(&rec.cigar()), rec.pos() + 100);
+            assert_eq!(rec.end_pos(&rec.cigar()), rec.pos() + 100 + del_len[i]);
             // fix qual offset
             let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
             assert_eq!(rec.qual(), &qual[..]);
@@ -929,9 +933,10 @@ mod tests {
             assert!(_pileup.tid() == 0);
             for (i, a) in _pileup.alignments().enumerate() {
                 assert_eq!(a.indel(), pileup::Indel::None);
-                assert_eq!(a.qpos(), pos - 1);
-                assert_eq!(a.record().seq()[a.qpos()], seqs[i][a.qpos()]);
-                assert_eq!(a.record().qual()[a.qpos()], quals[i][a.qpos()] - 33);
+                let qpos = a.qpos().unwrap();
+                assert_eq!(qpos, pos - 1);
+                assert_eq!(a.record().seq()[qpos], seqs[i][qpos]);
+                assert_eq!(a.record().qual()[qpos], quals[i][qpos] - 33);
             }
         }
     }
