@@ -7,6 +7,7 @@
 use std::slice;
 use std::ffi;
 use std::ops;
+use std::fmt;
 
 use itertools::Itertools;
 
@@ -86,7 +87,7 @@ impl Record {
         self.inner_mut().core.pos = pos;
     }
 
-    pub fn end_pos(&self, cigar: &[Cigar]) -> i32 {
+    pub fn end_pos(&self, cigar: &CigarString) -> i32 {
         let mut pos = self.pos();
         for c in cigar {
             match c {
@@ -173,7 +174,7 @@ impl Record {
     }
 
     /// Set variable length data (qname, cigar, seq, qual).
-    pub fn set(&mut self, qname: &[u8], cigar: &[Cigar], seq: &[u8], qual: &[u8]) {
+    pub fn set(&mut self, qname: &[u8], cigar: &CigarString, seq: &[u8], qual: &[u8]) {
         self.inner_mut().l_data = (qname.len() + 1 + cigar.len() * 4 + ((seq.len() as f32 / 2.0).ceil() as usize) + qual.len()) as i32;
 
         if self.inner().m_data < self.inner().l_data {
@@ -227,10 +228,10 @@ impl Record {
         unsafe { slice::from_raw_parts(self.data()[self.qname_len()..].as_ptr() as *const u32, self.cigar_len()) }
     }
 
-    /// Get cigar sequence. Complexity: O(k) with k being the length of the cigar string.
-    pub fn cigar(&self) -> Vec<Cigar> {
+    /// Get cigar string. Complexity: O(k) with k being the length of the cigar string.
+    pub fn cigar(&self) -> CigarString {
         let raw = self.raw_cigar();
-        raw.iter().map(|&c| {
+        CigarString(raw.iter().map(|&c| {
             let len = c >> 4;
             match c & 0b1111 {
                 0 => Cigar::Match(len),
@@ -245,7 +246,7 @@ impl Record {
                 9 => Cigar::Back(len),
                 _ => panic!("Unexpected cigar type"),
             }
-        }).collect()
+        }).collect())
     }
 
     fn seq_len(&self) -> usize {
@@ -453,7 +454,7 @@ unsafe impl<'a> Send for Seq<'a> {}
 unsafe impl<'a> Sync for Seq<'a> {}
 
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Cigar {
     Match(u32),  // M
     Ins(u32),  // I
@@ -483,8 +484,123 @@ impl Cigar {
             Cigar::Back(len)     => len << 4 | 9,
         }
     }
+
+    /// Return the length the CIGAR.
+    pub fn len(&self) -> u32 {
+        match *self {
+            Cigar::Match(len)    => len,
+            Cigar::Ins(len)      => len,
+            Cigar::Del(len)      => len,
+            Cigar::RefSkip(len)  => len,
+            Cigar::SoftClip(len) => len,
+            Cigar::HardClip(len) => len,
+            Cigar::Pad(len)      => len,
+            Cigar::Equal(len)    => len,
+            Cigar::Diff(len)     => len,
+            Cigar::Back(len)     => len
+        }
+    }
+
+    /// Return the character representing the CIGAR.
+    pub fn char(&self) -> char {
+        match *self {
+            Cigar::Match(_)    => 'M',
+            Cigar::Ins(_)      => 'I',
+            Cigar::Del(_)      => 'D',
+            Cigar::RefSkip(_)  => 'N',
+            Cigar::SoftClip(_) => 'S',
+            Cigar::HardClip(_) => 'H',
+            Cigar::Pad(_)      => 'P',
+            Cigar::Equal(_)    => '=',
+            Cigar::Diff(_)     => 'X',
+            Cigar::Back(_)     => 'B'
+        }
+    }
+}
+
+
+impl fmt::Display for Cigar {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        fmt.write_fmt(format_args!("{}{}", self.len(), self.char()))
+    }
 }
 
 
 unsafe impl Send for Cigar {}
 unsafe impl Sync for Cigar {}
+
+
+custom_derive! {
+    /// A CIGAR string. This type wraps around a `Vec<Cigar>`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rust_htslib::bam::record::{Cigar, CigarString};
+    ///
+    /// let cigar = CigarString(vec![Cigar::Match(100), Cigar::SoftClip(10)]);
+    ///
+    /// // access by index
+    /// assert_eq!(cigar[0], Cigar::Match(100));
+    /// // format into classical string representation
+    /// assert_eq!(format!("{}", cigar), "100M10S");
+    /// // iterate
+    /// for op in &cigar {
+    ///    println!("{}", op);
+    /// }
+    /// ```
+    #[derive(NewtypeDeref,
+             NewtypeIndex(usize),
+             NewtypeIndexMut(usize),
+             NewtypeFrom,
+             PartialEq,
+             Eq,
+             NewtypeDebug,
+             Clone
+    )]
+    pub struct CigarString(pub Vec<Cigar>);
+}
+
+
+impl<'a> CigarString {
+    pub fn iter(&'a self) -> ::std::slice::Iter<'a, Cigar> {
+        self.into_iter()
+    }
+}
+
+
+impl<'a> IntoIterator for &'a CigarString {
+    type Item = &'a Cigar;
+    type IntoIter = ::std::slice::Iter<'a, Cigar>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        (&(self.0)).into_iter()
+    }
+}
+
+
+impl fmt::Display for CigarString {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        for op in self {
+            fmt.write_fmt(format_args!("{}{}", op.len(), op.char()))?;
+        }
+        Ok(())
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cigar_string() {
+        let cigar = CigarString(vec![Cigar::Match(100), Cigar::SoftClip(10)]);
+
+        assert_eq!(cigar[0], Cigar::Match(100));
+        assert_eq!(format!("{}", cigar), "100M10S");
+        for op in &cigar {
+            println!("{}", op);
+        }
+    }
+}

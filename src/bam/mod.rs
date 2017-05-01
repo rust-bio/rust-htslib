@@ -580,17 +580,11 @@ pub struct HeaderView {
 
 
 impl HeaderView {
+    /// Create a new HeaderView from the underlying Htslib type, and own it.
     pub fn new(inner: *mut htslib::bam_hdr_t) -> Self {
         HeaderView {
             inner: inner,
             owned: true,
-        }
-    }
-
-    fn borrow(inner: *mut htslib::bam_hdr_t) -> Self {
-        HeaderView {
-            inner: inner,
-            owned: false,
         }
     }
 
@@ -652,12 +646,12 @@ impl Drop for HeaderView {
 mod tests {
     extern crate tempdir;
     use super::*;
-    use super::record::{Cigar,Aux};
+    use super::record::{Cigar, CigarString, Aux};
     use super::header::HeaderRecord;
     use std::str;
     use std::path::Path;
 
-    fn gold() -> ([&'static [u8]; 6], [u16; 6], [&'static [u8]; 6], [&'static [u8]; 6], [[Cigar; 3]; 6]) {
+    fn gold() -> ([&'static [u8]; 6], [u16; 6], [&'static [u8]; 6], [&'static [u8]; 6], [CigarString; 6]) {
         let names = [&b"I"[..], &b"II.14978392"[..], &b"III"[..], &b"IV"[..], &b"V"[..], &b"VI"[..]];
         let flags = [16u16, 16u16, 16u16, 16u16, 16u16, 2048u16];
         let seqs = [
@@ -677,12 +671,12 @@ mod tests {
             &b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"[..],
         ];
         let cigars = [
-            [Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)],
-            [Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)],
-            [Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)],
-            [Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)],
-            [Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)],
-            [Cigar::Match(27), Cigar::Del(100000), Cigar::Match(73)],
+            CigarString(vec![Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)]),
+            CigarString(vec![Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)]),
+            CigarString(vec![Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)]),
+            CigarString(vec![Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)]),
+            CigarString(vec![Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)]),
+            CigarString(vec![Cigar::Match(27), Cigar::Del(100000), Cigar::Match(73)]),
         ];
         (names, flags, seqs, quals, cigars)
     }
