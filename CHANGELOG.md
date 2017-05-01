@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.11.0] - 2017-05-1
+### Changed
+- Improved CIGAR string API using a newtype wrapper.
+
+
 ## [0.10.0] - 2016-11-10
 ### Added
 - Prelude module to easily import all relevant traits.

@@ -87,7 +87,7 @@ impl Record {
         self.inner_mut().core.pos = pos;
     }
 
-    pub fn end_pos(&self, cigar: &[Cigar]) -> i32 {
+    pub fn end_pos(&self, cigar: &CigarString) -> i32 {
         let mut pos = self.pos();
         for c in cigar {
             match c {
@@ -174,7 +174,7 @@ impl Record {
     }
 
     /// Set variable length data (qname, cigar, seq, qual).
-    pub fn set(&mut self, qname: &[u8], cigar: &[Cigar], seq: &[u8], qual: &[u8]) {
+    pub fn set(&mut self, qname: &[u8], cigar: &CigarString, seq: &[u8], qual: &[u8]) {
         self.inner_mut().l_data = (qname.len() + 1 + cigar.len() * 4 + ((seq.len() as f32 / 2.0).ceil() as usize) + qual.len()) as i32;
 
         if self.inner().m_data < self.inner().l_data {
@@ -552,12 +552,20 @@ custom_derive! {
     #[derive(NewtypeDeref,
              NewtypeIndex(usize),
              NewtypeIndexMut(usize),
+             NewtypeFrom,
              PartialEq,
              Eq,
              NewtypeDebug,
              Clone
     )]
     pub struct CigarString(pub Vec<Cigar>);
+}
+
+
+impl<'a> CigarString {
+    pub fn iter(&'a self) -> ::std::slice::Iter<'a, Cigar> {
+        self.into_iter()
+    }
 }
 
 
