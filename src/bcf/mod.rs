@@ -100,7 +100,7 @@ impl Writer {
         Self::new(url.as_str().as_bytes(), header, uncompressed, vcf)
     }
 
-    pub fn from_stdin(header: &Header, uncompressed: bool, vcf: bool) -> Result<Self, BCFError> {
+    pub fn from_stdout(header: &Header, uncompressed: bool, vcf: bool) -> Result<Self, BCFError> {
         Self::new(b"-", header, uncompressed, vcf)
     }
 
