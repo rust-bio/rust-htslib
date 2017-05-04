@@ -3,8 +3,12 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.11.0] - 2017-05-1
+### Added
+- A SAM writer.
 ### Changed
 - Improved CIGAR string API using a newtype wrapper.
+- Improved pileup API.
+- Support threaded writing for BAM files.
 
 
 ## [0.10.0] - 2016-11-10
