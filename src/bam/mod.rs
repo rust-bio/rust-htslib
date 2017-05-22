@@ -695,8 +695,12 @@ mod tests {
             assert_eq!(rec.qname(), names[i]);
             assert_eq!(rec.flags(), flags[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
-            assert_eq!(rec.cigar(), cigars[i]);
-            assert_eq!(rec.end_pos(&rec.cigar()), rec.pos() + 100 + del_len[i]);
+            assert_eq!(*rec.cigar(), cigars[i]);
+            let cigar = rec.cigar();
+            assert_eq!(cigar.end_pos(), rec.pos() + 100 + del_len[i]);
+            assert_eq!(cigar.read_pos(rec.pos() as u32 + 20).unwrap().unwrap(), 20);
+            assert_eq!(cigar.read_pos(cigar.end_pos() as u32 - 10).unwrap().unwrap(), 90);
+            assert_eq!(cigar.read_pos(4000000).unwrap(), None);
             // fix qual offset
             let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
             assert_eq!(rec.qual(), &qual[..]);
@@ -733,7 +737,7 @@ mod tests {
             assert_eq!(rec.qname(), names[i]);
             assert_eq!(rec.flags(), flags[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
-            assert_eq!(rec.cigar(), cigars[i]);
+            assert_eq!(*rec.cigar(), cigars[i]);
             // fix qual offset
             let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
             assert_eq!(rec.qual(), &qual[..]);
@@ -756,7 +760,7 @@ mod tests {
         rec.push_aux(b"NM", &Aux::Integer(15));
 
         assert_eq!(rec.qname(), names[0]);
-        assert_eq!(rec.cigar(), cigars[0]);
+        assert_eq!(*rec.cigar(), cigars[0]);
         assert_eq!(rec.seq().as_bytes(), seqs[0]);
         assert_eq!(rec.qual(), quals[0]);
         assert!(rec.is_reverse());
@@ -820,7 +824,7 @@ mod tests {
                 bam.read(&mut rec).ok().expect("Failed to read record.");
 
                 assert_eq!(rec.qname(), names[i]);
-                assert_eq!(rec.cigar(), cigars[i]);
+                assert_eq!(*rec.cigar(), cigars[i]);
                 assert_eq!(rec.seq().as_bytes(), seqs[i]);
                 assert_eq!(rec.qual(), quals[i]);
                 assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
@@ -869,7 +873,7 @@ mod tests {
 
                 assert_eq!(rec.pos(), i as i32);
                 assert_eq!(rec.qname(), names[idx]);
-                assert_eq!(rec.cigar(), cigars[idx]);
+                assert_eq!(*rec.cigar(), cigars[idx]);
                 assert_eq!(rec.seq().as_bytes(), seqs[idx]);
                 assert_eq!(rec.qual(), quals[idx]);
                 assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
