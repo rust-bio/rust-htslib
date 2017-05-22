@@ -77,7 +77,6 @@ extern crate url;
 extern crate ieee754;
 #[macro_use]
 extern crate lazy_static;
-#[macro_use]
 extern crate bitflags;
 
 pub mod htslib;

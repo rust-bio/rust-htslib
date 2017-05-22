@@ -141,7 +141,7 @@ impl Writer {
 
     pub fn write(&mut self, record: &record::Record) -> Result<(), WriteError> {
         if unsafe { htslib::vcf::bcf_write(self.inner, self.header.inner, record.inner) } == -1 {
-            Err(WriteError::WriteError)
+            Err(WriteError::Some)
         }
         else {
             Ok(())
@@ -246,7 +246,7 @@ impl ReadError {
 quick_error! {
     #[derive(Debug)]
     pub enum WriteError {
-        WriteError {
+        Some {
             description("failed to write record")
         }
     }

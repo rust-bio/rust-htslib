@@ -29,10 +29,21 @@ macro_rules! flag {
 }
 
 
+quick_error! {
+    #[derive(Debug)]
+    pub enum CigarError {
+        UnexpectedOperation(msg: String) {
+            description("unexpected operation")
+            display("unexpected operation: {}", msg)
+        }
+    }
+}
+
+
 /// A BAM record.
 pub struct Record {
     pub inner: *mut htslib::bam1_t,
-    own: bool,
+    own: bool
 }
 
 
@@ -85,20 +96,6 @@ impl Record {
     /// Set position (0-based).
     pub fn set_pos(&mut self, pos: i32) {
         self.inner_mut().core.pos = pos;
-    }
-
-    pub fn end_pos(&self, cigar: &CigarString) -> i32 {
-        let mut pos = self.pos();
-        for c in cigar {
-            match c {
-                &Cigar::Match(l) | &Cigar::RefSkip(l) | &Cigar::Del(l) |
-                &Cigar::Equal(l) | &Cigar::Diff(l) => pos += l as i32,
-                &Cigar::Back(l) => pos -= l as i32,
-                // these don't add to end_pos on reference
-                &Cigar::Ins(_) | &Cigar::SoftClip(_) | &Cigar::HardClip(_) | &Cigar::Pad(_) => ()
-            }
-        }
-        pos
     }
 
     pub fn bin(&self) -> u16 {
@@ -229,24 +226,27 @@ impl Record {
     }
 
     /// Get cigar string. Complexity: O(k) with k being the length of the cigar string.
-    pub fn cigar(&self) -> CigarString {
+    pub fn cigar(&self) -> CigarStringView {
         let raw = self.raw_cigar();
-        CigarString(raw.iter().map(|&c| {
-            let len = c >> 4;
-            match c & 0b1111 {
-                0 => Cigar::Match(len),
-                1 => Cigar::Ins(len),
-                2 => Cigar::Del(len),
-                3 => Cigar::RefSkip(len),
-                4 => Cigar::SoftClip(len),
-                5 => Cigar::HardClip(len),
-                6 => Cigar::Pad(len),
-                7 => Cigar::Equal(len),
-                8 => Cigar::Diff(len),
-                9 => Cigar::Back(len),
-                _ => panic!("Unexpected cigar type"),
-            }
-        }).collect())
+        CigarStringView {
+            inner: CigarString(raw.iter().map(|&c| {
+                let len = c >> 4;
+                match c & 0b1111 {
+                    0 => Cigar::Match(len),
+                    1 => Cigar::Ins(len),
+                    2 => Cigar::Del(len),
+                    3 => Cigar::RefSkip(len),
+                    4 => Cigar::SoftClip(len),
+                    5 => Cigar::HardClip(len),
+                    6 => Cigar::Pad(len),
+                    7 => Cigar::Equal(len),
+                    8 => Cigar::Diff(len),
+                    9 => Cigar::Back(len),
+                    _ => panic!("Unexpected cigar type"),
+                }
+            }).collect()),
+            pos: self.pos()
+        }
     }
 
     fn seq_len(&self) -> usize {
@@ -585,6 +585,167 @@ impl fmt::Display for CigarString {
             fmt.write_fmt(format_args!("{}{}", op.len(), op.char()))?;
         }
         Ok(())
+    }
+}
+
+
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct CigarStringView {
+    inner: CigarString,
+    pos: i32
+}
+
+
+impl CigarStringView {
+    /// Get end position of alignment.
+    pub fn end_pos(&self) -> i32 {
+        let mut pos = self.pos;
+        for c in self {
+            match c {
+                &Cigar::Match(l) | &Cigar::RefSkip(l) | &Cigar::Del(l) |
+                &Cigar::Equal(l) | &Cigar::Diff(l) => pos += l as i32,
+                &Cigar::Back(l) => pos -= l as i32,
+                // these don't add to end_pos on reference
+                &Cigar::Ins(_) | &Cigar::SoftClip(_) | &Cigar::HardClip(_) | &Cigar::Pad(_) => ()
+            }
+        }
+        pos
+    }
+
+    /// For a given position in the reference, get corresponding position within read.
+    /// If reference position is outside of the read alignment, return None.
+    pub fn read_pos(&self, ref_pos: u32) -> Result<Option<u32>, CigarError> {
+        let mut rpos = self.pos as u32; // reference position
+        let mut qpos = 0u32; // position within read
+        let mut j = 0; // index into cigar operation vector
+
+        // find first cigar operation referring to qpos = 0 (and thus bases in record.seq()),
+        // because all augmentations of qpos and rpos before that are invalid
+        for (i, c) in self.iter().enumerate() {
+            match c {
+                &Cigar::Match(_) |
+                &Cigar::Diff(_)  |
+                &Cigar::Equal(_) |
+                // this is unexpected, but bwa + GATK indel realignment can produce insertions
+                // before matching positions
+                &Cigar::Ins(_)   |
+                &Cigar::Pad(_)   |
+                &Cigar::SoftClip(_) => {
+                    j = i;
+                    break;
+                },
+                &Cigar::Del(_) => {
+                    return Err(CigarError::UnexpectedOperation(
+                        "'deletion' (D) found before any reference match".to_owned()
+                    ));
+                },
+                &Cigar::Back(_) => {
+                    return Err(CigarError::UnexpectedOperation(
+                        "'back' (B) operation is deprecated".to_owned()
+                    ));
+                },
+                &Cigar::RefSkip(_) => {
+                    return Err(CigarError::UnexpectedOperation(
+                        "'reference skip' (N) found before any reference match".to_owned()
+                    ));
+                },
+                &Cigar::HardClip(_) => ()
+            }
+        }
+
+        let contains_ref_pos = |cigar_op_start: u32, cigar_op_length: u32| {
+            cigar_op_start <= ref_pos && cigar_op_start + cigar_op_length > ref_pos
+        };
+
+        while rpos <= ref_pos && j < self.len() {
+            match &self[j] {
+                // potential SNV evidence
+                &Cigar::Match(l) | &Cigar::Diff(l) | &Cigar::Equal(l)
+                if contains_ref_pos(rpos, l) => {
+                    // difference between desired position and first position of current cigar
+                    // operation
+                    qpos += ref_pos - rpos;
+                    return Ok(Some(qpos));
+                },
+                // for others, just increase pos and qpos as needed
+                &Cigar::Match(l)   |
+                &Cigar::Diff(l)    |
+                &Cigar::Equal(l)   => {
+                    rpos += l;
+                    qpos += l;
+                    j += 1;
+                },
+                &Cigar::SoftClip(l) |
+                &Cigar::Ins(l)  => {
+                    qpos += l;
+                    j += 1;
+                },
+                &Cigar::RefSkip(l) |
+                &Cigar::Del(l) |
+                &Cigar::Pad(l) => {
+                    rpos += l;
+                    j += 1;
+                },
+                &Cigar::HardClip(_) => return Ok(None),
+                &Cigar::Back(_) => {
+                    return Err(CigarError::UnexpectedOperation(
+                        "'back' (B) operation is deprecated".to_owned()
+                    ));
+                }
+            }
+        }
+
+        Ok(None)
+    }
+}
+
+
+impl ops::Deref for CigarStringView {
+    type Target = CigarString;
+
+    fn deref(&self) -> &CigarString {
+        &self.inner
+    }
+}
+
+
+impl ops::Index<usize> for CigarStringView {
+    type Output = Cigar;
+
+    fn index(&self, index: usize) -> &Cigar {
+        self.inner.index(index)
+    }
+}
+
+
+impl ops::IndexMut<usize> for CigarStringView {
+
+    fn index_mut(&mut self, index: usize) -> &mut Cigar {
+        self.inner.index_mut(index)
+    }
+}
+
+
+impl<'a> CigarStringView {
+    pub fn iter(&'a self) -> ::std::slice::Iter<'a, Cigar> {
+        self.inner.into_iter()
+    }
+}
+
+
+impl<'a> IntoIterator for &'a CigarStringView {
+    type Item = &'a Cigar;
+    type IntoIter = ::std::slice::Iter<'a, Cigar>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.inner.into_iter()
+    }
+}
+
+
+impl fmt::Display for CigarStringView {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        self.inner.fmt(fmt)
     }
 }
 
