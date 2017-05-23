@@ -614,7 +614,7 @@ impl CigarStringView {
 
     /// For a given position in the reference, get corresponding position within read.
     /// If reference position is outside of the read alignment, return None.
-    pub fn read_pos(&self, ref_pos: u32) -> Result<Option<u32>, CigarError> {
+    pub fn read_pos(&self, ref_pos: u32, include_softclips: bool) -> Result<Option<u32>, CigarError> {
         let mut rpos = self.pos as u32; // reference position
         let mut qpos = 0u32; // position within read
         let mut j = 0; // index into cigar operation vector
@@ -664,6 +664,10 @@ impl CigarStringView {
                 if contains_ref_pos(rpos, l) => {
                     // difference between desired position and first position of current cigar
                     // operation
+                    qpos += ref_pos - rpos;
+                    return Ok(Some(qpos));
+                },
+                &Cigar::SoftClip(l) if include_softclips && contains_ref_pos(rpos, l) => {
                     qpos += ref_pos - rpos;
                     return Ok(Some(qpos));
                 },

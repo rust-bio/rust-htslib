@@ -698,9 +698,9 @@ mod tests {
             assert_eq!(*rec.cigar(), cigars[i]);
             let cigar = rec.cigar();
             assert_eq!(cigar.end_pos(), rec.pos() + 100 + del_len[i]);
-            assert_eq!(cigar.read_pos(rec.pos() as u32 + 20).unwrap().unwrap(), 20);
-            assert_eq!(cigar.read_pos(cigar.end_pos() as u32 - 10).unwrap().unwrap(), 90);
-            assert_eq!(cigar.read_pos(4000000).unwrap(), None);
+            assert_eq!(cigar.read_pos(rec.pos() as u32 + 20, false).unwrap().unwrap(), 20);
+            assert_eq!(cigar.read_pos(cigar.end_pos() as u32 - 10, false).unwrap().unwrap(), 90);
+            assert_eq!(cigar.read_pos(4000000, false).unwrap(), None);
             // fix qual offset
             let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
             assert_eq!(rec.qual(), &qual[..]);
