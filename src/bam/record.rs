@@ -634,9 +634,18 @@ impl CigarStringView {
                 // this is unexpected, but bwa + GATK indel realignment can produce insertions
                 // before matching positions
                 &Cigar::Ins(_)   |
-                &Cigar::Pad(_)   |
-                &Cigar::SoftClip(_) => {
+                &Cigar::Pad(_)   => {
                     j = i;
+                    break;
+                },
+                &Cigar::SoftClip(l) => {
+                    j = i;
+                    if include_softclips {
+                        // Alignment starts with softclip and we want to include it in the
+                        // projection of the reference prosition. However, the POS field does not
+                        // include the softclip. Hence we have to subtract its length.
+                        rpos -= l;
+                    }
                     break;
                 },
                 &Cigar::Del(_) => {
