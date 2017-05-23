@@ -693,7 +693,13 @@ impl CigarStringView {
                     qpos += l;
                     j += 1;
                 },
-                &Cigar::SoftClip(l) |
+                &Cigar::SoftClip(l) => {
+                    qpos += l;
+                    j += 1;
+                    if include_softclips {
+                        rpos += l;
+                    }
+                },
                 &Cigar::Ins(l)  => {
                     qpos += l;
                     j += 1;
