@@ -644,7 +644,7 @@ impl CigarStringView {
                         // Alignment starts with softclip and we want to include it in the
                         // projection of the reference prosition. However, the POS field does not
                         // include the softclip. Hence we have to subtract its length.
-                        rpos -= l;
+                        rpos = rpos.saturating_sub(l);
                     }
                     break;
                 },
