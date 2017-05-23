@@ -263,7 +263,7 @@ impl Record {
         }
     }
 
-    /// Get base qualities. Complexity: O(1).
+    /// Get base qualities (PHRED-scaled probability that base is wrong + 33). Complexity: O(1).
     pub fn qual(&self) -> &[u8] {
         &self.data()[self.qname_len() + self.cigar_len()*4 + (self.seq_len()+1)/2..][..self.seq_len()]
     }
