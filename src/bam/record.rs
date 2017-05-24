@@ -621,12 +621,13 @@ impl CigarStringView {
     ///
     /// * `ref_pos` - the reference position
     /// * `include_softclips` - if true, softclips will be considered as matches or mismatches
+    /// * `include_dels` - if true, positions within deletions will be considered (start of deletion will be returned)
     ///
     pub fn read_pos(
         &self,
         ref_pos: u32,
         include_softclips: bool,
-        include_indels: bool
+        include_dels: bool
     ) -> Result<Option<u32>, CigarError> {
         let mut rpos = self.pos as u32; // reference position
         let mut qpos = 0u32; // position within read
@@ -693,9 +694,8 @@ impl CigarStringView {
                     qpos += ref_pos - rpos;
                     return Ok(Some(qpos));
                 },
-                &Cigar::Del(l) | &Cigar::Ins(l)
-                if include_indels && contains_ref_pos(rpos, l) => {
-                    qpos += ref_pos - rpos;
+                &Cigar::Del(l) if include_dels && contains_ref_pos(rpos, l) => {
+                    // qpos shall resemble the start of the deletion
                     return Ok(Some(qpos));
                 },
                 // for others, just increase pos and qpos as needed
