@@ -621,7 +621,13 @@ impl CigarStringView {
     ///
     /// * `ref_pos` - the reference position
     /// * `include_softclips` - if true, softclips will be considered as matches or mismatches
-    pub fn read_pos(&self, ref_pos: u32, include_softclips: bool) -> Result<Option<u32>, CigarError> {
+    ///
+    pub fn read_pos(
+        &self,
+        ref_pos: u32,
+        include_softclips: bool,
+        include_indels: bool
+    ) -> Result<Option<u32>, CigarError> {
         let mut rpos = self.pos as u32; // reference position
         let mut qpos = 0u32; // position within read
         let mut j = 0; // index into cigar operation vector
@@ -684,6 +690,11 @@ impl CigarStringView {
                     return Ok(Some(qpos));
                 },
                 &Cigar::SoftClip(l) if include_softclips && contains_ref_pos(rpos, l) => {
+                    qpos += ref_pos - rpos;
+                    return Ok(Some(qpos));
+                },
+                &Cigar::Del(l) | &Cigar::Ins(l)
+                if include_indels && contains_ref_pos(rpos, l) => {
                     qpos += ref_pos - rpos;
                     return Ok(Some(qpos));
                 },
