@@ -46,6 +46,20 @@ pub trait Read: Sized {
 
     /// Return the header.
     fn header(&self) -> &HeaderView;
+
+    // Seek to the give virtual offset in the file
+    fn seek_voffset(&self, offset: i64) -> Result<(), ReadError> {
+        let ret = unsafe { htslib::bgzf_seek(self.bgzf(), offset, libc::SEEK_SET) };
+        match ret { 
+            0 => Ok(()),
+            _ => Err(ReadError::SeekError)
+        }
+    }
+
+    // Report the current virtual offset
+    fn tell_voffset(&self) -> i64  {
+        htslib::bgzf_tell(self.bgzf())
+    }
 }
 
 
@@ -438,6 +452,9 @@ quick_error! {
         NoMoreRecord {
             description("no more record")
         }
+        SeekError {
+            description("bam seek failed")
+        }
     }
 }
 
@@ -645,6 +662,7 @@ impl Drop for HeaderView {
 #[cfg(test)]
 mod tests {
     extern crate tempdir;
+    use std::collections::HashMap;
     use super::*;
     use super::record::{Cigar, CigarString, Aux};
     use super::header::HeaderRecord;
@@ -706,6 +724,28 @@ mod tests {
             assert_eq!(rec.qual(), &qual[..]);
         }
     }
+
+    fn test_seek() {
+        let (names, flags, seqs, quals, cigars) = gold();
+        let bam = Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening file.");
+
+        let mut names_by_voffset = HashMap::new();
+
+        for (i, record) in bam.records().enumerate() {
+            let pos = bam.tell_voffset();
+            let rec = record.ok().expect("Expected valid record");
+            let qname = str::from_utf8(rec.qname()).ok().unwrap().to_string();
+            names_by_voffset.insert(pos, qname);
+        }
+
+        for (pos, qname) in names_by_voffset.iter() {
+            bam.seek_voffset(*pos);
+            let rec = bam.records().next().unwrap().unwrap();
+            let rec_qname = str::from_utf8(rec.qname()).ok().unwrap().to_string();
+            assert_eq!(qname, &rec_qname);
+        }
+    }
+
 
     #[test]
     fn test_read_sam_header() {
