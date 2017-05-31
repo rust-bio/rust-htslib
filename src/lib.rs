@@ -60,7 +60,7 @@
 //!
 //! // seek to chr1:50000-100000
 //! let tid = bam.header.tid(b"CHROMOSOME_I").unwrap();
-//! bam.seek(tid, 0, 20).unwrap();
+//! bam.fetch(tid, 0, 20).unwrap();
 //! // afterwards, read or pileup in this region
 //! ```
 
