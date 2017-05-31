@@ -48,12 +48,12 @@ pub trait Read: Sized {
     fn header(&self) -> &HeaderView;
 
     // Seek to the given virtual offset in the file
-    fn seek(&self, offset: i64) -> Result<(), ReadError> {
+    fn seek(&self, offset: i64) -> Result<(), SeekError> {
         let ret = unsafe { htslib::bgzf_seek(self.bgzf(), offset, libc::SEEK_SET) };
         if ret == 0 {
              Ok(())
         } else {
-            Err(ReadError::SeekError)
+            Err(SeekError::Some)
         }
     }
 
@@ -452,12 +452,6 @@ quick_error! {
         }
         NoMoreRecord {
             description("no more record")
-        }
-        FetchError {
-            description("bam fetch failed")
-        }
-        SeekError {
-            description("bam seek failed")
         }
     }
 }
