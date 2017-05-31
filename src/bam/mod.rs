@@ -47,12 +47,13 @@ pub trait Read: Sized {
     /// Return the header.
     fn header(&self) -> &HeaderView;
 
-    // Seek to the give virtual offset in the file
+    // Seek to the given virtual offset in the file
     fn seek(&self, offset: i64) -> Result<(), ReadError> {
         let ret = unsafe { htslib::bgzf_seek(self.bgzf(), offset, libc::SEEK_SET) };
-        match ret { 
-            0 => Ok(()),
-            _ => Err(ReadError::SeekError)
+        if ret == 0 {
+             Ok(())
+        } else {
+            Err(ReadError::SeekError)
         }
     }
 
