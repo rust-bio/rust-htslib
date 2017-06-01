@@ -3,7 +3,52 @@
 
 /* manually added */
 // bgzf.h
-pub enum Struct_BGZF { }
+#[repr(C)]
+pub struct Struct_BGZF {
+    flags1: ::libc::c_uint,
+    flags2: ::libc::c_int,
+    flags3: ::libc::c_uint,
+
+    cache_size: ::libc::c_int,
+    block_length: ::libc::c_int,
+    block_offset: ::libc::c_int,
+
+    block_address: ::libc::c_long,
+    uncompressed_address: ::libc::c_long,
+
+    uncompressed_block: ::libc::c_ulong,
+    compressed_block: ::libc::c_ulong,
+
+    cache: ::libc::c_ulong,
+    fp: ::libc::c_ulong,
+    mt: ::libc::c_ulong,
+    idx: ::libc::c_ulong,
+
+    idx_build_otf: ::libc::c_int,
+
+    gz_stream: ::libc::c_ulong,
+
+/*
+    unsigned errcode:16, is_write:2, is_be:2;
+    signed compress_level:9;
+    unsigned is_compressed:2, is_gzip:1;
+    int cache_size;
+    int block_length, block_offset;
+    int64_t block_address, uncompressed_address;
+    void *uncompressed_block, *compressed_block;
+    void *cache; // a pointer to a hash table
+    struct hFILE *fp; // actual file handle
+    struct bgzf_mtaux_t *mt; // only used for multi-threading
+    bgzidx_t *idx;      // BGZF index
+    int idx_build_otf;  // build index on the fly, set by bgzf_index_build_init()
+    z_stream *gz_stream;// for gzip-compressed files
+*/
+}
+
+pub fn bgzf_tell(fp: *const BGZF) -> ::libc::c_long {
+    unsafe { ((*fp).block_address << 16) | (((*fp).block_offset & 0xFFFF) as ::libc::c_long ) }
+}
+
 pub type BGZF = Struct_BGZF;
 
 extern "C" {
@@ -327,6 +372,7 @@ extern "C" {
 
 extern "C" {
     pub fn bgzf_open(_fn: *const ::libc::c_char, mode: *const ::libc::c_char) -> *mut BGZF;
+    pub fn bgzf_seek(fp: *mut BGZF, pos: int64_t, relative: ::libc::c_int) -> int64_t;
     pub fn hts_version() -> *const ::libc::c_char;
     pub fn hts_detect_format(fp: *mut Struct_hFILE, fmt: *mut htsFormat)
      -> ::libc::c_int;

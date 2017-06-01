@@ -46,6 +46,21 @@ pub trait Read: Sized {
 
     /// Return the header.
     fn header(&self) -> &HeaderView;
+
+    // Seek to the given virtual offset in the file
+    fn seek(&self, offset: i64) -> Result<(), SeekError> {
+        let ret = unsafe { htslib::bgzf_seek(self.bgzf(), offset, libc::SEEK_SET) };
+        if ret == 0 {
+             Ok(())
+        } else {
+            Err(SeekError::Some)
+        }
+    }
+
+    // Report the current virtual offset
+    fn tell(&self) -> i64  {
+        htslib::bgzf_tell(self.bgzf())
+    }
 }
 
 
@@ -114,7 +129,7 @@ impl Read for Reader {
         }
     }
 
-    /// Iterator over the records of the seeked region.
+    /// Iterator over the records of the fetched region.
     /// Note that, while being convenient, this is less efficient than pre-allocating a
     /// `Record` and reading into it with the `read` method, since every iteration involves
     /// the allocation of a new `Record`.
@@ -206,7 +221,7 @@ impl IndexedReader {
         }
     }
 
-    pub fn seek(&mut self, tid: u32, beg: u32, end: u32) -> Result<(), SeekError> {
+    pub fn fetch(&mut self, tid: u32, beg: u32, end: u32) -> Result<(), FetchError> {
         if let Some(itr) = self.itr {
             unsafe { htslib::hts_itr_destroy(itr) }
         }
@@ -215,7 +230,7 @@ impl IndexedReader {
         };
         if itr.is_null() {
             self.itr = None;
-            Err(SeekError::Some)
+            Err(FetchError::Some)
         }
         else {
             self.itr = Some(itr);
@@ -246,7 +261,7 @@ impl Read for IndexedReader {
         }
     }
 
-    /// Iterator over the records of the seeked region.
+    /// Iterator over the records of the fetched region.
     /// Note that, while being convenient, this is less efficient than pre-allocating a
     /// `Record` and reading into it with the `read` method, since every iteration involves
     /// the allocation of a new `Record`.
@@ -536,9 +551,18 @@ quick_error! {
 
 quick_error! {
     #[derive(Debug)]
+    pub enum FetchError {
+        Some {
+            description("error fetching a locus")
+        }
+    }
+}
+
+quick_error! {
+    #[derive(Debug)]
     pub enum SeekError {
         Some {
-            description("error seeking to locus")
+            description("error seeking to voffset")
         }
     }
 }
@@ -645,6 +669,7 @@ impl Drop for HeaderView {
 #[cfg(test)]
 mod tests {
     extern crate tempdir;
+    use std::collections::HashMap;
     use super::*;
     use super::record::{Cigar, CigarString, Aux};
     use super::header::HeaderRecord;
@@ -707,6 +732,28 @@ mod tests {
         }
     }
 
+    fn test_seek() {
+        let (names, flags, seqs, quals, cigars) = gold();
+        let bam = Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening file.");
+
+        let mut names_by_voffset = HashMap::new();
+
+        for (i, record) in bam.records().enumerate() {
+            let pos = bam.tell();
+            let rec = record.ok().expect("Expected valid record");
+            let qname = str::from_utf8(rec.qname()).ok().unwrap().to_string();
+            names_by_voffset.insert(pos, qname);
+        }
+
+        for (pos, qname) in names_by_voffset.iter() {
+            bam.seek(*pos);
+            let rec = bam.records().next().unwrap().unwrap();
+            let rec_qname = str::from_utf8(rec.qname()).ok().unwrap().to_string();
+            assert_eq!(qname, &rec_qname);
+        }
+    }
+
+
     #[test]
     fn test_read_sam_header() {
         let bam = Reader::from_path(&"test/test.bam").ok().expect("Error opening file.");
@@ -725,12 +772,12 @@ mod tests {
         let tid = bam.header.tid(b"CHROMOSOME_I").expect("Expected tid.");
         assert!(bam.header.target_len(tid).expect("Expected target len.") == 15072423);
 
-        // seek to position containing reads
-        bam.seek(tid, 0, 2).ok().expect("Expected successful seek.");
+        // fetch to position containing reads
+        bam.fetch(tid, 0, 2).ok().expect("Expected successful fetch.");
         assert!(bam.records().count() == 6);
 
         // compare reads
-        bam.seek(tid, 0, 2).ok().expect("Expected successful seek.");
+        bam.fetch(tid, 0, 2).ok().expect("Expected successful fetch.");
         for (i, record) in bam.records().enumerate() {
             let rec = record.ok().expect("Expected valid record");
             println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
@@ -744,8 +791,8 @@ mod tests {
             assert_eq!(rec.aux(b"NotAvailableAux"), None);
         }
 
-        // seek to empty position
-        bam.seek(2, 1, 1).ok().expect("Expected successful seek.");
+        // fetch to empty position
+        bam.fetch(2, 1, 1).ok().expect("Expected successful fetch.");
         assert!(bam.records().count() == 0);
     }
 
