@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - Renamed previous seek method into fetch (in line with pysam).
 - Improved CIGAR API. 
+- Updated dependencies.
 
 ## [0.11.0] - 2017-05-01
 ### Added
