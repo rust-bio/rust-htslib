@@ -2,7 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.11.0] - 2017-05-1
+## [0.12.0] - 2017-06-01
+### Added
+- Support seek and tell to handle virtual offsets.
+### Changed
+- Renamed previous seek method into fetch (in line with pysam).
+- Improved CIGAR API. 
+
+## [0.11.0] - 2017-05-01
 ### Added
 - A SAM writer.
 ### Changed
