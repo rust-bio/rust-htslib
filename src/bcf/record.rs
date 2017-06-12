@@ -18,8 +18,8 @@ use htslib;
 const MISSING_INTEGER: i32 = i32::MIN;
 const VECTOR_END_INTEGER: i32 = i32::MIN + 1;
 lazy_static!{
-    static ref MISSING_FLOAT: f32 = f32::from_bits(0x7F800001);
-    static ref VECTOR_END_FLOAT: f32 = f32::from_bits(0x7F800002);
+    static ref MISSING_FLOAT: f32 = Ieee754::from_bits(0x7F800001);
+    static ref VECTOR_END_FLOAT: f32 = Ieee754::from_bits(0x7F800002);
 }
 
 
