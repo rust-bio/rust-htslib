@@ -8,6 +8,7 @@ use std::slice;
 use std::ffi;
 use std::ops;
 use std::fmt;
+use std::error::Error;
 
 use itertools::Itertools;
 
@@ -32,9 +33,13 @@ macro_rules! flag {
 quick_error! {
     #[derive(Debug)]
     pub enum CigarError {
+        UnsupportedOperation(msg: String) {
+            description("Unsupported CIGAR operation")
+            display(x) -> ("{}: {}", x.description(), msg)
+        }
         UnexpectedOperation(msg: String) {
-            description("unexpected operation")
-            display("unexpected operation: {}", msg)
+            description("CIGAR operation not allowed at this point")
+            display(x) -> ("{}: {}", x.description(), msg)
         }
     }
 }
@@ -643,7 +648,8 @@ impl CigarStringView {
                 // this is unexpected, but bwa + GATK indel realignment can produce insertions
                 // before matching positions
                 &Cigar::Ins(_)   |
-                &Cigar::Pad(_)   => {
+                &Cigar::Pad(_)   => { //TODO: double check if we do not want Pad to be an UnsupportedOperation, e.g. with the following:
+//                    return Err( CigarError::UnsupportedOperation("Pad operation definition in SAMv1 spec is unclear.".to_string()) );
                     j = i;
                     break;
                 },
@@ -651,7 +657,7 @@ impl CigarStringView {
                     j = i;
                     if include_softclips {
                         // Alignment starts with softclip and we want to include it in the
-                        // projection of the reference prosition. However, the POS field does not
+                        // projection of the reference position. However, the POS field does not
                         // include the softclip. Hence we have to subtract its length.
                         rpos = rpos.saturating_sub(l);
                     }
@@ -659,20 +665,20 @@ impl CigarStringView {
                 },
                 &Cigar::Del(_) => {
                     return Err(CigarError::UnexpectedOperation(
-                        "'deletion' (D) found before any reference match".to_owned()
+                        "'deletion' (D) found before any operation describing read sequence".to_owned()
                     ));
                 },
                 &Cigar::Back(_) => {
-                    return Err(CigarError::UnexpectedOperation(
-                        "'back' (B) operation is deprecated".to_owned()
+                    return Err(CigarError::UnsupportedOperation(
+                        "'back' (B) operation is deprecated according to htslib/bam_plcmd.c and is not in SAMv1 spec".to_owned()
                     ));
                 },
                 &Cigar::RefSkip(_) => {
                     return Err(CigarError::UnexpectedOperation(
-                        "'reference skip' (N) found before any reference match".to_owned()
+                        "'reference skip' (N) found before any operation describing read sequence".to_owned()
                     ));
                 },
-                &Cigar::HardClip(_) => ()
+                &Cigar::HardClip(_) => () // just skip HardClips, they're not in the read sequence any more
             }
         }
 
@@ -719,14 +725,15 @@ impl CigarStringView {
                 },
                 &Cigar::RefSkip(l) |
                 &Cigar::Del(l) |
-                &Cigar::Pad(l) => {
+                &Cigar::Pad(l) => { //TODO: double check if we do not want Pad to be an UnsupportedOperation, e.g. with the following:
+//                    return Err( CigarError::UnsupportedOperation("Pad operation definition in SAMv1 spec is unclear.".to_string()) );
                     rpos += l;
                     j += 1;
                 },
                 &Cigar::HardClip(_) => return Ok(None),
                 &Cigar::Back(_) => {
-                    return Err(CigarError::UnexpectedOperation(
-                        "'back' (B) operation is deprecated".to_owned()
+                    return Err(CigarError::UnsupportedOperation(
+                        "'back' (B) operation is deprecated according to htslib/bam_plcmd.c and is not in SAMv1 spec".to_owned()
                     ));
                 }
             }
