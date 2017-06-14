@@ -611,7 +611,14 @@ impl CigarStringView {
             match c {
                 &Cigar::Match(l) | &Cigar::RefSkip(l) | &Cigar::Del(l) |
                 &Cigar::Equal(l) | &Cigar::Diff(l) => pos += l as i32,
-                &Cigar::Back(l) => pos -= l as i32,
+                &Cigar::Back(l) => pos -= l as i32, // TODO: Don't we want to consistently deprecate this operation? E.g. by returning the following error (this would require a change of this function's signature!)
+                /*
+                {
+                    return Err(CigarError::UnsupportedOperation(
+                        "'back' (B) operation is deprecated according to htslib/bam_plcmd.c and is not in SAMv1 spec".to_owned()
+                    ));
+                }
+                */
                 // these don't add to end_pos on reference
                 &Cigar::Ins(_) | &Cigar::SoftClip(_) | &Cigar::HardClip(_) | &Cigar::Pad(_) => ()
             }
