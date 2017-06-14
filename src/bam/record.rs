@@ -654,9 +654,7 @@ impl CigarStringView {
                 &Cigar::Equal(_) |
                 // this is unexpected, but bwa + GATK indel realignment can produce insertions
                 // before matching positions
-                &Cigar::Ins(_)   |
-                &Cigar::Pad(_)   => { //TODO: double check if we do not want Pad to be an UnsupportedOperation, e.g. with the following:
-//                    return Err( CigarError::UnsupportedOperation("Pad operation definition in SAMv1 spec is unclear.".to_string()) );
+                &Cigar::Ins(_) => {
                     j = i;
                     break;
                 },
@@ -685,7 +683,15 @@ impl CigarStringView {
                         "'reference skip' (N) found before any operation describing read sequence".to_owned()
                     ));
                 },
-                &Cigar::HardClip(_) => () // just skip HardClips, they're not in the read sequence any more
+                &Cigar::HardClip(_) if i > 0 && i < self.len()-1 => {
+                    return Err(CigarError::UnexpectedOperation(
+                        "'hard clip' (H) found in between operations, contradicting SAMv1 spec that hard clips can only be at the ends of reads".to_owned()
+                    ));
+                },
+                // if we have reached the end of the CigarString with only pads and hard clips, we have no read position matching the variant
+                &Cigar::Pad(_) | &Cigar::HardClip(_) if i == self.len()-1 => return Ok(None),
+                // skip leading HardClips and Pads, as they consume neither read sequence nor reference sequence
+                &Cigar::Pad(_) | &Cigar::HardClip(_) => ()
             }
         }
 
@@ -731,11 +737,17 @@ impl CigarStringView {
                     j += 1;
                 },
                 &Cigar::RefSkip(l) |
-                &Cigar::Del(l) |
-                &Cigar::Pad(l) => { //TODO: double check if we do not want Pad to be an UnsupportedOperation, e.g. with the following:
-//                    return Err( CigarError::UnsupportedOperation("Pad operation definition in SAMv1 spec is unclear.".to_string()) );
+                &Cigar::Del(l) => {
                     rpos += l;
                     j += 1;
+                },
+                &Cigar::Pad(_) => {
+                    j += 1;
+                },
+                &Cigar::HardClip(_) if j < self.len()-1 => {
+                    return Err(CigarError::UnexpectedOperation(
+                        "'hard clip' (H) found in between operations, contradicting SAMv1 spec that hard clips can only be at the ends of reads".to_owned()
+                    ));
                 },
                 &Cigar::HardClip(_) => return Ok(None),
                 &Cigar::Back(_) => {
