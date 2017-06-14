@@ -633,7 +633,7 @@ impl CigarStringView {
     ///
     /// * `ref_pos` - the reference position
     /// * `include_softclips` - if true, softclips will be considered as matches or mismatches
-    /// * `include_dels` - if true, positions within deletions will be considered (start of deletion will be returned)
+    /// * `include_dels` - if true, positions within deletions will be considered (first reference matching read position after deletion will be returned)
     ///
     pub fn read_pos(
         &self,
