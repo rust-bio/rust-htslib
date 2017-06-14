@@ -492,7 +492,7 @@ impl Cigar {
         }
     }
 
-    /// Return the length the CIGAR.
+    /// Return the length of the CIGAR.
     pub fn len(&self) -> u32 {
         match *self {
             Cigar::Match(len)    => len,
