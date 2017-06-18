@@ -722,9 +722,13 @@ mod tests {
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
             assert_eq!(*rec.cigar(), cigars[i]);
             let cigar = rec.cigar();
-            assert_eq!(cigar.end_pos(), rec.pos() + 100 + del_len[i]);
+            if let Ok(end_pos) = cigar.end_pos() {
+                assert_eq!( end_pos, rec.pos() + 100 + del_len[i]);
+                assert_eq!(cigar.read_pos( end_pos as u32 - 10, false, false).unwrap().unwrap(), 90);
+            } else {
+                panic!("bug: failed to fetch cigar.end_pos() in test_read()")
+            }
             assert_eq!(cigar.read_pos(rec.pos() as u32 + 20, false, false).unwrap().unwrap(), 20);
-            assert_eq!(cigar.read_pos(cigar.end_pos() as u32 - 10, false, false).unwrap().unwrap(), 90);
             assert_eq!(cigar.read_pos(4000000, false, false).unwrap(), None);
             // fix qual offset
             let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();

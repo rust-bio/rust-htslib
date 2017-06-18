@@ -8,6 +8,7 @@ use std::slice;
 use std::ffi;
 use std::ops;
 use std::fmt;
+use std::error::Error;
 
 use itertools::Itertools;
 
@@ -32,9 +33,13 @@ macro_rules! flag {
 quick_error! {
     #[derive(Debug)]
     pub enum CigarError {
+        UnsupportedOperation(msg: String) {
+            description("Unsupported CIGAR operation")
+            display(x) -> ("{}: {}", x.description(), msg)
+        }
         UnexpectedOperation(msg: String) {
-            description("unexpected operation")
-            display("unexpected operation: {}", msg)
+            description("CIGAR operation not allowed at this point")
+            display(x) -> ("{}: {}", x.description(), msg)
         }
     }
 }
@@ -487,7 +492,7 @@ impl Cigar {
         }
     }
 
-    /// Return the length the CIGAR.
+    /// Return the length of the CIGAR.
     pub fn len(&self) -> u32 {
         match *self {
             Cigar::Match(len)    => len,
@@ -600,18 +605,22 @@ pub struct CigarStringView {
 
 impl CigarStringView {
     /// Get end position of alignment.
-    pub fn end_pos(&self) -> i32 {
+    pub fn end_pos(&self) -> Result<i32, CigarError> {
         let mut pos = self.pos;
         for c in self {
             match c {
                 &Cigar::Match(l) | &Cigar::RefSkip(l) | &Cigar::Del(l) |
                 &Cigar::Equal(l) | &Cigar::Diff(l) => pos += l as i32,
-                &Cigar::Back(l) => pos -= l as i32,
                 // these don't add to end_pos on reference
-                &Cigar::Ins(_) | &Cigar::SoftClip(_) | &Cigar::HardClip(_) | &Cigar::Pad(_) => ()
+                &Cigar::Ins(_) | &Cigar::SoftClip(_) | &Cigar::HardClip(_) | &Cigar::Pad(_) => (),
+                &Cigar::Back(_) => {
+                    return Err(CigarError::UnsupportedOperation(
+                        "'back' (B) operation is deprecated according to htslib/bam_plcmd.c and is not in SAMv1 spec".to_owned()
+                    ));
+                }
             }
         }
-        pos
+        Ok( pos )
     }
 
     /// For a given position in the reference, get corresponding position within read.
@@ -621,7 +630,7 @@ impl CigarStringView {
     ///
     /// * `ref_pos` - the reference position
     /// * `include_softclips` - if true, softclips will be considered as matches or mismatches
-    /// * `include_dels` - if true, positions within deletions will be considered (start of deletion will be returned)
+    /// * `include_dels` - if true, positions within deletions will be considered (first reference matching read position after deletion will be returned)
     ///
     pub fn read_pos(
         &self,
@@ -642,8 +651,7 @@ impl CigarStringView {
                 &Cigar::Equal(_) |
                 // this is unexpected, but bwa + GATK indel realignment can produce insertions
                 // before matching positions
-                &Cigar::Ins(_)   |
-                &Cigar::Pad(_)   => {
+                &Cigar::Ins(_) => {
                     j = i;
                     break;
                 },
@@ -651,7 +659,7 @@ impl CigarStringView {
                     j = i;
                     if include_softclips {
                         // Alignment starts with softclip and we want to include it in the
-                        // projection of the reference prosition. However, the POS field does not
+                        // projection of the reference position. However, the POS field does not
                         // include the softclip. Hence we have to subtract its length.
                         rpos = rpos.saturating_sub(l);
                     }
@@ -659,20 +667,28 @@ impl CigarStringView {
                 },
                 &Cigar::Del(_) => {
                     return Err(CigarError::UnexpectedOperation(
-                        "'deletion' (D) found before any reference match".to_owned()
+                        "'deletion' (D) found before any operation describing read sequence".to_owned()
                     ));
                 },
                 &Cigar::Back(_) => {
-                    return Err(CigarError::UnexpectedOperation(
-                        "'back' (B) operation is deprecated".to_owned()
+                    return Err(CigarError::UnsupportedOperation(
+                        "'back' (B) operation is deprecated according to htslib/bam_plcmd.c and is not in SAMv1 spec".to_owned()
                     ));
                 },
                 &Cigar::RefSkip(_) => {
                     return Err(CigarError::UnexpectedOperation(
-                        "'reference skip' (N) found before any reference match".to_owned()
+                        "'reference skip' (N) found before any operation describing read sequence".to_owned()
                     ));
                 },
-                &Cigar::HardClip(_) => ()
+                &Cigar::HardClip(_) if i > 0 && i < self.len()-1 => {
+                    return Err(CigarError::UnexpectedOperation(
+                        "'hard clip' (H) found in between operations, contradicting SAMv1 spec that hard clips can only be at the ends of reads".to_owned()
+                    ));
+                },
+                // if we have reached the end of the CigarString with only pads and hard clips, we have no read position matching the variant
+                &Cigar::Pad(_) | &Cigar::HardClip(_) if i == self.len()-1 => return Ok(None),
+                // skip leading HardClips and Pads, as they consume neither read sequence nor reference sequence
+                &Cigar::Pad(_) | &Cigar::HardClip(_) => ()
             }
         }
 
@@ -718,15 +734,22 @@ impl CigarStringView {
                     j += 1;
                 },
                 &Cigar::RefSkip(l) |
-                &Cigar::Del(l) |
-                &Cigar::Pad(l) => {
+                &Cigar::Del(l) => {
                     rpos += l;
                     j += 1;
                 },
+                &Cigar::Pad(_) => {
+                    j += 1;
+                },
+                &Cigar::HardClip(_) if j < self.len()-1 => {
+                    return Err(CigarError::UnexpectedOperation(
+                        "'hard clip' (H) found in between operations, contradicting SAMv1 spec that hard clips can only be at the ends of reads".to_owned()
+                    ));
+                },
                 &Cigar::HardClip(_) => return Ok(None),
                 &Cigar::Back(_) => {
-                    return Err(CigarError::UnexpectedOperation(
-                        "'back' (B) operation is deprecated".to_owned()
+                    return Err(CigarError::UnsupportedOperation(
+                        "'back' (B) operation is deprecated according to htslib/bam_plcmd.c and is not in SAMv1 spec".to_owned()
                     ));
                 }
             }
@@ -800,5 +823,193 @@ mod tests {
         for op in &cigar {
             println!("{}", op);
         }
+    }
+
+    #[test]
+    fn test_cigar_read_pos() {
+        let vpos  = 5; // variant position
+
+        // Ignore leading HardClip
+        // ref:       00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15
+        // var:                       V
+        // c01: 7H                 M  M
+        // qpos:                  00 01
+        let c01 = CigarStringView {
+            inner: CigarString( vec![Cigar::HardClip(7), Cigar::Match(2)] ),
+            pos: 4
+        };
+        assert_eq!(c01.read_pos(vpos, false, false).unwrap(), Some(1) );
+
+        // Skip leading SoftClip or use as pre-POS matches
+        // ref:       00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15
+        // var:                       V
+        // c02: 5H2S         M  M  M  M  M  M
+        // qpos:  00        02 03 04 05 06 07
+        // c02: 5H     S  S  M  M  M  M  M  M
+        // qpos:      00 01 02 03 04 05 06 07
+        let c02 = CigarStringView {
+            inner: CigarString( vec![Cigar::SoftClip(2), Cigar::Match(6)] ),
+            pos: 2
+        };
+        assert_eq!(c02.read_pos(vpos, false, false).unwrap(), Some(5) );
+        assert_eq!(c02.read_pos(vpos, true, false).unwrap(), Some(5) );
+
+        // Skip leading SoftClip returning None for unmatched reference positiong or use as pre-POS matches
+        // ref:       00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15
+        // var:                       V
+        // c03:  3S                      M  M
+        // qpos: 00                     03 04
+        // c03:                 S  S  S  M  M
+        // qpos:               00 01 02 03 04
+        let c03 = CigarStringView {
+            inner: CigarString( vec![Cigar::SoftClip(3), Cigar::Match(6)] ),
+            pos: 6
+        };
+        assert_eq!(c03.read_pos(vpos, false, false).unwrap(), None );
+        assert_eq!(c03.read_pos(vpos, true, false).unwrap(), Some(2) );
+
+        // Skip leading Insertion before variant position
+        // ref:       00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15
+        // var:                       V
+        // c04:  3I                X  X  X
+        // qpos: 00               03 04 05
+        let c04 = CigarStringView {
+            inner: CigarString( vec![Cigar::Ins(3), Cigar::Diff(3)] ),
+            pos: 4
+        };
+        assert_eq!(c04.read_pos(vpos, true, false).unwrap(), Some(4) );
+
+        // Matches and deletion before variant position
+        // ref:       00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15
+        // var:                       V
+        // c05:        =  =  D  D  X  =  =
+        // qpos:      00 01       02 03 04 05
+        let c05 = CigarStringView {
+            inner: CigarString( vec![Cigar::Equal(2), Cigar::Del(2), Cigar::Diff(1), Cigar::Equal(2)] ),
+            pos: 0
+        };
+        assert_eq!(c05.read_pos(vpos, true, false).unwrap(), Some(3) );
+
+        // single nucleotide Deletion covering variant position
+        // ref:       00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15
+        // var:                       V
+        // c06:                 =  =  D  X  X
+        // qpos:               00 01    02 03
+        let c06 = CigarStringView {
+            inner: CigarString( vec![Cigar::Equal(2), Cigar::Del(1), Cigar::Diff(2)] ),
+            pos: 3
+        };
+        assert_eq!(c06.read_pos(vpos, false, true).unwrap(), Some(2) );
+        assert_eq!(c06.read_pos(vpos, false, false).unwrap(), None );
+
+        // three nucleotide Deletion covering variant position
+        // ref:       00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15
+        // var:                       V
+        // c07:              =  =  D  D  D  M  M
+        // qpos:            00 01          02 03
+        let c07 = CigarStringView {
+            inner: CigarString( vec![Cigar::Equal(2), Cigar::Del(3), Cigar::Match(2)] ),
+            pos: 2
+        };
+        assert_eq!(c07.read_pos(vpos, false, true).unwrap(), Some(2) );
+        assert_eq!(c07.read_pos(vpos, false, false).unwrap(), None );
+
+        // three nucleotide RefSkip covering variant position
+        // ref:       00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15
+        // var:                       V
+        // c08:              =  X  N  N  N  M  M
+        // qpos:            00 01          02 03
+        let c08 = CigarStringView {
+            inner: CigarString( vec![Cigar::Equal(1), Cigar::Diff(1), Cigar::RefSkip(3), Cigar::Match(2)] ),
+            pos: 2
+        };
+        assert_eq!(c08.read_pos(vpos, false, true).unwrap(), None );
+        assert_eq!(c08.read_pos(vpos, false, false).unwrap(), None );
+
+        // internal hard clip before variant pos
+        // ref:       00 01 02 03    04 05 06 07 08 09 10 11 12 13 14 15
+        // var:                          V
+        // c09: 3H           =  = 3H  =  =
+        // qpos:            00 01    02 03
+        let c09 = CigarStringView {
+            inner: CigarString( vec![Cigar::HardClip(3), Cigar::Equal(2), Cigar::HardClip(3), Cigar::Equal(2)] ),
+            pos: 2
+        };
+        assert_eq!( c09.read_pos(vpos, false, true).is_err(), true );
+
+        // Deletion right before variant position
+        // ref:       00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15
+        // var:                       V
+        // c10:           M  M  D  D  M  M
+        // qpos:         00 01       02 03
+        let c10 = CigarStringView {
+            inner: CigarString( vec![Cigar::Match(2), Cigar::Del(2), Cigar::Match(2)] ),
+            pos: 1
+        };
+        assert_eq!(c10.read_pos(vpos, false, false).unwrap(), Some(2) );
+
+        // Insertion right before variant position
+        // ref:       00 01 02 03 04    05 06 07 08 09 10 11 12 13 14 15
+        // var:                          V
+        // c11:                 M  M 3I  M
+        // qpos:               00 01 02 05 06
+        let c11 = CigarStringView {
+            inner: CigarString( vec![Cigar::Match(2), Cigar::Ins(3), Cigar::Match(2)] ),
+            pos: 3
+        };
+        assert_eq!(c11.read_pos(vpos, false, false).unwrap(), Some(5) );
+
+        // Insertion right after variant position
+        // ref:       00 01 02 03 04 05    06 07 08 09 10 11 12 13 14 15
+        // var:                       V
+        // c12:                 M  M  M 2I  =
+        // qpos:               00 01 02 03 05
+        let c12 = CigarStringView {
+            inner: CigarString( vec![Cigar::Match(3), Cigar::Ins(2), Cigar::Equal(1)] ),
+            pos: 3
+        };
+        assert_eq!(c12.read_pos(vpos, false, false).unwrap(), Some(2) );
+
+        // Deletion right after variant position
+        // ref:       00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15
+        // var:                       V
+        // c13:                 M  M  M  D  =
+        // qpos:               00 01 02    03
+        let c13 = CigarStringView {
+            inner: CigarString( vec![Cigar::Match(3), Cigar::Del(1), Cigar::Equal(1)] ),
+            pos: 3
+        };
+        assert_eq!(c13.read_pos(vpos, false, false).unwrap(), Some(2) );
+
+        // A messy and complicated example, including a Pad operation
+        let vpos2 = 15;
+        // ref:       00    01 02    03 04 05    06 07 08 09 10 11 12 13 14 15
+        // var:                                                           V
+        // c14: 5H3S   = 2P  M  X 3I  M  M  D 2I  =  =  N  N  N  M  M  M  =  =  5S2H
+        // qpos:  00  03    04 05 06 09 10    11 13 14          15 16 17 18 19
+        let c14 = CigarStringView {
+            inner: CigarString( vec![Cigar::HardClip(5), Cigar::SoftClip(3), Cigar::Equal(1), Cigar::Pad(2), Cigar::Match(1), Cigar::Diff(1), Cigar::Ins(3), Cigar::Match(2), Cigar::Del(1), Cigar::Ins(2), Cigar::Equal(2), Cigar::RefSkip(3), Cigar::Match(3), Cigar::Equal(2), Cigar::SoftClip(5), Cigar::HardClip(2)] ),
+            pos: 0
+        };
+        assert_eq!(c14.read_pos(vpos2, false, false).unwrap(), Some(19) );
+
+        // HardClip after Pad
+        // ref:       00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15
+        // var:                       V
+        // c15: 5P1H            =  =  =
+        // qpos:               00 01 02
+        let c15 = CigarStringView {
+            inner: CigarString( vec![Cigar::Pad(5), Cigar::HardClip(1), Cigar::Equal(3)] ),
+            pos: 3
+        };
+        assert_eq!(c15.read_pos(vpos, false, false).is_err(), true );
+
+        // only HardClip and Pad operations
+        // c16: 7H5P2H
+        let c16 = CigarStringView {
+            inner: CigarString( vec![Cigar::HardClip(7), Cigar::Pad(5), Cigar::HardClip(2)] ),
+            pos: 3
+        };
+        assert_eq!(c16.read_pos(vpos, false, false).unwrap(), None );
     }
 }
