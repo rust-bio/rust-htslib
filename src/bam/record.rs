@@ -233,8 +233,7 @@ impl Record {
     /// Get cigar string. Complexity: O(k) with k being the length of the cigar string.
     pub fn cigar(&self) -> CigarStringView {
         let raw = self.raw_cigar();
-        CigarStringView {
-            inner: CigarString(raw.iter().map(|&c| {
+        CigarString(raw.iter().map(|&c| {
                 let len = c >> 4;
                 match c & 0b1111 {
                     0 => Cigar::Match(len),
@@ -249,9 +248,7 @@ impl Record {
                     9 => Cigar::Back(len),
                     _ => panic!("Unexpected cigar type"),
                 }
-            }).collect()),
-            pos: self.pos()
-        }
+            }).collect()).into_view(self.pos())
     }
 
     fn seq_len(&self) -> usize {
@@ -568,6 +565,11 @@ custom_derive! {
     pub struct CigarString(pub Vec<Cigar>);
 }
 
+impl CigarString {
+    pub fn into_view(self, pos: i32) -> CigarStringView {
+        CigarStringView::new(self, pos)
+    }
+}
 
 impl<'a> CigarString {
     pub fn iter(&'a self) -> ::std::slice::Iter<'a, Cigar> {
@@ -604,6 +606,11 @@ pub struct CigarStringView {
 
 
 impl CigarStringView {
+    /// Construct a new CigarStringView from a CigarString at a position
+    pub fn new(c: CigarString, pos: i32) -> CigarStringView {
+        CigarStringView { inner: c, pos: pos }
+    }
+
     /// Get end position of alignment.
     pub fn end_pos(&self) -> Result<i32, CigarError> {
         let mut pos = self.pos;
@@ -834,10 +841,7 @@ mod tests {
         // var:                       V
         // c01: 7H                 M  M
         // qpos:                  00 01
-        let c01 = CigarStringView {
-            inner: CigarString( vec![Cigar::HardClip(7), Cigar::Match(2)] ),
-            pos: 4
-        };
+        let c01 = CigarString( vec![Cigar::HardClip(7), Cigar::Match(2)] ).into_view(4);
         assert_eq!(c01.read_pos(vpos, false, false).unwrap(), Some(1) );
 
         // Skip leading SoftClip or use as pre-POS matches
@@ -847,10 +851,7 @@ mod tests {
         // qpos:  00        02 03 04 05 06 07
         // c02: 5H     S  S  M  M  M  M  M  M
         // qpos:      00 01 02 03 04 05 06 07
-        let c02 = CigarStringView {
-            inner: CigarString( vec![Cigar::SoftClip(2), Cigar::Match(6)] ),
-            pos: 2
-        };
+        let c02 = CigarString( vec![Cigar::SoftClip(2), Cigar::Match(6)] ).into_view(2);
         assert_eq!(c02.read_pos(vpos, false, false).unwrap(), Some(5) );
         assert_eq!(c02.read_pos(vpos, true, false).unwrap(), Some(5) );
 
@@ -861,10 +862,7 @@ mod tests {
         // qpos: 00                     03 04
         // c03:                 S  S  S  M  M
         // qpos:               00 01 02 03 04
-        let c03 = CigarStringView {
-            inner: CigarString( vec![Cigar::SoftClip(3), Cigar::Match(6)] ),
-            pos: 6
-        };
+        let c03 = CigarString( vec![Cigar::SoftClip(3), Cigar::Match(6)] ).into_view(6);
         assert_eq!(c03.read_pos(vpos, false, false).unwrap(), None );
         assert_eq!(c03.read_pos(vpos, true, false).unwrap(), Some(2) );
 
@@ -873,10 +871,7 @@ mod tests {
         // var:                       V
         // c04:  3I                X  X  X
         // qpos: 00               03 04 05
-        let c04 = CigarStringView {
-            inner: CigarString( vec![Cigar::Ins(3), Cigar::Diff(3)] ),
-            pos: 4
-        };
+        let c04 = CigarString( vec![Cigar::Ins(3), Cigar::Diff(3)] ).into_view(4);
         assert_eq!(c04.read_pos(vpos, true, false).unwrap(), Some(4) );
 
         // Matches and deletion before variant position
@@ -884,10 +879,7 @@ mod tests {
         // var:                       V
         // c05:        =  =  D  D  X  =  =
         // qpos:      00 01       02 03 04 05
-        let c05 = CigarStringView {
-            inner: CigarString( vec![Cigar::Equal(2), Cigar::Del(2), Cigar::Diff(1), Cigar::Equal(2)] ),
-            pos: 0
-        };
+        let c05 = CigarString( vec![Cigar::Equal(2), Cigar::Del(2), Cigar::Diff(1), Cigar::Equal(2)] ).into_view(0);
         assert_eq!(c05.read_pos(vpos, true, false).unwrap(), Some(3) );
 
         // single nucleotide Deletion covering variant position
@@ -895,10 +887,7 @@ mod tests {
         // var:                       V
         // c06:                 =  =  D  X  X
         // qpos:               00 01    02 03
-        let c06 = CigarStringView {
-            inner: CigarString( vec![Cigar::Equal(2), Cigar::Del(1), Cigar::Diff(2)] ),
-            pos: 3
-        };
+        let c06 =CigarString( vec![Cigar::Equal(2), Cigar::Del(1), Cigar::Diff(2)] ).into_view(3);
         assert_eq!(c06.read_pos(vpos, false, true).unwrap(), Some(2) );
         assert_eq!(c06.read_pos(vpos, false, false).unwrap(), None );
 
@@ -907,10 +896,7 @@ mod tests {
         // var:                       V
         // c07:              =  =  D  D  D  M  M
         // qpos:            00 01          02 03
-        let c07 = CigarStringView {
-            inner: CigarString( vec![Cigar::Equal(2), Cigar::Del(3), Cigar::Match(2)] ),
-            pos: 2
-        };
+        let c07 = CigarString( vec![Cigar::Equal(2), Cigar::Del(3), Cigar::Match(2)] ).into_view(2);
         assert_eq!(c07.read_pos(vpos, false, true).unwrap(), Some(2) );
         assert_eq!(c07.read_pos(vpos, false, false).unwrap(), None );
 
@@ -919,10 +905,7 @@ mod tests {
         // var:                       V
         // c08:              =  X  N  N  N  M  M
         // qpos:            00 01          02 03
-        let c08 = CigarStringView {
-            inner: CigarString( vec![Cigar::Equal(1), Cigar::Diff(1), Cigar::RefSkip(3), Cigar::Match(2)] ),
-            pos: 2
-        };
+        let c08 = CigarString( vec![Cigar::Equal(1), Cigar::Diff(1), Cigar::RefSkip(3), Cigar::Match(2)] ).into_view(2);
         assert_eq!(c08.read_pos(vpos, false, true).unwrap(), None );
         assert_eq!(c08.read_pos(vpos, false, false).unwrap(), None );
 
@@ -931,10 +914,7 @@ mod tests {
         // var:                          V
         // c09: 3H           =  = 3H  =  =
         // qpos:            00 01    02 03
-        let c09 = CigarStringView {
-            inner: CigarString( vec![Cigar::HardClip(3), Cigar::Equal(2), Cigar::HardClip(3), Cigar::Equal(2)] ),
-            pos: 2
-        };
+        let c09 = CigarString( vec![Cigar::HardClip(3), Cigar::Equal(2), Cigar::HardClip(3), Cigar::Equal(2)] ).into_view(2);
         assert_eq!( c09.read_pos(vpos, false, true).is_err(), true );
 
         // Deletion right before variant position
@@ -942,10 +922,7 @@ mod tests {
         // var:                       V
         // c10:           M  M  D  D  M  M
         // qpos:         00 01       02 03
-        let c10 = CigarStringView {
-            inner: CigarString( vec![Cigar::Match(2), Cigar::Del(2), Cigar::Match(2)] ),
-            pos: 1
-        };
+        let c10 = CigarString( vec![Cigar::Match(2), Cigar::Del(2), Cigar::Match(2)] ).into_view(1);
         assert_eq!(c10.read_pos(vpos, false, false).unwrap(), Some(2) );
 
         // Insertion right before variant position
@@ -953,10 +930,7 @@ mod tests {
         // var:                          V
         // c11:                 M  M 3I  M
         // qpos:               00 01 02 05 06
-        let c11 = CigarStringView {
-            inner: CigarString( vec![Cigar::Match(2), Cigar::Ins(3), Cigar::Match(2)] ),
-            pos: 3
-        };
+        let c11 = CigarString( vec![Cigar::Match(2), Cigar::Ins(3), Cigar::Match(2)] ).into_view(3);
         assert_eq!(c11.read_pos(vpos, false, false).unwrap(), Some(5) );
 
         // Insertion right after variant position
@@ -964,10 +938,7 @@ mod tests {
         // var:                       V
         // c12:                 M  M  M 2I  =
         // qpos:               00 01 02 03 05
-        let c12 = CigarStringView {
-            inner: CigarString( vec![Cigar::Match(3), Cigar::Ins(2), Cigar::Equal(1)] ),
-            pos: 3
-        };
+        let c12 = CigarString( vec![Cigar::Match(3), Cigar::Ins(2), Cigar::Equal(1)] ).into_view(3);
         assert_eq!(c12.read_pos(vpos, false, false).unwrap(), Some(2) );
 
         // Deletion right after variant position
@@ -975,10 +946,7 @@ mod tests {
         // var:                       V
         // c13:                 M  M  M  D  =
         // qpos:               00 01 02    03
-        let c13 = CigarStringView {
-            inner: CigarString( vec![Cigar::Match(3), Cigar::Del(1), Cigar::Equal(1)] ),
-            pos: 3
-        };
+        let c13 = CigarString( vec![Cigar::Match(3), Cigar::Del(1), Cigar::Equal(1)] ).into_view(3);
         assert_eq!(c13.read_pos(vpos, false, false).unwrap(), Some(2) );
 
         // A messy and complicated example, including a Pad operation
@@ -987,10 +955,8 @@ mod tests {
         // var:                                                           V
         // c14: 5H3S   = 2P  M  X 3I  M  M  D 2I  =  =  N  N  N  M  M  M  =  =  5S2H
         // qpos:  00  03    04 05 06 09 10    11 13 14          15 16 17 18 19
-        let c14 = CigarStringView {
-            inner: CigarString( vec![Cigar::HardClip(5), Cigar::SoftClip(3), Cigar::Equal(1), Cigar::Pad(2), Cigar::Match(1), Cigar::Diff(1), Cigar::Ins(3), Cigar::Match(2), Cigar::Del(1), Cigar::Ins(2), Cigar::Equal(2), Cigar::RefSkip(3), Cigar::Match(3), Cigar::Equal(2), Cigar::SoftClip(5), Cigar::HardClip(2)] ),
-            pos: 0
-        };
+        let c14 = CigarString( vec![Cigar::HardClip(5), Cigar::SoftClip(3), Cigar::Equal(1), Cigar::Pad(2), Cigar::Match(1), Cigar::Diff(1), Cigar::Ins(3), Cigar::Match(2), Cigar::Del(1), Cigar::Ins(2), Cigar::Equal(2), Cigar::RefSkip(3), Cigar::Match(3), Cigar::Equal(2), Cigar::SoftClip(5), Cigar::HardClip(2)] )
+            .into_view(0);
         assert_eq!(c14.read_pos(vpos2, false, false).unwrap(), Some(19) );
 
         // HardClip after Pad
@@ -998,18 +964,12 @@ mod tests {
         // var:                       V
         // c15: 5P1H            =  =  =
         // qpos:               00 01 02
-        let c15 = CigarStringView {
-            inner: CigarString( vec![Cigar::Pad(5), Cigar::HardClip(1), Cigar::Equal(3)] ),
-            pos: 3
-        };
+        let c15 = CigarString( vec![Cigar::Pad(5), Cigar::HardClip(1), Cigar::Equal(3)] ).into_view(3);
         assert_eq!(c15.read_pos(vpos, false, false).is_err(), true );
 
         // only HardClip and Pad operations
         // c16: 7H5P2H
-        let c16 = CigarStringView {
-            inner: CigarString( vec![Cigar::HardClip(7), Cigar::Pad(5), Cigar::HardClip(2)] ),
-            pos: 3
-        };
+        let c16 = CigarString( vec![Cigar::HardClip(7), Cigar::Pad(5), Cigar::HardClip(2)] ).into_view(3);
         assert_eq!(c16.read_pos(vpos, false, false).unwrap(), None );
     }
 }
