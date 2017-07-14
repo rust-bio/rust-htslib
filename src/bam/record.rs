@@ -566,6 +566,7 @@ custom_derive! {
 }
 
 impl CigarString {
+    /// Create a `CigarStringView` from this CigarString at position `pos`
     pub fn into_view(self, pos: i32) -> CigarStringView {
         CigarStringView::new(self, pos)
     }
