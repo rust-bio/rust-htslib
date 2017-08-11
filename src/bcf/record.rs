@@ -307,6 +307,10 @@ pub struct Genotypes<'a> {
 impl<'a> Genotypes<'a> {
 
     /// Get genotype of ith sample. So far, only supports diploid genotypes.
+    ///
+    /// Note that the result complies with the BCF spec. This means that the
+    /// first allele will always be marked as `Unphased`. That is, if you have 1|1 in the VCF,
+    /// this method will return `[Unphased(1), Phased(1)]`.
     pub fn get(&self, i: usize) -> Genotype {
         let igt = self.encoded[i];
         let gt = Genotype(igt.into_iter().map(|&e| GenotypeAllele::from_encoded(e)).collect_vec());
