@@ -176,7 +176,9 @@ impl Record {
     }
 
     /// Set variable length data (qname, cigar, seq, qual).
-    /// Note: this obliterates aux
+    /// Note: Pre-existing aux data will be invalidated
+    /// if called on an existing record. For this
+    /// reason, never call push_aux() before set().
     pub fn set(&mut self, qname: &[u8], cigar: &CigarString, seq: &[u8], qual: &[u8]) {
         self.inner_mut().l_data = (qname.len() + 1 + cigar.len() * 4 + ((seq.len() as f32 / 2.0).ceil() as usize) + qual.len()) as i32;
 
@@ -218,6 +220,7 @@ impl Record {
         utils::copy_memory(qual, &mut data[i..]);
     }
 
+    /// Replace current qname with a new one.
     pub fn set_qname(&mut self, new_qname: &[u8]) {
         let old_q_len = self.qname_len();
         // We're going to add a terminal NUL
@@ -348,6 +351,7 @@ impl Record {
     }
 
     /// Add auxiliary data.
+    /// push_aux() should never be called before set().
     pub fn push_aux(&mut self, tag: &[u8], value: &Aux) {
         let ctag = tag.as_ptr() as *mut i8;
         unsafe {
