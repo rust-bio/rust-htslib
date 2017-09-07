@@ -808,6 +808,8 @@ mod tests {
         let mut rec = record::Record::new();
         rec.set_reverse();
         rec.set(names[0], &cigars[0], seqs[0], quals[0]);
+        // note: this segfaults if you push_aux() before set()
+        //       because set() obliterates aux
         rec.push_aux(b"NM", &Aux::Integer(15));
 
         assert_eq!(rec.qname(), names[0]);
@@ -815,6 +817,60 @@ mod tests {
         assert_eq!(rec.seq().as_bytes(), seqs[0]);
         assert_eq!(rec.qual(), quals[0]);
         assert!(rec.is_reverse());
+        assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+    }
+
+    #[test]
+    fn test_set_qname() {
+
+        let (names, _, seqs, quals, cigars) = gold();
+
+        assert!(names[0] != names[1]);
+
+        let mut rec = record::Record::new();
+        rec.set(names[0], &cigars[0], seqs[0], quals[0]);
+        rec.push_aux(b"NM", &Aux::Integer(15));
+
+        assert_eq!(rec.qname(), names[0]);
+        assert_eq!(*rec.cigar(), cigars[0]);
+        assert_eq!(rec.seq().as_bytes(), seqs[0]);
+        assert_eq!(rec.qual(), quals[0]);
+        assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+
+        // Equal length qname
+        assert!(rec.qname()[0] != 'X' as u8);
+        rec.set_qname(b"X");
+        assert_eq!(rec.qname(), b"X");
+
+        // Longer qname
+        let mut longer_name = names[0].to_owned().clone();
+        let extension = b"BuffaloBUffaloBUFFaloBUFFAloBUFFALoBUFFALO";
+        longer_name.extend(extension.iter());
+        rec.set_qname(&longer_name);
+
+        assert_eq!(rec.qname(), longer_name.as_slice());
+        assert_eq!(*rec.cigar(), cigars[0]);
+        assert_eq!(rec.seq().as_bytes(), seqs[0]);
+        assert_eq!(rec.qual(), quals[0]);
+        assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+
+        // Shorter qname
+        let shorter_name = b"42";
+        rec.set_qname(shorter_name);
+
+        assert_eq!(rec.qname(), shorter_name);
+        assert_eq!(*rec.cigar(), cigars[0]);
+        assert_eq!(rec.seq().as_bytes(), seqs[0]);
+        assert_eq!(rec.qual(), quals[0]);
+        assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+
+        // Zero-length qname
+        rec.set_qname(b"");
+
+        assert_eq!(rec.qname(), b"");
+        assert_eq!(*rec.cigar(), cigars[0]);
+        assert_eq!(rec.seq().as_bytes(), seqs[0]);
+        assert_eq!(rec.qual(), quals[0]);
         assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
     }
 

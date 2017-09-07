@@ -176,18 +176,14 @@ impl Record {
     }
 
     /// Set variable length data (qname, cigar, seq, qual).
+    /// Note: this obliterates aux
     pub fn set(&mut self, qname: &[u8], cigar: &CigarString, seq: &[u8], qual: &[u8]) {
         self.inner_mut().l_data = (qname.len() + 1 + cigar.len() * 4 + ((seq.len() as f32 / 2.0).ceil() as usize) + qual.len()) as i32;
 
         if self.inner().m_data < self.inner().l_data {
-
-            self.inner_mut().m_data = self.inner().l_data;
-            self.inner_mut().m_data += 32 - self.inner().m_data % 32;
-            unsafe {
-                self.inner_mut().data = ::libc::realloc(
-                    self.inner().data as *mut ::libc::c_void, self.inner().m_data as usize
-                ) as *mut u8;
-            }
+            // Verbosity due to lexical borrowing
+            let l_data = self.inner().l_data;
+            self.realloc_var_data(l_data as usize);
         }
 
         let mut data = unsafe { slice::from_raw_parts_mut((*self.inner).data, self.inner().l_data as usize) };
@@ -220,6 +216,63 @@ impl Record {
 
         // qual
         utils::copy_memory(qual, &mut data[i..]);
+    }
+
+    pub fn set_qname(&mut self, new_qname: &[u8]) {
+        let old_q_len = self.qname_len();
+        // We're going to add a terminal NUL
+        let new_q_len = 1 + new_qname.len();
+
+        // Length of data after qname
+        let other_len = self.inner_mut().l_data - old_q_len as i32;
+
+        if new_q_len < old_q_len && self.inner().l_data > (old_q_len as i32) {
+            self.inner_mut().l_data -= (old_q_len - new_q_len) as i32;
+
+        } else if new_q_len > old_q_len {
+            self.inner_mut().l_data += (new_q_len - old_q_len) as i32;
+
+            // Reallocate if necessary
+            if self.inner().m_data < self.inner().l_data {
+                // Verbosity due to lexical borrowing
+                let l_data = self.inner().l_data;
+                self.realloc_var_data(l_data as usize);
+            }
+        }
+
+        if new_q_len != old_q_len {
+            // Move other data to new location
+            unsafe {
+                let mut data = slice::from_raw_parts_mut((*self.inner).data,
+                                                         self.inner().l_data as usize);
+
+                ::libc::memmove(data.as_mut_ptr().offset(new_q_len as isize) as *mut ::libc::c_void,
+                                data.as_mut_ptr().offset(old_q_len as isize) as *mut ::libc::c_void,
+                                other_len as usize);
+            }
+        }
+
+        // Copy qname data
+        unsafe {
+            let mut data = slice::from_raw_parts_mut((*self.inner).data,
+                                                     self.inner().l_data as usize);
+            utils::copy_memory(new_qname, data);
+            data[new_q_len - 1] = b'\0';
+        }
+
+        self.inner_mut().core.l_qname = new_q_len as u8;
+    }
+
+    fn realloc_var_data(&mut self, new_len: usize) {
+        self.inner_mut().m_data = new_len as i32;
+        // Pad
+        self.inner_mut().m_data += 32 - self.inner().m_data % 32;
+        unsafe {
+            self.inner_mut().data = ::libc::realloc(
+                self.inner().data as *mut ::libc::c_void,
+                self.inner().m_data as usize,
+            ) as *mut u8;
+        }
     }
 
     fn cigar_len(&self) -> usize {
