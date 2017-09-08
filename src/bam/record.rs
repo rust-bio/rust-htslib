@@ -221,6 +221,8 @@ impl Record {
     }
 
     /// Replace current qname with a new one.
+    /// Unlike set(), this preserves all the variable length data including
+    /// the aux.
     pub fn set_qname(&mut self, new_qname: &[u8]) {
         let old_q_len = self.qname_len();
         // We're going to add a terminal NUL
