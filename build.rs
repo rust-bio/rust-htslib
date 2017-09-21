@@ -9,13 +9,14 @@ use fs_utils::copy::copy_directory;
 
 use std::process::Command;
 use std::env;
-use std::fs;
+use std::path::Path;
 
 fn main() {
     let out = env::var("OUT_DIR").unwrap();
     let within_out = |p| format!("{}/{}", out, p);
-    fs::remove_dir_all(within_out("htslib"));
-    copy_directory("htslib", &out).unwrap();
+    if !Path::new(&within_out("htslib")).exists() {
+        copy_directory("htslib", &out).unwrap();
+    }
 
     if Command::new("make").current_dir(within_out("htslib"))
                            .arg("CFLAGS=-g -Wall -O2 -fPIC")
