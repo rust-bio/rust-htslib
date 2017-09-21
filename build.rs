@@ -26,5 +26,6 @@ fn main() {
         panic!("error buiding macro wrapper");
     }
 
-    println!("cargo:rustc-flags=-L {}/htslib -L . -l static=hts -l static=macros -l z", root);
+    println!("cargo:rustc-flags=-L {root}/htslib -L {root} -l static=hts -l static=macros -l z",
+             root=root);
 }
