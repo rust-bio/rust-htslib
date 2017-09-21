@@ -24,3 +24,6 @@ bitflags = "0.9"
 
 [dev-dependencies]
 tempdir = "0.3"
+
+[build-dependencies]
+fs-utils = "1.0"
