@@ -10,7 +10,7 @@ use std::env;
 fn main() {
     let root = env::var("CARGO_MANIFEST_DIR").unwrap();
 
-    Command::new("make").current_dir("htslib")
+    Command::new("make").current_dir(format!("{}/htslib", root))
                         .arg("CFLAGS=-g -Wall -O2 -fPIC")
                         .arg("lib-static")
                         .status().ok().expect("Failed to build htslib");
