@@ -9,11 +9,14 @@ use std::env;
 
 fn main() {
     let root = env::var("CARGO_MANIFEST_DIR").unwrap();
+    if Command::new("make").current_dir(format!("{}/htslib", root))
+                           .arg("CFLAGS=-g -Wall -O2 -fPIC")
+                           .arg("lib-static")
+                           .status().ok().expect("failed to retrieve exit status")
+                           .success() != true {
+        panic!("failed to build htslib");
+    }
 
-    Command::new("make").current_dir(format!("{}/htslib", root))
-                        .arg("CFLAGS=-g -Wall -O2 -fPIC")
-                        .arg("lib-static")
-                        .status().ok().expect("Failed to build htslib");
 
     println!("cargo:rustc-flags=-L {}/htslib -l static=hts -l z", root);
 }
