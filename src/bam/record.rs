@@ -56,6 +56,15 @@ unsafe impl Send for Record {}
 unsafe impl Sync for Record {}
 
 
+impl Clone for Record {
+    fn clone(&self) -> Self {
+        let copy = Record::new();
+        unsafe { htslib::bam_copy1(self.inner, copy.inner) };
+        copy
+    }
+}
+
+
 impl Record {
     /// Create an empty BAM record.
     pub fn new() -> Self {
@@ -972,5 +981,13 @@ mod tests {
         // c16: 7H5P2H
         let c16 = CigarString( vec![Cigar::HardClip(7), Cigar::Pad(5), Cigar::HardClip(2)] ).into_view(3);
         assert_eq!(c16.read_pos(vpos, false, false).unwrap(), None );
+    }
+
+    #[test]
+    fn test_clone() {
+        let mut rec = Record::new();
+        rec.set_pos(300);
+        let clone = rec.clone();
+        assert_eq!(rec.pos(), clone.pos());
     }
 }

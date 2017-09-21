@@ -47,7 +47,7 @@ pub trait Read: Sized {
     /// Return the header.
     fn header(&self) -> &HeaderView;
 
-    // Seek to the given virtual offset in the file
+    /// Seek to the given virtual offset in the file
     fn seek(&self, offset: i64) -> Result<(), SeekError> {
         let ret = unsafe { htslib::bgzf_seek(self.bgzf(), offset, libc::SEEK_SET) };
         if ret == 0 {
@@ -57,9 +57,9 @@ pub trait Read: Sized {
         }
     }
 
-    // Report the current virtual offset
+    /// Report the current virtual offset
     fn tell(&self) -> i64  {
-        htslib::bgzf_tell(self.bgzf())
+        unsafe { htslib::bgzf_tell_func(self.bgzf()) }
     }
 }
 
@@ -736,22 +736,32 @@ mod tests {
         }
     }
 
+    #[test]
     fn test_seek() {
-        let (names, flags, seqs, quals, cigars) = gold();
         let bam = Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening file.");
 
         let mut names_by_voffset = HashMap::new();
 
-        for (i, record) in bam.records().enumerate() {
-            let pos = bam.tell();
-            let rec = record.ok().expect("Expected valid record");
-            let qname = str::from_utf8(rec.qname()).ok().unwrap().to_string();
-            names_by_voffset.insert(pos, qname);
+        let mut offset = bam.tell();
+        let mut rec = Record::new();
+        loop {
+            if let Err(e) = bam.read(&mut rec) {
+                if e.is_eof() {
+                    break;
+                } else {
+                    panic!("error reading bam");
+                }
+            }
+            let qname = str::from_utf8(rec.qname()).unwrap().to_string();
+            println!("{} {}", offset, qname);
+            names_by_voffset.insert(offset, qname);
+            offset = bam.tell();
         }
 
-        for (pos, qname) in names_by_voffset.iter() {
-            bam.seek(*pos);
-            let rec = bam.records().next().unwrap().unwrap();
+        for (offset, qname) in names_by_voffset.iter() {
+            println!("{} {}", offset, qname);
+            bam.seek(*offset).unwrap();
+            bam.read(&mut rec).unwrap();
             let rec_qname = str::from_utf8(rec.qname()).ok().unwrap().to_string();
             assert_eq!(qname, &rec_qname);
         }

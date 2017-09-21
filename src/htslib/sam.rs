@@ -1,33 +1,15 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
+extern "C" {
+    pub fn bgzf_tell_func(fp: *mut BGZF) -> int64_t;
+}
+
 /* manually added */
 // bgzf.h
-#[repr(C)]
-pub struct Struct_BGZF {
-    flags1: ::libc::c_uint,
-    flags2: ::libc::c_int,
-    flags3: ::libc::c_uint,
-
-    cache_size: ::libc::c_int,
-    block_length: ::libc::c_int,
-    block_offset: ::libc::c_int,
-
-    block_address: ::libc::c_long,
-    uncompressed_address: ::libc::c_long,
-
-    uncompressed_block: ::libc::c_ulong,
-    compressed_block: ::libc::c_ulong,
-
-    cache: ::libc::c_ulong,
-    fp: ::libc::c_ulong,
-    mt: ::libc::c_ulong,
-    idx: ::libc::c_ulong,
-
-    idx_build_otf: ::libc::c_int,
-
-    gz_stream: ::libc::c_ulong,
-
+pub enum Struct_BGZF { }
+// the true struct cannot safely be reimplemented here, because we cannot foresee what the
+// compiler does to the bitfields at the beginning.
 /*
     unsigned errcode:16, is_write:2, is_be:2;
     signed compress_level:9;
@@ -43,11 +25,6 @@ pub struct Struct_BGZF {
     int idx_build_otf;  // build index on the fly, set by bgzf_index_build_init()
     z_stream *gz_stream;// for gzip-compressed files
 */
-}
-
-pub fn bgzf_tell(fp: *const BGZF) -> ::libc::c_long {
-    unsafe { ((*fp).block_address << 16) | (((*fp).block_offset & 0xFFFF) as ::libc::c_long ) }
-}
 
 pub type BGZF = Struct_BGZF;
 
