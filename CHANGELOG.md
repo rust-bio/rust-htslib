@@ -2,6 +2,15 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.13.0] - 2017-09-22
+### Added
+- Ability to clone bam records.
+- Ability to set only qname.
+### Changed
+- Further improved CIGAR string API.
+- Improved documentation.
+
+
 ## [0.12.1] - 2017-06-12
 ### Changed
 - Adapt to changes in Rust 1.18 that caused compilation issues.
