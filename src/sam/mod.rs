@@ -55,7 +55,10 @@ impl Writer {
     fn new(path: &[u8], header: &header::Header) -> Result<Self, WriterError> {
         let f = try!(hts_open(&ffi::CString::new(path).unwrap(), b"w"));
         let header_record = unsafe {
-            let header_string = header.to_bytes();
+            let mut header_string = header.to_bytes();
+            if !header_string.is_empty() && header_string[header_string.len() - 1] != b'\n' {
+                header_string.push(b'\n');
+            }
             let l_text = header_string.len();
             let text = ::libc::malloc(l_text + 1);
             ::libc::memset(text, 0, l_text + 1);

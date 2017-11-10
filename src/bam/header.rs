@@ -19,7 +19,19 @@ impl Header {
     }
 
     pub fn from_template(header: &HeaderView) -> Self {
-        Header { records: vec![header.as_bytes().to_owned()] }
+        let mut record = header.as_bytes().to_owned();
+        // Strip off any trailing newline character.
+        // Otherwise there could be a blank line in the
+        // header which samtools (<=1.6) will complain
+        // about
+        while let Some(&last_char) = record.last() {
+            if last_char==b'\n' {
+                record.pop();
+            } else {
+                break;
+            }
+        }
+        Header { records: vec![record] }
     }
 
     /// Add a record to the header.
