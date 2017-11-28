@@ -467,14 +467,14 @@ pub struct ChunkedRecords<'a, R: 'a + Read> {
 
 
 impl<'a, R: Read> Iterator for ChunkedRecords<'a, R> {
-    type Item = Result<bam::record::Record, ReadError>;
-    fn next(&mut self) -> Option<Result<bam::record::Record, ReadError>> {
+    type Item = Result<record::Record, ReadError>;
+    fn next(&mut self) -> Option<Result<record::Record, ReadError>> {
         if let Some(pos) = self.end {
             if self.reader.tell() >= pos {
                 return None;
             }
         }
-        let mut record = bam::record::Record::new();
+        let mut record = record::Record::new();
         match self.reader.read(&mut record) {
             Err(ReadError::NoMoreRecord) => None,
             Ok(())   => Some(Ok(record)),
