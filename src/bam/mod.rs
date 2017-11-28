@@ -116,6 +116,25 @@ impl Reader {
         let _self = unsafe { &*(data as *mut Self) };
         unsafe { htslib::bam_read1(_self.bgzf, record) }
     }
+
+    /// Iterator over the records between the (optional) virtual offsets `start` and `end`
+    ///
+    /// # Arguments
+    ///
+    /// * `start` - Optional starting virtual offset to seek to. Throws an error if it is not
+    /// a valid virtual offset.
+    ///
+    /// * `end` - Read until the virtual offset is less than `end`
+    pub fn chunked_records(&self, start: Option<i64>, end: Option<i64>) -> ChunkedRecords<Self> {
+        if let Some(pos) = start {
+            self.seek(pos).expect("Failed to seek to the starting position");
+        };
+
+        ChunkedRecords {
+            reader: self,
+            end: end
+        }
+    }
 }
 
 
@@ -440,6 +459,29 @@ impl<'a, R: Read> Iterator for Records<'a, R> {
     }
 }
 
+/// Iterator over the records of a BAM until the virtual offset is less than `end`
+pub struct ChunkedRecords<'a, R: 'a + Read> {
+    reader: &'a R,
+    end: Option<i64>
+}
+
+
+impl<'a, R: Read> Iterator for ChunkedRecords<'a, R> {
+    type Item = Result<bam::record::Record, ReadError>;
+    fn next(&mut self) -> Option<Result<bam::record::Record, ReadError>> {
+        if let Some(pos) = self.end {
+            if self.reader.tell() >= pos {
+                return None;
+            }
+        }
+        let mut record = bam::record::Record::new();
+        match self.reader.read(&mut record) {
+            Err(ReadError::NoMoreRecord) => None,
+            Ok(())   => Some(Ok(record)),
+            Err(err) => Some(Err(err))
+        }
+    }
+}
 
 quick_error! {
     #[derive(Debug)]
