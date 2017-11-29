@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.14.0] - unreleased
+### Added
+- An efficient ringbuffer for accessing BCF regions
+- An efficient ringbuffer for accessing BAM regions
+
 ## [0.13.0] - 2017-09-22
 ### Added
 - Ability to clone bam records.
@@ -21,7 +26,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Support seek and tell to handle virtual offsets.
 ### Changed
 - Renamed previous seek method into fetch (in line with pysam).
-- Improved CIGAR API. 
+- Improved CIGAR API.
 - Updated dependencies.
 
 ## [0.11.0] - 2017-05-01

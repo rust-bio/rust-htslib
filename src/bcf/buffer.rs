@@ -148,7 +148,6 @@ impl RecordBuffer {
 mod tests {
     use super::*;
     use bcf;
-    use bcf::record::Numeric;
     use itertools::Itertools;
 
     #[test]
@@ -164,7 +163,7 @@ mod tests {
             assert_eq!(records[1].pos(), 10022);
         }
 
-        buffer.fetch(b"1", 10023, 10024);
+        buffer.fetch(b"1", 10023, 10024).unwrap();
         {
             let records = buffer.iter().collect_vec();
             assert_eq!(records.len(), 1);
