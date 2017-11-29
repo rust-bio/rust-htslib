@@ -75,6 +75,7 @@ impl NumericUtils for i32 {
 }
 
 
+/// A BCF record.
 pub struct Record {
     pub inner: *mut htslib::vcf::bcf1_t,
     pub header: *mut htslib::vcf::bcf_hdr_t,
@@ -109,10 +110,12 @@ impl Record {
     }
 
 
+    /// Set 0-based position.
     pub fn set_pos(&mut self, pos: i32) {
         self.inner_mut().pos = pos;
     }
 
+    /// Get alleles. The first allele is the reference allele.
     pub fn alleles(&self) -> Vec<&[u8]> {
         unsafe { htslib::vcf::bcf_unpack(self.inner, htslib::vcf::BCF_UN_STR) };
         let n = self.inner().n_allele as usize;
@@ -121,10 +124,12 @@ impl Record {
         (0..n).map(|i| unsafe { ffi::CStr::from_ptr(alleles[i]).to_bytes() }).collect()
     }
 
+    /// Get variant quality.
     pub fn qual(&self) -> f32 {
         self.inner().qual
     }
 
+    /// Set variant quality.
     pub fn set_qual(&mut self, qual: f32) {
         self.inner_mut().qual = qual;
     }
@@ -134,10 +139,12 @@ impl Record {
         Info { record: self, tag: tag }
     }
 
+    /// Get the number of samples.
     pub fn sample_count(&self) -> u32 {
         self.inner().n_fmt_n_sample >> 8
     }
 
+    /// Get the number of alleles, including reference allele.
     pub fn allele_count(&self) -> u16 {
         self.inner().n_allele
     }
@@ -251,6 +258,7 @@ impl GenotypeAllele {
         }
     }
 
+    /// Get the index into the list of alleles.
     pub fn index(&self) -> Option<u32> {
         match self {
             &GenotypeAllele::Unphased(i) => Some(i as u32),
@@ -445,6 +453,7 @@ pub struct Format<'a> {
 
 
 impl<'a> Format<'a> {
+    /// Create new format data in a given record.
     fn new(record: &'a mut Record, tag: &'a [u8]) -> Format<'a> {
         let inner = unsafe { htslib::vcf::bcf_get_fmt(
             record.header,
@@ -466,6 +475,7 @@ impl<'a> Format<'a> {
         self.inner().n as usize
     }
 
+    /// Read and decode format data into a given type.
     fn data(&mut self, data_type: i32) -> Result<(usize, i32), FormatReadError> {
         let mut n: i32 = 0;
         match unsafe {
@@ -485,6 +495,7 @@ impl<'a> Format<'a> {
         }
     }
 
+    /// Get format data as integers.
     pub fn integer(&mut self) -> Result<Vec<&'a [i32]>, FormatReadError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
             unsafe {
@@ -493,6 +504,7 @@ impl<'a> Format<'a> {
         })
     }
 
+    /// Get format data as mutable integers.
     pub fn integer_mut(&mut self) -> Result<Vec<&'a mut [i32]>, FormatReadError> {
         self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
             unsafe {
@@ -501,6 +513,7 @@ impl<'a> Format<'a> {
         })
     }
 
+    /// Get format data as floats.
     pub fn float(&mut self) -> Result<Vec<&'a [f32]>, FormatReadError> {
         self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
             unsafe {
