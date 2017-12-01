@@ -1,3 +1,7 @@
+// Copyright 2014 Johannes Köster.
+// Licensed under the MIT license (http://opensource.org/licenses/MIT)
+// This file may not be copied, modified, or distributed
+// except according to those terms.
 
 use std::ffi;
 use std::path::Path;
@@ -6,12 +10,14 @@ use url::Url;
 
 pub mod record;
 pub mod header;
+pub mod buffer;
 
 use htslib;
 use bcf::header::{HeaderView, SampleSubset};
 
 pub use bcf::header::Header;
 pub use bcf::record::Record;
+pub use bcf::buffer::RecordBuffer;
 
 
 pub struct Reader {

@@ -7,6 +7,7 @@
 pub mod record;
 pub mod header;
 pub mod pileup;
+pub mod buffer;
 
 use std::ffi;
 use std::ptr;
@@ -19,6 +20,7 @@ use htslib;
 
 pub use bam::record::Record;
 pub use bam::header::Header;
+pub use bam::buffer::RecordBuffer;
 
 
 /// A trait for a BAM reader with a read method.
