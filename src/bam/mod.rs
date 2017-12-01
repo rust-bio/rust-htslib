@@ -604,6 +604,32 @@ pub struct HeaderView {
 
 
 impl HeaderView {
+
+    /// Create a new HeaderView from a pre-populated Header object
+    pub fn from_header(header: &Header) -> Self {
+
+        let header_record = unsafe {
+            let mut header_string = header.to_bytes();
+            if !header_string.is_empty() && header_string[header_string.len() - 1] != b'\n' {
+                header_string.push(b'\n');
+            }
+            let l_text = header_string.len();
+            let text = ::libc::malloc(l_text + 1);
+            ::libc::memset(text, 0, l_text + 1);
+            ::libc::memcpy(text, header_string.as_ptr() as *const ::libc::c_void, header_string.len());
+            //println!("{}", std::str::from_utf8(&header_string).unwrap());
+            let rec = htslib::sam_hdr_parse(
+                (l_text + 1) as i32,
+                text as *const i8,
+            );
+            (*rec).text = text as *mut i8;
+            (*rec).l_text = l_text as u32;
+            rec
+        };
+
+        HeaderView::new(header_record)
+    }
+
     /// Create a new HeaderView from the underlying Htslib type, and own it.
     pub fn new(inner: *mut htslib::bam_hdr_t) -> Self {
         HeaderView {
@@ -615,6 +641,18 @@ impl HeaderView {
     #[inline]
     pub fn inner(&self) -> htslib::bam_hdr_t {
         unsafe { (*self.inner) }
+    }
+
+    #[inline]
+    // Pointer to inner bam_hdr_t struct
+    pub fn inner_ptr(&self) -> *const htslib::bam_hdr_t {
+        unsafe { self.inner }
+    }
+
+    #[inline]
+    // Mutable pointer to bam_hdr_t struct
+    pub fn inner_ptr_mut(&self) -> *mut htslib::bam_hdr_t {
+        unsafe { self.inner }
     }
 
     pub fn tid(&self, name: &[u8]) -> Option<u32> {
