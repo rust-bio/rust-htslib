@@ -648,13 +648,13 @@ impl HeaderView {
     #[inline]
     // Pointer to inner bam_hdr_t struct
     pub fn inner_ptr(&self) -> *const htslib::bam_hdr_t {
-        unsafe { self.inner }
+        self.inner
     }
 
     #[inline]
     // Mutable pointer to bam_hdr_t struct
     pub fn inner_ptr_mut(&self) -> *mut htslib::bam_hdr_t {
-        unsafe { self.inner }
+        self.inner
     }
 
     pub fn tid(&self, name: &[u8]) -> Option<u32> {
