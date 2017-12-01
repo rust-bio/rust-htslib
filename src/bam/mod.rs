@@ -41,7 +41,7 @@ pub trait Read: Sized {
     fn records(&self) -> Records<Self>;
 
     /// Iterator over pileups.
-    fn pileup(&self) -> pileup::Pileups;
+    fn pileup(&self) -> pileup::Pileups<Self>;
 
     /// Return the BGZF struct
     fn bgzf(&self) -> *mut htslib::Struct_BGZF;
@@ -139,7 +139,7 @@ impl Read for Reader {
         Records { reader: self }
     }
 
-    fn pileup(&self) -> pileup::Pileups {
+    fn pileup(&self) -> pileup::Pileups<Self> {
         let _self = self as *const Self;
         let itr = unsafe {
             htslib::bam_plp_init(
@@ -147,7 +147,7 @@ impl Read for Reader {
                 _self as *mut ::libc::c_void
             )
         };
-        pileup::Pileups::new(itr)
+        pileup::Pileups::new(self, itr)
     }
 
     fn bgzf(&self) -> *mut htslib::Struct_BGZF {
@@ -271,7 +271,7 @@ impl Read for IndexedReader {
         Records { reader: self }
     }
 
-    fn pileup(&self) -> pileup::Pileups {
+    fn pileup(&self) -> pileup::Pileups<Self> {
         let _self = self as *const Self;
         let itr = unsafe {
             htslib::bam_plp_init(
@@ -279,7 +279,7 @@ impl Read for IndexedReader {
                 _self as *mut ::libc::c_void
             )
         };
-        pileup::Pileups::new(itr)
+        pileup::Pileups::new(self, itr)
     }
 
     fn bgzf(&self) -> *mut htslib::Struct_BGZF {
