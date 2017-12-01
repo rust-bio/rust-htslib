@@ -119,6 +119,7 @@ pub enum Indel {
 
 /// Iterator over pileups.
 pub struct Pileups<'a, R: 'a + bam::Read> {
+    #[allow(dead_code)]
     reader: &'a R,
     itr: htslib::bam_plp_t,
 }
