@@ -32,16 +32,16 @@ pub trait Read: Sized {
     /// # Arguments
     ///
     /// * `record` - the record to be filled
-    fn read(&self, record: &mut record::Record) -> Result<(), ReadError>;
+    fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError>;
 
     /// Iterator over the records of the seeked region.
     /// Note that, while being convenient, this is less efficient than pre-allocating a
     /// `Record` and reading into it with the `read` method, since every iteration involves
     /// the allocation of a new `Record`.
-    fn records(&self) -> Records<Self>;
+    fn records(&mut self) -> Records<Self>;
 
     /// Iterator over pileups.
-    fn pileup(&self) -> pileup::Pileups<Self>;
+    fn pileup(&mut self) -> pileup::Pileups<Self>;
 
     /// Return the BGZF struct
     fn bgzf(&self) -> *mut htslib::Struct_BGZF;
@@ -50,7 +50,7 @@ pub trait Read: Sized {
     fn header(&self) -> &HeaderView;
 
     /// Seek to the given virtual offset in the file
-    fn seek(&self, offset: i64) -> Result<(), SeekError> {
+    fn seek(&mut self, offset: i64) -> Result<(), SeekError> {
         let ret = unsafe { htslib::bgzf_seek(self.bgzf(), offset, libc::SEEK_SET) };
         if ret == 0 {
              Ok(())
@@ -122,7 +122,7 @@ impl Reader {
 
 
 impl Read for Reader {
-    fn read(&self, record: &mut record::Record) -> Result<(), ReadError> {
+    fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError> {
         match unsafe { htslib::bam_read1(self.bgzf, record.inner) } {
             -1 => Err(ReadError::NoMoreRecord),
             -2 => Err(ReadError::Truncated),
@@ -135,11 +135,11 @@ impl Read for Reader {
     /// Note that, while being convenient, this is less efficient than pre-allocating a
     /// `Record` and reading into it with the `read` method, since every iteration involves
     /// the allocation of a new `Record`.
-    fn records(&self) -> Records<Self> {
+    fn records(&mut self) -> Records<Self> {
         Records { reader: self }
     }
 
-    fn pileup(&self) -> pileup::Pileups<Self> {
+    fn pileup(&mut self) -> pileup::Pileups<Self> {
         let _self = self as *const Self;
         let itr = unsafe {
             htslib::bam_plp_init(
@@ -251,7 +251,7 @@ impl IndexedReader {
 
 
 impl Read for IndexedReader {
-    fn read(&self, record: &mut record::Record) -> Result<(), ReadError> {
+    fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError> {
         match self.itr {
             Some(itr) => match itr_next(self.bgzf, itr, record.inner) {
                 -1 => Err(ReadError::NoMoreRecord),
@@ -267,11 +267,11 @@ impl Read for IndexedReader {
     /// Note that, while being convenient, this is less efficient than pre-allocating a
     /// `Record` and reading into it with the `read` method, since every iteration involves
     /// the allocation of a new `Record`.
-    fn records(&self) -> Records<Self> {
+    fn records(&mut self) -> Records<Self> {
         Records { reader: self }
     }
 
-    fn pileup(&self) -> pileup::Pileups<Self> {
+    fn pileup(&mut self) -> pileup::Pileups<Self> {
         let _self = self as *const Self;
         let itr = unsafe {
             htslib::bam_plp_init(
@@ -425,7 +425,7 @@ impl Drop for Writer {
 
 /// Iterator over the records of a BAM.
 pub struct Records<'a, R: 'a + Read> {
-    reader: &'a R
+    reader: &'a mut R
 }
 
 
@@ -713,7 +713,7 @@ mod tests {
     #[test]
     fn test_read() {
         let (names, flags, seqs, quals, cigars) = gold();
-        let bam = Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening file.");
+        let mut bam = Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening file.");
         let del_len = [1, 1, 1, 1, 1, 100000];
 
         for (i, record) in bam.records().enumerate() {
@@ -740,7 +740,7 @@ mod tests {
 
     #[test]
     fn test_seek() {
-        let bam = Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening file.");
+        let mut bam = Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening file.");
 
         let mut names_by_voffset = HashMap::new();
 
@@ -772,7 +772,7 @@ mod tests {
 
     #[test]
     fn test_read_sam_header() {
-        let bam = Reader::from_path(&"test/test.bam").ok().expect("Error opening file.");
+        let mut bam = Reader::from_path(&"test/test.bam").ok().expect("Error opening file.");
 
         let true_header = "@SQ\tSN:CHROMOSOME_I\tLN:15072423\n@SQ\tSN:CHROMOSOME_II\tLN:15279345\n@SQ\tSN:CHROMOSOME_III\tLN:13783700\n@SQ\tSN:CHROMOSOME_IV\tLN:17493793\n@SQ\tSN:CHROMOSOME_V\tLN:20924149\n".to_string();
         let header_text = String::from_utf8(bam.header.as_bytes().to_owned()).unwrap();
@@ -888,7 +888,7 @@ mod tests {
 
     #[test]
     fn test_remove_aux() {
-        let bam = Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening file.");
+        let mut bam = Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening file.");
 
         for record in bam.records() {
             let rec = record.ok().expect("Expected valid record");
@@ -936,7 +936,7 @@ mod tests {
         }
 
         {
-            let bam = Reader::from_path(&bampath).ok().expect("Error opening file.");
+            let mut bam = Reader::from_path(&bampath).ok().expect("Error opening file.");
 
             for i in 0..names.len() {
                 let mut rec = record::Record::new();
@@ -983,7 +983,7 @@ mod tests {
         }
 
         {
-            let bam = Reader::from_path(&bampath).ok().expect("Error opening file.");
+            let mut bam = Reader::from_path(&bampath).ok().expect("Error opening file.");
 
             for (i, _rec) in bam.records().enumerate() {
                 let idx = i % names.len();
@@ -1012,7 +1012,7 @@ mod tests {
         let bampath = tmp.path().join("test.bam");
         println!("{:?}", bampath);
 
-        let input_bam = Reader::from_path(&"test/test.bam").ok().expect("Error opening file.");
+        let mut input_bam = Reader::from_path(&"test/test.bam").ok().expect("Error opening file.");
 
         {
             let mut bam = Writer::from_path(
@@ -1026,7 +1026,7 @@ mod tests {
         }
 
         {
-            let copy_bam = Reader::from_path(&bampath).ok().expect("Error opening file.");
+            let mut copy_bam = Reader::from_path(&bampath).ok().expect("Error opening file.");
 
             // Verify that the header came across correctly
             assert_eq!(input_bam.header().as_bytes(), copy_bam.header().as_bytes());
@@ -1041,7 +1041,7 @@ mod tests {
     fn test_pileup() {
         let (_, _, seqs, quals, _) = gold();
 
-        let bam = Reader::from_path(&"test/test.bam").ok().expect("Error opening file.");
+        let mut bam = Reader::from_path(&"test/test.bam").ok().expect("Error opening file.");
         let pileups = bam.pileup();
         for pileup in pileups.take(26) {
             let _pileup = pileup.ok().expect("Expected successful pileup.");

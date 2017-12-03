@@ -120,13 +120,13 @@ pub enum Indel {
 /// Iterator over pileups.
 pub struct Pileups<'a, R: 'a + bam::Read> {
     #[allow(dead_code)]
-    reader: &'a R,
+    reader: &'a mut R,
     itr: htslib::bam_plp_t,
 }
 
 
 impl<'a, R: bam::Read> Pileups<'a, R> {
-    pub fn new(reader: &'a R, itr: htslib::bam_plp_t) -> Self {
+    pub fn new(reader: &'a mut R, itr: htslib::bam_plp_t) -> Self {
         Pileups { reader: reader, itr: itr }
     }
 

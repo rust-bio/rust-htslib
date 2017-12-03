@@ -129,13 +129,13 @@ mod tests {
     #[test]
     fn test_sam_writer_example() {
         fn from_bam_with_filter<'a, 'b, F>(bamfile:&'a str, samfile:&'b str, f:F) -> bool where F:Fn(&record::Record) -> Option<bool> {
-            let bam_reader = Reader::from_path(bamfile).unwrap(); // internal functions, just unwarp
+            let mut bam_reader = Reader::from_path(bamfile).unwrap(); // internal functions, just unwarp
             let header = header::Header::from_template(bam_reader.header());
             let mut sam_writer = Writer::from_path(samfile, &header).unwrap();
             for record in bam_reader.records() {
                 if record.is_err() {
                     return false;
-                } 
+                }
                 let parsed = record.unwrap();
                 match f(&parsed) {
                     None => return true,
@@ -156,10 +156,8 @@ mod tests {
         assert!(result);
         let mut expected = Vec::new();
         let mut written = Vec::new();
-        assert!(File::open(expectedfile).unwrap().read_to_end(&mut expected).is_ok()); 
+        assert!(File::open(expectedfile).unwrap().read_to_end(&mut expected).is_ok());
         assert!(File::open(samfile).unwrap().read_to_end(&mut written).is_ok());
         assert_eq!(expected, written);
     }
 }
-
-
