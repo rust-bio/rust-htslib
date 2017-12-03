@@ -6,6 +6,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - An efficient ringbuffer for accessing BCF regions
 - An efficient ringbuffer for accessing BAM regions
+### Changed
+- Improved mutability annotation for readers.
 
 ## [0.13.0] - 2017-09-22
 ### Added
