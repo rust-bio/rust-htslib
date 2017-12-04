@@ -25,7 +25,7 @@ impl Header {
         // header which samtools (<=1.6) will complain
         // about
         while let Some(&last_char) = record.last() {
-            if last_char==b'\n' {
+            if last_char == b'\n' {
                 record.pop();
             } else {
                 break;

@@ -171,7 +171,7 @@ impl Drop for Reader {
 
 pub struct IndexedReader {
     bgzf: *mut htslib::Struct_BGZF,
-    pub header: HeaderView,
+    header: HeaderView,
     idx: *mut htslib::hts_idx_t,
     itr: Option<*mut htslib:: hts_itr_t>,
 }
@@ -219,7 +219,7 @@ impl IndexedReader {
         if idx.is_null() {
             Err(IndexedReaderError::InvalidIndex)
         } else {
-            Ok(IndexedReader { bgzf: bgzf, header : HeaderView::new(header), idx: idx, itr: None })
+            Ok(IndexedReader { bgzf: bgzf, header: HeaderView::new(header), idx: idx, itr: None })
         }
     }
 
@@ -660,6 +660,17 @@ impl HeaderView {
     }
 }
 
+
+impl Clone for HeaderView {
+    fn clone(&self) -> Self {
+        HeaderView {
+            inner: unsafe { htslib::bam_hdr_dup(self.inner) },
+            owned: true
+        }
+    }
+}
+
+
 impl Drop for HeaderView {
     fn drop(&mut self) {
         if self.owned {
@@ -667,6 +678,7 @@ impl Drop for HeaderView {
         }
     }
 }
+
 
 #[cfg(test)]
 mod tests {
