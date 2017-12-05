@@ -54,26 +54,10 @@ impl Writer {
 
     fn new(path: &[u8], header: &header::Header) -> Result<Self, WriterError> {
         let f = try!(hts_open(&ffi::CString::new(path).unwrap(), b"w"));
-        let header_record = unsafe {
-            let mut header_string = header.to_bytes();
-            if !header_string.is_empty() && header_string[header_string.len() - 1] != b'\n' {
-                header_string.push(b'\n');
-            }
-            let l_text = header_string.len();
-            let text = ::libc::malloc(l_text + 1);
-            ::libc::memset(text, 0, l_text + 1);
-            ::libc::memcpy(text, header_string.as_ptr() as *const ::libc::c_void, header_string.len());
-            //println!("{}", std::str::from_utf8(&header_string).unwrap());
-            let rec = htslib::sam_hdr_parse(
-                (l_text + 1) as i32,
-                text as *const i8,
-            );
-            (*rec).text = text as *mut i8;
-            (*rec).l_text = l_text as u32;
-            rec
-        };
-        unsafe { htslib::sam_hdr_write(f, header_record); }
-        Ok(Writer { f: f, header: HeaderView::new(header_record) })
+        let header_view = HeaderView::from_header(header);
+
+        unsafe { htslib::sam_hdr_write(f, &header_view.inner()); }
+        Ok(Writer { f: f, header: header_view })
     }
 
     /// Write record to SAM.
@@ -91,6 +75,7 @@ impl Writer {
     }
 }
 
+
 impl Drop for Writer {
     fn drop(&mut self) {
         unsafe {
@@ -99,12 +84,14 @@ impl Drop for Writer {
     }
 }
 
+
 quick_error! {
     #[derive(Debug)]
     pub enum WriterError {
         IOError {}
     }
 }
+
 
 quick_error! {
     #[derive(Debug)]

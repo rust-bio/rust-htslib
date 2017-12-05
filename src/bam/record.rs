@@ -13,6 +13,7 @@ use std::error::Error;
 use itertools::Itertools;
 
 use htslib;
+use bam::{HeaderView, ReadError};
 use utils;
 
 
@@ -77,6 +78,32 @@ impl Record {
     pub fn from_inner(inner: *mut htslib::bam1_t) -> Self {
         Record { inner: inner, own: false }
     }
+
+    // Create a BAM record from a line SAM text. SAM slice need not be 0-terminated.
+    pub fn from_sam(header_view: &HeaderView, sam: &[u8]) -> Result<Record, ReadError> {
+        let record = Self::new();
+
+        let mut sam_copy = Vec::with_capacity(sam.len() + 1);
+        sam_copy.extend(sam);
+        sam_copy.push(0);
+
+        let mut sam_string = htslib::kstring_t {
+            s: sam_copy.as_ptr() as *mut i8,
+            l: sam_copy.len() as u64,
+            m: sam_copy.len() as u64,
+        };
+
+        let succ = unsafe {
+            htslib::sam_parse1(&mut sam_string, header_view.inner_ptr_mut(), record.inner)
+        };
+
+        if succ == 0 {
+            Ok(record)
+        } else {
+            Err(ReadError::Invalid)
+        }
+    }
+
 
     fn data(&self) -> &[u8] {
         unsafe { slice::from_raw_parts(self.inner().data, self.inner().l_data as usize) }

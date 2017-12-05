@@ -606,6 +606,32 @@ pub struct HeaderView {
 
 
 impl HeaderView {
+
+    /// Create a new HeaderView from a pre-populated Header object
+    pub fn from_header(header: &Header) -> Self {
+
+        let header_record = unsafe {
+            let mut header_string = header.to_bytes();
+            if !header_string.is_empty() && header_string[header_string.len() - 1] != b'\n' {
+                header_string.push(b'\n');
+            }
+            let l_text = header_string.len();
+            let text = ::libc::malloc(l_text + 1);
+            ::libc::memset(text, 0, l_text + 1);
+            ::libc::memcpy(text, header_string.as_ptr() as *const ::libc::c_void, header_string.len());
+            //println!("{}", std::str::from_utf8(&header_string).unwrap());
+            let rec = htslib::sam_hdr_parse(
+                (l_text + 1) as i32,
+                text as *const i8,
+            );
+            (*rec).text = text as *mut i8;
+            (*rec).l_text = l_text as u32;
+            rec
+        };
+
+        HeaderView::new(header_record)
+    }
+
     /// Create a new HeaderView from the underlying Htslib type, and own it.
     pub fn new(inner: *mut htslib::bam_hdr_t) -> Self {
         HeaderView {
@@ -617,6 +643,18 @@ impl HeaderView {
     #[inline]
     pub fn inner(&self) -> htslib::bam_hdr_t {
         unsafe { (*self.inner) }
+    }
+
+    #[inline]
+    // Pointer to inner bam_hdr_t struct
+    pub fn inner_ptr(&self) -> *const htslib::bam_hdr_t {
+        self.inner
+    }
+
+    #[inline]
+    // Mutable pointer to bam_hdr_t struct
+    pub fn inner_ptr_mut(&self) -> *mut htslib::bam_hdr_t {
+        self.inner
     }
 
     pub fn tid(&self, name: &[u8]) -> Option<u32> {
@@ -1067,6 +1105,37 @@ mod tests {
                 assert_eq!(a.record().seq()[qpos], seqs[i][qpos]);
                 assert_eq!(a.record().qual()[qpos], quals[i][qpos] - 33);
             }
+        }
+    }
+
+    #[test]
+    fn parse_from_sam() {
+        use std::fs::File;
+        use std::io::Read;
+
+        let bamfile = "./test/bam2sam_test.bam";
+        let samfile = "./test/bam2sam_expected.sam";
+
+        // Load BAM file:
+        let rdr = Reader::from_path(bamfile).unwrap();
+        let bam_recs: Vec<Record> = rdr.records().map(|v| v.unwrap()).collect();
+
+        let mut sam = Vec::new();
+        assert!(File::open(samfile).unwrap().read_to_end(&mut sam).is_ok());
+
+        let sam_recs: Vec<Record> = 
+            sam
+            .split(|x| *x == b'\n')
+            .filter(|x| x.len() > 0 && x[0] != b'@')
+            .map(|line| Record::from_sam(rdr.header(), line).unwrap())
+            .collect();
+
+        for (b1, s1) in bam_recs.iter().zip(sam_recs.iter()) {
+            assert_eq!(b1.qname(),          s1.qname());
+            assert_eq!(b1.seq().as_bytes(), s1.seq().as_bytes());
+            assert_eq!(b1.qual(),           s1.qual());
+            assert_eq!(b1.cigar(),          s1.cigar());
+            assert_eq!(b1.pos(),            s1.pos());
         }
     }
 }
