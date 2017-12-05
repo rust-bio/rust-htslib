@@ -75,30 +75,6 @@ impl Writer {
     }
 }
 
-pub struct SamReader;
-
-impl SamReader {
-    /// Parse a line of SAM data to a Record, given a HeaderView
-    pub fn parse_record(header_view: &HeaderView, sam: &[u8]) -> Result<record::Record, WriteError> {
-        let record = record::Record::new();
-
-        let mut sam_string = htslib::kstring_t {
-            s: sam.as_ptr() as *mut i8,
-            l: sam.len() as u64,
-            m: sam.len() as u64,
-        };
-
-        let succ = unsafe {
-            htslib::sam_parse1(&mut sam_string, header_view.inner_ptr_mut(), record.inner)
-        };
-
-        if succ == 0 {
-            Ok(record)
-        } else {
-            Err(WriteError::Some)
-        }
-    }
-}
 
 impl Drop for Writer {
     fn drop(&mut self) {
@@ -108,12 +84,14 @@ impl Drop for Writer {
     }
 }
 
+
 quick_error! {
     #[derive(Debug)]
     pub enum WriterError {
         IOError {}
     }
 }
+
 
 quick_error! {
     #[derive(Debug)]
