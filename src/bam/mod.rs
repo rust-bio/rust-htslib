@@ -1117,7 +1117,7 @@ mod tests {
         let samfile = "./test/bam2sam_expected.sam";
 
         // Load BAM file:
-        let rdr = Reader::from_path(bamfile).unwrap();
+        let mut rdr = Reader::from_path(bamfile).unwrap();
         let bam_recs: Vec<Record> = rdr.records().map(|v| v.unwrap()).collect();
 
         let mut sam = Vec::new();
