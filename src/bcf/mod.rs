@@ -22,7 +22,7 @@ pub use bcf::buffer::RecordBuffer;
 
 pub struct Reader {
     inner: *mut htslib::vcf::htsFile,
-    pub header: HeaderView,
+    header: HeaderView,
 }
 
 
@@ -56,6 +56,10 @@ impl Reader {
         Ok(Reader { inner: htsfile, header: HeaderView::new(header) })
     }
 
+    pub fn header(&self) -> &HeaderView {
+        &self.header
+    }
+
     pub fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError> {
         match unsafe { htslib::vcf::bcf_read(self.inner, self.header.inner, record.inner) } {
             0  => {
@@ -76,7 +80,6 @@ impl Reader {
 impl Drop for Reader {
     fn drop(&mut self) {
         unsafe {
-            htslib::vcf::bcf_hdr_destroy(self.header.inner);
             htslib::vcf::hts_close(self.inner);
         }
     }
@@ -85,7 +88,7 @@ impl Drop for Reader {
 
 pub struct Writer {
     inner: *mut htslib::vcf::htsFile,
-    pub header: HeaderView,
+    header: HeaderView,
     subset: Option<SampleSubset>,
 }
 
@@ -127,6 +130,10 @@ impl Writer {
         })
     }
 
+    pub fn header(&self) -> &HeaderView {
+        &self.header
+    }
+
     /// Translate record to header of this writer.
     pub fn translate(&mut self, record: &mut record::Record) {
         unsafe {
@@ -159,7 +166,6 @@ impl Writer {
 impl Drop for Writer {
     fn drop(&mut self) {
         unsafe {
-            htslib::vcf::bcf_hdr_destroy(self.header.inner);
             htslib::vcf::hts_close(self.inner);
         }
     }

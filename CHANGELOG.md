@@ -2,7 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.14.0] - unreleased
+## [0.15.0] - 2017-12-05
+### Changed
+- HeaderView of bam and bcf can now be cloned.
+
+
+## [0.14.0] - 2017-12-03
 ### Added
 - An efficient ringbuffer for accessing BCF regions
 - An efficient ringbuffer for accessing BAM regions

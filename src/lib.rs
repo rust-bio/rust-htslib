@@ -59,7 +59,7 @@
 //! let mut bam = bam::IndexedReader::from_path(&"test/test.bam").unwrap();
 //!
 //! // seek to chr1:50000-100000
-//! let tid = bam.header.tid(b"CHROMOSOME_I").unwrap();
+//! let tid = bam.header().tid(b"CHROMOSOME_I").unwrap();
 //! bam.fetch(tid, 0, 20).unwrap();
 //! // afterwards, read or pileup in this region
 //! ```
