@@ -1095,4 +1095,35 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn parse_from_sam() {
+        use std::fs::File;
+        use std::io::Read;
+
+        let bamfile = "./test/bam2sam_test.bam";
+        let samfile = "./test/bam2sam_expected.sam";
+
+        // Load BAM file:
+        let rdr = Reader::from_path(bamfile).unwrap();
+        let bam_recs: Vec<Record> = rdr.records().map(|v| v.unwrap()).collect();
+
+        let mut sam = Vec::new();
+        assert!(File::open(samfile).unwrap().read_to_end(&mut sam).is_ok());
+
+        let sam_recs: Vec<Record> = 
+            sam
+            .split(|x| *x == b'\n')
+            .filter(|x| x.len() > 0 && x[0] != b'@')
+            .map(|line| Record::from_sam(rdr.header(), line).unwrap())
+            .collect();
+
+        for (b1, s1) in bam_recs.iter().zip(sam_recs.iter()) {
+            assert_eq!(b1.qname(),          s1.qname());
+            assert_eq!(b1.seq().as_bytes(), s1.seq().as_bytes());
+            assert_eq!(b1.qual(),           s1.qual());
+            assert_eq!(b1.cigar(),          s1.cigar());
+            assert_eq!(b1.pos(),            s1.pos());
+        }
+    }
 }
