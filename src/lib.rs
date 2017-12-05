@@ -78,6 +78,7 @@ extern crate ieee754;
 #[macro_use]
 extern crate lazy_static;
 extern crate bitflags;
+extern crate regex;
 
 pub mod htslib;
 pub mod bam;

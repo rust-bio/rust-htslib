@@ -4,6 +4,8 @@
 // except according to those terms.
 
 use bam::HeaderView;
+use std::collections::HashMap;
+use regex::Regex;
 
 
 /// A BAM header.
@@ -48,6 +50,31 @@ impl Header {
 
     pub fn to_bytes(&self) -> Vec<u8> {
         self.records.join(&b'\n')
+    }
+
+    pub fn to_hashmap(&self) -> HashMap<String, Vec<HashMap<String, String>>> {
+
+        let mut header_map = HashMap::default();
+
+        let rec_type_re = Regex::new(r"@([A-Z][A-Z])").unwrap();
+        let tag_re = Regex::new(r"([A-Za-z][A-Za-z0-9]):([ -~]+)").unwrap();
+
+        let header_string = String::from_utf8(self.to_bytes()).unwrap();
+
+        for line in header_string.split("\n").filter(|x| x.len() > 0) {
+            let parts: Vec<_> = line.split("\t").filter(|x| x.len() > 0).collect();
+            // assert!(rec_type_re.is_match(parts[0]));
+            let record_type = rec_type_re.captures(parts[0]).unwrap().get(1).unwrap().as_str().to_owned();
+            let mut field = HashMap::default();
+            for part in parts.iter().skip(1) {
+                let cap = tag_re.captures(part).unwrap();
+                let tag = cap.get(1).unwrap().as_str().to_owned();
+                let value = cap.get(2).unwrap().as_str().to_owned();
+                field.insert(tag, value);
+            }
+            header_map.entry(record_type).or_insert_with(|| Vec::new()).push(field);
+        }
+        header_map
     }
 }
 
