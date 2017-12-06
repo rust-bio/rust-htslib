@@ -289,7 +289,7 @@ impl Record {
         }
     }
 
-    fn cigar_len(&self) -> usize {
+    pub fn cigar_len(&self) -> usize {
         self.inner().core.n_cigar as usize
     }
 
