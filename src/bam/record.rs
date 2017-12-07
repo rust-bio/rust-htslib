@@ -224,7 +224,7 @@ impl Record {
             self.realloc_var_data(l_data as usize);
         }
 
-        let mut data = unsafe { slice::from_raw_parts_mut((*self.inner).data, self.inner().l_data as usize) };
+        let data = unsafe { slice::from_raw_parts_mut((*self.inner).data, self.inner().l_data as usize) };
         // qname
         utils::copy_memory(qname, data);
         data[qname.len()] = b'\0';
@@ -233,7 +233,7 @@ impl Record {
 
         // cigar
         {
-            let mut cigar_data = unsafe {
+            let cigar_data = unsafe {
                  slice::from_raw_parts_mut(data[i..].as_ptr() as *mut u32, cigar.len())
             };
             for (i, c) in cigar.iter().enumerate() {
@@ -284,7 +284,7 @@ impl Record {
         if new_q_len != old_q_len {
             // Move other data to new location
             unsafe {
-                let mut data = slice::from_raw_parts_mut((*self.inner).data,
+                let data = slice::from_raw_parts_mut((*self.inner).data,
                                                          self.inner().l_data as usize);
 
                 ::libc::memmove(data.as_mut_ptr().offset(new_q_len as isize) as *mut ::libc::c_void,
@@ -294,12 +294,13 @@ impl Record {
         }
 
         // Copy qname data
-        unsafe {
-            let mut data = slice::from_raw_parts_mut((*self.inner).data,
-                                                     self.inner().l_data as usize);
-            utils::copy_memory(new_qname, data);
-            data[new_q_len - 1] = b'\0';
-        }
+        let data = unsafe {
+            slice::from_raw_parts_mut(
+                (*self.inner).data,
+                self.inner().l_data as usize)
+        };
+        utils::copy_memory(new_qname, data);
+        data[new_q_len - 1] = b'\0';
 
         self.inner_mut().core.l_qname = new_q_len as u8;
     }

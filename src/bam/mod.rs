@@ -243,8 +243,8 @@ impl IndexedReader {
     extern fn pileup_read(data: *mut ::libc::c_void, record: *mut htslib::bam1_t) -> ::libc::c_int {
         let _self = unsafe { &*(data as *mut Self) };
         match _self.itr {
-            Some(itr) => itr_next(_self.bgzf, itr, record),
-            None      => 0
+            Some(itr) => itr_next(_self.bgzf, itr, record), // read fetched region
+            None      => unsafe { htslib::bam_read1(_self.bgzf, record) } // ordinary reading
         }
     }
 }
@@ -1109,6 +1109,21 @@ mod tests {
     }
 
     #[test]
+    fn test_idx_pileup() {
+        let mut bam = IndexedReader::from_path(&"test/test.bam").ok().expect("Error opening file.");
+        // read without fetch
+        for pileup in bam.pileup() {
+            pileup.unwrap();
+        }
+        // go back again
+        let tid = bam.header().tid(b"CHROMOSOME_I").unwrap();
+        bam.fetch(tid, 0, 5).unwrap();
+        for p in bam.pileup() {
+            println!("{}", p.unwrap().pos())
+        }
+    }
+
+    #[test]
     fn parse_from_sam() {
         use std::fs::File;
         use std::io::Read;
@@ -1123,7 +1138,7 @@ mod tests {
         let mut sam = Vec::new();
         assert!(File::open(samfile).unwrap().read_to_end(&mut sam).is_ok());
 
-        let sam_recs: Vec<Record> = 
+        let sam_recs: Vec<Record> =
             sam
             .split(|x| *x == b'\n')
             .filter(|x| x.len() > 0 && x[0] != b'@')
