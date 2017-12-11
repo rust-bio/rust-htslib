@@ -79,6 +79,9 @@ extern crate ieee754;
 extern crate lazy_static;
 extern crate bitflags;
 
+#[cfg(feature = "bio")]
+extern crate bio;
+
 pub mod htslib;
 pub mod bam;
 pub mod bcf;

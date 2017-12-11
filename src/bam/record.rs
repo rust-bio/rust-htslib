@@ -16,6 +16,8 @@ use htslib;
 use bam::{HeaderView, ReadError};
 use utils;
 
+#[cfg(feature = "bio")]
+use bio::alignment::{Alignment, AlignmentOperation, AlignmentMode};
 
 /// A macro creating methods for flag access.
 macro_rules! flag {
@@ -666,6 +668,64 @@ impl CigarString {
     pub fn into_view(self, pos: i32) -> CigarStringView {
         CigarStringView::new(self, pos)
     }
+
+    /// Calculate the bam cigar from the alignment struct. x is the target string
+    /// and y is the reference.
+    #[cfg(feature = "bio")]
+    pub fn from_alignment(alignment: &Alignment, hard_clip: bool) -> Self {
+
+        match alignment.mode {
+            AlignmentMode::Global => panic!(" Bam cigar fn not supported for Global Alignment mode"),
+            AlignmentMode::Local => panic!(" Bam cigar fn not supported for Local Alignment mode"),
+            _ => {}
+        }
+
+        let mut cigar = Vec::new();
+        if alignment.operations.is_empty() {
+            return CigarString(cigar);
+        }
+
+        let add_op = |op: AlignmentOperation, length: u32, cigar: &mut Vec<Cigar>| {
+            match op {
+                AlignmentOperation::Del => cigar.push(Cigar::Del(length)),
+                AlignmentOperation::Ins => cigar.push(Cigar::Ins(length)),
+                AlignmentOperation::Subst => cigar.push(Cigar::Diff(length)),
+                AlignmentOperation::Match => cigar.push(Cigar::Equal(length)),
+                _ => {}
+            }
+        };
+        
+        
+        if alignment.xstart > 0 {
+            cigar.push(if hard_clip { 
+                    Cigar::HardClip(alignment.xstart as u32) 
+                } else { 
+                    Cigar::SoftClip(alignment.xstart as u32)
+                });
+        }
+
+        let mut last = alignment.operations[0];
+        let mut k = 1u32;
+        for &op in alignment.operations[1..].iter() {
+            if op == last {
+                k += 1;
+            } else {
+                add_op(last, k, &mut cigar);
+                k = 1;
+            }
+            last = op;
+        }
+        add_op(last, k, &mut cigar);
+        if alignment.xlen > alignment.xend {
+            cigar.push(if hard_clip { 
+                    Cigar::HardClip((alignment.xlen - alignment.xend) as u32) 
+                } else { 
+                    Cigar::SoftClip((alignment.xlen - alignment.xend) as u32)
+                });
+        }
+
+        CigarString(cigar)
+    }
 }
 
 impl<'a> CigarString {
@@ -673,7 +733,6 @@ impl<'a> CigarString {
         self.into_iter()
     }
 }
-
 
 impl<'a> IntoIterator for &'a CigarString {
     type Item = &'a Cigar;
@@ -1076,5 +1135,96 @@ mod tests {
         rec.set_pos(300);
         let clone = rec.clone();
         assert_eq!(rec.pos(), clone.pos());
+    }
+}
+
+#[cfg(feature = "foo")]
+#[cfg(test)]
+mod alignment_cigar_tests {
+    use super::*;
+    use bio::alignment::{Alignment, AlignmentOperation, AlignmentMode};
+     use bio::alignment::AlignmentOperation::{Match, Subst, Ins, Del, Yclip, Xclip};
+
+    #[test]
+    fn test_cigar() {
+        let alignment = Alignment {
+            score: 5,
+            xstart: 3,
+            ystart: 0,
+            xend: 9,
+            yend: 10,
+            ylen: 10,
+            xlen: 10,
+            operations: vec![Match, Match, Match, Subst, Ins, Ins, Del, Del],
+            mode: AlignmentMode::Semiglobal,
+        };
+        assert_eq!(alignment.cigar(false), "3S3=1X2I2D1S");
+        assert_eq!(CigarString::from_alignment(&alignment, false).0,
+                       vec![Cigar::SoftClip(3),
+                            Cigar::Equal(3),
+                            Cigar::Diff(1),
+                            Cigar::Ins(2),
+                            Cigar::Del(2),
+                            Cigar::SoftClip(1)]);
+
+        let alignment = Alignment {
+            score: 5,
+            xstart: 0,
+            ystart: 5,
+            xend: 4,
+            yend: 10,
+            ylen: 10,
+            xlen: 5,
+            operations: vec![Yclip(5), Match, Subst, Subst, Ins, Del, Del, Xclip(1)],
+            mode: AlignmentMode::Custom,
+        };
+        assert_eq!(alignment.cigar(false), "1=2X1I2D1S");
+        assert_eq!(alignment.cigar(true), "1=2X1I2D1H");
+        assert_eq!(CigarString::from_alignment(&alignment, false).0,
+                       vec![Cigar::Equal(1),
+                            Cigar::Diff(2),
+                            Cigar::Ins(1),
+                            Cigar::Del(2),
+                            Cigar::SoftClip(1)]);
+        assert_eq!(CigarString::from_alignment(&alignment, true).0,
+                       vec![Cigar::Equal(1),
+                            Cigar::Diff(2),
+                            Cigar::Ins(1),
+                            Cigar::Del(2),
+                            Cigar::HardClip(1)]);
+
+        let alignment = Alignment {
+            score: 5,
+            xstart: 0,
+            ystart: 5,
+            xend: 3,
+            yend: 8,
+            ylen: 10,
+            xlen: 3,
+            operations: vec![Yclip(5), Subst, Match, Subst, Yclip(2)],
+            mode: AlignmentMode::Custom,
+        };
+        assert_eq!(alignment.cigar(false), "1X1=1X");
+        assert_eq!(CigarString::from_alignment(&alignment, false).0,
+                       vec![Cigar::Diff(1),
+                            Cigar::Equal(1),
+                            Cigar::Diff(1)]);
+
+        let alignment = Alignment {
+            score: 5,
+            xstart: 0,
+            ystart: 5,
+            xend: 3,
+            yend: 8,
+            ylen: 10,
+            xlen: 3,
+            operations: vec![Subst, Match, Subst],
+            mode: AlignmentMode::Semiglobal,
+        };
+        assert_eq!(alignment.cigar(false), "1X1=1X");
+        assert_eq!(CigarString::from_alignment(&alignment, false).0,
+                       vec![Cigar::Diff(1),
+                            Cigar::Equal(1),
+                            Cigar::Diff(1)]);
     }
 }
