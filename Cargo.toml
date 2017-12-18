@@ -23,10 +23,6 @@ lazy_static = "0.2"
 bitflags = "0.9"
 bio = { git = "https://github.com/rust-bio/rust-bio.git" , optional = true }
 
-[features]
-default = ["bio"]
-
-
 [dev-dependencies]
 tempdir = "0.3"
 

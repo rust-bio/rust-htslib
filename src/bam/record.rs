@@ -1138,11 +1138,11 @@ mod tests {
     }
 }
 
-#[cfg(feature = "foo")]
+#[cfg(feature = "bio")]
 #[cfg(test)]
 mod alignment_cigar_tests {
     use super::*;
-    use bio::alignment::{Alignment, AlignmentOperation, AlignmentMode};
+    use bio::alignment::{Alignment, AlignmentMode};
      use bio::alignment::AlignmentOperation::{Match, Subst, Ins, Del, Yclip, Xclip};
 
     #[test]
