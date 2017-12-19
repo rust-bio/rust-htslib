@@ -1,3 +1,7 @@
+// Copyright 2014 Johannes Köster.
+// Licensed under the MIT license (http://opensource.org/licenses/MIT)
+// This file may not be copied, modified, or distributed
+// except according to those terms.
 
 use std::ffi;
 use std::path::Path;
@@ -6,17 +10,19 @@ use url::Url;
 
 pub mod record;
 pub mod header;
+pub mod buffer;
 
 use htslib;
 use bcf::header::{HeaderView, SampleSubset};
 
 pub use bcf::header::Header;
 pub use bcf::record::Record;
+pub use bcf::buffer::RecordBuffer;
 
 
 pub struct Reader {
     inner: *mut htslib::vcf::htsFile,
-    pub header: HeaderView,
+    header: HeaderView,
 }
 
 
@@ -50,7 +56,11 @@ impl Reader {
         Ok(Reader { inner: htsfile, header: HeaderView::new(header) })
     }
 
-    pub fn read(&self, record: &mut record::Record) -> Result<(), ReadError> {
+    pub fn header(&self) -> &HeaderView {
+        &self.header
+    }
+
+    pub fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError> {
         match unsafe { htslib::vcf::bcf_read(self.inner, self.header.inner, record.inner) } {
             0  => {
                 record.header = self.header.inner;
@@ -61,7 +71,7 @@ impl Reader {
         }
     }
 
-    pub fn records(&self) -> Records {
+    pub fn records(&mut self) -> Records {
         Records { reader: self }
     }
 }
@@ -70,7 +80,6 @@ impl Reader {
 impl Drop for Reader {
     fn drop(&mut self) {
         unsafe {
-            htslib::vcf::bcf_hdr_destroy(self.header.inner);
             htslib::vcf::hts_close(self.inner);
         }
     }
@@ -79,7 +88,7 @@ impl Drop for Reader {
 
 pub struct Writer {
     inner: *mut htslib::vcf::htsFile,
-    pub header: HeaderView,
+    header: HeaderView,
     subset: Option<SampleSubset>,
 }
 
@@ -121,6 +130,10 @@ impl Writer {
         })
     }
 
+    pub fn header(&self) -> &HeaderView {
+        &self.header
+    }
+
     /// Translate record to header of this writer.
     pub fn translate(&mut self, record: &mut record::Record) {
         unsafe {
@@ -153,7 +166,6 @@ impl Writer {
 impl Drop for Writer {
     fn drop(&mut self) {
         unsafe {
-            htslib::vcf::bcf_hdr_destroy(self.header.inner);
             htslib::vcf::hts_close(self.inner);
         }
     }
@@ -161,7 +173,7 @@ impl Drop for Writer {
 
 
 pub struct Records<'a> {
-    reader: &'a Reader,
+    reader: &'a mut Reader,
 }
 
 
@@ -261,7 +273,7 @@ mod tests {
     use bcf::record::Numeric;
 
     fn _test_read<P: AsRef<Path>>(path: &P) {
-        let bcf = Reader::from_path(path).ok().expect("Error opening file.");
+        let mut bcf = Reader::from_path(path).ok().expect("Error opening file.");
         assert_eq!(bcf.header.samples(), [b"NA12878.subsample-0.25-0"]);
 
         for (i, rec) in bcf.records().enumerate() {
@@ -297,7 +309,7 @@ mod tests {
 
     #[test]
     fn test_write() {
-        let bcf = Reader::from_path(&"test/test_multi.bcf").ok().expect("Error opening file.");
+        let mut bcf = Reader::from_path(&"test/test_multi.bcf").ok().expect("Error opening file.");
         let tmp = tempdir::TempDir::new("rust-htslib").ok().expect("Cannot create temp dir");
         let bcfpath = tmp.path().join("test.bcf");
         println!("{:?}", bcfpath);
@@ -320,7 +332,7 @@ mod tests {
 
     #[test]
     fn test_strings() {
-        let vcf = Reader::from_path(&"test/test_string.vcf").ok().expect("Error opening file.");
+        let mut vcf = Reader::from_path(&"test/test_string.vcf").ok().expect("Error opening file.");
         let fs1 = [&b"LongString1"[..], &b"LongString2"[..], &b"."[..], &b"LongString4"[..], &b"evenlength"[..], &b"ss6"[..]];
         for (i, rec) in vcf.records().enumerate() {
             println!("record {}", i);
@@ -333,7 +345,7 @@ mod tests {
 
     #[test]
     fn test_missing() {
-        let vcf = Reader::from_path(&"test/test_missing.vcf").ok().expect("Error opening file.");
+        let mut vcf = Reader::from_path(&"test/test_missing.vcf").ok().expect("Error opening file.");
         let fn4 = [&[i32::missing(), i32::missing(), i32::missing(), i32::missing()][..], &[i32::missing()][..]];
         let f1 = [false, true];
         for (i, rec) in vcf.records().enumerate() {
@@ -346,7 +358,7 @@ mod tests {
 
     #[test]
     fn test_genotypes() {
-        let vcf = Reader::from_path(&"test/test_string.vcf").ok().expect("Error opening file.");
+        let mut vcf = Reader::from_path(&"test/test_string.vcf").ok().expect("Error opening file.");
         let expected = ["./1", "1|1", "0/1", "0|1", "1|.", "1/1"];
         for (rec, exp_gt) in vcf.records().zip(expected.into_iter()) {
             let mut rec = rec.ok().expect("Error reading record.");
