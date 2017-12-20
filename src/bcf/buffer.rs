@@ -154,6 +154,10 @@ impl RecordBuffer {
     pub fn iter(&self) -> vec_deque::Iter<bcf::Record> {
         self.ringbuffer.iter()
     }
+
+    pub fn len(&self) -> usize {
+        self.ringbuffer.len()
+    }
 }
 
 

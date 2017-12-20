@@ -110,6 +110,10 @@ impl RecordBuffer {
     pub fn iter(&self) -> vec_deque::Iter<bam::Record> {
         self.inner.iter()
     }
+
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
 }
 
 
