@@ -50,17 +50,22 @@ impl RecordBuffer {
     /// Fill buffer at the given interval. The start coordinate has to be left of
     /// the start coordinate of any previous `fill` operation.
     /// Coordinates are 0-based, and end is exclusive.
-    pub fn fetch(&mut self, chrom: &[u8], start: u32, end: u32) -> Result<(), Box<Error>> {
+    /// Returns tuple with numbers of added and deleted records since the previous fetch.
+    pub fn fetch(&mut self, chrom: &[u8], start: u32, end: u32) -> Result<(usize, usize), Box<Error>> {
+        let mut added = 0;
         // move overflow from last fetch into ringbuffer
         if self.overflow.is_some() {
+            added += 1;
             self.inner.push_back(self.overflow.take().unwrap());
         }
 
         if let Some(tid) = self.reader.header.tid(chrom) {
+            let mut deleted = 0;
             let window_start = start;
             if self.inner.is_empty() || self.end().unwrap() < window_start || self.tid().unwrap() != tid as i32 {
                 let end = self.reader.header.target_len(tid).unwrap();
                 try!(self.reader.fetch(tid, window_start, end));
+                deleted = self.inner.len();
                 self.inner.clear();
             } else {
                 // remove records too far left
@@ -68,6 +73,7 @@ impl RecordBuffer {
                 for _ in 0..to_remove {
                     self.inner.pop_front();
                 }
+                deleted = to_remove;
             }
 
             // extend to the right
@@ -90,10 +96,11 @@ impl RecordBuffer {
                     break;
                 } else {
                     self.inner.push_back(record);
+                    added += 1;
                 }
             }
 
-            Ok(())
+            Ok((added, deleted))
         } else {
             Err(Box::new(RecordBufferError::UnknownSequence(str::from_utf8(chrom).unwrap().to_owned())))
         }
