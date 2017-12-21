@@ -60,7 +60,7 @@ unsafe impl Sync for Record {}
 impl Clone for Record {
     fn clone(&self) -> Self {
         let copy = Record::new();
-        unsafe { htslib::bam_copy1(self.inner, copy.inner) };
+        unsafe { htslib::bam_copy1(copy.inner, self.inner) };
         copy
     }
 }
@@ -1074,7 +1074,9 @@ mod tests {
     fn test_clone() {
         let mut rec = Record::new();
         rec.set_pos(300);
+        rec.set_qname(b"read1");
         let clone = rec.clone();
         assert_eq!(rec.pos(), clone.pos());
+        assert_eq!(rec.qname(), clone.qname());
     }
 }
