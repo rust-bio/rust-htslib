@@ -54,7 +54,7 @@ impl RecordBuffer {
         self.ringbuffer2.clear();
     }
 
-    fn drain_left(&mut self, rid: u32, window_start: u32) {
+    fn drain_left(&mut self, rid: u32, window_start: u32) -> usize {
         // remove records too far left or from wrong rid
         // rec.rid() will always yield Some(), because otherwise we won't put the rec into the
         // buffer.
@@ -62,31 +62,43 @@ impl RecordBuffer {
             |rec| rec.pos() < window_start || rec.rid().unwrap() != rid
         ).count();
         self.ringbuffer.drain(..to_remove);
+        to_remove
     }
 
     /// Fill the buffer with variants in the given window. The start coordinate has to be left of
     /// the start coordinate of any previous `fill` operation.
     /// Coordinates are 0-based, and end is exclusive.
-    pub fn fetch(&mut self, chrom: &[u8], start: u32, end: u32) -> Result<(), Box<Error>> {
+    /// Returns tuple with numbers of added and deleted records compared to previous fetch.
+    pub fn fetch(&mut self, chrom: &[u8], start: u32, end: u32) -> Result<(usize, usize), Box<Error>> {
         let rid = try!(self.reader.header.name2rid(chrom));
+        let mut added = 0;
+        let mut deleted = 0;
 
         // move overflow from last fill into ringbuffer
         if self.overflow.is_some() {
             self.ringbuffer.push_back(self.overflow.take().unwrap());
+            added += 1;
         }
 
         // shrink and swap
         match (self.last_rid(), self.next_rid()) {
             (Some(last_rid), _) => {
                 if last_rid != rid {
+                    deleted = self.ringbuffer.len();
                     self.swap_buffers();
+                    added = self.ringbuffer.len();
+                    // TODO drain left?
                 } else {
-                    self.drain_left(rid, start);
+                    deleted = self.drain_left(rid, start);
                 }
             },
             (_, Some(_)) => {
+                // TODO is this really necessary? If there was no fetch before, there is nothing
+                // to delete.
+                deleted = self.ringbuffer.len();
                 self.swap_buffers();
-                self.drain_left(rid, start);
+                deleted += self.drain_left(rid, start);
+                added = self.ringbuffer.len();
             },
             _ => ()
         }
@@ -94,7 +106,7 @@ impl RecordBuffer {
         if !self.ringbuffer2.is_empty() {
             // We have already read beyond the current rid. Hence we can't extend to the right for
             // this rid.
-            return Ok(())
+            return Ok((added, deleted))
         }
 
         // extend to the right
@@ -116,6 +128,7 @@ impl RecordBuffer {
                     } else if pos >= start {
                         // Record is within our window.
                         self.ringbuffer.push_back(rec);
+                        added += 1;
                     } else {
                         // Record is upstream of our window, ignore it
                         continue
@@ -134,12 +147,16 @@ impl RecordBuffer {
             }
         }
 
-        Ok(())
+        Ok((added, deleted))
     }
 
     /// Iterate over records that have been fetched with `fetch`.
     pub fn iter(&self) -> vec_deque::Iter<bcf::Record> {
         self.ringbuffer.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.ringbuffer.len()
     }
 }
 
