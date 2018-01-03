@@ -13,7 +13,7 @@ use std::error::Error;
 use itertools::Itertools;
 
 use htslib;
-use bam::{HeaderView, ReadError};
+use bam::{HeaderView, ReadError, PushAuxError};
 use utils;
 
 
@@ -93,8 +93,8 @@ impl Record {
 
         let mut sam_string = htslib::kstring_t {
             s: sam_copy.as_ptr() as *mut i8,
-            l: sam_copy.len() as u64,
-            m: sam_copy.len() as u64,
+            l: sam_copy.len() as usize,
+            m: sam_copy.len() as usize,
         };
 
         let succ = unsafe {
@@ -212,7 +212,8 @@ impl Record {
 
     /// Get qname (read name). Complexity: O(1).
     pub fn qname(&self) -> &[u8] {
-        &self.data()[..self.qname_len()-1] // -1 ignores the termination symbol
+        // remove all trailing zeros (the default one and extra nulls)
+        &self.data()[..self.qname_len() - 1 - self.inner().core.l_extranul as usize]
     }
 
     /// Set variable length data (qname, cigar, seq, qual).
@@ -222,7 +223,7 @@ impl Record {
     pub fn set(&mut self, qname: &[u8], cigar: &CigarString, seq: &[u8], qual: &[u8]) {
         self.inner_mut().l_data = (qname.len() + 1 + cigar.len() * 4 + ((seq.len() as f32 / 2.0).ceil() as usize) + qual.len()) as i32;
 
-        if self.inner().m_data < self.inner().l_data {
+        if (self.inner().m_data as i32) < self.inner().l_data {
             // Verbosity due to lexical borrowing
             let l_data = self.inner().l_data;
             self.realloc_var_data(l_data as usize);
@@ -243,7 +244,7 @@ impl Record {
             for (i, c) in cigar.iter().enumerate() {
                 cigar_data[i] = c.encode();
             }
-            self.inner_mut().core.n_cigar = cigar.len() as u16;
+            self.inner_mut().core.n_cigar = cigar.len() as u32;
             i += cigar.len() * 4;
         }
 
@@ -278,7 +279,7 @@ impl Record {
             self.inner_mut().l_data += (new_q_len - old_q_len) as i32;
 
             // Reallocate if necessary
-            if self.inner().m_data < self.inner().l_data {
+            if (self.inner().m_data as i32) < self.inner().l_data {
                 // Verbosity due to lexical borrowing
                 let l_data = self.inner().l_data;
                 self.realloc_var_data(l_data as usize);
@@ -310,7 +311,7 @@ impl Record {
     }
 
     fn realloc_var_data(&mut self, new_len: usize) {
-        self.inner_mut().m_data = new_len as i32;
+        self.inner_mut().m_data = new_len as u32;
         // Pad
         self.inner_mut().m_data += 32 - self.inner().m_data % 32;
         unsafe {
@@ -395,9 +396,9 @@ impl Record {
 
     /// Add auxiliary data.
     /// push_aux() should never be called before set().
-    pub fn push_aux(&mut self, tag: &[u8], value: &Aux) {
+    pub fn push_aux(&mut self, tag: &[u8], value: &Aux) -> Result<(), PushAuxError> {
         let ctag = tag.as_ptr() as *mut i8;
-        unsafe {
+        let ret = unsafe {
             match *value {
                 Aux::Integer(v) => htslib::bam_aux_append(self.inner, ctag, b'i' as i8, 4, [v].as_mut_ptr() as *mut u8),
                 Aux::Float(v) => htslib::bam_aux_append(self.inner, ctag, b'f' as i8, 4, [v].as_mut_ptr() as *mut u8),
@@ -410,6 +411,12 @@ impl Record {
                     ffi::CString::new(v).unwrap().as_ptr() as *mut u8
                 ),
             }
+        };
+
+        if ret < 0 {
+            Err(PushAuxError::Some)
+        } else {
+            Ok(())
         }
     }
 

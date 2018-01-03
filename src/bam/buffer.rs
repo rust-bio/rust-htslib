@@ -51,6 +51,7 @@ impl RecordBuffer {
     /// the start coordinate of any previous `fill` operation.
     /// Coordinates are 0-based, and end is exclusive.
     /// Returns tuple with numbers of added and deleted records since the previous fetch.
+    #[allow(unused_assignments)]  // TODO this is needed because rustc thinks that deleted is unused
     pub fn fetch(&mut self, chrom: &[u8], start: u32, end: u32) -> Result<(usize, usize), Box<Error>> {
         let mut added = 0;
         // move overflow from last fetch into ringbuffer

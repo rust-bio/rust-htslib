@@ -77,23 +77,23 @@ impl NumericUtils for i32 {
 
 /// A BCF record.
 pub struct Record {
-    pub inner: *mut htslib::vcf::bcf1_t,
-    pub header: *mut htslib::vcf::bcf_hdr_t,
-    buffer: *mut ::libc::c_void,
+    pub inner: *mut htslib::bcf1_t,
+    pub header: *mut htslib::bcf_hdr_t,
+    buffer: *mut ::std::os::raw::c_void,
 }
 
 
 impl Record {
     pub fn new() -> Self {
-        let inner = unsafe { htslib::vcf::bcf_init() };
+        let inner = unsafe { htslib::bcf_init() };
         Record { inner: inner, header: ptr::null_mut(), buffer: ptr::null_mut() }
     }
 
-    pub fn inner(&self) -> &htslib::vcf::bcf1_t {
+    pub fn inner(&self) -> &htslib::bcf1_t {
         unsafe { &*self.inner }
     }
 
-    pub fn inner_mut(&mut self) -> &mut htslib::vcf::bcf1_t {
+    pub fn inner_mut(&mut self) -> &mut htslib::bcf1_t {
         unsafe { &mut *self.inner }
     }
 
@@ -117,8 +117,8 @@ impl Record {
 
     /// Get alleles. The first allele is the reference allele.
     pub fn alleles(&self) -> Vec<&[u8]> {
-        unsafe { htslib::vcf::bcf_unpack(self.inner, htslib::vcf::BCF_UN_STR) };
-        let n = self.inner().n_allele as usize;
+        unsafe { htslib::bcf_unpack(self.inner, htslib::BCF_UN_STR as i32) };
+        let n = self.inner().n_allele() as usize;
         let dec = self.inner().d;
         let alleles = unsafe { slice::from_raw_parts(dec.allele, n) };
         (0..n).map(|i| unsafe { ffi::CStr::from_ptr(alleles[i]).to_bytes() }).collect()
@@ -141,12 +141,12 @@ impl Record {
 
     /// Get the number of samples.
     pub fn sample_count(&self) -> u32 {
-        self.inner().n_fmt_n_sample >> 8
+        self.inner().n_sample()
     }
 
     /// Get the number of alleles, including reference allele.
-    pub fn allele_count(&self) -> u16 {
-        self.inner().n_allele
+    pub fn allele_count(&self) -> u32 {
+        self.inner().n_allele()
     }
 
     /// Get genotypes as vector of one `Genotype` per sample.
@@ -165,28 +165,28 @@ impl Record {
     /// The first dimension contains one array for each sample.
     /// Returns error if tag is not present in header.
     pub fn push_format_integer(&mut self, tag: &[u8], data: &[i32]) -> Result<(), TagWriteError> {
-        self.push_format(tag, data, htslib::vcf::BCF_HT_INT)
+        self.push_format(tag, data, htslib::BCF_HT_INT)
     }
 
     /// Add a float format tag. Data is a flattened two-dimensional array.
     /// The first dimension contains one array for each sample.
     /// Returns error if tag is not present in header.
     pub fn push_format_float(&mut self, tag: &[u8], data: &[f32]) -> Result<(), TagWriteError> {
-        self.push_format(tag, data, htslib::vcf::BCF_HT_REAL)
+        self.push_format(tag, data, htslib::BCF_HT_REAL)
     }
 
     /// Add a format tag. Data is a flattened two-dimensional array.
     /// The first dimension contains one array for each sample.
-    fn push_format<T>(&mut self, tag: &[u8], data: &[T], ht: i32) -> Result<(), TagWriteError> {
+    fn push_format<T>(&mut self, tag: &[u8], data: &[T], ht: u32) -> Result<(), TagWriteError> {
         assert!(data.len() > 0);
         unsafe {
-            if htslib::vcf::bcf_update_format(
+            if htslib::bcf_update_format(
                 self.header,
                 self.inner,
                 ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
-                data.as_ptr() as *const ::libc::c_void,
+                data.as_ptr() as *const ::std::os::raw::c_void,
                 data.len() as i32,
-                ht
+                ht as i32
             ) == 0 {
                 Ok(())
             }
@@ -198,25 +198,25 @@ impl Record {
 
     /// Add an integer info tag.
     pub fn push_info_integer(&mut self, tag: &[u8], data: &[i32]) -> Result<(), TagWriteError> {
-        self.push_info(tag, data, htslib::vcf::BCF_HT_INT)
+        self.push_info(tag, data, htslib::BCF_HT_INT)
     }
 
     /// Add a float info tag.
     pub fn push_info_float(&mut self, tag: &[u8], data: &[f32]) -> Result<(), TagWriteError> {
-        self.push_info(tag, data, htslib::vcf::BCF_HT_REAL)
+        self.push_info(tag, data, htslib::BCF_HT_REAL)
     }
 
     /// Add an info tag.
-    pub fn push_info<T>(&mut self, tag: &[u8], data: &[T], ht: i32) -> Result<(), TagWriteError> {
+    pub fn push_info<T>(&mut self, tag: &[u8], data: &[T], ht: u32) -> Result<(), TagWriteError> {
         assert!(data.len() > 0);
         unsafe {
-            if htslib::vcf::bcf_update_info(
+            if htslib::bcf_update_info(
                 self.header,
                 self.inner,
                 ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
-                data.as_ptr() as *const ::libc::c_void,
+                data.as_ptr() as *const ::std::os::raw::c_void,
                 data.len() as i32,
-                ht
+                ht as i32
             ) == 0 {
                 Ok(())
             }
@@ -228,7 +228,7 @@ impl Record {
 
     /// Remove unused alleles.
     pub fn trim_alleles(&mut self) -> Result<(), TrimAllelesError> {
-        match unsafe { htslib::vcfutils::bcf_trim_alleles(self.header, self.inner) } {
+        match unsafe { htslib::bcf_trim_alleles(self.header, self.inner) } {
             -1 => Err(TrimAllelesError::Some),
             _  => Ok(())
         }
@@ -330,9 +330,9 @@ impl<'a> Genotypes<'a> {
 impl Drop for Record {
     fn drop(&mut self) {
         if !self.buffer.is_null() {
-            unsafe { ::libc::free(self.buffer) };
+            unsafe { ::libc::free(self.buffer as *mut ::libc::c_void) };
         }
-        unsafe { htslib::vcf::bcf_destroy(self.inner) };
+        unsafe { htslib::bcf_destroy(self.inner) };
     }
 }
 
@@ -348,16 +348,16 @@ pub struct Info<'a> {
 
 
 impl<'a> Info<'a> {
-    fn data(&mut self, data_type: i32) -> Result<Option<(usize, i32)>, InfoReadError> {
+    fn data(&mut self, data_type: u32) -> Result<Option<(usize, i32)>, InfoReadError> {
         let mut n: i32 = 0;
         match unsafe {
-            htslib::vcf::bcf_get_info_values(
+            htslib::bcf_get_info_values(
                 self.record.header,
                 self.record.inner,
                 ffi::CString::new(self.tag).unwrap().as_ptr() as *mut i8,
                 &mut self.record.buffer,
                 &mut n,
-                data_type
+                data_type as i32
             )
         } {
             -1 => Err(InfoReadError::UndefinedTag),
@@ -370,7 +370,7 @@ impl<'a> Info<'a> {
     /// Get integers from tag. `None` if tag not present in record.
     /// Import `bcf::record::Numeric` for missing value handling.
     pub fn integer(&mut self) -> Result<Option<&'a [i32]>, InfoReadError> {
-        self.data(htslib::vcf::BCF_HT_INT).map(|data| data.map(|(n, _)| {
+        self.data(htslib::BCF_HT_INT).map(|data| data.map(|(n, _)| {
             trim_slice(
                 unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) }
             )
@@ -380,7 +380,7 @@ impl<'a> Info<'a> {
     /// Get mutable integers from tag. `None` if tag not present in record.
     /// Import `bcf::record::Numeric` for missing value handling.
     pub fn integer_mut(&mut self) -> Result<Option<&'a mut [i32]>, InfoReadError> {
-        self.data(htslib::vcf::BCF_HT_INT).map(|data| data.map(|(n, _)| {
+        self.data(htslib::BCF_HT_INT).map(|data| data.map(|(n, _)| {
             unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut i32, n) }
         }))
     }
@@ -388,7 +388,7 @@ impl<'a> Info<'a> {
     /// Get floats from tag. `None` if tag not present in record.
     /// Import `bcf::record::Numeric` for missing value handling.
     pub fn float(&mut self) -> Result<Option<&'a [f32]>, InfoReadError> {
-        self.data(htslib::vcf::BCF_HT_REAL).map(|data| data.map(|(n, _)| {
+        self.data(htslib::BCF_HT_REAL).map(|data| data.map(|(n, _)| {
             trim_slice(
                 unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) }
             )
@@ -398,13 +398,13 @@ impl<'a> Info<'a> {
     /// Get mutable floats from tag. `None` if tag not present in record.
     /// Import `bcf::record::Numeric` for missing value handling.
     pub fn float_mut(&mut self) -> Result<Option<&'a mut [f32]>, InfoReadError> {
-        self.data(htslib::vcf::BCF_HT_REAL).map(|data| data.map(|(n, _)| {
+        self.data(htslib::BCF_HT_REAL).map(|data| data.map(|(n, _)| {
             unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut f32, n) }
         }))
     }
 
     pub fn flag(&mut self) -> Result<bool, InfoReadError> {
-        self.data(htslib::vcf::BCF_HT_FLAG).map(|data| {
+        self.data(htslib::BCF_HT_FLAG).map(|data| {
             match data {
                 Some((_, ret)) => ret == 1,
                 None => false
@@ -414,7 +414,7 @@ impl<'a> Info<'a> {
 
     /// Get strings from tag. `None` if tag not present in record.
     pub fn string(&mut self) -> Result<Option<Vec<&'a [u8]>>, InfoReadError> {
-        self.data(htslib::vcf::BCF_HT_STR).map(|data| data.map(|(n, ret)| {
+        self.data(htslib::BCF_HT_STR).map(|data| data.map(|(n, ret)| {
             unsafe {
                 slice::from_raw_parts(self.record.buffer as *const u8, ret as usize)
             }.chunks(n).map(|s| {
@@ -426,7 +426,7 @@ impl<'a> Info<'a> {
 
     /// Get mutable strings from tag. `None` if tag not present in record.
     pub fn string_mut(&mut self) -> Result<Option<Vec<&'a mut [u8]>>, InfoReadError> {
-        self.data(htslib::vcf::BCF_HT_STR).map(|data| data.map(|(n, ret)| {
+        self.data(htslib::BCF_HT_STR).map(|data| data.map(|(n, ret)| {
             unsafe {
                 slice::from_raw_parts_mut(self.record.buffer as *mut u8, ret as usize)
             }.chunks_mut(n).collect()
@@ -448,14 +448,14 @@ fn trim_slice<T: PartialEq + NumericUtils>(s: &[T]) -> &[T] {
 pub struct Format<'a> {
     record: &'a mut Record,
     tag: &'a [u8],
-    inner: *mut htslib::vcf::bcf_fmt_t,
+    inner: *mut htslib::bcf_fmt_t,
 }
 
 
 impl<'a> Format<'a> {
     /// Create new format data in a given record.
     fn new(record: &'a mut Record, tag: &'a [u8]) -> Format<'a> {
-        let inner = unsafe { htslib::vcf::bcf_get_fmt(
+        let inner = unsafe { htslib::bcf_get_fmt(
             record.header,
             record.inner,
             ffi::CString::new(tag).unwrap().as_ptr() as *mut i8
@@ -463,11 +463,11 @@ impl<'a> Format<'a> {
         Format { record: record, tag: tag, inner: inner }
     }
 
-    pub fn inner(&self) -> &htslib::vcf::bcf_fmt_t {
+    pub fn inner(&self) -> &htslib::bcf_fmt_t {
         unsafe { &*self.inner }
     }
 
-    pub fn inner_mut(&mut self) -> &mut htslib::vcf::bcf_fmt_t {
+    pub fn inner_mut(&mut self) -> &mut htslib::bcf_fmt_t {
         unsafe { &mut *self.inner }
     }
 
@@ -476,16 +476,16 @@ impl<'a> Format<'a> {
     }
 
     /// Read and decode format data into a given type.
-    fn data(&mut self, data_type: i32) -> Result<(usize, i32), FormatReadError> {
+    fn data(&mut self, data_type: u32) -> Result<(usize, i32), FormatReadError> {
         let mut n: i32 = 0;
         match unsafe {
-            htslib::vcf::bcf_get_format_values(
+            htslib::bcf_get_format_values(
                 self.record.header,
                 self.record.inner,
                 ffi::CString::new(self.tag).unwrap().as_ptr() as *mut i8,
                 &mut self.record.buffer,
                 &mut n,
-                data_type
+                data_type as i32
             )
         } {
             -1 => Err(FormatReadError::UndefinedTag),
@@ -497,7 +497,7 @@ impl<'a> Format<'a> {
 
     /// Get format data as integers.
     pub fn integer(&mut self) -> Result<Vec<&'a [i32]>, FormatReadError> {
-        self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
+        self.data(htslib::BCF_HT_INT).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts(self.record.buffer as *const i32, n)
             }.chunks(self.values_per_sample()).map(|s| trim_slice(s)).collect()
@@ -506,7 +506,7 @@ impl<'a> Format<'a> {
 
     /// Get format data as mutable integers.
     pub fn integer_mut(&mut self) -> Result<Vec<&'a mut [i32]>, FormatReadError> {
-        self.data(htslib::vcf::BCF_HT_INT).map(|(n, _)| {
+        self.data(htslib::BCF_HT_INT).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts_mut(self.record.buffer as *mut i32, n)
             }.chunks_mut(self.values_per_sample()).collect()
@@ -515,7 +515,7 @@ impl<'a> Format<'a> {
 
     /// Get format data as floats.
     pub fn float(&mut self) -> Result<Vec<&'a [f32]>, FormatReadError> {
-        self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
+        self.data(htslib::BCF_HT_REAL).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts(self.record.buffer as *const f32, n)
             }.chunks(self.values_per_sample()).map(|s| trim_slice(s)).collect()
@@ -523,7 +523,7 @@ impl<'a> Format<'a> {
     }
 
     pub fn float_mut(&mut self) -> Result<Vec<&'a mut [f32]>, FormatReadError> {
-        self.data(htslib::vcf::BCF_HT_REAL).map(|(n, _)| {
+        self.data(htslib::BCF_HT_REAL).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts_mut(self.record.buffer as *mut f32, n)
             }.chunks_mut(self.values_per_sample()).collect()
@@ -531,7 +531,7 @@ impl<'a> Format<'a> {
     }
 
     pub fn string(&mut self) -> Result<Vec<&'a [u8]>, FormatReadError> {
-        self.data(htslib::vcf::BCF_HT_STR).map(|(n, _)| {
+        self.data(htslib::BCF_HT_STR).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts(self.record.buffer as *const u8, n)
             }.chunks(self.values_per_sample()).map(|s| {
@@ -542,7 +542,7 @@ impl<'a> Format<'a> {
     }
 
     pub fn string_mut(&mut self) -> Result<Vec<&'a mut [u8]>, FormatReadError> {
-        self.data(htslib::vcf::BCF_HT_STR).map(|(n, _)| {
+        self.data(htslib::BCF_HT_STR).map(|(n, _)| {
             unsafe {
                 slice::from_raw_parts_mut(self.record.buffer as *mut u8, n)
             }.chunks_mut(self.values_per_sample()).collect()

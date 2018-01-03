@@ -16,7 +16,7 @@ pub type SampleSubset = Vec<i32>;
 
 /// A BCF header.
 pub struct Header {
-    pub inner: *mut htslib::vcf::bcf_hdr_t,
+    pub inner: *mut htslib::bcf_hdr_t,
     pub subset: Option<SampleSubset>,
 }
 
@@ -25,13 +25,13 @@ impl Header {
     /// Create a new header.
     pub fn new() -> Self {
         Header {
-            inner: unsafe { htslib::vcf::bcf_hdr_init(ffi::CString::new(&b"w"[..]).unwrap().as_ptr()) },
+            inner: unsafe { htslib::bcf_hdr_init(ffi::CString::new(&b"w"[..]).unwrap().as_ptr()) },
             subset: None,
         }
     }
 
     pub fn with_template(header: &HeaderView) -> Self {
-        Header { inner: unsafe { htslib::vcf::bcf_hdr_dup(header.inner) }, subset: None }
+        Header { inner: unsafe { htslib::bcf_hdr_dup(header.inner) }, subset: None }
     }
 
     pub fn subset_template(header: &HeaderView, samples: &[&[u8]]) -> Result<Self, SubsetError> {
@@ -39,7 +39,12 @@ impl Header {
         let names: Vec<_> = samples.iter().map(|&s| ffi::CString::new(s).unwrap()).collect();
         let name_pointers: Vec<_> = names.iter().map(|s| s.as_ptr() as *mut i8).collect();
         let inner = unsafe {
-            htslib::vcf::bcf_hdr_subset(header.inner, samples.len() as i32, name_pointers.as_ptr(), imap.as_mut_ptr() as *mut i32)
+            htslib::bcf_hdr_subset(
+                header.inner,
+                samples.len() as i32,
+                name_pointers.as_ptr() as *const *const i8,
+                imap.as_mut_ptr() as *mut i32
+            )
         };
         if inner.is_null() {
             Err(SubsetError::DuplicateSampleName)
@@ -50,26 +55,30 @@ impl Header {
     }
 
     pub fn push_sample(&mut self, sample: &[u8]) -> &mut Self {
-        unsafe { htslib::vcf::bcf_hdr_add_sample(self.inner, ffi::CString::new(sample).unwrap().as_ptr()) };
+        unsafe { htslib::bcf_hdr_add_sample(self.inner, ffi::CString::new(sample).unwrap().as_ptr()) };
         self
     }
 
     /// Add a record to the header.
     pub fn push_record(&mut self, record: &[u8]) -> &mut Self {
-        unsafe { htslib::vcf::bcf_hdr_append(self.inner, ffi::CString::new(record).unwrap().as_ptr()) };
+        unsafe { htslib::bcf_hdr_append(self.inner, ffi::CString::new(record).unwrap().as_ptr()) };
         self
     }
 
     pub fn remove_info(&mut self, tag: &[u8]) -> &mut Self {
         unsafe {
-            htslib::vcf::bcf_hdr_remove(self.inner, htslib::vcf::BCF_HL_INFO, tag.as_ptr() as *const i8);
+            htslib::bcf_hdr_remove(self.inner, htslib::BCF_HL_INFO as i32, tag.as_ptr() as *const i8);
         }
         self
     }
 
     pub fn remove_format(&mut self, tag: &[u8]) -> &mut Self {
         unsafe {
-            htslib::vcf::bcf_hdr_remove(self.inner, htslib::vcf::BCF_HL_FMT, tag.as_ptr() as *const i8);
+            htslib::bcf_hdr_remove(
+                self.inner,
+                htslib::BCF_HL_FMT as i32,
+                tag.as_ptr() as *const i8
+            );
         }
         self
     }
@@ -78,29 +87,29 @@ impl Header {
 
 impl Drop for Header {
     fn drop(&mut self) {
-        unsafe { htslib::vcf::bcf_hdr_destroy(self.inner) };
+        unsafe { htslib::bcf_hdr_destroy(self.inner) };
     }
 }
 
 
 
 pub struct HeaderView {
-    pub inner: *mut htslib::vcf::bcf_hdr_t,
+    pub inner: *mut htslib::bcf_hdr_t,
 }
 
 
 impl HeaderView {
-    pub fn new(inner: *mut htslib::vcf::bcf_hdr_t) -> Self {
+    pub fn new(inner: *mut htslib::bcf_hdr_t) -> Self {
         HeaderView { inner: inner }
     }
 
     #[inline]
-    fn inner(&self) -> htslib::vcf::bcf_hdr_t {
+    fn inner(&self) -> htslib::bcf_hdr_t {
         unsafe { (*self.inner) }
     }
 
     pub fn sample_count(&self) -> u32 {
-        self.inner().n[htslib::vcf::BCF_DT_SAMPLE as usize] as u32
+        self.inner().n[htslib::BCF_DT_SAMPLE as usize] as u32
     }
 
     pub fn samples(&self) -> Vec<&[u8]> {
@@ -110,7 +119,7 @@ impl HeaderView {
 
     pub fn rid2name(&self, rid: u32) -> &[u8] {
         unsafe {
-            let dict = self.inner().id[htslib::vcf::BCF_DT_CTG as usize];
+            let dict = self.inner().id[htslib::BCF_DT_CTG as usize];
             let ptr = (*dict.offset(rid as isize)).key;
             ffi::CStr::from_ptr(ptr).to_bytes()
         }
@@ -118,9 +127,9 @@ impl HeaderView {
 
     pub fn name2rid(&self, name: &[u8]) -> Result<u32, RidError> {
         unsafe {
-            match htslib::vcf::bcf_hdr_id2int(
+            match htslib::bcf_hdr_id2int(
                 self.inner,
-                htslib::vcf::BCF_DT_CTG,
+                htslib::BCF_DT_CTG as i32,
                 ffi::CString::new(name).unwrap().as_ptr() as *mut i8
             ) {
                 -1 => Err(RidError::UnknownSequence(str::from_utf8(name).unwrap().to_owned())),
@@ -130,41 +139,41 @@ impl HeaderView {
     }
 
     pub fn info_type(&self, tag: &[u8]) -> Result<(TagType, TagLength), TagTypeError> {
-        self.tag_type(tag, htslib::vcf::BCF_HL_INFO)
+        self.tag_type(tag, htslib::BCF_HL_INFO)
     }
 
     pub fn format_type(&self, tag: &[u8]) -> Result<(TagType, TagLength), TagTypeError> {
-        self.tag_type(tag, htslib::vcf::BCF_HL_FMT)
+        self.tag_type(tag, htslib::BCF_HL_FMT)
     }
 
-    fn tag_type(&self, tag: &[u8], hdr_type: ::libc::c_int) -> Result<(TagType, TagLength), TagTypeError> {
+    fn tag_type(&self, tag: &[u8], hdr_type: ::libc::c_uint) -> Result<(TagType, TagLength), TagTypeError> {
         let (_type, length) = unsafe {
-            let id = htslib::vcf::bcf_hdr_id2int(
+            let id = htslib::bcf_hdr_id2int(
                 self.inner,
-                htslib::vcf::BCF_DT_ID,
+                htslib::BCF_DT_ID as i32,
                 ffi::CString::new(tag).unwrap().as_ptr() as *mut i8
             );
             if id < 0 {
                 return Err(TagTypeError::UndefinedTag(str::from_utf8(tag).unwrap().to_owned()));
             }
-            let n = (*self.inner).n[htslib::vcf::BCF_DT_ID as usize] as usize;
-            let entry = slice::from_raw_parts((*self.inner).id[htslib::vcf::BCF_DT_ID as usize], n);
+            let n = (*self.inner).n[htslib::BCF_DT_ID as usize] as usize;
+            let entry = slice::from_raw_parts((*self.inner).id[htslib::BCF_DT_ID as usize], n);
             let d = (*entry[id as usize].val).info[hdr_type as usize];
             (d >> 4 & 0xf, d >> 8 & 0xf)
         };
-        let _type = match _type as ::libc::c_int {
-            htslib::vcf::BCF_HT_FLAG => TagType::Flag,
-            htslib::vcf::BCF_HT_INT => TagType::Integer,
-            htslib::vcf::BCF_HT_REAL => TagType::Float,
-            htslib::vcf::BCF_HT_STR => TagType::String,
+        let _type = match _type as ::libc::c_uint {
+            htslib::BCF_HT_FLAG => TagType::Flag,
+            htslib::BCF_HT_INT => TagType::Integer,
+            htslib::BCF_HT_REAL => TagType::Float,
+            htslib::BCF_HT_STR => TagType::String,
             _ => return Err(TagTypeError::UnexpectedTagType)
         };
-        let length = match length as ::libc::c_int {
-            htslib::vcf::BCF_VL_FIXED => TagLength::Fixed,
-            htslib::vcf::BCF_VL_VAR => TagLength::Variable,
-            htslib::vcf::BCF_VL_A => TagLength::AltAlleles,
-            htslib::vcf::BCF_VL_R => TagLength::Alleles,
-            htslib::vcf::BCF_VL_G => TagLength::Genotypes,
+        let length = match length as ::libc::c_uint {
+            htslib::BCF_VL_FIXED => TagLength::Fixed,
+            htslib::BCF_VL_VAR => TagLength::Variable,
+            htslib::BCF_VL_A => TagLength::AltAlleles,
+            htslib::BCF_VL_R => TagLength::Alleles,
+            htslib::BCF_VL_G => TagLength::Genotypes,
             _ => return Err(TagTypeError::UnexpectedTagType)
         };
 
@@ -176,7 +185,7 @@ impl HeaderView {
 impl Clone for HeaderView {
     fn clone(&self) -> Self {
         HeaderView {
-            inner: unsafe { htslib::vcf::bcf_hdr_dup(self.inner) }
+            inner: unsafe { htslib::bcf_hdr_dup(self.inner) }
         }
     }
 }
@@ -185,7 +194,7 @@ impl Clone for HeaderView {
 impl Drop for HeaderView {
     fn drop(&mut self) {
         unsafe {
-            htslib::vcf::bcf_hdr_destroy(self.inner);
+            htslib::bcf_hdr_destroy(self.inner);
         }
     }
 }
