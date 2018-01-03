@@ -319,6 +319,13 @@ impl ::std::default::Default for Struct_Unnamed9 {
 }
 pub type bam1_t = Struct_Unnamed9;
 pub type samFile = htsFile;
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct bam_pileup_cd {
+    pub data: [u64; 1usize] // this can be a pointer, an int64 or a double
+}
+
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct Struct_Unnamed10 {
@@ -469,7 +476,7 @@ extern "C" {
      -> ::libc::c_int;
     pub fn bam_aux_get(b: *const bam1_t, tag: *mut ::libc::c_char)
      -> *mut uint8_t;
-    pub fn bam_aux2i(s: *const uint8_t) -> int32_t;
+    pub fn bam_aux2i(s: *const uint8_t) -> int64_t;
     pub fn bam_aux2f(s: *const uint8_t) -> ::libc::c_double;
     pub fn bam_aux2A(s: *const uint8_t) -> ::libc::c_char;
     pub fn bam_aux2Z(s: *const uint8_t) -> *mut ::libc::c_char;

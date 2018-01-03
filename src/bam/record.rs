@@ -454,7 +454,7 @@ impl Drop for Record {
 #[derive(Debug)]
 #[derive(PartialEq)]
 pub enum Aux<'a> {
-    Integer(i32),
+    Integer(i64),
     String(&'a [u8]),
     Float(f64),
     Char(u8),
@@ -477,7 +477,7 @@ impl<'a> Aux<'a> {
         }
     }
 
-    pub fn integer(&self) -> i32 {
+    pub fn integer(&self) -> i64 {
         match *self {
             Aux::Integer(x) => x,
             _ => panic!("not an integer"),
