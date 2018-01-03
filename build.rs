@@ -40,6 +40,6 @@ fn main() {
         panic!("error buiding macro wrapper");
     }
 
-    println!("cargo:rustc-flags=-L {out}/htslib -L {out} -l static=hts -l static=macros -l z -l lzma",
+    println!("cargo:rustc-flags=-L {out}/htslib -L {out} -l static=hts -l static=macros -l z -l lzma -l bz2",
              out=out);
 }
