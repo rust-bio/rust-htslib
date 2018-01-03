@@ -33,6 +33,6 @@ fn main() {
                                               .expect("Unable to generate bindings.");
     bindings.write_to_file(out.join("bindings.rs")).expect("Could not write bindings.");
 
-    println!("cargo:rustc-flags=-L {out}/htslib -L {out} -l static=hts -l static=macros -l z -l lzma -l bz2",
+    println!("cargo:rustc-flags=-L {out}/htslib -L {out} -l static=hts -l z -l lzma -l bz2",
              out=out.to_str().unwrap());
 }
