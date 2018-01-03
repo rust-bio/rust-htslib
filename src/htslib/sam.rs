@@ -333,8 +333,7 @@ pub struct Struct_Unnamed10 {
     pub qpos: int32_t,
     pub indel: ::libc::c_int,
     pub level: ::libc::c_int,
-    pub isdel_ishead_istail_isrefskip_isaux: uint32_t,
-    pub cd: bam_pileup_cd
+    pub isdel_ishead_istail_isrefskip_isaux: uint32_t
 }
 impl ::std::default::Default for Struct_Unnamed10 {
     fn default() -> Struct_Unnamed10 { unsafe { ::std::mem::zeroed() } }
