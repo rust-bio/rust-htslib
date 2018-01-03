@@ -19,13 +19,17 @@ use utils;
 
 /// A macro creating methods for flag access.
 macro_rules! flag {
-    ($get:ident, $set:ident, $bit:expr) => (
+    ($get:ident, $set:ident, $unset:ident, $bit:expr) => (
         pub fn $get(&self) -> bool {
             self.inner().core.flag & $bit != 0
         }
 
         pub fn $set(&mut self) {
             self.inner_mut().core.flag |= $bit;
+        }
+
+        pub fn $unset(&mut self) {
+            self.inner_mut().core.flag &= !$bit;
         }
     )
 }
@@ -60,7 +64,7 @@ unsafe impl Sync for Record {}
 impl Clone for Record {
     fn clone(&self) -> Self {
         let copy = Record::new();
-        unsafe { htslib::bam_copy1(self.inner, copy.inner) };
+        unsafe { htslib::bam_copy1(copy.inner, self.inner) };
         copy
     }
 }
@@ -429,18 +433,18 @@ impl Record {
         }
     }
 
-    flag!(is_paired, set_paired, 1u16);
-    flag!(is_proper_pair, set_proper_pair, 2u16);
-    flag!(is_unmapped, set_unmapped, 4u16);
-    flag!(is_mate_unmapped, set_mate_unmapped, 8u16);
-    flag!(is_reverse, set_reverse, 16u16);
-    flag!(is_mate_reverse, set_mate_reverse, 32u16);
-    flag!(is_first_in_template, set_first_in_template, 64u16);
-    flag!(is_last_in_template, set_last_in_template, 128u16);
-    flag!(is_secondary, set_secondary, 256u16);
-    flag!(is_quality_check_failed, set_quality_check_failed, 512u16);
-    flag!(is_duplicate, set_duplicate, 1024u16);
-    flag!(is_supplementary, set_supplementary, 2048u16);
+    flag!(is_paired, set_paired, unset_paired, 1u16);
+    flag!(is_proper_pair, set_proper_pair, unset_proper_pair, 2u16);
+    flag!(is_unmapped, set_unmapped, unset_unmapped, 4u16);
+    flag!(is_mate_unmapped, set_mate_unmapped, unset_mate_unmapped, 8u16);
+    flag!(is_reverse, set_reverse, unset_reverse, 16u16);
+    flag!(is_mate_reverse, set_mate_reverse, unset_mate_reverse, 32u16);
+    flag!(is_first_in_template, set_first_in_template, unset_first_in_template, 64u16);
+    flag!(is_last_in_template, set_last_in_template, unset_last_in_template, 128u16);
+    flag!(is_secondary, set_secondary, unset_secondary, 256u16);
+    flag!(is_quality_check_failed, set_quality_check_failed, unset_quality_check_failed, 512u16);
+    flag!(is_duplicate, set_duplicate, unset_duplicate, 1024u16);
+    flag!(is_supplementary, set_supplementary, unset_supplementary, 2048u16);
 }
 
 
@@ -1081,7 +1085,30 @@ mod tests {
     fn test_clone() {
         let mut rec = Record::new();
         rec.set_pos(300);
+        rec.set_qname(b"read1");
         let clone = rec.clone();
         assert_eq!(rec.pos(), clone.pos());
+        assert_eq!(rec.qname(), clone.qname());
+    }
+
+    #[test]
+    fn test_flags() {
+        let mut rec = Record::new();
+
+        rec.set_paired();
+        assert_eq!(rec.is_paired(), true);
+
+        rec.set_supplementary();
+        assert_eq!(rec.is_supplementary(), true);
+        assert_eq!(rec.is_supplementary(), true);
+
+        rec.unset_paired();
+        assert_eq!(rec.is_paired(), false);
+        assert_eq!(rec.is_supplementary(), true);
+
+        rec.unset_supplementary();
+        assert_eq!(rec.is_paired(), false);
+        assert_eq!(rec.is_supplementary(), false);
+
     }
 }
