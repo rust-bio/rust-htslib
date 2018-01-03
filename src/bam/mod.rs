@@ -44,7 +44,7 @@ pub trait Read: Sized {
     fn pileup(&mut self) -> pileup::Pileups<Self>;
 
     /// Return the BGZF struct
-    fn bgzf(&self) -> *mut htslib::Struct_BGZF;
+    fn bgzf(&self) -> *mut htslib::BGZF;
 
     /// Return the header.
     fn header(&self) -> &HeaderView;
@@ -68,7 +68,7 @@ pub trait Read: Sized {
 
 /// A BAM reader.
 pub struct Reader {
-    bgzf: *mut htslib::Struct_BGZF,
+    bgzf: *mut htslib::BGZF,
     header: HeaderView,
 }
 
@@ -114,7 +114,7 @@ impl Reader {
         Ok(Reader { bgzf: bgzf, header: HeaderView::new(header) })
     }
 
-    extern fn pileup_read(data: *mut ::libc::c_void, record: *mut htslib::bam1_t) -> ::libc::c_int {
+    extern fn pileup_read(data: *mut ::std::os::raw::c_void, record: *mut htslib::bam1_t) -> i32 {
         let _self = unsafe { &*(data as *mut Self) };
         unsafe { htslib::bam_read1(_self.bgzf, record) }
     }
@@ -144,13 +144,13 @@ impl Read for Reader {
         let itr = unsafe {
             htslib::bam_plp_init(
                 Some(Reader::pileup_read),
-                _self as *mut ::libc::c_void
+                _self as *mut ::std::os::raw::c_void
             )
         };
         pileup::Pileups::new(self, itr)
     }
 
-    fn bgzf(&self) -> *mut htslib::Struct_BGZF {
+    fn bgzf(&self) -> *mut htslib::BGZF {
         self.bgzf
     }
 
@@ -170,7 +170,7 @@ impl Drop for Reader {
 
 
 pub struct IndexedReader {
-    bgzf: *mut htslib::Struct_BGZF,
+    bgzf: *mut htslib::BGZF,
     header: HeaderView,
     idx: *mut htslib::hts_idx_t,
     itr: Option<*mut htslib:: hts_itr_t>,
@@ -213,7 +213,7 @@ impl IndexedReader {
         let idx = unsafe {
             htslib::hts_idx_load(
                 path.as_ptr(),
-                htslib::HTS_FMT_BAI
+                htslib::HTS_FMT_BAI as i32
             )
         };
         if idx.is_null() {
@@ -240,7 +240,7 @@ impl IndexedReader {
         }
     }
 
-    extern fn pileup_read(data: *mut ::libc::c_void, record: *mut htslib::bam1_t) -> ::libc::c_int {
+    extern fn pileup_read(data: *mut ::std::os::raw::c_void, record: *mut htslib::bam1_t) -> i32 {
         let _self = unsafe { &*(data as *mut Self) };
         match _self.itr {
             Some(itr) => itr_next(_self.bgzf, itr, record), // read fetched region
@@ -276,13 +276,13 @@ impl Read for IndexedReader {
         let itr = unsafe {
             htslib::bam_plp_init(
                 Some(IndexedReader::pileup_read),
-                _self as *mut ::libc::c_void
+                _self as *mut ::std::os::raw::c_void
             )
         };
         pileup::Pileups::new(self, itr)
     }
 
-    fn bgzf(&self) -> *mut htslib::Struct_BGZF {
+    fn bgzf(&self) -> *mut htslib::BGZF {
         self.bgzf
     }
 
@@ -307,7 +307,7 @@ impl Drop for IndexedReader {
 
 /// A BAM writer.
 pub struct Writer {
-    f: *mut htslib::Struct_BGZF,
+    f: *mut htslib::BGZF,
     header: HeaderView,
 }
 
@@ -384,7 +384,7 @@ impl Writer {
     ///
     /// * `n_threads` - number of background writer threads to use
     pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
-        let r = unsafe { htslib::bgzf_mt(self.f, n_threads as ::libc::c_int, 256) };
+        let r = unsafe { htslib::bgzf_mt(self.f, n_threads as i32, 256) };
         if r != 0 {
             Err(ThreadingError::Some)
         } else {
@@ -560,6 +560,7 @@ quick_error! {
     }
 }
 
+
 quick_error! {
     #[derive(Debug)]
     pub enum SeekError {
@@ -570,8 +571,18 @@ quick_error! {
 }
 
 
+quick_error! {
+    #[derive(Debug)]
+    pub enum PushAuxError {
+        Some {
+            description("error pushing aux data to record")
+        }
+    }
+}
+
+
 /// Wrapper for opening a BAM file.
-fn bgzf_open(path: &ffi::CStr, mode: &[u8]) -> Result<*mut htslib::Struct_BGZF, BGZFError> {
+fn bgzf_open(path: &ffi::CStr, mode: &[u8]) -> Result<*mut htslib::BGZF, BGZFError> {
     let ret = unsafe {
         htslib::bgzf_open(
             path.as_ptr(),
@@ -587,12 +598,12 @@ fn bgzf_open(path: &ffi::CStr, mode: &[u8]) -> Result<*mut htslib::Struct_BGZF, 
 
 
 /// Wrapper for iterating an indexed BAM file.
-fn itr_next(bgzf: *mut htslib::Struct_BGZF, itr: *mut htslib:: hts_itr_t, record: *mut htslib::bam1_t) -> i32 {
+fn itr_next(bgzf: *mut htslib::BGZF, itr: *mut htslib:: hts_itr_t, record: *mut htslib::bam1_t) -> i32 {
     unsafe {
         htslib::hts_itr_next(
             bgzf,
             itr,
-            record as *mut ::libc::c_void,
+            record as *mut ::std::os::raw::c_void,
             ptr::null_mut()
         )
     }
@@ -822,7 +833,7 @@ mod tests {
 
     #[test]
     fn test_read_sam_header() {
-        let mut bam = Reader::from_path(&"test/test.bam").ok().expect("Error opening file.");
+        let bam = Reader::from_path(&"test/test.bam").ok().expect("Error opening file.");
 
         let true_header = "@SQ\tSN:CHROMOSOME_I\tLN:15072423\n@SQ\tSN:CHROMOSOME_II\tLN:15279345\n@SQ\tSN:CHROMOSOME_III\tLN:13783700\n@SQ\tSN:CHROMOSOME_IV\tLN:17493793\n@SQ\tSN:CHROMOSOME_V\tLN:20924149\n".to_string();
         let header_text = String::from_utf8(bam.header.as_bytes().to_owned()).unwrap();
@@ -872,7 +883,7 @@ mod tests {
         rec.set(names[0], &cigars[0], seqs[0], quals[0]);
         // note: this segfaults if you push_aux() before set()
         //       because set() obliterates aux
-        rec.push_aux(b"NM", &Aux::Integer(15));
+        rec.push_aux(b"NM", &Aux::Integer(15)).unwrap();
 
         assert_eq!(rec.qname(), names[0]);
         assert_eq!(*rec.cigar(), cigars[0]);
@@ -891,7 +902,7 @@ mod tests {
 
         let mut rec = record::Record::new();
         rec.set(names[0], &cigars[0], seqs[0], quals[0]);
-        rec.push_aux(b"NM", &Aux::Integer(15));
+        rec.push_aux(b"NM", &Aux::Integer(15)).unwrap();
 
         assert_eq!(rec.qname(), names[0]);
         assert_eq!(*rec.cigar(), cigars[0]);
@@ -979,7 +990,7 @@ mod tests {
             for i in 0..names.len() {
                 let mut rec = record::Record::new();
                 rec.set(names[i], &cigars[i], seqs[i], quals[i]);
-                rec.push_aux(b"NM", &Aux::Integer(15));
+                rec.push_aux(b"NM", &Aux::Integer(15)).unwrap();
 
                 bam.write(&mut rec).ok().expect("Failed to write record.");
             }
@@ -1025,7 +1036,7 @@ mod tests {
                 let mut rec = record::Record::new();
                 let idx = i % names.len();
                 rec.set(names[idx], &cigars[idx], seqs[idx], quals[idx]);
-                rec.push_aux(b"NM", &Aux::Integer(15));
+                rec.push_aux(b"NM", &Aux::Integer(15)).unwrap();
                 rec.set_pos(i as i32);
 
                 bam.write(&mut rec).ok().expect("Failed to write record.");

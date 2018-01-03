@@ -83,22 +83,22 @@ impl<'a> Alignment<'a> {
 
     /// Whether there is a deletion in the alignment at this position.
     pub fn is_del(&self) -> bool {
-        (self.inner.isdel_ishead_istail_isrefskip_isaux & 0b1) != 0
+        self.inner.is_del() != 0
     }
 
     /// Whether the alignment starts at this position.
     pub fn is_head(&self) -> bool {
-        (self.inner.isdel_ishead_istail_isrefskip_isaux & 0b10) != 0
+        self.inner.is_head() != 0
     }
 
     /// Whether the alignment ends at this position.
     pub fn is_tail(&self) -> bool {
-        (self.inner.isdel_ishead_istail_isrefskip_isaux & 0b100) != 0
+        self.inner.is_tail() != 0
     }
 
     /// Whether this position is marked as refskip in the CIGAR string.
     pub fn is_refskip(&self) -> bool {
-        (self.inner.isdel_ishead_istail_isrefskip_isaux & 0b1000) != 0
+        self.inner.is_refskip() != 0
     }
 
     /// The corresponding record.

@@ -21,7 +21,7 @@ pub use bcf::buffer::RecordBuffer;
 
 
 pub struct Reader {
-    inner: *mut htslib::vcf::htsFile,
+    inner: *mut htslib::htsFile,
     header: HeaderView,
 }
 
@@ -52,7 +52,7 @@ impl Reader {
 
     fn new(path: &[u8]) -> Result<Self, BCFError> {
         let htsfile = try!(bcf_open(path, b"r"));
-        let header = unsafe { htslib::vcf::bcf_hdr_read(htsfile) };
+        let header = unsafe { htslib::bcf_hdr_read(htsfile) };
         Ok(Reader { inner: htsfile, header: HeaderView::new(header) })
     }
 
@@ -61,7 +61,7 @@ impl Reader {
     }
 
     pub fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError> {
-        match unsafe { htslib::vcf::bcf_read(self.inner, self.header.inner, record.inner) } {
+        match unsafe { htslib::bcf_read(self.inner, self.header.inner, record.inner) } {
             0  => {
                 record.header = self.header.inner;
                 Ok(())
@@ -80,14 +80,14 @@ impl Reader {
 impl Drop for Reader {
     fn drop(&mut self) {
         unsafe {
-            htslib::vcf::hts_close(self.inner);
+            htslib::hts_close(self.inner);
         }
     }
 }
 
 
 pub struct Writer {
-    inner: *mut htslib::vcf::htsFile,
+    inner: *mut htslib::htsFile,
     header: HeaderView,
     subset: Option<SampleSubset>,
 }
@@ -122,10 +122,10 @@ impl Writer {
         };
 
         let htsfile = try!(bcf_open(path, mode));
-        unsafe { htslib::vcf::bcf_hdr_write(htsfile, header.inner) };
+        unsafe { htslib::bcf_hdr_write(htsfile, header.inner) };
         Ok(Writer {
             inner: htsfile,
-            header: HeaderView::new(unsafe { htslib::vcf::bcf_hdr_dup(header.inner) }),
+            header: HeaderView::new(unsafe { htslib::bcf_hdr_dup(header.inner) }),
             subset: header.subset.clone()
         })
     }
@@ -137,7 +137,7 @@ impl Writer {
     /// Translate record to header of this writer.
     pub fn translate(&mut self, record: &mut record::Record) {
         unsafe {
-            htslib::vcf::bcf_translate(self.header.inner, record.header, record.inner);
+            htslib::bcf_translate(self.header.inner, record.header, record.inner);
         }
         record.header = self.header.inner;
     }
@@ -146,14 +146,14 @@ impl Writer {
     pub fn subset(&mut self, record: &mut record::Record) {
         match self.subset {
             Some(ref mut subset) => unsafe {
-                htslib::vcf::bcf_subset(self.header.inner, record.inner, subset.len() as i32, subset.as_mut_ptr());
+                htslib::bcf_subset(self.header.inner, record.inner, subset.len() as i32, subset.as_mut_ptr());
             },
             None         => ()
         }
     }
 
     pub fn write(&mut self, record: &record::Record) -> Result<(), WriteError> {
-        if unsafe { htslib::vcf::bcf_write(self.inner, self.header.inner, record.inner) } == -1 {
+        if unsafe { htslib::bcf_write(self.inner, self.header.inner, record.inner) } == -1 {
             Err(WriteError::Some)
         }
         else {
@@ -166,7 +166,7 @@ impl Writer {
 impl Drop for Writer {
     fn drop(&mut self) {
         unsafe {
-            htslib::vcf::hts_close(self.inner);
+            htslib::hts_close(self.inner);
         }
     }
 }
@@ -215,10 +215,10 @@ quick_error! {
 
 
 /// Wrapper for opening a BCF file.
-fn bcf_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::vcf::htsFile, BCFError> {
+fn bcf_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile, BCFError> {
     let p = ffi::CString::new(path).unwrap();
     let ret = unsafe {
-        htslib::vcf::hts_open(
+        htslib::hts_open(
             p.as_ptr(),
             ffi::CString::new(mode).unwrap().as_ptr()
         )

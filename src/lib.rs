@@ -64,7 +64,6 @@
 //! // afterwards, read or pileup in this region
 //! ```
 
-
 extern crate libc;
 extern crate itertools;
 #[macro_use]
@@ -78,6 +77,7 @@ extern crate ieee754;
 #[macro_use]
 extern crate lazy_static;
 extern crate bitflags;
+
 
 pub mod htslib;
 pub mod bam;

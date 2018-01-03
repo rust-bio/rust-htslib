@@ -27,3 +27,4 @@ tempdir = "0.3"
 
 [build-dependencies]
 fs-utils = "1.0"
+bindgen = "0.32.1"
