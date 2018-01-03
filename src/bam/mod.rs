@@ -61,7 +61,9 @@ pub trait Read: Sized {
 
     /// Report the current virtual offset
     fn tell(&self) -> i64  {
-        unsafe { htslib::bgzf_tell_func(self.bgzf()) }
+        // this reimplements the bgzf_tell macro
+        let bgzf  = unsafe{ self.bgzf().as_ref() }.expect("bug: null pointer to BGZF");
+        (bgzf.block_address << 16) | (bgzf.block_offset as i64 & 0xFFFF)
     }
 }
 
