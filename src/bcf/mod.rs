@@ -5,6 +5,7 @@
 
 use std::ffi;
 use std::path::Path;
+use std::rc::Rc;
 
 use url::Url;
 
@@ -22,7 +23,7 @@ pub use bcf::buffer::RecordBuffer;
 
 pub struct Reader {
     inner: *mut htslib::htsFile,
-    header: HeaderView,
+    header: Rc<HeaderView>,
 }
 
 
@@ -53,17 +54,23 @@ impl Reader {
     fn new(path: &[u8]) -> Result<Self, BCFError> {
         let htsfile = try!(bcf_open(path, b"r"));
         let header = unsafe { htslib::bcf_hdr_read(htsfile) };
-        Ok(Reader { inner: htsfile, header: HeaderView::new(header) })
+        Ok(Reader { inner: htsfile, header: Rc::new(HeaderView::new(header)) })
     }
 
     pub fn header(&self) -> &HeaderView {
         &self.header
     }
 
+    /// Create empty record for this reader.
+    /// The record can be reused multiple times.
+    pub fn empty_record(&self) -> Record {
+        record::Record::new(self.header.clone())
+    }
+
     pub fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError> {
         match unsafe { htslib::bcf_read(self.inner, self.header.inner, record.inner) } {
             0  => {
-                record.header = self.header.inner;
+                record.set_header(self.header.clone());
                 Ok(())
             },
             -1 => Err(ReadError::NoMoreRecord),
@@ -88,7 +95,7 @@ impl Drop for Reader {
 
 pub struct Writer {
     inner: *mut htslib::htsFile,
-    header: HeaderView,
+    header: Rc<HeaderView>,
     subset: Option<SampleSubset>,
 }
 
@@ -125,7 +132,7 @@ impl Writer {
         unsafe { htslib::bcf_hdr_write(htsfile, header.inner) };
         Ok(Writer {
             inner: htsfile,
-            header: HeaderView::new(unsafe { htslib::bcf_hdr_dup(header.inner) }),
+            header: Rc::new(HeaderView::new(unsafe { htslib::bcf_hdr_dup(header.inner) })),
             subset: header.subset.clone()
         })
     }
@@ -134,12 +141,18 @@ impl Writer {
         &self.header
     }
 
+    /// Create empty record for writing to this writer.
+    /// The record can be reused multiple times.
+    pub fn empty_record(&self) -> Record {
+        record::Record::new(self.header.clone())
+    }
+
     /// Translate record to header of this writer.
     pub fn translate(&mut self, record: &mut record::Record) {
         unsafe {
-            htslib::bcf_translate(self.header.inner, record.header, record.inner);
+            htslib::bcf_translate(self.header.inner, record.header().inner, record.inner);
         }
-        record.header = self.header.inner;
+        record.set_header(self.header.clone());
     }
 
     /// Subset samples of record to match header of this writer.
@@ -181,7 +194,7 @@ impl<'a> Iterator for Records<'a> {
     type Item = Result<record::Record, ReadError>;
 
     fn next(&mut self) -> Option<Result<record::Record, ReadError>> {
-        let mut record = record::Record::new();
+        let mut record = self.reader.empty_record();
         match self.reader.read(&mut record) {
             Err(ReadError::NoMoreRecord) => None,
             Err(e)                       => Some(Err(e)),

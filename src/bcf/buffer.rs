@@ -111,7 +111,7 @@ impl RecordBuffer {
 
         // extend to the right
         loop {
-            let mut rec = bcf::Record::new();
+            let mut rec = self.reader.empty_record();
             if let Err(e) = self.reader.read(&mut rec) {
                 if e.is_eof() {
                     break;
