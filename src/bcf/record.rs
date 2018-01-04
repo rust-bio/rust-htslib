@@ -9,10 +9,12 @@ use std::ffi;
 use std::i32;
 use std::f32;
 use std::fmt;
+use std::rc::Rc;
 
 use ieee754::Ieee754;
 use itertools::Itertools;
 
+use bcf::header::HeaderView;
 use htslib;
 
 const MISSING_INTEGER: i32 = i32::MIN;
@@ -78,15 +80,25 @@ impl NumericUtils for i32 {
 /// A BCF record.
 pub struct Record {
     pub inner: *mut htslib::bcf1_t,
-    pub header: *mut htslib::bcf_hdr_t,
+    header: Rc<HeaderView>,
     buffer: *mut ::std::os::raw::c_void,
 }
 
 
 impl Record {
-    pub fn new() -> Self {
+    pub(crate) fn new(header: Rc<HeaderView>) -> Self {
         let inner = unsafe { htslib::bcf_init() };
-        Record { inner: inner, header: ptr::null_mut(), buffer: ptr::null_mut() }
+        Record { inner: inner, header: header, buffer: ptr::null_mut() }
+    }
+
+    /// Return associated header.
+    pub fn header(&self) -> &HeaderView  {
+        self.header.as_ref()
+    }
+
+    /// Set the record header.
+    pub(crate) fn set_header(&mut self, header: Rc<HeaderView>) {
+        self.header = header;
     }
 
     pub fn inner(&self) -> &htslib::bcf1_t {
@@ -181,7 +193,7 @@ impl Record {
         assert!(data.len() > 0);
         unsafe {
             if htslib::bcf_update_format(
-                self.header,
+                self.header().inner,
                 self.inner,
                 ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
                 data.as_ptr() as *const ::std::os::raw::c_void,
@@ -211,7 +223,7 @@ impl Record {
         assert!(data.len() > 0);
         unsafe {
             if htslib::bcf_update_info(
-                self.header,
+                self.header().inner,
                 self.inner,
                 ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
                 data.as_ptr() as *const ::std::os::raw::c_void,
@@ -228,7 +240,7 @@ impl Record {
 
     /// Remove unused alleles.
     pub fn trim_alleles(&mut self) -> Result<(), TrimAllelesError> {
-        match unsafe { htslib::bcf_trim_alleles(self.header, self.inner) } {
+        match unsafe { htslib::bcf_trim_alleles(self.header().inner, self.inner) } {
             -1 => Err(TrimAllelesError::Some),
             _  => Ok(())
         }
@@ -352,7 +364,7 @@ impl<'a> Info<'a> {
         let mut n: i32 = 0;
         match unsafe {
             htslib::bcf_get_info_values(
-                self.record.header,
+                self.record.header().inner,
                 self.record.inner,
                 ffi::CString::new(self.tag).unwrap().as_ptr() as *mut i8,
                 &mut self.record.buffer,
@@ -444,7 +456,7 @@ fn trim_slice<T: PartialEq + NumericUtils>(s: &[T]) -> &[T] {
 }
 
 
-// TODO implement format.
+// Representation of per-sample data.
 pub struct Format<'a> {
     record: &'a mut Record,
     tag: &'a [u8],
@@ -456,7 +468,7 @@ impl<'a> Format<'a> {
     /// Create new format data in a given record.
     fn new(record: &'a mut Record, tag: &'a [u8]) -> Format<'a> {
         let inner = unsafe { htslib::bcf_get_fmt(
-            record.header,
+            record.header().inner,
             record.inner,
             ffi::CString::new(tag).unwrap().as_ptr() as *mut i8
         ) };
@@ -480,7 +492,7 @@ impl<'a> Format<'a> {
         let mut n: i32 = 0;
         match unsafe {
             htslib::bcf_get_format_values(
-                self.record.header,
+                self.record.header().inner,
                 self.record.inner,
                 ffi::CString::new(self.tag).unwrap().as_ptr() as *mut i8,
                 &mut self.record.buffer,

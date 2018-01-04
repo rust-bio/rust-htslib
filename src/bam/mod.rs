@@ -575,7 +575,7 @@ quick_error! {
 
 quick_error! {
     #[derive(Debug)]
-    pub enum PushAuxError {
+    pub enum AuxWriteError {
         Some {
             description("error pushing aux data to record")
         }

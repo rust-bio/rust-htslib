@@ -13,7 +13,7 @@ use std::error::Error;
 use itertools::Itertools;
 
 use htslib;
-use bam::{HeaderView, ReadError, PushAuxError};
+use bam::{HeaderView, ReadError, AuxWriteError};
 use utils;
 
 
@@ -396,7 +396,7 @@ impl Record {
 
     /// Add auxiliary data.
     /// push_aux() should never be called before set().
-    pub fn push_aux(&mut self, tag: &[u8], value: &Aux) -> Result<(), PushAuxError> {
+    pub fn push_aux(&mut self, tag: &[u8], value: &Aux) -> Result<(), AuxWriteError> {
         let ctag = tag.as_ptr() as *mut i8;
         let ret = unsafe {
             match *value {
@@ -414,7 +414,7 @@ impl Record {
         };
 
         if ret < 0 {
-            Err(PushAuxError::Some)
+            Err(AuxWriteError::Some)
         } else {
             Ok(())
         }
