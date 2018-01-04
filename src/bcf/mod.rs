@@ -21,6 +21,7 @@ pub use bcf::record::Record;
 pub use bcf::buffer::RecordBuffer;
 
 
+/// A VCF/BCF reader.
 pub struct Reader {
     inner: *mut htslib::htsFile,
     header: Rc<HeaderView>,
@@ -31,7 +32,7 @@ unsafe impl Send for Reader {}
 
 
 impl Reader {
-
+    /// Create a new reader from a given path.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, BCFPathError> {
         match path.as_ref().to_str() {
             Some(p) if path.as_ref().exists() => {
@@ -43,10 +44,12 @@ impl Reader {
         }
     }
 
+    /// Create a new reader from a given URL.
     pub fn from_url(url: &Url) -> Result<Self, BCFError> {
         Self::new(url.as_str().as_bytes())
     }
 
+    /// Create a new reader from standard input.
     pub fn from_stdin() -> Result<Self, BCFError> {
         Self::new(b"-")
     }
@@ -57,6 +60,7 @@ impl Reader {
         Ok(Reader { inner: htsfile, header: Rc::new(HeaderView::new(header)) })
     }
 
+    /// Get header of the read VCF/BCF file.
     pub fn header(&self) -> &HeaderView {
         &self.header
     }
@@ -67,6 +71,10 @@ impl Reader {
         record::Record::new(self.header.clone())
     }
 
+    /// Read the next record.
+    ///
+    /// # Arguments
+    /// * record - an empty record, that can be created with `bcf::Reader::empty_record`.
     pub fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError> {
         match unsafe { htslib::bcf_read(self.inner, self.header.inner, record.inner) } {
             0  => {
@@ -78,6 +86,7 @@ impl Reader {
         }
     }
 
+    /// Return an iterator over all records of the VCF/BCF file.
     pub fn records(&mut self) -> Records {
         Records { reader: self }
     }
@@ -93,6 +102,7 @@ impl Drop for Reader {
 }
 
 
+/// A VCF/BCF writer.
 pub struct Writer {
     inner: *mut htslib::htsFile,
     header: Rc<HeaderView>,
@@ -104,6 +114,11 @@ unsafe impl Send for Writer {}
 
 
 impl Writer {
+    /// Create a new writer that writes to the given path.
+    ///
+    /// # Arguments
+    ///
+    /// * path: 
     pub fn from_path<P: AsRef<Path>>(path: P, header: &Header, uncompressed: bool, vcf: bool) -> Result<Self, BCFPathError> {
         if let Some(p) = path.as_ref().to_str() {
             Ok(try!(Self::new(p.as_bytes(), header, uncompressed, vcf)))

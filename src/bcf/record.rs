@@ -78,6 +78,7 @@ impl NumericUtils for i32 {
 
 
 /// A BCF record.
+/// New records can be created by the `empty_record` methods of `bcf::Reader` and `bcf::Writer`.
 pub struct Record {
     pub inner: *mut htslib::bcf1_t,
     header: Rc<HeaderView>,
@@ -109,6 +110,8 @@ impl Record {
         unsafe { &mut *self.inner }
     }
 
+    /// Get the reference id of the record. To look up the contig name,
+    /// use `bcf::header::HeaderView::rid2name`.
     pub fn rid(&self) -> Option<u32> {
         match self.inner().rid {
             -1  => None,
@@ -353,6 +356,7 @@ unsafe impl Send for Record {}
 unsafe impl Sync for Record {}
 
 
+/// Info tag representation.
 pub struct Info<'a> {
     record: &'a mut Record,
     tag: &'a [u8],
@@ -534,6 +538,7 @@ impl<'a> Format<'a> {
         })
     }
 
+    /// Get format data as mutable floats.
     pub fn float_mut(&mut self) -> Result<Vec<&'a mut [f32]>, FormatReadError> {
         self.data(htslib::BCF_HT_REAL).map(|(n, _)| {
             unsafe {
@@ -542,6 +547,7 @@ impl<'a> Format<'a> {
         })
     }
 
+    /// Get format data as byte slices. To obtain the values strings, use `std::str::from_utf8`.
     pub fn string(&mut self) -> Result<Vec<&'a [u8]>, FormatReadError> {
         self.data(htslib::BCF_HT_STR).map(|(n, _)| {
             unsafe {
@@ -553,6 +559,7 @@ impl<'a> Format<'a> {
         })
     }
 
+    /// Get format data as mutable byte slices.
     pub fn string_mut(&mut self) -> Result<Vec<&'a mut [u8]>, FormatReadError> {
         self.data(htslib::BCF_HT_STR).map(|(n, _)| {
             unsafe {
