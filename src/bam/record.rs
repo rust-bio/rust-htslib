@@ -326,7 +326,9 @@ impl Record {
         self.inner().core.n_cigar as usize
     }
 
-    fn raw_cigar(&self) -> &[u32] {
+    /// Get reference to raw cigar string representation (as stored in BAM file).
+    /// Usually, the method `Record::cigar` should be used instead.
+    pub fn raw_cigar(&self) -> &[u32] {
         unsafe { slice::from_raw_parts(self.data()[self.qname_len()..].as_ptr() as *const u32, self.cigar_len()) }
     }
 
