@@ -112,6 +112,11 @@ impl RecordBuffer {
         self.inner.iter()
     }
 
+    /// Iterate over mutable references to records that have been fetched with `fetch`.
+    pub fn iter_mut(&mut self) -> vec_deque::IterMut<bam::Record> {
+        self.inner.iter_mut()
+    }
+
     pub fn len(&self) -> usize {
         self.inner.len()
     }

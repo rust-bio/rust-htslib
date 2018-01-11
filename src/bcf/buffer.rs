@@ -155,6 +155,11 @@ impl RecordBuffer {
         self.ringbuffer.iter()
     }
 
+    /// Iterate over mutable references to records that have been fetched with `fetch`.
+    pub fn iter_mut(&mut self) -> vec_deque::IterMut<bcf::Record> {
+        self.ringbuffer.iter_mut()
+    }
+
     pub fn len(&self) -> usize {
         self.ringbuffer.len()
     }
