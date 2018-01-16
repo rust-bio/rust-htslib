@@ -721,7 +721,7 @@ impl CigarStringView {
         CigarStringView { inner: c, pos: pos }
     }
 
-    /// Get end position of alignment.
+    /// Get (exclusive) end position of alignment.
     pub fn end_pos(&self) -> Result<i32, CigarError> {
         let mut pos = self.pos;
         for c in self {
