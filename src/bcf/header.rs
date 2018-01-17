@@ -172,6 +172,25 @@ impl HeaderView {
     }
 }
 
+
+impl Clone for HeaderView {
+    fn clone(&self) -> Self {
+        HeaderView {
+            inner: unsafe { htslib::vcf::bcf_hdr_dup(self.inner) }
+        }
+    }
+}
+
+
+impl Drop for HeaderView {
+    fn drop(&mut self) {
+        unsafe {
+            htslib::vcf::bcf_hdr_destroy(self.inner);
+        }
+    }
+}
+
+
 pub enum TagType {
     Flag,
     Integer,

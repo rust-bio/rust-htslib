@@ -10,7 +10,7 @@
 //! use rust_htslib::bam;
 //! use rust_htslib::prelude::*;
 //!
-//! let bam = bam::Reader::from_path(&"test/test.bam").unwrap();
+//! let mut bam = bam::Reader::from_path(&"test/test.bam").unwrap();
 //! let header = bam::Header::from_template(bam.header());
 //! let mut out = bam::Writer::from_path(&"test/out.bam", &header).unwrap();
 //!
@@ -29,7 +29,7 @@
 //! use rust_htslib::bam;
 //! use rust_htslib::prelude::*;
 //!
-//! let bam = bam::Reader::from_path(&"test/test.bam").unwrap();
+//! let mut bam = bam::Reader::from_path(&"test/test.bam").unwrap();
 //!
 //! // pileup over all covered sites
 //! for p in bam.pileup() {
@@ -59,7 +59,7 @@
 //! let mut bam = bam::IndexedReader::from_path(&"test/test.bam").unwrap();
 //!
 //! // seek to chr1:50000-100000
-//! let tid = bam.header.tid(b"CHROMOSOME_I").unwrap();
+//! let tid = bam.header().tid(b"CHROMOSOME_I").unwrap();
 //! bam.fetch(tid, 0, 20).unwrap();
 //! // afterwards, read or pileup in this region
 //! ```

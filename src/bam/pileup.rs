@@ -9,6 +9,7 @@ use std::iter;
 use htslib;
 
 use bam::record;
+use bam;
 
 
 /// Iterator over alignments of a pileup.
@@ -117,14 +118,16 @@ pub enum Indel {
 
 
 /// Iterator over pileups.
-pub struct Pileups {
+pub struct Pileups<'a, R: 'a + bam::Read> {
+    #[allow(dead_code)]
+    reader: &'a mut R,
     itr: htslib::bam_plp_t,
 }
 
 
-impl Pileups {
-    pub fn new(itr: htslib::bam_plp_t) -> Self {
-        Pileups { itr: itr }
+impl<'a, R: bam::Read> Pileups<'a, R> {
+    pub fn new(reader: &'a mut R, itr: htslib::bam_plp_t) -> Self {
+        Pileups { reader: reader, itr: itr }
     }
 
     pub fn set_max_depth(&mut self, depth: u32) {
@@ -133,7 +136,7 @@ impl Pileups {
 }
 
 
-impl Iterator for Pileups {
+impl<'a, R: bam::Read> Iterator for Pileups<'a, R> {
     type Item = Result<Pileup, PileupError>;
 
     fn next(&mut self) -> Option<Result<Pileup, PileupError>> {
@@ -158,7 +161,7 @@ impl Iterator for Pileups {
 }
 
 
-impl Drop for Pileups {
+impl<'a, R: bam::Read> Drop for Pileups<'a, R> {
     fn drop(&mut self) {
         unsafe {
             htslib::bam_plp_reset(self.itr);
