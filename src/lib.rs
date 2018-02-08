@@ -78,6 +78,7 @@ extern crate ieee754;
 extern crate lazy_static;
 extern crate bitflags;
 
+extern crate serde;
 
 pub mod htslib;
 pub mod bam;

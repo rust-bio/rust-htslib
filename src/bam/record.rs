@@ -10,6 +10,7 @@ use std::ops;
 use std::fmt;
 use std::error::Error;
 
+use serde::Serialize;
 use itertools::Itertools;
 
 use htslib;
@@ -216,6 +217,20 @@ impl Record {
         &self.data()[..self.qname_len() - 1 - self.inner().core.l_extranul as usize]
     }
 
+    /// Set the variable length data buffer
+    pub fn set_data(&mut self, new_data: &[u8]) {
+        self.inner_mut().l_data = new_data.len();
+        if (self.inner().m_data as i32) < self.inner().l_data {
+            // Verbosity due to lexical borrowing
+            let l_data = self.inner().l_data;
+            self.realloc_var_data(l_data as usize);
+        }
+
+        // Copy new data into buffer
+        let data = unsafe { slice::from_raw_parts_mut((*self.inner).data, self.inner().l_data as usize) };
+        utils::copy_memory(new_data, data);
+    }
+
     /// Set variable length data (qname, cigar, seq, qual).
     /// Note: Pre-existing aux data will be invalidated
     /// if called on an existing record. For this
@@ -307,7 +322,7 @@ impl Record {
         utils::copy_memory(new_qname, data);
         data[new_q_len - 1] = b'\0';
 
-        self.inner_mut().core.l_qname = new_q_len as u8;
+        self.inner_mut().core.set_l_qname(new_q_len as u32);
     }
 
     fn realloc_var_data(&mut self, new_len: usize) {
@@ -455,6 +470,291 @@ impl Drop for Record {
         if self.own {
             unsafe { htslib::bam_destroy1(self.inner) };
         }
+    }
+}
+/*
+    x[0] = c->tid;
+    x[1] = c->pos;
+    x[2] = (uint32_t)c->bin<<16 | c->qual<<8 | c->l_qname;
+    x[3] = (uint32_t)c->flag<<16 | c->n_cigar;
+    x[4] = c->l_qseq;
+    x[5] = c->mtid;
+    x[6] = c->mpos;
+    x[7] = c->isize;
+
+
+    typedef struct {
+    int32_t tid;
+    int32_t pos;
+    uint32_t bin:16, qual:8, l_qname:8;
+    uint32_t flag:16, n_cigar:16;
+    int32_t l_qseq;
+    int32_t mtid;
+    int32_t mpos;
+    int32_t isize;
+} bam1_core_t;
+*/
+
+use serde::Serializer;
+use serde::ser::SerializeStruct;
+use serde::de::{self, Deserialize, Deserializer, Visitor, SeqAccess, MapAccess};
+
+
+impl Serialize for Record {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> 
+        where S: Serializer 
+    {
+        let mut state = serializer.serialize_struct("Record", 9)?;
+        state.serialize_field("tid", &self.tid())?;
+        state.serialize_field("pos", &self.pos())?;
+        state.serialize_field("bin", &((self.bin() as u32) << 16 | (self.mapq() as u32) << 8 | (self.qname_len() as u32)))?;
+        state.serialize_field("flags", &((self.flags() as u32) << 16 | (self.cigar_len() as u32)))?;
+        state.serialize_field("seq_len", &self.seq_len());
+        state.serialize_field("mtid", &self.mtid());
+        state.serialize_field("mpos", &self.mpos());
+        state.serialize_field("isize", &self.insert_size());
+        state.serialize_field("data", self.data());
+        state.end()
+    }
+}
+
+
+struct I32Visitor;
+
+impl<'de> Visitor<'de> for I32Visitor {
+    type Value = i32;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("an integer between -2^31 and 2^31")
+    }
+
+    fn visit_i32<E>(self, value: i32) -> Result<i32, E>
+        where E: de::Error
+    {
+        Ok(value)
+    }
+}
+
+struct U32Visitor;
+
+impl<'de> Visitor<'de> for U32Visitor {
+    type Value = u32;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("an integer between -2^31 and 2^31")
+    }
+
+    fn visit_u32<E>(self, value: u32) -> Result<u32, E>
+        where E: de::Error
+    {
+        Ok(value)
+    }
+}
+
+impl<'de> Deserialize<'de> for Record {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where D: Deserializer<'de>
+    {
+
+        enum Field { Tid, Pos, Bin, Flag, SeqLen, Mtid, Mpos, Isize, Data };
+
+
+        impl<'de> Deserialize<'de> for Field {
+            fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+                where D: Deserializer<'de>
+            {
+                struct FieldVisitor;
+
+                impl<'de> Visitor<'de> for FieldVisitor {
+                    type Value = Field;
+
+                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                        formatter.write_str("`secs` or `nanos`")
+                    }
+
+                    fn visit_str<E>(self, value: &str) -> Result<Field, E>
+                        where E: de::Error
+                    {
+                        match value {
+                            "tid" => Ok(Field::Tid),
+                            "pos" => Ok(Field::Pos),
+                            "flag" => Ok(Field::Flag),
+                            "seq_len" => Ok(Field::SeqLen),
+                            "mtid" => Ok(Field::Mtid),
+                            "mpos" => Ok(Field::Mpos),
+                            "isize" => Ok(Field::Isize),
+                            "data" => Ok(Field::Data),
+                            _ => Err(de::Error::unknown_field(value, FIELDS)),
+                        }
+                    }
+                }
+
+                deserializer.deserialize_identifier(FieldVisitor)
+            }
+        }
+
+        struct RecordVisitor;
+
+        impl<'de> Visitor<'de> for RecordVisitor {
+            type Value = Record;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("struct Record")
+            }
+
+            fn visit_seq<V>(self, mut seq: V) -> Result<Record, V::Error>
+                where V: SeqAccess<'de>
+            {
+
+
+                let tid: i32 = seq.next_element()?
+                              .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let pos: i32 = seq.next_element()?
+                              .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let bin_mapq_qname_len: u32 = seq.next_element()?
+                              .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let flag_n_cigar: u32 = seq.next_element()?
+                              .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let seq_len: i32 = seq.next_element()?
+                              .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let mtid: i32 = seq.next_element()?
+                              .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let mpos: i32 = seq.next_element()?
+                              .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let isize: i32 = seq.next_element()?
+                              .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let data: &[u8] = seq.next_element()?
+                              .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                              
+
+                let rec = Record::new();
+                {
+                    let _m = rec.inner_mut();
+                    let m = _m.core;
+                    m.tid = tid;
+                    m.pos = pos;
+                    m.set_bin(bin_mapq_qname_len >> 16);
+                    m.set_qual((bin_mapq_qname_len >> 8) & 0xFF);
+                    m.set_l_qname(bin_mapq_qname_len & 0xFF);
+                    m.set_flag(flag_n_cigar >> 16);
+                    m.set_n_cigar(flag_n_cigar & 0xFFFF);
+                    m.l_qseq = seq_len;
+                    m.mtid = mtid;
+                    m.mpos = mpos;
+                    m.isize = isize;
+                }
+                rec.set_data(data);
+                Ok(rec)
+            }
+
+            fn visit_map<V>(self, mut map: V) -> Result<Record, V::Error>
+                where V: MapAccess<'de>
+            {
+
+                let mut tid = None;
+                let mut pos = None;
+                let mut bin = None;
+                let mut flag = None;
+                let mut seq_len = None;
+                let mut mtid = None;
+                let mut mpos = None;
+                let mut isize = None;
+                let mut data = None;
+
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        Field::Tid => {
+                            if tid.is_some() {
+                                return Err(de::Error::duplicate_field("secs"));
+                            }
+                            tid = Some(map.next_value()?);
+                        }
+                        Field::Pos => {
+                            if pos.is_some() {
+                                return Err(de::Error::duplicate_field("pos"));
+                            }
+                            pos = Some(map.next_value()?);
+                        }
+                        Field::Bin => {
+                            if bin.is_some() {
+                                return Err(de::Error::duplicate_field("bin"));
+                            }
+                            bin = Some(map.next_value()?);
+                        }
+                        Field::Flag => {
+                            if flag.is_some() {
+                                return Err(de::Error::duplicate_field("flag"));
+                            }
+                            flag = Some(map.next_value()?);
+                        }                        
+                        Field::SeqLen => {
+                            if seq_len.is_some() {
+                                return Err(de::Error::duplicate_field("seq_len"));
+                            }
+                            seq_len = Some(map.next_value()?);
+                        }
+                        Field::Mtid => {
+                            if mtid.is_some() {
+                                return Err(de::Error::duplicate_field("mtid"));
+                            }
+                            mtid = Some(map.next_value()?);
+                        }
+                        Field::Mpos => {
+                            if mpos.is_some() {
+                                return Err(de::Error::duplicate_field("mpos"));
+                            }
+                            mpos = Some(map.next_value()?);
+                        }
+                        Field::Isize => {
+                            if isize.is_some() {
+                                return Err(de::Error::duplicate_field("isize"));
+                            }
+                            isize = Some(map.next_value()?);
+                        }
+                        Field::Data => {
+                            if data.is_some() {
+                                return Err(de::Error::duplicate_field("data"));
+                            }
+                            data = Some(map.next_value()?);
+                        }
+
+                    }
+                }
+
+
+                let tid = tid.ok_or_else(|| de::Error::missing_field("tid"))?;
+                let pos = pos.ok_or_else(|| de::Error::missing_field("pos"))?;
+                let bin: u32 = bin.ok_or_else(|| de::Error::missing_field("bin"))?;
+                let flag: u32 = flag.ok_or_else(|| de::Error::missing_field("flag"))?;
+                let seq_len = seq_len.ok_or_else(|| de::Error::missing_field("seq_len"))?;
+                let mtid = mtid.ok_or_else(|| de::Error::missing_field("mtid"))?;
+                let mpos = mpos.ok_or_else(|| de::Error::missing_field("mpos"))?;
+                let isize = isize.ok_or_else(|| de::Error::missing_field("isize"))?;
+                let data = data.ok_or_else(|| de::Error::missing_field("data"))?;
+
+                let rec = Record::new();
+                {
+                    let _m = rec.inner_mut();
+                    let m = _m.core;
+                    m.tid = tid;
+                    m.pos = pos;
+                    m.set_bin(bin >> 16);
+                    m.set_qual((bin >> 8) & 0xFF);
+                    m.set_l_qname(bin & 0xFF);
+                    m.set_flag(flag >> 16);
+                    m.set_n_cigar(flag & 0xFFFF);
+                    m.l_qseq = seq_len;
+                    m.mtid = mtid;
+                    m.mpos = mpos;
+                    m.isize = isize;
+                }
+                rec.set_data(data);
+                Ok(rec)
+            }
+        }
+
+        const FIELDS: &'static [&'static str] = &["tid", "pos", "bin", "flag", "seq_len", "mtid", "mpos", "isize", "data"];
+        deserializer.deserialize_struct("Record", FIELDS, RecordVisitor)
     }
 }
 

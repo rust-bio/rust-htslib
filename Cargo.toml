@@ -21,6 +21,8 @@ url = "1.4"
 ieee754 = "0.2"
 lazy_static = "0.2"
 bitflags = "0.9"
+serde = "^1"
+
 
 [dev-dependencies]
 tempdir = "0.3"
