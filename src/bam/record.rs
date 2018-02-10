@@ -22,15 +22,17 @@ use utils;
 macro_rules! flag {
     ($get:ident, $set:ident, $unset:ident, $bit:expr) => (
         pub fn $get(&self) -> bool {
-            self.inner().core.flag & $bit != 0
+            self.inner().core.flag() as u16 & $bit != 0
         }
 
         pub fn $set(&mut self) {
-            self.inner_mut().core.flag |= $bit;
+            let val = self.inner().core.flag() as u16 | $bit;
+            self.inner_mut().core.set_flag(val as u32);
         }
 
         pub fn $unset(&mut self) {
-            self.inner_mut().core.flag &= !$bit;
+            let val = self.inner().core.flag() as u16 & !$bit;
+            self.inner_mut().core.set_flag(val as u32);
         }
     )
 }
@@ -145,36 +147,36 @@ impl Record {
     }
 
     pub fn bin(&self) -> u16 {
-        self.inner().core.bin
+        self.inner().core.bin() as u16
     }
 
     pub fn set_bin(&mut self, bin: u16) {
-        self.inner_mut().core.bin = bin;
+        self.inner_mut().core.set_bin(bin as u32);
     }
 
     /// Get MAPQ.
     pub fn mapq(&self) -> u8 {
-        self.inner().core.qual
+        self.inner().core.qual() as u8
     }
 
     /// Set MAPQ.
     pub fn set_mapq(&mut self, mapq: u8) {
-        self.inner_mut().core.qual = mapq;
+        self.inner_mut().core.set_qual(mapq as u32);
     }
 
     /// Get raw flags.
     pub fn flags(&self) -> u16 {
-        self.inner().core.flag
+        self.inner().core.flag() as u16
     }
 
     /// Set raw flags.
     pub fn set_flags(&mut self, flags: u16) {
-        self.inner_mut().core.flag = flags;
+        self.inner_mut().core.set_flag(flags as u32);
     }
 
     /// Unset all flags.
     pub fn unset_flags(&mut self) {
-        self.inner_mut().core.flag = 0;
+        self.inner_mut().core.set_flag(0);
     }
 
     /// Get target id of mate.
@@ -208,7 +210,7 @@ impl Record {
     }
 
     fn qname_len(&self) -> usize {
-        self.inner().core.l_qname as usize
+        self.inner().core.l_qname() as usize
     }
 
     /// Get qname (read name). Complexity: O(1).
@@ -219,7 +221,7 @@ impl Record {
 
     /// Set the variable length data buffer
     pub fn set_data(&mut self, new_data: &[u8]) {
-        self.inner_mut().l_data = new_data.len();
+        self.inner_mut().l_data = new_data.len() as i32;
         if (self.inner().m_data as i32) < self.inner().l_data {
             // Verbosity due to lexical borrowing
             let l_data = self.inner().l_data;
@@ -249,7 +251,7 @@ impl Record {
         utils::copy_memory(qname, data);
         data[qname.len()] = b'\0';
         let mut i = qname.len() + 1;
-        self.inner_mut().core.l_qname = i as u8;
+        self.inner_mut().core.set_l_qname(i as u32);
 
         // cigar
         {
@@ -259,7 +261,7 @@ impl Record {
             for (i, c) in cigar.iter().enumerate() {
                 cigar_data[i] = c.encode();
             }
-            self.inner_mut().core.n_cigar = cigar.len() as u32;
+            self.inner_mut().core.set_n_cigar(cigar.len() as u32);
             i += cigar.len() * 4;
         }
 
@@ -326,7 +328,7 @@ impl Record {
     }
 
     fn realloc_var_data(&mut self, new_len: usize) {
-        self.inner_mut().m_data = new_len as u32;
+        self.inner_mut().m_data = new_len as i32;
         // Pad
         self.inner_mut().m_data += 32 - self.inner().m_data % 32;
         unsafe {
@@ -338,7 +340,7 @@ impl Record {
     }
 
     fn cigar_len(&self) -> usize {
-        self.inner().core.n_cigar as usize
+        self.inner().core.n_cigar() as usize
     }
 
     /// Get reference to raw cigar string representation (as stored in BAM file).
@@ -398,7 +400,7 @@ impl Record {
                 return None;
             }
             match *aux {
-                b'c'|b'C'|b's'|b'S'|b'i'|b'I' => Some(Aux::Integer(htslib::bam_aux2i(aux))),
+                b'c'|b'C'|b's'|b'S'|b'i'|b'I' => Some(Aux::Integer(htslib::bam_aux2i(aux) as i64)),
                 b'f'|b'd' => Some(Aux::Float(htslib::bam_aux2f(aux))),
                 b'A' => Some(Aux::Char(htslib::bam_aux2A(aux) as u8)),
                 b'Z'|b'H' => {
@@ -415,7 +417,7 @@ impl Record {
     /// push_aux() should never be called before set().
     pub fn push_aux(&mut self, tag: &[u8], value: &Aux) -> Result<(), AuxWriteError> {
         let ctag = tag.as_ptr() as *mut i8;
-        let ret = unsafe {
+        unsafe {
             match *value {
                 Aux::Integer(v) => htslib::bam_aux_append(self.inner, ctag, b'i' as i8, 4, [v].as_mut_ptr() as *mut u8),
                 Aux::Float(v) => htslib::bam_aux_append(self.inner, ctag, b'f' as i8, 4, [v].as_mut_ptr() as *mut u8),
@@ -429,12 +431,8 @@ impl Record {
                 ),
             }
         };
-
-        if ret < 0 {
-            Err(AuxWriteError::Some)
-        } else {
-            Ok(())
-        }
+        
+        Ok(())
     }
 
     // Delete auxiliary tag.
