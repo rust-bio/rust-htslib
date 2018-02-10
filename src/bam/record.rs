@@ -22,17 +22,15 @@ use utils;
 macro_rules! flag {
     ($get:ident, $set:ident, $unset:ident, $bit:expr) => (
         pub fn $get(&self) -> bool {
-            self.inner().core.flag() as u16 & $bit != 0
+            self.inner().core.flag & $bit != 0
         }
 
         pub fn $set(&mut self) {
-            let val = self.inner().core.flag() as u16 | $bit;
-            self.inner_mut().core.set_flag(val as u32);
+            self.inner_mut().core.flag |= $bit;
         }
 
         pub fn $unset(&mut self) {
-            let val = self.inner().core.flag() as u16 & !$bit;
-            self.inner_mut().core.set_flag(val as u32);
+            self.inner_mut().core.flag &= !$bit;
         }
     )
 }
@@ -147,36 +145,36 @@ impl Record {
     }
 
     pub fn bin(&self) -> u16 {
-        self.inner().core.bin() as u16
+        self.inner().core.bin
     }
 
     pub fn set_bin(&mut self, bin: u16) {
-        self.inner_mut().core.set_bin(bin as u32);
+        self.inner_mut().core.bin = bin;
     }
 
     /// Get MAPQ.
     pub fn mapq(&self) -> u8 {
-        self.inner().core.qual() as u8
+        self.inner().core.qual
     }
 
     /// Set MAPQ.
     pub fn set_mapq(&mut self, mapq: u8) {
-        self.inner_mut().core.set_qual(mapq as u32);
+        self.inner_mut().core.qual = mapq;
     }
 
     /// Get raw flags.
     pub fn flags(&self) -> u16 {
-        self.inner().core.flag() as u16
+        self.inner().core.flag
     }
 
     /// Set raw flags.
     pub fn set_flags(&mut self, flags: u16) {
-        self.inner_mut().core.set_flag(flags as u32);
+        self.inner_mut().core.flag = flags;
     }
 
     /// Unset all flags.
     pub fn unset_flags(&mut self) {
-        self.inner_mut().core.set_flag(0);
+        self.inner_mut().core.flag = 0;
     }
 
     /// Get target id of mate.
@@ -210,7 +208,7 @@ impl Record {
     }
 
     fn qname_len(&self) -> usize {
-        self.inner().core.l_qname() as usize
+        self.inner().core.l_qname as usize
     }
 
     /// Get qname (read name). Complexity: O(1).
@@ -240,6 +238,8 @@ impl Record {
     pub fn set(&mut self, qname: &[u8], cigar: &CigarString, seq: &[u8], qual: &[u8]) {
         self.inner_mut().l_data = (qname.len() + 1 + cigar.len() * 4 + ((seq.len() as f32 / 2.0).ceil() as usize) + qual.len()) as i32;
 
+        assert!(qname.len() <= 256);
+
         if (self.inner().m_data as i32) < self.inner().l_data {
             // Verbosity due to lexical borrowing
             let l_data = self.inner().l_data;
@@ -251,7 +251,7 @@ impl Record {
         utils::copy_memory(qname, data);
         data[qname.len()] = b'\0';
         let mut i = qname.len() + 1;
-        self.inner_mut().core.set_l_qname(i as u32);
+        self.inner_mut().core.l_qname = i as u8;
 
         // cigar
         {
@@ -261,7 +261,7 @@ impl Record {
             for (i, c) in cigar.iter().enumerate() {
                 cigar_data[i] = c.encode();
             }
-            self.inner_mut().core.set_n_cigar(cigar.len() as u32);
+            self.inner_mut().core.n_cigar = cigar.len() as u32; 
             i += cigar.len() * 4;
         }
 
@@ -282,6 +282,8 @@ impl Record {
     /// Unlike set(), this preserves all the variable length data including
     /// the aux.
     pub fn set_qname(&mut self, new_qname: &[u8]) {
+        assert!(new_qname.len() <= 256);
+
         let old_q_len = self.qname_len();
         // We're going to add a terminal NUL
         let new_q_len = 1 + new_qname.len();
@@ -324,11 +326,11 @@ impl Record {
         utils::copy_memory(new_qname, data);
         data[new_q_len - 1] = b'\0';
 
-        self.inner_mut().core.set_l_qname(new_q_len as u32);
+        self.inner_mut().core.l_qname = new_q_len as u8;
     }
 
     fn realloc_var_data(&mut self, new_len: usize) {
-        self.inner_mut().m_data = new_len as i32;
+        self.inner_mut().m_data = new_len as u32;
         // Pad
         self.inner_mut().m_data += 32 - self.inner().m_data % 32;
         unsafe {
@@ -340,7 +342,7 @@ impl Record {
     }
 
     fn cigar_len(&self) -> usize {
-        self.inner().core.n_cigar() as usize
+        self.inner().core.n_cigar as usize
     }
 
     /// Get reference to raw cigar string representation (as stored in BAM file).
@@ -625,17 +627,17 @@ impl<'de> Deserialize<'de> for Record {
                               .ok_or_else(|| de::Error::invalid_length(0, &self))?;
                               
 
-                let rec = Record::new();
+                let mut rec = Record::new();
                 {
                     let _m = rec.inner_mut();
-                    let m = _m.core;
+                    let mut m = _m.core;
                     m.tid = tid;
                     m.pos = pos;
-                    m.set_bin(bin_mapq_qname_len >> 16);
-                    m.set_qual((bin_mapq_qname_len >> 8) & 0xFF);
-                    m.set_l_qname(bin_mapq_qname_len & 0xFF);
-                    m.set_flag(flag_n_cigar >> 16);
-                    m.set_n_cigar(flag_n_cigar & 0xFFFF);
+                    m.bin = (bin_mapq_qname_len >> 16) as u16;
+                    m.qual = ((bin_mapq_qname_len >> 8) & 0xFF) as u8;
+                    m.l_qname = (bin_mapq_qname_len & 0xFF) as u8;
+                    m.flag = (flag_n_cigar >> 16) as u16;
+                    m.n_cigar = flag_n_cigar & 0xFFFF;
                     m.l_qseq = seq_len;
                     m.mtid = mtid;
                     m.mpos = mpos;
@@ -730,22 +732,23 @@ impl<'de> Deserialize<'de> for Record {
                 let isize = isize.ok_or_else(|| de::Error::missing_field("isize"))?;
                 let data = data.ok_or_else(|| de::Error::missing_field("data"))?;
 
-                let rec = Record::new();
+                let mut rec = Record::new();
                 {
                     let _m = rec.inner_mut();
-                    let m = _m.core;
+                    let mut m = _m.core;
                     m.tid = tid;
                     m.pos = pos;
-                    m.set_bin(bin >> 16);
-                    m.set_qual((bin >> 8) & 0xFF);
-                    m.set_l_qname(bin & 0xFF);
-                    m.set_flag(flag >> 16);
-                    m.set_n_cigar(flag & 0xFFFF);
+                    m.bin = (bin >> 16) as u16;
+                    m.qual = ((bin >> 8) & 0xFF) as u8;
+                    m.l_qname = (bin & 0xFF) as u8;
+                    m.flag = (flag >> 16) as u16;
+                    m.n_cigar = flag & 0xFFFF;
                     m.l_qseq = seq_len;
                     m.mtid = mtid;
                     m.mpos = mpos;
                     m.isize = isize;
                 }
+
                 rec.set_data(data);
                 Ok(rec)
             }
