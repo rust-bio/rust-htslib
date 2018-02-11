@@ -24,7 +24,7 @@ bitflags = "0.9"
 serde = { version = "^1", optional = true }
 
 [features]
-default = ['serde']
+default = []
 
 [dev-dependencies]
 tempdir = "0.3"
