@@ -9,6 +9,9 @@ pub mod header;
 pub mod pileup;
 pub mod buffer;
 
+#[cfg(feature = "serde")]
+pub mod record_serde;
+
 use std::ffi;
 use std::ptr;
 use std::slice;
@@ -1159,11 +1162,7 @@ mod tests {
             .collect();
 
         for (b1, s1) in bam_recs.iter().zip(sam_recs.iter()) {
-            assert_eq!(b1.qname(),          s1.qname());
-            assert_eq!(b1.seq().as_bytes(), s1.seq().as_bytes());
-            assert_eq!(b1.qual(),           s1.qual());
-            assert_eq!(b1.cigar(),          s1.cigar());
-            assert_eq!(b1.pos(),            s1.pos());
+            assert!(b1 == s1);
         }
     }
 }
