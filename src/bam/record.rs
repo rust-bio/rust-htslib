@@ -69,6 +69,28 @@ impl Clone for Record {
     }
 }
 
+impl PartialEq for Record {
+    fn eq(&self, other: &Record) -> bool {
+        self.tid() == other.tid() &&
+        self.pos() == other.pos() &&
+        self.bin() == other.bin() &&
+        self.mapq() == other.mapq() &&
+        self.flags() == other.flags() &&
+        self.mtid() == other.mtid() &&
+        self.mpos() == other.mpos() &&
+        self.insert_size() == other.insert_size() &&
+        self.data() == other.data()
+    }
+}
+
+impl Eq for Record {}
+
+
+impl fmt::Debug for Record {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        fmt.write_fmt(format_args!("Record(tid: {}, pos: {})", self.tid(), self.pos()))
+    }
+}
 
 impl Record {
     /// Create an empty BAM record.
@@ -108,8 +130,7 @@ impl Record {
         }
     }
 
-
-    fn data(&self) -> &[u8] {
+    pub(super) fn data(&self) -> &[u8] {
         unsafe { slice::from_raw_parts(self.inner().data, self.inner().l_data as usize) }
     }
 
@@ -216,12 +237,28 @@ impl Record {
         &self.data()[..self.qname_len() - 1 - self.inner().core.l_extranul as usize]
     }
 
+    /// Set the variable length data buffer
+    pub fn set_data(&mut self, new_data: &[u8]) {
+        self.inner_mut().l_data = new_data.len() as i32;
+        if (self.inner().m_data as i32) < self.inner().l_data {
+            // Verbosity due to lexical borrowing
+            let l_data = self.inner().l_data;
+            self.realloc_var_data(l_data as usize);
+        }
+
+        // Copy new data into buffer
+        let data = unsafe { slice::from_raw_parts_mut((*self.inner).data, self.inner().l_data as usize) };
+        utils::copy_memory(new_data, data);
+    }
+
     /// Set variable length data (qname, cigar, seq, qual).
     /// Note: Pre-existing aux data will be invalidated
     /// if called on an existing record. For this
     /// reason, never call push_aux() before set().
     pub fn set(&mut self, qname: &[u8], cigar: &CigarString, seq: &[u8], qual: &[u8]) {
         self.inner_mut().l_data = (qname.len() + 1 + cigar.len() * 4 + ((seq.len() as f32 / 2.0).ceil() as usize) + qual.len()) as i32;
+
+        assert!(qname.len() <= 256);
 
         if (self.inner().m_data as i32) < self.inner().l_data {
             // Verbosity due to lexical borrowing
@@ -244,7 +281,7 @@ impl Record {
             for (i, c) in cigar.iter().enumerate() {
                 cigar_data[i] = c.encode();
             }
-            self.inner_mut().core.n_cigar = cigar.len() as u32;
+            self.inner_mut().core.n_cigar = cigar.len() as u32; 
             i += cigar.len() * 4;
         }
 
@@ -265,6 +302,8 @@ impl Record {
     /// Unlike set(), this preserves all the variable length data including
     /// the aux.
     pub fn set_qname(&mut self, new_qname: &[u8]) {
+        assert!(new_qname.len() <= 256);
+
         let old_q_len = self.qname_len();
         // We're going to add a terminal NUL
         let new_q_len = 1 + new_qname.len();
@@ -383,7 +422,7 @@ impl Record {
                 return None;
             }
             match *aux {
-                b'c'|b'C'|b's'|b'S'|b'i'|b'I' => Some(Aux::Integer(htslib::bam_aux2i(aux))),
+                b'c'|b'C'|b's'|b'S'|b'i'|b'I' => Some(Aux::Integer(htslib::bam_aux2i(aux) as i64)),
                 b'f'|b'd' => Some(Aux::Float(htslib::bam_aux2f(aux))),
                 b'A' => Some(Aux::Char(htslib::bam_aux2A(aux) as u8)),
                 b'Z'|b'H' => {
@@ -414,7 +453,7 @@ impl Record {
                 ),
             }
         };
-
+        
         if ret < 0 {
             Err(AuxWriteError::Some)
         } else {
@@ -457,7 +496,6 @@ impl Drop for Record {
         }
     }
 }
-
 
 /// Auxiliary record data.
 #[derive(Debug)]
@@ -1089,8 +1127,7 @@ mod tests {
         rec.set_pos(300);
         rec.set_qname(b"read1");
         let clone = rec.clone();
-        assert_eq!(rec.pos(), clone.pos());
-        assert_eq!(rec.qname(), clone.qname());
+        assert_eq!(rec, clone);
     }
 
     #[test]
