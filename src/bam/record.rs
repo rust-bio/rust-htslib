@@ -71,43 +71,15 @@ impl Clone for Record {
 
 impl PartialEq for Record {
     fn eq(&self, other: &Record) -> bool {
-        if self.tid() != other.tid() {
-            return false;
-        }
-
-        if self.pos() != other.pos() {
-            return false;
-        }
-
-        if self.bin() != other.bin() {
-            return false;
-        }
-
-        if self.mapq() != other.mapq() {
-            return false;
-        }
-
-        if self.flags() != other.flags() {
-            return false;
-        }
-
-        if self.mtid() != other.mtid() {
-            return false;
-        }
-
-        if self.mpos() != other.mpos() {
-            return false;
-        }
-
-        if self.insert_size() != other.insert_size() {
-            return false;
-        }
-
-        if self.data() != other.data() {
-            return false;
-        }
-
-        return true;
+        self.tid() == other.tid() &&
+        self.pos() == other.pos() &&
+        self.bin() == other.bin() &&
+        self.mapq() == other.mapq() &&
+        self.flags() == other.flags() &&
+        self.mtid() == other.mtid() &&
+        self.mpos() == other.mpos() &&
+        self.insert_size() == other.insert_size() &&
+        self.data() == other.data()
     }
 }
 
@@ -467,7 +439,7 @@ impl Record {
     /// push_aux() should never be called before set().
     pub fn push_aux(&mut self, tag: &[u8], value: &Aux) -> Result<(), AuxWriteError> {
         let ctag = tag.as_ptr() as *mut i8;
-        unsafe {
+        let ret = unsafe {
             match *value {
                 Aux::Integer(v) => htslib::bam_aux_append(self.inner, ctag, b'i' as i8, 4, [v].as_mut_ptr() as *mut u8),
                 Aux::Float(v) => htslib::bam_aux_append(self.inner, ctag, b'f' as i8, 4, [v].as_mut_ptr() as *mut u8),
@@ -482,7 +454,11 @@ impl Record {
             }
         };
         
-        Ok(())
+        if ret < 0 {
+            Err(AuxWriteError::Some)
+        } else {
+            Ok(())
+        }
     }
 
     // Delete auxiliary tag.
