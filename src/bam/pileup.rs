@@ -5,6 +5,7 @@
 
 use std::slice;
 use std::iter;
+use std::fmt;
 
 use htslib;
 
@@ -20,6 +21,7 @@ pub type Alignments<'a> = iter::Map<
 
 
 /// A pileup over one genomic position.
+#[derive(Debug)]
 pub struct Pileup {
     inner: *const htslib::bam_pileup1_t,
     depth: u32,
@@ -54,6 +56,13 @@ impl Pileup {
 /// An aligned read in a pileup.
 pub struct Alignment<'a> {
     inner: &'a htslib::bam_pileup1_t,
+}
+
+
+impl<'a> fmt::Debug for Alignment<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Alignment")
+    }
 }
 
 
@@ -108,8 +117,7 @@ impl<'a> Alignment<'a> {
 }
 
 
-#[derive(PartialEq)]
-#[derive(Debug)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone, Hash)]
 pub enum Indel {
     Ins(u32),
     Del(u32),
@@ -118,6 +126,7 @@ pub enum Indel {
 
 
 /// Iterator over pileups.
+#[derive(Debug)]
 pub struct Pileups<'a, R: 'a + bam::Read> {
     #[allow(dead_code)]
     reader: &'a mut R,
@@ -172,7 +181,7 @@ impl<'a, R: bam::Read> Drop for Pileups<'a, R> {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum PileupError {
         Some {
             description("error generating pileup")

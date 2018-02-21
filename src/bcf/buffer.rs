@@ -16,6 +16,7 @@ use bcf;
 /// linear complexity. The buffer does not use any indexed random access. Hence, for getting a
 /// region at the very end of the BCF, you will have to wait until all records before have
 /// been read.
+#[derive(Debug)]
 pub struct RecordBuffer {
     reader: bcf::Reader,
     ringbuffer: VecDeque<bcf::Record>,

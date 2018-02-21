@@ -8,6 +8,7 @@ use bam::record;
 use bam::HeaderView;
 
 /// SAM writer.
+#[derive(Debug)]
 pub struct Writer {
     f: *mut htslib::htsFile,
     header: HeaderView,
@@ -86,7 +87,7 @@ impl Drop for Writer {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum WriterError {
         IOError {}
     }
@@ -94,7 +95,7 @@ quick_error! {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum WriteError {
         Some {
             description("error writing record")
