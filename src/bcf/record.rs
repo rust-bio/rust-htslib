@@ -252,7 +252,7 @@ impl Record {
 
 
 /// Phased or unphased alleles, represented as indices.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum GenotypeAllele {
     Unphased(i32),
     Phased(i32),
