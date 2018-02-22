@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.17.0] - 2018-02-22
+### Added
+- Serde support for bam records.
+### Changed
+- Various convenience improvements in the API.
+
 ## [0.16.0] - 2018-01-05
 ### Changed
 - Raw Htslib bindings are now generated on the fly.
