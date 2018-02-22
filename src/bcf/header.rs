@@ -15,6 +15,7 @@ pub type SampleSubset = Vec<i32>;
 
 
 /// A BCF header.
+#[derive(Debug)]
 pub struct Header {
     pub inner: *mut htslib::bcf_hdr_t,
     pub subset: Option<SampleSubset>,
@@ -92,7 +93,7 @@ impl Drop for Header {
 }
 
 
-
+#[derive(Debug)]
 pub struct HeaderView {
     pub inner: *mut htslib::bcf_hdr_t,
 }
@@ -200,6 +201,7 @@ impl Drop for HeaderView {
 }
 
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TagType {
     Flag,
     Integer,
@@ -208,6 +210,7 @@ pub enum TagType {
 }
 
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TagLength {
     Fixed,
     AltAlleles,
@@ -218,7 +221,7 @@ pub enum TagLength {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum RidError {
         UnknownSequence(name: String) {
             description("unknown sequence")
@@ -229,7 +232,7 @@ quick_error! {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum SubsetError {
         DuplicateSampleName {
             description("duplicate sample name when subsetting header")
@@ -239,7 +242,7 @@ quick_error! {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum TagTypeError {
         UnexpectedTagType {
             description("unexpected tag type in header")

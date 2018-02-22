@@ -7,6 +7,7 @@ use bam::HeaderView;
 
 
 /// A BAM header.
+#[derive(Debug, Clone)]
 pub struct Header {
     records: Vec<Vec<u8>>
 }
@@ -53,6 +54,7 @@ impl Header {
 
 
 /// Header record.
+#[derive(Debug, Clone)]
 pub struct HeaderRecord<'a> {
     rec_type: Vec<u8>,
     tags: Vec<(&'a [u8], Vec<u8>)>,

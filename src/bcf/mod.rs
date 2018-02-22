@@ -22,6 +22,7 @@ pub use bcf::buffer::RecordBuffer;
 
 
 /// A VCF/BCF reader.
+#[derive(Debug)]
 pub struct Reader {
     inner: *mut htslib::htsFile,
     header: Rc<HeaderView>,
@@ -103,6 +104,7 @@ impl Drop for Reader {
 
 
 /// A VCF/BCF writer.
+#[derive(Debug)]
 pub struct Writer {
     inner: *mut htslib::htsFile,
     header: Rc<HeaderView>,
@@ -200,6 +202,7 @@ impl Drop for Writer {
 }
 
 
+#[derive(Debug)]
 pub struct Records<'a> {
     reader: &'a mut Reader,
 }
@@ -220,7 +223,7 @@ impl<'a> Iterator for Records<'a> {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum BCFError {
         Some {
             description("error reading BCF/VCF file")
@@ -230,7 +233,7 @@ quick_error! {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum BCFPathError {
         InvalidPath {
             description("invalid path")
@@ -260,7 +263,7 @@ fn bcf_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile, BCFError> 
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum ReadError {
         Invalid {
             description("invalid record")
@@ -284,7 +287,7 @@ impl ReadError {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum WriteError {
         Some {
             description("failed to write record")
