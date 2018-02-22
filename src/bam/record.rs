@@ -51,7 +51,6 @@ quick_error! {
 
 
 /// A BAM record.
-#[derive(Debug)]
 pub struct Record {
     pub inner: *mut htslib::bam1_t,
     own: bool
