@@ -36,7 +36,7 @@ macro_rules! flag {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum CigarError {
         UnsupportedOperation(msg: String) {
             description("Unsupported CIGAR operation")
@@ -498,8 +498,7 @@ impl Drop for Record {
 }
 
 /// Auxiliary record data.
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Aux<'a> {
     Integer(i64),
     String(&'a [u8]),
@@ -566,6 +565,7 @@ static ENCODE_BASE: [u8; 256] = [
 
 
 /// The sequence of a record.
+#[derive(Debug, Copy, Clone)]
 pub struct Seq<'a> {
     pub encoded: &'a [u8],
     len: usize
@@ -605,7 +605,7 @@ unsafe impl<'a> Send for Seq<'a> {}
 unsafe impl<'a> Sync for Seq<'a> {}
 
 
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy, Hash)]
 pub enum Cigar {
     Match(u32),  // M
     Ins(u32),  // I
@@ -707,7 +707,8 @@ custom_derive! {
              PartialEq,
              Eq,
              NewtypeDebug,
-             Clone
+             Clone,
+             Hash
     )]
     pub struct CigarString(pub Vec<Cigar>);
 }

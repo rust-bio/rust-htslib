@@ -17,6 +17,7 @@ use bam::Read;
 /// The buffer is implemented as a ringbuffer, such that extension or movement to the right has
 /// linear complexity. The buffer makes use of indexed random access. Hence, when fetching a
 /// region at the very end of the BAM, everything before is omitted without cost.
+#[derive(Debug)]
 pub struct RecordBuffer {
     reader: bam::IndexedReader,
     inner: VecDeque<bam::Record>,
@@ -124,7 +125,7 @@ impl RecordBuffer {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum RecordBufferError {
         UnknownSequence(chrom: String) {
             description("unknown sequence")

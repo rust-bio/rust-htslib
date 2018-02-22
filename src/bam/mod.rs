@@ -72,6 +72,7 @@ pub trait Read: Sized {
 
 
 /// A BAM reader.
+#[derive(Debug)]
 pub struct Reader {
     bgzf: *mut htslib::BGZF,
     header: HeaderView,
@@ -174,6 +175,7 @@ impl Drop for Reader {
 }
 
 
+#[derive(Debug)]
 pub struct IndexedReader {
     bgzf: *mut htslib::BGZF,
     header: HeaderView,
@@ -311,6 +313,7 @@ impl Drop for IndexedReader {
 
 
 /// A BAM writer.
+#[derive(Debug)]
 pub struct Writer {
     f: *mut htslib::BGZF,
     header: HeaderView,
@@ -429,6 +432,7 @@ impl Drop for Writer {
 
 
 /// Iterator over the records of a BAM.
+#[derive(Debug)]
 pub struct Records<'a, R: 'a + Read> {
     reader: &'a mut R
 }
@@ -449,7 +453,7 @@ impl<'a, R: Read> Iterator for Records<'a, R> {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum ReadError {
         Truncated {
             description("truncated record")
@@ -476,7 +480,7 @@ impl ReadError {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum IndexedReaderError {
         InvalidIndex {
             description("invalid index")
@@ -489,7 +493,7 @@ quick_error! {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum WriterPathError {
         InvalidPath {
             description("invalid path")
@@ -502,7 +506,7 @@ quick_error! {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum IndexedReaderPathError {
         InvalidPath {
             description("invalid path")
@@ -515,7 +519,7 @@ quick_error! {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum BGZFError {
         Some {
             description("error reading BGZF file")
@@ -525,7 +529,7 @@ quick_error! {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum ReaderPathError {
         InvalidPath {
             description("invalid path")
@@ -538,7 +542,7 @@ quick_error! {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum ThreadingError {
         Some {
             description("error setting threads for multi-threaded writing")
@@ -547,7 +551,7 @@ quick_error! {
 }
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum WriteError {
         Some {
             description("error writing record")
@@ -557,7 +561,7 @@ quick_error! {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum FetchError {
         Some {
             description("error fetching a locus")
@@ -567,7 +571,7 @@ quick_error! {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum SeekError {
         Some {
             description("error seeking to voffset")
@@ -577,7 +581,7 @@ quick_error! {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum AuxWriteError {
         Some {
             description("error pushing aux data to record")
@@ -615,6 +619,7 @@ fn itr_next(bgzf: *mut htslib::BGZF, itr: *mut htslib:: hts_itr_t, record: *mut 
 }
 
 
+#[derive(Debug)]
 pub struct HeaderView {
     inner: *mut htslib::bam_hdr_t,
     owned: bool,

@@ -79,6 +79,7 @@ impl NumericUtils for i32 {
 
 /// A BCF record.
 /// New records can be created by the `empty_record` methods of `bcf::Reader` and `bcf::Writer`.
+#[derive(Debug)]
 pub struct Record {
     pub inner: *mut htslib::bcf1_t,
     header: Rc<HeaderView>,
@@ -252,7 +253,7 @@ impl Record {
 
 
 /// Phased or unphased alleles, represented as indices.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GenotypeAllele {
     Unphased(i32),
     Phased(i32),
@@ -297,7 +298,7 @@ impl fmt::Display for GenotypeAllele {
 
 custom_derive! {
     /// Genotype representation as a vector of `GenotypeAllele`.
-    #[derive(NewtypeDeref, Debug)]
+    #[derive(NewtypeDeref, Debug, Clone, PartialEq, Eq, Hash)]
     pub struct Genotype(Vec<GenotypeAllele>);
 }
 
@@ -321,7 +322,7 @@ impl fmt::Display for Genotype {
 
 
 /// Lazy representation of genotypes, that does no computation until a particular genotype is queried.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Genotypes<'a> {
     encoded: Vec<&'a [i32]>
 }
@@ -357,6 +358,7 @@ unsafe impl Sync for Record {}
 
 
 /// Info tag representation.
+#[derive(Debug)]
 pub struct Info<'a> {
     record: &'a mut Record,
     tag: &'a [u8],
@@ -461,6 +463,7 @@ fn trim_slice<T: PartialEq + NumericUtils>(s: &[T]) -> &[T] {
 
 
 // Representation of per-sample data.
+#[derive(Debug)]
 pub struct Format<'a> {
     record: &'a mut Record,
     tag: &'a [u8],
@@ -575,7 +578,7 @@ unsafe impl<'a> Sync for Format<'a> {}
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum InfoReadError {
         UndefinedTag {
             description("tag undefined in header")
@@ -588,7 +591,7 @@ quick_error! {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum FormatReadError {
         UndefinedTag {
             description("tag undefined in header")
@@ -604,7 +607,7 @@ quick_error! {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum TagWriteError {
         Some {
             description("error writing tag to record")
@@ -614,7 +617,7 @@ quick_error! {
 
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum TrimAllelesError {
         Some {
             description("error trimming alleles")
