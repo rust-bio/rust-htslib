@@ -1097,7 +1097,7 @@ mod tests {
         }
 
         {
-            let mut copy_bam = Reader::from_path(&bampath).ok().expect("Error opening file.");
+            let copy_bam = Reader::from_path(&bampath).ok().expect("Error opening file.");
 
             // Verify that the header came across correctly
             assert_eq!(input_bam.header().as_bytes(), copy_bam.header().as_bytes());

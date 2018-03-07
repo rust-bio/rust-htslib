@@ -77,6 +77,7 @@ extern crate ieee754;
 #[macro_use]
 extern crate lazy_static;
 extern crate bitflags;
+extern crate regex;
 
 #[cfg(feature = "serde")]
 extern crate serde;

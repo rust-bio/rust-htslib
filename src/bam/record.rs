@@ -9,8 +9,12 @@ use std::ffi;
 use std::ops;
 use std::fmt;
 use std::error::Error;
+use std::u32;
+use std::str::FromStr;
+use std::str;
 
 use itertools::Itertools;
+use regex::Regex;
 
 use htslib;
 use bam::{HeaderView, ReadError, AuxWriteError};
@@ -281,7 +285,7 @@ impl Record {
             for (i, c) in cigar.iter().enumerate() {
                 cigar_data[i] = c.encode();
             }
-            self.inner_mut().core.n_cigar = cigar.len() as u32; 
+            self.inner_mut().core.n_cigar = cigar.len() as u32;
             i += cigar.len() * 4;
         }
 
@@ -386,8 +390,7 @@ impl Record {
                     6 => Cigar::Pad(len),
                     7 => Cigar::Equal(len),
                     8 => Cigar::Diff(len),
-                    9 => Cigar::Back(len),
-                    _ => panic!("Unexpected cigar type"),
+                    _ => panic!("Unexpected cigar operation")
                 }
             }).collect()).into_view(self.pos())
     }
@@ -453,7 +456,7 @@ impl Record {
                 ),
             }
         };
-        
+
         if ret < 0 {
             Err(AuxWriteError::Some)
         } else {
@@ -616,7 +619,6 @@ pub enum Cigar {
     Pad(u32),  // P
     Equal(u32),  // =
     Diff(u32),  // X
-    Back(u32)  // B
 }
 
 
@@ -631,8 +633,7 @@ impl Cigar {
             Cigar::HardClip(len) => len << 4 | 5,
             Cigar::Pad(len)      => len << 4 | 6,
             Cigar::Equal(len)    => len << 4 | 7,
-            Cigar::Diff(len)     => len << 4 | 8,
-            Cigar::Back(len)     => len << 4 | 9,
+            Cigar::Diff(len)     => len << 4 | 8
         }
     }
 
@@ -647,8 +648,7 @@ impl Cigar {
             Cigar::HardClip(len) => len,
             Cigar::Pad(len)      => len,
             Cigar::Equal(len)    => len,
-            Cigar::Diff(len)     => len,
-            Cigar::Back(len)     => len
+            Cigar::Diff(len)     => len
         }
     }
 
@@ -663,8 +663,7 @@ impl Cigar {
             Cigar::HardClip(_) => 'H',
             Cigar::Pad(_)      => 'P',
             Cigar::Equal(_)    => '=',
-            Cigar::Diff(_)     => 'X',
-            Cigar::Back(_)     => 'B'
+            Cigar::Diff(_)     => 'X'
         }
     }
 }
@@ -713,19 +712,73 @@ custom_derive! {
     pub struct CigarString(pub Vec<Cigar>);
 }
 
+
 impl CigarString {
     /// Create a `CigarStringView` from this CigarString at position `pos`
     pub fn into_view(self, pos: i32) -> CigarStringView {
         CigarStringView::new(self, pos)
     }
+
+    /// Create a CigarString from given bytes.
+    pub fn from_bytes(text: &[u8]) -> Result<Self, CigarError> {
+        Self::from_str(str::from_utf8(text).map_err(
+            |_| CigarError::UnexpectedOperation("unable to parse as UTF8".to_owned())
+        )?)
+    }
+
+    /// Create a CigarString from given str.
+    pub fn from_str(text: &str) -> Result<Self, CigarError> {
+        lazy_static! {
+            // regex for a cigar string operation
+            static ref OP_RE: Regex = Regex::new("^(?P<n>[0-9]+)(?P<op>[MIDNSHP=X])").unwrap();
+        }
+        let mut inner = Vec::new();
+        let mut i = 0;
+        while i < text.len() {
+            if let Some(caps) = OP_RE.captures(&text[i..]) {
+                let n = &caps["n"];
+                let op = &caps["op"];
+                i += n.len() + op.len();
+                let n = u32::from_str(n).map_err(
+                    |_| CigarError::UnexpectedOperation("expected integer".to_owned())
+                )?;
+                inner.push(match op {
+                    "M" => Cigar::Match(n),
+                    "I" => Cigar::Ins(n),
+                    "D" => Cigar::Del(n),
+                    "N" => Cigar::RefSkip(n),
+                    "H" => Cigar::HardClip(n),
+                    "S" => Cigar::SoftClip(n),
+                    "P" => Cigar::Pad(n),
+                    "=" => Cigar::Equal(n),
+                    "X" => Cigar::Diff(n),
+                    op  => {
+                        return Err(CigarError::UnexpectedOperation(
+                            format!("operation {} not expected", op)
+                        ))
+                    }
+                });
+            } else {
+                return Err(CigarError::UnexpectedOperation(
+                    "expected cigar operation [0-9]+[MIDNSHP=X]".to_owned()
+                ));
+            }
+        }
+
+        Ok(CigarString(inner))
+    }
+
+    pub fn to_string(&self) -> String {
+        format!("{}", self)
+    }
 }
+
 
 impl<'a> CigarString {
     pub fn iter(&'a self) -> ::std::slice::Iter<'a, Cigar> {
         self.into_iter()
     }
 }
-
 
 impl<'a> IntoIterator for &'a CigarString {
     type Item = &'a Cigar;
@@ -768,12 +821,7 @@ impl CigarStringView {
                 &Cigar::Match(l) | &Cigar::RefSkip(l) | &Cigar::Del(l) |
                 &Cigar::Equal(l) | &Cigar::Diff(l) => pos += l as i32,
                 // these don't add to end_pos on reference
-                &Cigar::Ins(_) | &Cigar::SoftClip(_) | &Cigar::HardClip(_) | &Cigar::Pad(_) => (),
-                &Cigar::Back(_) => {
-                    return Err(CigarError::UnsupportedOperation(
-                        "'back' (B) operation is deprecated according to htslib/bam_plcmd.c and is not in SAMv1 spec".to_owned()
-                    ));
-                }
+                &Cigar::Ins(_) | &Cigar::SoftClip(_) | &Cigar::HardClip(_) | &Cigar::Pad(_) => ()
             }
         }
         Ok( pos )
@@ -824,11 +872,6 @@ impl CigarStringView {
                 &Cigar::Del(_) => {
                     return Err(CigarError::UnexpectedOperation(
                         "'deletion' (D) found before any operation describing read sequence".to_owned()
-                    ));
-                },
-                &Cigar::Back(_) => {
-                    return Err(CigarError::UnsupportedOperation(
-                        "'back' (B) operation is deprecated according to htslib/bam_plcmd.c and is not in SAMv1 spec".to_owned()
                     ));
                 },
                 &Cigar::RefSkip(_) => {
@@ -902,12 +945,7 @@ impl CigarStringView {
                         "'hard clip' (H) found in between operations, contradicting SAMv1 spec that hard clips can only be at the ends of reads".to_owned()
                     ));
                 },
-                &Cigar::HardClip(_) => return Ok(None),
-                &Cigar::Back(_) => {
-                    return Err(CigarError::UnsupportedOperation(
-                        "'back' (B) operation is deprecated according to htslib/bam_plcmd.c and is not in SAMv1 spec".to_owned()
-                    ));
-                }
+                &Cigar::HardClip(_) => return Ok(None)
             }
         }
 
@@ -1150,5 +1188,14 @@ mod tests {
         assert_eq!(rec.is_paired(), false);
         assert_eq!(rec.is_supplementary(), false);
 
+    }
+
+    #[test]
+    fn test_cigar_parse() {
+        let cigar = "1S20M1D2I3X1=2H";
+
+        let parsed = CigarString::from_str(cigar).unwrap();
+
+        assert_eq!(parsed.to_string(), cigar);
     }
 }
