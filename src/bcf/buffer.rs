@@ -75,12 +75,6 @@ impl RecordBuffer {
         let mut added = 0;
         let mut deleted = 0;
 
-        // move overflow from last fill into ringbuffer
-        if self.overflow.is_some() {
-            self.ringbuffer.push_back(self.overflow.take().unwrap());
-            added += 1;
-        }
-
         // shrink and swap
         match (self.last_rid(), self.next_rid()) {
             (Some(last_rid), _) => {
@@ -108,6 +102,22 @@ impl RecordBuffer {
             // We have already read beyond the current rid. Hence we can't extend to the right for
             // this rid.
             return Ok((added, deleted))
+        }
+
+        // move overflow from last fill into ringbuffer
+        if self.overflow.is_some() {
+            let pos = self.overflow.as_ref().unwrap().pos();
+            if pos >= start {
+                if pos <= end {
+                    self.ringbuffer.push_back(self.overflow.take().unwrap());
+                    added += 1;
+                } else {
+                    return Ok((added, deleted));
+                }
+            } else {
+                // discard overflow
+                self.overflow.take();
+            }
         }
 
         // extend to the right
