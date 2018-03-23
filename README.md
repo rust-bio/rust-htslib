@@ -36,8 +36,8 @@ For more information, please see the [docs](https://docs.rs/rust-htslib).
 
 # Authors
 
-* [Christopher Schröder](https://github.com/christopher-schroeder)
 * [Johannes Köster](https://github.com/johanneskoester)
+* [Christopher Schröder](https://github.com/christopher-schroeder)
 
 For other contributors, see [here](https://github.com/rust-bio/rust-htslib/graphs/contributors).
 
