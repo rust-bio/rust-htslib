@@ -17,8 +17,6 @@ git clone --recursive https://github.com/rust-bio/rust-htslib.git
 ensuring that the HTSlib submodule is fetched, too.
 If you only want to use the library, there is no need to clone the repository. Go on to the **Usage** section in this case.
 
-For information how to use Rust-Htslib, please see the [docs](https://docs.rs/rust-htslib).
-
 ### Usage
 
 Add this to your `Cargo.toml`:
@@ -33,6 +31,8 @@ and this to your crate root:
 ```rust
 extern crate rust_htslib;
 ```
+
+For more information, please see the [docs](https://docs.rs/rust-htslib).
 
 # Authors
 
