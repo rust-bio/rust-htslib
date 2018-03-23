@@ -19,6 +19,21 @@ If you only want to use the library, there is no need to clone the repository. G
 
 For information how to use Rust-Htslib, please see the [docs](https://docs.rs/rust-htslib).
 
+### Usage
+
+Add this to your `Cargo.toml`:
+
+```toml
+[dependencies]
+rust-htslib = "*"
+```
+
+and this to your crate root:
+
+```rust
+extern crate rust_htslib;
+```
+
 # Authors
 
 * [Christopher Schröder](https://github.com/christopher-schroeder)
