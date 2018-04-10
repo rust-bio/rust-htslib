@@ -39,6 +39,11 @@ impl RecordBuffer {
         }
     }
 
+    /// Return start position of buffer
+    fn start(&self) -> Option<u32> {
+        self.inner.front().map(|rec| rec.pos() as u32)
+    }
+
     /// Return end position of buffer.
     fn end(&self) -> Option<u32> {
         self.inner.back().map(|rec| rec.pos() as u32)
@@ -48,8 +53,8 @@ impl RecordBuffer {
         self.inner.back().map(|rec| rec.tid())
     }
 
-    /// Fill buffer at the given interval. The start coordinate has to be left of
-    /// the start coordinate of any previous `fill` operation.
+    /// Fill buffer at the given interval. If the start coordinate is left of
+    /// the previous start coordinate, this will use an additional BAM fetch IO operation.
     /// Coordinates are 0-based, and end is exclusive.
     /// Returns tuple with numbers of added and deleted records since the previous fetch.
     #[allow(unused_assignments)]  // TODO this is needed because rustc thinks that deleted is unused
@@ -64,7 +69,11 @@ impl RecordBuffer {
         if let Some(tid) = self.reader.header.tid(chrom) {
             let mut deleted = 0;
             let window_start = start;
-            if self.inner.is_empty() || self.end().unwrap() < window_start || self.tid().unwrap() != tid as i32 {
+            if self.inner.is_empty() ||
+               self.end().unwrap() < window_start ||
+               self.tid().unwrap() != tid as i32 ||
+               self.start().unwrap() > window_start
+            {
                 let end = self.reader.header.target_len(tid).unwrap();
                 self.reader.fetch(tid, window_start, end)?;
                 deleted = self.inner.len();
