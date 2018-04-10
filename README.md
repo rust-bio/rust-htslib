@@ -38,6 +38,10 @@ For more information, please see the [docs](https://docs.rs/rust-htslib).
 
 * [Johannes Köster](https://github.com/johanneskoester)
 * [Christopher Schröder](https://github.com/christopher-schroeder)
+* [Patrick Marks](https://github.com/pmarks)
+* [David Lähnemann](https://github.com/dlaehnemann)
+* [Manuel Holtgrewe](https://github.com/holtgrewe)
+
 
 For other contributors, see [here](https://github.com/rust-bio/rust-htslib/graphs/contributors).
 
