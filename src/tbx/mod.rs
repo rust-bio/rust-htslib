@@ -14,7 +14,7 @@ use htslib;
 
 /// A trait for a Tabix reader with a read method.
 pub trait Read: Sized {
-    /// Read next line the given `Vec<u8>` (i.e., ASCII string).
+    /// Read next line into the given `Vec<u8>` (i.e., ASCII string).
     /// Use this method in combination with a single allocated record to avoid the reallocations
     /// occurring with the iterator.
     ///
