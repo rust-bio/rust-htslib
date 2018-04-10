@@ -131,6 +131,36 @@ impl Record {
         self.inner_mut().pos = pos;
     }
 
+    /// Update the ID string to the given value.
+    pub fn update_id(&mut self, id: &[u8]) -> Result<(), IdWriteError> {
+        unsafe {
+            if htslib::bcf_update_id(
+                self.header().inner,
+                self.inner,
+                ffi::CString::new(id).unwrap().as_ptr() as *mut i8,
+            ) == 0 {
+                Ok(())
+            } else {
+                Err(IdWriteError::Some)
+            }
+        }
+    }
+
+    /// Add the ID string (the ID field is semicolon-separated), checking for duplicates.
+    pub fn add_id(&mut self, id: &[u8]) -> Result<(), IdWriteError> {
+        unsafe {
+            if htslib::bcf_add_id(
+                self.header().inner,
+                self.inner,
+                ffi::CString::new(id).unwrap().as_ptr() as *mut i8,
+            ) == 0 {
+                Ok(())
+            } else {
+                Err(IdWriteError::Some)
+            }
+        }
+    }
+
     /// Get alleles. The first allele is the reference allele.
     pub fn alleles(&self) -> Vec<&[u8]> {
         unsafe { htslib::bcf_unpack(self.inner, htslib::BCF_UN_STR as i32) };
@@ -139,6 +169,41 @@ impl Record {
         let alleles = unsafe { slice::from_raw_parts(dec.allele, n) };
         (0..n).map(|i| unsafe { ffi::CStr::from_ptr(alleles[i]).to_bytes() }).collect()
     }
+
+    /// Update alleles as vector of alleles.
+    pub fn update_alleles(&mut self, alleles: &Vec<&[u8]>) -> Result<(), AlleleWriteError> {
+        let cstrings: Vec<ffi::CString> = alleles.iter().map(|slice| ffi::CString::new(*slice).unwrap()).collect();
+        let mut ptrs: Vec<*const i8> = cstrings.iter().map(|cstr| cstr.as_ptr() as *const i8).collect();
+        unsafe {
+            if htslib::bcf_update_alleles(
+                self.header().inner,
+                self.inner,
+                ptrs.as_mut_ptr(),
+                alleles.len() as i32
+            ) == 0 {
+                Ok(())
+            } else {
+                Err(AlleleWriteError::Some)
+            }
+        }
+    }
+
+    /// Update alleles as comma-separated ASCII string of alleles.
+    pub fn update_alleles_str(&mut self, alleles: &[u8]) -> Result<(), AlleleWriteError> {
+        unsafe {
+            if htslib::bcf_update_alleles_str(
+                self.header().inner,
+                self.inner,
+                ffi::CString::new(alleles).unwrap().as_ptr() as *mut i8,
+            ) == 0 {
+                Ok(())
+            } else {
+                Err(AlleleWriteError::Some)
+            }
+        }
+    }
+    // int bcf_update_alleles(const bcf_hdr_t *hdr, bcf1_t *line, const char **alleles, int nals);
+    // int bcf_update_alleles_str(const bcf_hdr_t *hdr, bcf1_t *line, const char *alleles_string);
 
     /// Get variant quality.
     pub fn qual(&self) -> f32 {
@@ -189,6 +254,12 @@ impl Record {
     /// Returns error if tag is not present in header.
     pub fn push_format_float(&mut self, tag: &[u8], data: &[f32]) -> Result<(), TagWriteError> {
         self.push_format(tag, data, htslib::BCF_HT_REAL)
+    }
+
+    /// Update genotypes for all samples, corresponds to `bcf_update_genotypes` in HTSlib.
+    pub fn push_format_genotypes(&mut self, gts: &[i32]) -> Result<(), TagWriteError> {
+        // Implemented in the same way as the macro `bcf_update_genotypes` in `vcf.h`.
+        self.push_format_integer(b"GT", gts)
     }
 
     /// Add a format tag. Data is a flattened two-dimensional array.
@@ -611,6 +682,26 @@ quick_error! {
     pub enum TagWriteError {
         Some {
             description("error writing tag to record")
+        }
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug, Clone)]
+    pub enum IdWriteError {
+        Some {
+            description("error writing ID to record")
+        }
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug, Clone)]
+    pub enum AlleleWriteError {
+        Some {
+            description("error writing alleles to record")
         }
     }
 }
