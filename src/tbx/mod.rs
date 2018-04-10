@@ -41,7 +41,7 @@ pub trait Read: Sized {
 /// Note that the `tabix` command from `htslib` can actually several more things, including
 /// building indices and converting BCF to VCF text output.  Both is out of scope here.
 #[derive(Debug)]
-pub struct TabixReader {
+pub struct Reader {
     /// The header lines (if any).
     header: Vec<String>,
 
@@ -64,13 +64,13 @@ pub struct TabixReader {
     end: i32,
 }
 
-unsafe impl Send for TabixReader {}
+unsafe impl Send for Reader {}
 
 /// Redefinition of `KS_SEP_LINE` from `htslib/kseq.h`.
 const KS_SEP_LINE: i32 = 2;
 
-impl TabixReader {
-    /// Create a new TabixReader from path.
+impl Reader {
+    /// Create a new Reader from path.
     ///
     /// # Arguments
     ///
@@ -87,7 +87,7 @@ impl TabixReader {
         Self::new(url.as_str().as_bytes())
     }
 
-    /// Create a new TabixReader.
+    /// Create a new Reader.
     ///
     /// # Arguments
     ///
@@ -117,7 +117,7 @@ impl TabixReader {
         if tbx.is_null() {
             Err(TabixReaderError::InvalidIndex)
         } else {
-            Ok(TabixReader {
+            Ok(Reader {
                 header,
                 hts_file,
                 hts_format,
@@ -204,7 +204,7 @@ fn overlap(tid1: i32, begin1: i32, end1: i32, tid2: i32, begin2: i32, end2: i32)
     (tid1 == tid2) && (begin1 < end2) && (begin2 < end1)
 }
 
-impl Read for TabixReader {
+impl Read for Reader {
     fn read(&mut self, record: &mut Vec<u8>) -> Result<(), ReadError> {
         match self.itr {
             Some(itr) => {
@@ -250,7 +250,7 @@ impl Read for TabixReader {
     }
 }
 
-impl Drop for TabixReader {
+impl Drop for Reader {
     fn drop(&mut self) {
         unsafe {
             if self.itr.is_some() {
@@ -366,9 +366,9 @@ mod tests {
 
     #[test]
     fn bed_header() {
-        let reader = TabixReader::from_path("test/test_bed3.bed.gz")
-            .ok()
-            .expect("Error opening file.");
+        let reader = Reader::from_path("test/test_bed3.bed.gz").ok().expect(
+            "Error opening file.",
+        );
 
         // Check header lines.
         assert_eq!(
@@ -390,9 +390,9 @@ mod tests {
 
     #[test]
     fn bed_fetch_from_chr1_read_api() {
-        let mut reader = TabixReader::from_path("test/test_bed3.bed.gz")
-            .ok()
-            .expect("Error opening file.");
+        let mut reader = Reader::from_path("test/test_bed3.bed.gz").ok().expect(
+            "Error opening file.",
+        );
 
         let chr1_id = reader.seq_name_to_id("chr1").unwrap();
         assert!(reader.fetch(chr1_id, 1000, 1003).is_ok());
@@ -405,9 +405,9 @@ mod tests {
 
     #[test]
     fn bed_fetch_from_chr1_iterator_api() {
-        let mut reader = TabixReader::from_path("test/test_bed3.bed.gz")
-            .ok()
-            .expect("Error opening file.");
+        let mut reader = Reader::from_path("test/test_bed3.bed.gz").ok().expect(
+            "Error opening file.",
+        );
 
         let chr1_id = reader.seq_name_to_id("chr1").unwrap();
         assert!(reader.fetch(chr1_id, 1000, 1003).is_ok());
