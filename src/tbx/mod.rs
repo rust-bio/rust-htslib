@@ -14,19 +14,19 @@ use htslib;
 
 /// A trait for a Tabix reader with a read method.
 pub trait Read: Sized {
-    /// Read next line the given `String`.
+    /// Read next line the given `Vec<u8>` (i.e., ASCII string).
     /// Use this method in combination with a single allocated record to avoid the reallocations
     /// occurring with the iterator.
     ///
     /// # Arguments
     ///
-    /// * `record` - the `String` to be filled
-    fn read(&mut self, record: &mut String) -> Result<(), ReadError>;
+    /// * `record` - the `Vec<u8>` to be filled
+    fn read(&mut self, record: &mut Vec<u8>) -> Result<(), ReadError>;
 
     /// Iterator over the lines/records of the seeked region.
     /// Note that, while being convenient, this is less efficient than pre-allocating a
-    /// `String` and reading into it with the `read` method, since every iteration involves
-    /// the allocation of a new `String`.
+    /// `Vec<u8>` and reading into it with the `read` method, since every iteration involves
+    /// the allocation of a new `Vec<u8>`.
     fn records(&mut self) -> Records<Self>;
 
     /// Return the text headers, split by line.
@@ -34,12 +34,16 @@ pub trait Read: Sized {
 }
 
 /// A Tabix file reader.
+///
+/// This struct and its associated functions are meant for reading plain-text tabix files.  That
+/// is, any bgzip-ed and tabix-indexed file can be queried for regions.
+////
+/// Note that the `tabix` command from `htslib` can actually several more things, including
+/// building indices and converting BCF to VCF text output.  Both is out of scope here.
 #[derive(Debug)]
 pub struct TabixReader {
     /// The header lines (if any).
     header: Vec<String>,
-    /// The sequence names.
-    seqnames: Vec<String>,
 
     /// The file to read from.
     hts_file: *mut htslib::htsFile,
@@ -55,7 +59,7 @@ pub struct TabixReader {
     /// The currently fetch region's tid.
     tid: i32,
     /// The currently fetch region's 0-based begin pos.
-    beg: i32,
+    start: i32,
     /// The currently fetch region's 0-based end pos.
     end: i32,
 }
@@ -110,35 +114,18 @@ impl TabixReader {
             }
         }
 
-        let mut nseq: i32 = 0;
-        let seqs = unsafe { htslib::tbx_seqnames(tbx, &mut nseq) };
-        let mut seqnames = Vec::new();
-        for i in 0..nseq {
-            unsafe {
-                seqnames.push(String::from(
-                    ffi::CStr::from_ptr(*seqs.offset(i as isize))
-                        .to_str()
-                        .unwrap(),
-                ));
-            }
-        }
-        unsafe {
-            libc::free(seqs as (*mut libc::c_void));
-        };
-
         if tbx.is_null() {
             Err(TabixReaderError::InvalidIndex)
         } else {
             Ok(TabixReader {
                 header,
-                seqnames,
                 hts_file,
                 hts_format,
                 tbx,
                 buf,
                 itr: None,
                 tid: -1,
-                beg: -1,
+                start: -1,
                 end: -1,
             })
         }
@@ -160,10 +147,10 @@ impl TabixReader {
         }
     }
 
-    /// Fetch region given by numeric sequence number and 1-based begin and end position.
-    pub fn fetch(&mut self, tid: u32, beg: u32, end: u32) -> Result<(), FetchError> {
+    /// Fetch region given by numeric sequence number and 0-based begin and end position.
+    pub fn fetch(&mut self, tid: u32, start: u32, end: u32) -> Result<(), FetchError> {
         self.tid = tid as i32;
-        self.beg = beg as i32;
+        self.start = start as i32;
         self.end = end as i32;
 
         if let Some(itr) = self.itr {
@@ -175,7 +162,7 @@ impl TabixReader {
             htslib::hts_itr_query(
                 (*self.tbx).idx,
                 tid as i32,
-                beg as i32,
+                start as i32,
                 end as i32,
                 Some(htslib::tbx_readrec),
             )
@@ -188,6 +175,28 @@ impl TabixReader {
             Ok(())
         }
     }
+
+    /// Return the sequence contig names.
+    pub fn seqnames(&self) -> Vec<String> {
+        let mut result = Vec::new();
+
+        let mut nseq: i32 = 0;
+        let seqs = unsafe { htslib::tbx_seqnames(self.tbx, &mut nseq) };
+        for i in 0..nseq {
+            unsafe {
+                result.push(String::from(
+                    ffi::CStr::from_ptr(*seqs.offset(i as isize))
+                        .to_str()
+                        .unwrap(),
+                ));
+            }
+        }
+        unsafe {
+            libc::free(seqs as (*mut libc::c_void));
+        };
+
+        result
+    }
 }
 
 /// Return whether the two given genomic intervals overlap.
@@ -196,7 +205,7 @@ fn overlap(tid1: i32, begin1: i32, end1: i32, tid2: i32, begin2: i32, end2: i32)
 }
 
 impl Read for TabixReader {
-    fn read(&mut self, record: &mut String) -> Result<(), ReadError> {
+    fn read(&mut self, record: &mut Vec<u8>) -> Result<(), ReadError> {
         match self.itr {
             Some(itr) => {
                 loop {
@@ -219,12 +228,11 @@ impl Read for TabixReader {
                     }
                     // Return first overlapping record (loop will stop when `hts_itr_next(...)`
                     // returns `< 0`).
-                    let (tid, beg, end) =
+                    let (tid, start, end) =
                         unsafe { ((*itr).curr_tid, (*itr).curr_beg, (*itr).curr_end) };
-                    if overlap(self.tid, self.beg, self.end, tid, beg, end) {
-                        *record = unsafe {
-                            String::from(ffi::CStr::from_ptr(self.buf.s).to_str().unwrap())
-                        };
+                    if overlap(self.tid, self.start, self.end, tid, start, end) {
+                        *record =
+                            unsafe { Vec::from(ffi::CStr::from_ptr(self.buf.s).to_str().unwrap()) };
                         return Ok(());
                     }
                 }
@@ -261,10 +269,10 @@ pub struct Records<'a, R: 'a + Read> {
 }
 
 impl<'a, R: Read> Iterator for Records<'a, R> {
-    type Item = Result<String, ReadError>;
+    type Item = Result<Vec<u8>, ReadError>;
 
-    fn next(&mut self) -> Option<Result<String, ReadError>> {
-        let mut record = String::new();
+    fn next(&mut self) -> Option<Result<Vec<u8>, ReadError>> {
+        let mut record = Vec::new();
         match self.reader.read(&mut record) {
             Err(ReadError::NoMoreRecord) => None,
             Ok(()) => Some(Ok(record)),
@@ -370,7 +378,7 @@ mod tests {
 
         // Check sequence name vector.
         assert_eq!(
-            reader.seqnames,
+            reader.seqnames(),
             vec![String::from("chr1"), String::from("chr2")]
         );
 
@@ -389,9 +397,9 @@ mod tests {
         let chr1_id = reader.seq_name_to_id("chr1").unwrap();
         assert!(reader.fetch(chr1_id, 1000, 1003).is_ok());
 
-        let mut record = String::new();
+        let mut record = Vec::new();
         assert!(reader.read(&mut record).is_ok());
-        assert_eq!(record, String::from("chr1\t1001\t1002"));
+        assert_eq!(record, Vec::from("chr1\t1001\t1002"));
         assert!(reader.read(&mut record).is_err());
     }
 
@@ -404,7 +412,7 @@ mod tests {
         let chr1_id = reader.seq_name_to_id("chr1").unwrap();
         assert!(reader.fetch(chr1_id, 1000, 1003).is_ok());
 
-        let records: Vec<String> = reader.records().map(|r| r.unwrap()).collect();
-        assert_eq!(records, vec![String::from("chr1\t1001\t1002")]);
+        let records: Vec<Vec<u8>> = reader.records().map(|r| r.unwrap()).collect();
+        assert_eq!(records, vec![Vec::from("chr1\t1001\t1002")]);
     }
 }
