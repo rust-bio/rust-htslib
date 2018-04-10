@@ -35,9 +35,9 @@ pub trait Read: Sized {
 
 /// A Tabix file reader.
 ///
-/// This struct and its associated functions are meant for reading plain-text tabix files.  That
-/// is, any bgzip-ed and tabix-indexed file can be queried for regions.
-////
+/// This struct and its associated functions are meant for reading plain-text tabix indexed
+/// by `tabix`.
+///
 /// Note that the `tabix` command from `htslib` can actually several more things, including
 /// building indices and converting BCF to VCF text output.  Both is out of scope here.
 #[derive(Debug)]
