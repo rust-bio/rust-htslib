@@ -125,7 +125,10 @@ impl Writer {
     ///
     /// # Arguments
     ///
-    /// * path: 
+    /// * `path` - the path.
+    /// * `header` - header definition to use
+    /// * `uncompressed` - disable compression
+    /// * `vcf` - write VCF instead of BCF
     pub fn from_path<P: AsRef<Path>>(path: P, header: &Header, uncompressed: bool, vcf: bool) -> Result<Self, BCFPathError> {
         if let Some(p) = path.as_ref().to_str() {
             Ok(try!(Self::new(p.as_bytes(), header, uncompressed, vcf)))
