@@ -66,11 +66,13 @@ impl RecordBuffer {
         to_remove
     }
 
-    /// Fill the buffer with variants in the given window. The start coordinate has to be left of
+    /// Fill the buffer with variants in the given window. The start coordinate has to be right of
     /// the start coordinate of any previous `fill` operation.
     /// Coordinates are 0-based, and end is exclusive.
     /// Returns tuple with numbers of added and deleted records compared to previous fetch.
     pub fn fetch(&mut self, chrom: &[u8], start: u32, end: u32) -> Result<(usize, usize), Box<Error>> {
+        // TODO panic if start is left of previous start or we have moved past the given chrom
+        // before.
         let rid = try!(self.reader.header.name2rid(chrom));
         let mut added = 0;
         let mut deleted = 0;
