@@ -3,3 +3,4 @@
 #include "htslib/htslib/sam.h"
 #include "htslib/htslib/bgzf.h"
 #include "htslib/htslib/vcfutils.h"
+#include "htslib/htslib/tbx.h"
