@@ -131,8 +131,8 @@ impl Reader {
         }
     }
 
-    /// Get sequence ID from sequence name.
-    pub fn seq_name_to_id(&self, name: &str) -> Result<u32, SequenceLookupError> {
+    /// Get sequence/target ID from sequence name.
+    pub fn tid(&self, name: &str) -> Result<u32, SequenceLookupError> {
         // TODO: naming?
         let res = unsafe {
             htslib::tbx_name2id(
@@ -383,9 +383,9 @@ mod tests {
         );
 
         // Check mapping between name and idx.
-        assert_eq!(reader.seq_name_to_id("chr1").unwrap(), 0);
-        assert_eq!(reader.seq_name_to_id("chr2").unwrap(), 1);
-        assert!(reader.seq_name_to_id("chr3").is_err());
+        assert_eq!(reader.tid("chr1").unwrap(), 0);
+        assert_eq!(reader.tid("chr2").unwrap(), 1);
+        assert!(reader.tid("chr3").is_err());
     }
 
     #[test]
@@ -394,7 +394,7 @@ mod tests {
             "Error opening file.",
         );
 
-        let chr1_id = reader.seq_name_to_id("chr1").unwrap();
+        let chr1_id = reader.tid("chr1").unwrap();
         assert!(reader.fetch(chr1_id, 1000, 1003).is_ok());
 
         let mut record = Vec::new();
@@ -409,7 +409,7 @@ mod tests {
             "Error opening file.",
         );
 
-        let chr1_id = reader.seq_name_to_id("chr1").unwrap();
+        let chr1_id = reader.tid("chr1").unwrap();
         assert!(reader.fetch(chr1_id, 1000, 1003).is_ok());
 
         let records: Vec<Vec<u8>> = reader.records().map(|r| r.unwrap()).collect();
