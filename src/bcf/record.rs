@@ -167,7 +167,7 @@ impl Record {
     }
 
     /// Set alleles.
-    pub fn update_alleles(&mut self, alleles: &[Vec<u8>]) -> Result<(), AlleleWriteError>
+    pub fn set_alleles(&mut self, alleles: &[Vec<u8>]) -> Result<(), AlleleWriteError>
     {
         let cstrings: Vec<ffi::CString> = alleles.iter().map(|vec| ffi::CString::new(vec.as_slice()).unwrap()).collect();
         let mut ptrs: Vec<*const i8> = cstrings.iter().map(|cstr| cstr.as_ptr() as *const i8).collect();
