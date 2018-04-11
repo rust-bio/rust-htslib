@@ -166,13 +166,10 @@ impl Record {
         (0..n).map(|i| unsafe { ffi::CStr::from_ptr(alleles[i]).to_bytes() }).collect()
     }
 
-    /// Set alleles. Alleles can be given as anything that implements `AsRef<[u8]>`, i.e.,
-    /// can be converted into a slice of `u8`. For example, a vector of slices, vector of vectors,
-    /// slices of slices, and so on.
-    pub fn update_alleles<'a, A: AsRef<[u8]>>(&mut self, alleles: &'a [A]) -> Result<(), AlleleWriteError>
-        where Vec<u8>: From<&'a A>
+    /// Set alleles.
+    pub fn update_alleles(&mut self, alleles: &[Vec<u8>]) -> Result<(), AlleleWriteError>
     {
-        let cstrings: Vec<ffi::CString> = alleles.iter().map(|slice| ffi::CString::new(slice).unwrap()).collect();
+        let cstrings: Vec<ffi::CString> = alleles.iter().map(|vec| ffi::CString::new(vec.as_slice()).unwrap()).collect();
         let mut ptrs: Vec<*const i8> = cstrings.iter().map(|cstr| cstr.as_ptr() as *const i8).collect();
         if unsafe { htslib::bcf_update_alleles(
             self.header().inner,
