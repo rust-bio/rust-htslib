@@ -23,7 +23,7 @@ pub use bcf::buffer::RecordBuffer;
 
 /// Redefinition of corresponding `#define` in `vcf.h.`.
 #[allow(non_upper_case_globals)]
-pub const gt_missing: i32 = 0;
+pub const GT_MISSING: i32 = 0;
 
 
 /// A VCF/BCF reader.

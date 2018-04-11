@@ -132,32 +132,28 @@ impl Record {
     }
 
     /// Update the ID string to the given value.
-    pub fn update_id(&mut self, id: &[u8]) -> Result<(), IdWriteError> {
-        unsafe {
-            if htslib::bcf_update_id(
-                self.header().inner,
-                self.inner,
-                ffi::CString::new(id).unwrap().as_ptr() as *mut i8,
-            ) == 0 {
-                Ok(())
-            } else {
-                Err(IdWriteError::Some)
-            }
+    pub fn set_id(&mut self, id: &[u8]) -> Result<(), IdWriteError> {
+        if unsafe { htslib::bcf_update_id(
+            self.header().inner,
+            self.inner,
+            ffi::CString::new(id).unwrap().as_ptr() as *mut i8,
+        ) } == 0 {
+            Ok(())
+        } else {
+            Err(IdWriteError::Some)
         }
     }
 
     /// Add the ID string (the ID field is semicolon-separated), checking for duplicates.
-    pub fn add_id(&mut self, id: &[u8]) -> Result<(), IdWriteError> {
-        unsafe {
-            if htslib::bcf_add_id(
-                self.header().inner,
-                self.inner,
-                ffi::CString::new(id).unwrap().as_ptr() as *mut i8,
-            ) == 0 {
-                Ok(())
-            } else {
-                Err(IdWriteError::Some)
-            }
+    pub fn push_id(&mut self, id: &[u8]) -> Result<(), IdWriteError> {
+        if unsafe { htslib::bcf_add_id(
+            self.header().inner,
+            self.inner,
+            ffi::CString::new(id).unwrap().as_ptr() as *mut i8,
+        ) } == 0 {
+            Ok(())
+        } else {
+            Err(IdWriteError::Some)
         }
     }
 
@@ -170,40 +166,25 @@ impl Record {
         (0..n).map(|i| unsafe { ffi::CStr::from_ptr(alleles[i]).to_bytes() }).collect()
     }
 
-    /// Update alleles as vector of alleles.
-    pub fn update_alleles(&mut self, alleles: &Vec<&[u8]>) -> Result<(), AlleleWriteError> {
-        let cstrings: Vec<ffi::CString> = alleles.iter().map(|slice| ffi::CString::new(*slice).unwrap()).collect();
+    /// Set alleles. Alleles can be given as anything that implements `AsRef<[u8]>`, i.e.,
+    /// can be converted into a slice of `u8`. For example, a vector of slices, vector of vectors,
+    /// slices of slices, and so on.
+    pub fn update_alleles<'a, A: AsRef<[u8]>>(&mut self, alleles: &'a [A]) -> Result<(), AlleleWriteError>
+        where Vec<u8>: From<&'a A>
+    {
+        let cstrings: Vec<ffi::CString> = alleles.iter().map(|slice| ffi::CString::new(slice).unwrap()).collect();
         let mut ptrs: Vec<*const i8> = cstrings.iter().map(|cstr| cstr.as_ptr() as *const i8).collect();
-        unsafe {
-            if htslib::bcf_update_alleles(
-                self.header().inner,
-                self.inner,
-                ptrs.as_mut_ptr(),
-                alleles.len() as i32
-            ) == 0 {
-                Ok(())
-            } else {
-                Err(AlleleWriteError::Some)
-            }
+        if unsafe { htslib::bcf_update_alleles(
+            self.header().inner,
+            self.inner,
+            ptrs.as_mut_ptr(),
+            alleles.len() as i32
+        ) } == 0 {
+            Ok(())
+        } else {
+            Err(AlleleWriteError::Some)
         }
     }
-
-    /// Update alleles as comma-separated ASCII string of alleles.
-    pub fn update_alleles_str(&mut self, alleles: &[u8]) -> Result<(), AlleleWriteError> {
-        unsafe {
-            if htslib::bcf_update_alleles_str(
-                self.header().inner,
-                self.inner,
-                ffi::CString::new(alleles).unwrap().as_ptr() as *mut i8,
-            ) == 0 {
-                Ok(())
-            } else {
-                Err(AlleleWriteError::Some)
-            }
-        }
-    }
-    // int bcf_update_alleles(const bcf_hdr_t *hdr, bcf1_t *line, const char **alleles, int nals);
-    // int bcf_update_alleles_str(const bcf_hdr_t *hdr, bcf1_t *line, const char *alleles_string);
 
     /// Get variant quality.
     pub fn qual(&self) -> f32 {
@@ -254,12 +235,6 @@ impl Record {
     /// Returns error if tag is not present in header.
     pub fn push_format_float(&mut self, tag: &[u8], data: &[f32]) -> Result<(), TagWriteError> {
         self.push_format(tag, data, htslib::BCF_HT_REAL)
-    }
-
-    /// Update genotypes for all samples, corresponds to `bcf_update_genotypes` in HTSlib.
-    pub fn push_format_genotypes(&mut self, gts: &[i32]) -> Result<(), TagWriteError> {
-        // Implemented in the same way as the macro `bcf_update_genotypes` in `vcf.h`.
-        self.push_format_integer(b"GT", gts)
     }
 
     /// Add a format tag. Data is a flattened two-dimensional array.
