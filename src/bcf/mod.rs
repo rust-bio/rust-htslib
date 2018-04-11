@@ -21,6 +21,11 @@ pub use bcf::record::Record;
 pub use bcf::buffer::RecordBuffer;
 
 
+/// Redefinition of corresponding `#define` in `vcf.h.`.
+#[allow(non_upper_case_globals)]
+pub const GT_MISSING: i32 = 0;
+
+
 /// A VCF/BCF reader.
 #[derive(Debug)]
 pub struct Reader {
@@ -120,7 +125,10 @@ impl Writer {
     ///
     /// # Arguments
     ///
-    /// * path: 
+    /// * `path` - the path.
+    /// * `header` - header definition to use
+    /// * `uncompressed` - disable compression
+    /// * `vcf` - write VCF instead of BCF
     pub fn from_path<P: AsRef<Path>>(path: P, header: &Header, uncompressed: bool, vcf: bool) -> Result<Self, BCFPathError> {
         if let Some(p) = path.as_ref().to_str() {
             Ok(try!(Self::new(p.as_bytes(), header, uncompressed, vcf)))

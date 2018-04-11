@@ -131,6 +131,32 @@ impl Record {
         self.inner_mut().pos = pos;
     }
 
+    /// Update the ID string to the given value.
+    pub fn set_id(&mut self, id: &[u8]) -> Result<(), IdWriteError> {
+        if unsafe { htslib::bcf_update_id(
+            self.header().inner,
+            self.inner,
+            ffi::CString::new(id).unwrap().as_ptr() as *mut i8,
+        ) } == 0 {
+            Ok(())
+        } else {
+            Err(IdWriteError::Some)
+        }
+    }
+
+    /// Add the ID string (the ID field is semicolon-separated), checking for duplicates.
+    pub fn push_id(&mut self, id: &[u8]) -> Result<(), IdWriteError> {
+        if unsafe { htslib::bcf_add_id(
+            self.header().inner,
+            self.inner,
+            ffi::CString::new(id).unwrap().as_ptr() as *mut i8,
+        ) } == 0 {
+            Ok(())
+        } else {
+            Err(IdWriteError::Some)
+        }
+    }
+
     /// Get alleles. The first allele is the reference allele.
     pub fn alleles(&self) -> Vec<&[u8]> {
         unsafe { htslib::bcf_unpack(self.inner, htslib::BCF_UN_STR as i32) };
@@ -138,6 +164,23 @@ impl Record {
         let dec = self.inner().d;
         let alleles = unsafe { slice::from_raw_parts(dec.allele, n) };
         (0..n).map(|i| unsafe { ffi::CStr::from_ptr(alleles[i]).to_bytes() }).collect()
+    }
+
+    /// Set alleles.
+    pub fn set_alleles(&mut self, alleles: &[Vec<u8>]) -> Result<(), AlleleWriteError>
+    {
+        let cstrings: Vec<ffi::CString> = alleles.iter().map(|vec| ffi::CString::new(vec.as_slice()).unwrap()).collect();
+        let mut ptrs: Vec<*const i8> = cstrings.iter().map(|cstr| cstr.as_ptr() as *const i8).collect();
+        if unsafe { htslib::bcf_update_alleles(
+            self.header().inner,
+            self.inner,
+            ptrs.as_mut_ptr(),
+            alleles.len() as i32
+        ) } == 0 {
+            Ok(())
+        } else {
+            Err(AlleleWriteError::Some)
+        }
     }
 
     /// Get variant quality.
@@ -611,6 +654,26 @@ quick_error! {
     pub enum TagWriteError {
         Some {
             description("error writing tag to record")
+        }
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug, Clone)]
+    pub enum IdWriteError {
+        Some {
+            description("error writing ID to record")
+        }
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug, Clone)]
+    pub enum AlleleWriteError {
+        Some {
+            description("error writing alleles to record")
         }
     }
 }
