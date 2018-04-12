@@ -157,6 +157,92 @@ impl Record {
         }
     }
 
+    /// Set the given filters to the FILTER column.
+    ///
+    /// Note that the given strings must have been registered in the header and it will be
+    /// automatically converted to the corresponding integer value for being added.
+    ///
+    /// Setting an empty slice removes all filters.
+    ///
+    /// # Args
+    /// - `val` - The corresponding filter string value.
+    pub fn set_filters(&mut self, vals: &[Vec<u8>]) -> Result<(), FilterWriteError> {
+        let mut flt_ids: Vec<i32> = vals.iter().map(|val| {
+                let cval = ffi::CString::new(val.as_slice()).unwrap();
+                unsafe {
+                    htslib::bcf_hdr_id2int(
+                        self.header().inner,
+                        htslib::BCF_DT_ID as i32,
+                        cval.as_ptr() as *const i8,
+                    )
+                }
+            }
+        ).collect();
+        if unsafe { htslib::bcf_update_filter(
+            self.header().inner,
+            self.inner,
+            flt_ids.as_mut_ptr(),
+            flt_ids.len() as i32,
+        ) } == 0 {
+            Ok(())
+        } else {
+            Err(FilterWriteError::Some)
+        }
+    }
+
+    /// Add the given filter to the FILTER column.
+    ///
+    /// If `val` is `"PASS"` then all existing filters are removed first. If other than
+    /// `"PASS"`, then existing `"PASS"` is removed.
+    ///
+    /// Note that the given string must have been registered in the header and it will be
+    /// automatically converted to the corresponding integer value for being added.
+    ///
+    /// # Args
+    /// - `val` - The corresponding filter string value.
+    pub fn push_filter(&mut self, val: &[u8]) -> Result<(), FilterWriteError> {
+        let flt_id = unsafe { htslib::bcf_hdr_id2int(
+            self.header().inner,
+            htslib::BCF_DT_ID as i32,
+            ffi::CString::new(val).unwrap().as_ptr() as *const i8,
+        ) };
+        if unsafe { htslib::bcf_add_filter(
+            self.header().inner,
+            self.inner,
+            flt_id
+        ) } == 0 {
+            Ok(())
+        } else {
+            Err(FilterWriteError::Some)
+        }
+    }
+
+    /// Remove the given filter from the FILTER column.
+    ///
+    /// Note that the given string must have been registered in the header and it will be
+    /// automatically converted to the corresponding integer value for being added.
+    ///
+    /// # Args
+    /// - `val` - The corresponding filter string value.
+    /// - `pass_on_empty` - Set to "PASS" when removing the last value.
+    pub fn remove_filter(&mut self, val: &[u8], pass_on_empty: bool) -> Result<(), FilterWriteError> {
+        let flt_id = unsafe { htslib::bcf_hdr_id2int(
+            self.header().inner,
+            htslib::BCF_DT_ID as i32,
+            ffi::CString::new(val).unwrap().as_ptr() as *const i8,
+        ) };
+        if unsafe { htslib::bcf_remove_filter(
+            self.header().inner,
+            self.inner,
+            flt_id,
+            pass_on_empty as i32,
+        ) } == 0 {
+            Ok(())
+        } else {
+            Err(FilterWriteError::Some)
+        }
+    }
+    
     /// Get alleles. The first allele is the reference allele.
     pub fn alleles(&self) -> Vec<&[u8]> {
         unsafe { htslib::bcf_unpack(self.inner, htslib::BCF_UN_STR as i32) };
@@ -674,6 +760,16 @@ quick_error! {
     pub enum AlleleWriteError {
         Some {
             description("error writing alleles to record")
+        }
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug, Clone)]
+    pub enum FilterWriteError {
+        Some {
+            description("error writing filters to record")
         }
     }
 }
