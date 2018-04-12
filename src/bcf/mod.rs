@@ -96,6 +96,20 @@ impl Reader {
     pub fn records(&mut self) -> Records {
         Records { reader: self }
     }
+
+    /// Activate multi-threaded BCF read support in htslib. This should permit faster
+    /// reading of large BCF files.
+    /// # Arguments
+    ///
+    /// * `n_threads` - number of extra background reader threads to use
+    pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
+        let r = unsafe { htslib::hts_set_threads(self.inner, n_threads as i32) };
+        if r != 0 {
+            Err(ThreadingError::Some)
+        } else {
+            Ok(())
+        }
+    }
 }
 
 
@@ -198,6 +212,20 @@ impl Writer {
             Ok(())
         }
     }
+
+    /// Activate multi-threaded BCF read support in htslib. This should permit faster
+    /// reading of large BCF files.
+    /// # Arguments
+    ///
+    /// * `n_threads` - number of extra background reader threads to use
+    pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
+        let r = unsafe { htslib::hts_set_threads(self.inner, n_threads as i32) };
+        if r != 0 {
+            Err(ThreadingError::Some)
+        } else {
+            Ok(())
+        }
+    }
 }
 
 
@@ -248,6 +276,16 @@ quick_error! {
         }
         BCFError(err: BCFError) {
             from()
+        }
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug, Clone)]
+    pub enum ThreadingError {
+        Some {
+            description("error setting threads for multi-threaded I/O")
         }
     }
 }

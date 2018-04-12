@@ -124,6 +124,20 @@ impl Reader {
         let _self = unsafe { &*(data as *mut Self) };
         unsafe { htslib::bam_read1(_self.bgzf, record) }
     }
+
+    /// Activate multi-threaded BAM read support in htslib. This should permit faster
+    /// reading of large BAM files.
+    /// # Arguments
+    ///
+    /// * `n_threads` - number of extra background reader threads to use
+    pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
+        let r = unsafe { htslib::bgzf_mt(self.bgzf, n_threads as i32, 256) };
+        if r != 0 {
+            Err(ThreadingError::Some)
+        } else {
+            Ok(())
+        }
+    }
 }
 
 
@@ -252,6 +266,20 @@ impl IndexedReader {
         match _self.itr {
             Some(itr) => itr_next(_self.bgzf, itr, record), // read fetched region
             None      => unsafe { htslib::bam_read1(_self.bgzf, record) } // ordinary reading
+        }
+    }
+
+    /// Activate multi-threaded BAM read support in htslib. This should permit faster
+    /// reading of large BAM files.
+    /// # Arguments
+    ///
+    /// * `n_threads` - number of extra background reader threads to use
+    pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
+        let r = unsafe { htslib::bgzf_mt(self.bgzf, n_threads as i32, 256) };
+        if r != 0 {
+            Err(ThreadingError::Some)
+        } else {
+            Ok(())
         }
     }
 }
@@ -390,7 +418,7 @@ impl Writer {
     /// writing of large BAM files.
     /// # Arguments
     ///
-    /// * `n_threads` - number of background writer threads to use
+    /// * `n_threads` - number of extra background writer threads to use
     pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
         let r = unsafe { htslib::bgzf_mt(self.f, n_threads as i32, 256) };
         if r != 0 {
@@ -545,7 +573,7 @@ quick_error! {
     #[derive(Debug, Clone)]
     pub enum ThreadingError {
         Some {
-            description("error setting threads for multi-threaded writing")
+            description("error setting threads for multi-threaded I/O")
         }
     }
 }
