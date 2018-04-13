@@ -37,6 +37,25 @@ pub struct Reader {
 unsafe impl Send for Reader {}
 
 
+/// Implementation for `Reader::set_threads()` and `Writer::set_threads`.
+pub fn set_threads(hts_file: *mut htslib::htsFile, n_threads: usize)
+        -> Result<(), ThreadingError> {
+    assert!(n_threads > 0, "n_threads must be > 0");
+
+    if n_threads == 0 {
+        // Do nothing if thread count is zero.  hts_set_threads() below would
+        // return -1 to indicate an error.
+        return Ok(());
+    }
+    let r = unsafe { htslib::hts_set_threads(hts_file, n_threads as i32) };
+    if r != 0 {
+        Err(ThreadingError::Some)
+    } else {
+        Ok(())
+    }
+}
+
+
 impl Reader {
     /// Create a new reader from a given path.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, BCFPathError> {
@@ -100,24 +119,11 @@ impl Reader {
     /// Activate multi-threaded BCF read support in htslib. This should permit faster
     /// reading of large BCF files.
     ///
-    /// Setting `nthreads` to `0` does not change the current state.  Note that it is not
-    /// possible to set the number of background threads below `1` once it has been set.
-    ///
     /// # Arguments
     ///
-    /// * `n_threads` - number of extra background reader threads to use
+    /// * `n_threads` - number of extra background reader threads to use, must be `> 0`.
     pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
-        if n_threads == 0 {
-            // Do nothing if thread count is zero.  hts_set_threads() below would
-            // return -1 to indicate an error.
-            return Ok(());
-        }
-        let r = unsafe { htslib::hts_set_threads(self.inner, n_threads as i32) };
-        if r != 0 {
-            Err(ThreadingError::Some)
-        } else {
-            Ok(())
-        }
+        set_threads(self.inner, n_threads)
     }
 }
 
@@ -225,24 +231,11 @@ impl Writer {
     /// Activate multi-threaded BCF write support in htslib. This should permit faster
     /// writing of large BCF files.
     ///
-    /// Setting `nthreads` to `0` does not change the current state.  Note that it is not
-    /// possible to set the number of background threads below `1` once it has been set.
-    ///
     /// # Arguments
     ///
-    /// * `n_threads` - number of extra background writer threads to use
+    /// * `n_threads` - number of extra background writer threads to use, must be `> 0`.
     pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
-        if n_threads == 0 {
-            // Do nothing if thread count is zero.  hts_set_threads() below would
-            // return -1 to indicate an error.
-            return Ok(());
-        }
-        let r = unsafe { htslib::hts_set_threads(self.inner, n_threads as i32) };
-        if r != 0 {
-            Err(ThreadingError::Some)
-        } else {
-            Ok(())
-        }
+        set_threads(self.inner, n_threads)
     }
 }
 

@@ -26,6 +26,18 @@ pub use bam::header::Header;
 pub use bam::buffer::RecordBuffer;
 
 
+/// Implementation for `Read::set_threads` and `Writer::set_threads`.
+pub fn set_threads(bgzf: *mut htslib::BGZF, n_threads: usize) -> Result<(), ThreadingError> {
+    assert!(n_threads != 0, "n_threads must be > 0");
+
+    if unsafe { htslib::bgzf_mt(bgzf, n_threads as i32, 256) } != 0 {
+        Err(ThreadingError::Some)
+    } else {
+        Ok(())
+    }
+}
+
+
 /// A trait for a BAM reader with a read method.
 pub trait Read: Sized {
     /// Read next BAM record into given record.
@@ -67,6 +79,19 @@ pub trait Read: Sized {
         // this reimplements the bgzf_tell macro
         let bgzf  = unsafe{ self.bgzf().as_ref() }.expect("bug: null pointer to BGZF");
         (bgzf.block_address << 16) | (bgzf.block_offset as i64 & 0xFFFF)
+    }
+
+    /// Activate multi-threaded BAM read support in htslib. This should permit faster
+    /// reading of large BAM files.
+    ///
+    /// Setting `nthreads` to `0` does not change the current state.  Note that it is not
+    /// possible to set the number of background threads below `1` once it has been set.
+    ///
+    /// # Arguments
+    ///
+    /// * `n_threads` - number of extra background writer threads to use, must be `> 0`.
+    fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
+        set_threads(self.bgzf(), n_threads)
     }
 }
 
@@ -123,29 +148,6 @@ impl Reader {
     extern fn pileup_read(data: *mut ::std::os::raw::c_void, record: *mut htslib::bam1_t) -> i32 {
         let _self = unsafe { &*(data as *mut Self) };
         unsafe { htslib::bam_read1(_self.bgzf, record) }
-    }
-
-    /// Activate multi-threaded BAM read support in htslib. This should permit faster
-    /// reading of large BAM files.
-    ///
-    /// Setting `nthreads` to `0` does not change the current state.  Note that it is not
-    /// possible to set the number of background threads below `1` once it has been set.
-    ///
-    /// # Arguments
-    ///
-    /// * `n_threads` - number of extra background reader threads to use
-    pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
-        if n_threads == 0 {
-            // Do nothing if thread count is zero.  bgzf_mt() below would
-            // return -1 to indicate an error.
-            return Ok(());
-        }
-        let r = unsafe { htslib::bgzf_mt(self.bgzf, n_threads as i32, 256) };
-        if r != 0 {
-            Err(ThreadingError::Some)
-        } else {
-            Ok(())
-        }
     }
 }
 
@@ -275,29 +277,6 @@ impl IndexedReader {
         match _self.itr {
             Some(itr) => itr_next(_self.bgzf, itr, record), // read fetched region
             None      => unsafe { htslib::bam_read1(_self.bgzf, record) } // ordinary reading
-        }
-    }
-
-    /// Activate multi-threaded BAM read support in htslib. This should permit faster
-    /// reading of large BAM files.
-    ///
-    /// Setting `nthreads` to `0` does not change the current state.  Note that it is not
-    /// possible to set the number of background threads below `1` once it has been set.
-    ///
-    /// # Arguments
-    ///
-    /// * `n_threads` - number of extra background reader threads to use
-    pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
-        if n_threads == 0 {
-            // Do nothing if thread count is zero.  bgzf_mt() below would
-            // return -1 to indicate an error.
-            return Ok(());
-        }
-        let r = unsafe { htslib::bgzf_mt(self.bgzf, n_threads as i32, 256) };
-        if r != 0 {
-            Err(ThreadingError::Some)
-        } else {
-            Ok(())
         }
     }
 }
@@ -435,24 +414,11 @@ impl Writer {
     /// Activate multi-threaded BAM write support in htslib. This should permit faster
     /// writing of large BAM files.
     ///
-    /// Setting `nthreads` to `0` does not change the current state.  Note that it is not
-    /// possible to set the number of background threads below `1` once it has been set.
-    ///
     /// # Arguments
     ///
-    /// * `n_threads` - number of extra background writer threads to use
+    /// * `n_threads` - number of extra background writer threads to use, must be `> 0`.
     pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
-        if n_threads == 0 {
-            // Do nothing if thread count is zero.  bgzf_mt() below would
-            // return -1 to indicate an error.
-            return Ok(());
-        }
-        let r = unsafe { htslib::bgzf_mt(self.f, n_threads as i32, 256) };
-        if r != 0 {
-            Err(ThreadingError::Some)
-        } else {
-            Ok(())
-        }
+        set_threads(self.f, n_threads)
     }
 
     /// Write record to BAM.
