@@ -178,12 +178,14 @@ impl Record {
                 }
             }
         ).collect();
-        if unsafe { htslib::bcf_update_filter(
-            self.header().inner,
-            self.inner,
-            flt_ids.as_mut_ptr(),
-            flt_ids.len() as i32,
-        ) } == 0 {
+        if !flt_ids.iter().any(|flt_id| *flt_id < 0) {
+            unsafe {
+                htslib::bcf_update_filter(
+                    self.header().inner,
+                    self.inner,
+                    flt_ids.as_mut_ptr(),
+                    flt_ids.len() as i32);
+            };
             Ok(())
         } else {
             Err(FilterWriteError::Some)
@@ -206,11 +208,10 @@ impl Record {
             htslib::BCF_DT_ID as i32,
             ffi::CString::new(val).unwrap().as_ptr() as *const i8,
         ) };
-        if unsafe { htslib::bcf_add_filter(
-            self.header().inner,
-            self.inner,
-            flt_id
-        ) } == 0 {
+        if flt_id >= 0 {
+            unsafe {
+                htslib::bcf_add_filter(self.header().inner, self.inner, flt_id);
+            }
             Ok(())
         } else {
             Err(FilterWriteError::Some)
@@ -231,18 +232,21 @@ impl Record {
             htslib::BCF_DT_ID as i32,
             ffi::CString::new(val).unwrap().as_ptr() as *const i8,
         ) };
-        if unsafe { htslib::bcf_remove_filter(
-            self.header().inner,
-            self.inner,
-            flt_id,
-            pass_on_empty as i32,
-        ) } == 0 {
+        if flt_id >= 0 {
+            unsafe {
+                htslib::bcf_remove_filter(
+                    self.header().inner,
+                    self.inner,
+                    flt_id,
+                    pass_on_empty as i32
+                );
+            }
             Ok(())
         } else {
             Err(FilterWriteError::Some)
         }
     }
-    
+
     /// Get alleles. The first allele is the reference allele.
     pub fn alleles(&self) -> Vec<&[u8]> {
         unsafe { htslib::bcf_unpack(self.inner, htslib::BCF_UN_STR as i32) };
