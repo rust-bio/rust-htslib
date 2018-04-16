@@ -19,16 +19,13 @@ custom_derive! {
     #[derive(
         NewtypeFrom,
         NewtypeDeref,
-        NewtypeAdd(*),
-        NewtypeSub(*),
-        NewtypeMul(*),
-        NewtypeDiv(*),
         PartialEq,
         PartialOrd,
+        Eq,
+        Ord,
         Copy,
         Clone,
-        Debug,
-        Default
+        Debug
     )]
     pub struct Id(pub u32);
 }
