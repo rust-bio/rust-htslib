@@ -42,11 +42,6 @@ pub fn set_threads(hts_file: *mut htslib::htsFile, n_threads: usize)
         -> Result<(), ThreadingError> {
     assert!(n_threads > 0, "n_threads must be > 0");
 
-    if n_threads == 0 {
-        // Do nothing if thread count is zero.  hts_set_threads() below would
-        // return -1 to indicate an error.
-        return Ok(());
-    }
     let r = unsafe { htslib::hts_set_threads(hts_file, n_threads as i32) };
     if r != 0 {
         Err(ThreadingError::Some)
