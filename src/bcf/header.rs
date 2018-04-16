@@ -14,6 +14,26 @@ use htslib;
 pub type SampleSubset = Vec<i32>;
 
 
+custom_derive! {
+    /// A newtype for IDs from BCF headers.
+    #[derive(
+        NewtypeFrom,
+        NewtypeDeref,
+        NewtypeAdd(*),
+        NewtypeSub(*),
+        NewtypeMul(*),
+        NewtypeDiv(*),
+        PartialEq,
+        PartialOrd,
+        Copy,
+        Clone,
+        Debug,
+        Default
+    )]
+    pub struct Id(pub u32);
+}
+
+
 /// A BCF header.
 #[derive(Debug)]
 pub struct Header {
@@ -180,6 +200,49 @@ impl HeaderView {
 
         Ok((_type, length))
     }
+
+    /// Convert string ID (e.g., for a `FILTER` value) to its numeric identifier.
+    pub fn name_to_id(&self, id: &[u8]) -> Result<Id, IdError> {
+        unsafe {
+            match htslib::bcf_hdr_id2int(
+                self.inner,
+                htslib::BCF_DT_ID as i32,
+                ffi::CString::new(id).unwrap().as_ptr() as *const i8
+            ) {
+                -1 => Err(IdError::UnknownID(str::from_utf8(id).unwrap().to_owned())),
+                i => Ok(Id(i as u32)),
+            }
+        }
+    }
+
+    /// Convert integer representing an identifier (e.g., a `FILTER` value) to its string
+    /// name.bam
+    pub fn id_to_name(&self, id: Id) -> Vec<u8> {
+        let key = unsafe { ffi::CStr::from_ptr(
+            (*(*self.inner).id[htslib::BCF_DT_ID as usize].offset(*id as isize)).key) };
+        key.to_bytes().to_vec()
+    }
+
+    /// Convert string sample name to its numeric identifier.
+    pub fn sample_to_id(&self, id: &[u8]) -> Result<Id, SampleError> {
+        unsafe {
+            match htslib::bcf_hdr_id2int(
+                self.inner,
+                htslib::BCF_DT_SAMPLE as i32,
+                ffi::CString::new(id).unwrap().as_ptr() as *const i8
+            ) {
+                -1 => Err(SampleError::UnknownSample(str::from_utf8(id).unwrap().to_owned())),
+                i => Ok(Id(i as u32)),
+            }
+        }
+    }
+
+    /// Convert integer representing an contig to its name.
+    pub fn id_to_sample(&self, id: Id) -> Vec<u8> {
+        let key = unsafe { ffi::CStr::from_ptr(
+            (*(*self.inner).id[htslib::BCF_DT_SAMPLE as usize].offset(*id as isize)).key) };
+        key.to_bytes().to_vec()
+    }
 }
 
 
@@ -226,6 +289,28 @@ quick_error! {
         UnknownSequence(name: String) {
             description("unknown sequence")
             display("sequence {} not found in header", name)
+        }
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug, Clone)]
+    pub enum IdError {
+        UnknownID(name: String) {
+            description("unknown ID")
+            display("ID {} not found in header", name)
+        }
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug, Clone)]
+    pub enum SampleError {
+        UnknownSample(name: String) {
+            description("unknown sample")
+            display("sample {} not found in header", name)
         }
     }
 }

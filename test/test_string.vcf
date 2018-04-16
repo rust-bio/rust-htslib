@@ -6,6 +6,7 @@
 ##FORMAT=<ID=FS1,Number=1,Type=String,Description="Single FORMAT string">
 ##FORMAT=<ID=FN1,Number=1,Type=Integer,Description="Single FORMAT integer">
 ##FORMAT=<ID=FF1,Number=1,Type=Float,Description="Single FORMAT float">
+##contig=<ID=19,length=59128983>
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	one	two
 19	3111939	rs1234	A	AG	.	PASS	S1=string1;N1=1;F1=1.0	GT:FS1:FN1	./1:LongString1:1	1/1:ss1:2
 19	3113255	rs2345	G	GC	.	PASS	S1=string2;N1=2;F1=2.0	GT:FS1:FN1	1|1:LongString2:1	1/1:ss2:2

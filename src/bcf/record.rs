@@ -14,7 +14,7 @@ use std::rc::Rc;
 use ieee754::Ieee754;
 use itertools::Itertools;
 
-use bcf::header::HeaderView;
+use bcf::header::{HeaderView, Id};
 use htslib;
 
 const MISSING_INTEGER: i32 = i32::MIN;
@@ -154,6 +154,52 @@ impl Record {
             Ok(())
         } else {
             Err(IdWriteError::Some)
+        }
+    }
+
+    /// Set the given filters IDs to the FILTER column.
+    ///
+    /// Setting an empty slice removes all filters.
+    ///
+    /// # Args
+    /// - `val` - The corresponding filter string value.
+    pub fn set_filters(&mut self, flt_ids: &[Id]) {
+        let mut flt_ids: Vec<i32> = flt_ids.iter().map(|x| **x as i32).collect();
+        unsafe {
+            htslib::bcf_update_filter(
+                self.header().inner,
+                self.inner,
+                flt_ids.as_mut_ptr(),
+                flt_ids.len() as i32);
+        }
+    }
+
+    /// Add the given filter to the FILTER column.
+    ///
+    /// If `val` corresponds to `"PASS"` then all existing filters are removed first. If other than
+    /// `"PASS"`, then existing `"PASS"` is removed.
+    ///
+    /// # Args
+    /// - `val` - The corresponding filter ID value.
+    pub fn push_filter(&mut self, flt_id: Id) {
+        unsafe {
+            htslib::bcf_add_filter(self.header().inner, self.inner, *flt_id as i32);
+        }
+    }
+
+    /// Remove the given filter from the FILTER column.
+    ///
+    /// # Args
+    /// - `val` - The corresponding filter ID.
+    /// - `pass_on_empty` - Set to "PASS" when removing the last value.
+    pub fn remove_filter(&mut self, flt_id: Id, pass_on_empty: bool) {
+        unsafe {
+            htslib::bcf_remove_filter(
+                self.header().inner,
+                self.inner,
+                *flt_id as i32,
+                pass_on_empty as i32
+            );
         }
     }
 
@@ -674,6 +720,16 @@ quick_error! {
     pub enum AlleleWriteError {
         Some {
             description("error writing alleles to record")
+        }
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug, Clone)]
+    pub enum FilterWriteError {
+        Some {
+            description("error writing filters to record")
         }
     }
 }

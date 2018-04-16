@@ -14,7 +14,7 @@ pub mod header;
 pub mod buffer;
 
 use htslib;
-use bcf::header::{HeaderView, SampleSubset};
+use bcf::header::{Id, HeaderView, SampleSubset};
 
 pub use bcf::header::Header;
 pub use bcf::record::Record;
@@ -466,5 +466,28 @@ mod tests {
             let genotypes = rec.genotypes().expect("Error reading genotypes");
             assert_eq!(&format!("{}", genotypes.get(0)), exp_gt);
         }
+    }
+
+    #[test]
+    fn test_header_ids() {
+        let vcf = Reader::from_path(&"test/test_string.vcf").ok().expect("Error opening file.");
+        let header = &vcf.header();
+        use bcf::header::Id;
+
+        assert_eq!(header.id_to_name(Id(4)), b"GT");
+        assert_eq!(header.name_to_id(b"GT").unwrap(), Id(4));
+        assert!(header.name_to_id(b"XX").is_err());
+    }
+
+    #[test]
+    fn test_header_samples() {
+        let vcf = Reader::from_path(&"test/test_string.vcf").ok().expect("Error opening file.");
+        let header = &vcf.header();
+
+        assert_eq!(header.id_to_sample(Id(0)), b"one");
+        assert_eq!(header.id_to_sample(Id(1)), b"two");
+        assert_eq!(header.sample_to_id(b"one").unwrap(), Id(0));
+        assert_eq!(header.sample_to_id(b"two").unwrap(), Id(1));
+        assert!(header.sample_to_id(b"three").is_err());
     }
 }
