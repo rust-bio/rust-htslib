@@ -4,7 +4,6 @@
 // except according to those terms.
 
 use std::ffi;
-use std::mem;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -41,7 +40,20 @@ pub trait Read: Sized {
     fn header(&self) -> &HeaderView;
 
     /// Return empty record.  Can be reused multiple times.
-    fn empty_record(&self) -> Record;
+    fn empty_record(&self) -> Record  {
+        record::Record::new(self.header().clone())
+    }
+
+    /// Activate multi-threaded BCF/VCF read support in htslib. This should permit faster
+    /// reading of large VCF files.
+    ///
+    /// Setting `nthreads` to `0` does not change the current state.  Note that it is not
+    /// possible to set the number of background threads below `1` once it has been set.
+    ///
+    /// # Arguments
+    ///
+    /// * `n_threads` - number of extra background writer threads to use, must be `> 0`.
+    fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError>;
 }
 
 
@@ -117,23 +129,12 @@ impl Read for Reader {
         Records { reader: self }
     }
 
-<<<<<<< HEAD
-    /// Activate multi-threaded BCF read support in htslib. This should permit faster
-    /// reading of large BCF files.
-    ///
-    /// # Arguments
-    ///
-    /// * `n_threads` - number of extra background reader threads to use, must be `> 0`.
-    pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
+    fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
         set_threads(self.inner, n_threads)
-=======
-    fn header(&self) -> &HeaderView {
-        &self.header
     }
 
-    fn empty_record(&self) -> Record {
-        record::Record::new(self.header.clone())
->>>>>>> Starting bcf::IndexedReader
+    fn header(&self) -> &HeaderView {
+        &self.header
     }
 }
 
@@ -225,9 +226,16 @@ impl Read for IndexedReader {
             0 => Err(ReadError::NoMoreRecord),
             i => {
                 assert!(i > 0, "Must not be negative");
-                mem::swap(
-                    &mut unsafe { *(*(*self.inner).readers.offset(0)).buffer.offset(0) },
-                    &mut record.inner);
+                // Note that the sync BCF reader has a different interface than the others
+                // as it keeps its own buffer already for each record.  An alternative here
+                // would be to replace the `inner` value by an enum that can be a pointer
+                // into a synced reader or an owning popinter to an allocated record.
+                unsafe {
+                    htslib::bcf_copy(
+                        record.inner,
+                        *(*(*self.inner).readers.offset(0)).buffer.offset(0));
+                }
+
                 record.set_header(self.header.clone());
 
                 match self.current_region {
@@ -253,8 +261,15 @@ impl Read for IndexedReader {
         &self.header
     }
 
-    fn empty_record(&self) -> Record {
-        record::Record::new(self.header.clone())
+    fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
+        assert!(n_threads > 0, "n_threads must be > 0");
+
+        let r = unsafe { htslib::bcf_sr_set_threads(self.inner, n_threads as i32) };
+        if r != 0 {
+            Err(ThreadingError::Some)
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -573,11 +588,15 @@ mod tests {
         let header = Header::subset_template(&bcf.header, &[b"NA12878.subsample-0.25-0"]).ok().expect("Error subsetting samples.");
         let mut writer = Writer::from_path(&bcfpath, &header, false, false).ok().expect("Error opening file.");
         writer.set_threads(2).unwrap();
+    }
+
+    #[test]
     fn test_fetch() {
         let mut bcf = IndexedReader::from_path(&"test/test.bcf").ok().expect("Error opening file.");
+        bcf.set_threads(2).unwrap();
         let rid = bcf.header().name2rid(b"1").expect("Translating from contig '1' to ID failed.");
         bcf.fetch(rid, 10_033, 10_060).expect("Fetching failed");
-        assert_eq!(bcf.records().count(), 27);
+        assert_eq!(bcf.records().count(), 28);
     }
 
     #[test]
