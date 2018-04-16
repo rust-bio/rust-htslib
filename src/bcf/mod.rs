@@ -14,7 +14,7 @@ pub mod header;
 pub mod buffer;
 
 use htslib;
-use bcf::header::{HeaderView, SampleSubset};
+use bcf::header::{Id, HeaderView, SampleSubset};
 
 pub use bcf::header::Header;
 pub use bcf::record::Record;
