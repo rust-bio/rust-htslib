@@ -223,7 +223,13 @@ impl IndexedReader {
 impl Read for IndexedReader {
     fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError> {
         match unsafe { htslib::bcf_sr_next_line(self.inner) } {
-            0 => Err(ReadError::NoMoreRecord),
+            0 => {
+                if unsafe { (*self.inner).errnum } != 0 {
+                    Err(ReadError::SyncedBcfReaderError)
+                } else {
+                    Err(ReadError::NoMoreRecord)
+                }
+            }
             i => {
                 assert!(i > 0, "Must not be negative");
                 // Note that the sync BCF reader has a different interface than the others
@@ -471,6 +477,9 @@ quick_error! {
         }
         NoMoreRecord {
             description("no more record")
+        }
+        SyncedBcfReaderError {
+            description("problem reading from synced bcf reader")
         }
     }
 }
