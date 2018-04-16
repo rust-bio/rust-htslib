@@ -411,9 +411,9 @@ mod tests {
         let vcf = Reader::from_path(&"test/test_string.vcf").ok().expect("Error opening file.");
         let header = &vcf.header();
 
-        assert_eq!(header.int2id(4), b"GT");
-        assert_eq!(header.id2int(b"GT").unwrap(), 4);
-        assert!(header.id2int(b"XX").is_err());
+        assert_eq!(header.id_to_name(4), b"GT");
+        assert_eq!(header.name_to_id(b"GT").unwrap(), 4);
+        assert!(header.name_to_id(b"XX").is_err());
     }
 
     #[test]
@@ -421,10 +421,10 @@ mod tests {
         let vcf = Reader::from_path(&"test/test_string.vcf").ok().expect("Error opening file.");
         let header = &vcf.header();
 
-        assert_eq!(header.int2sample(0), b"one");
-        assert_eq!(header.int2sample(1), b"two");
-        assert_eq!(header.sample2int(b"one").unwrap(), 0);
-        assert_eq!(header.sample2int(b"two").unwrap(), 1);
-        assert!(header.id2int(b"three").is_err());
+        assert_eq!(header.id_to_sample(0), b"one");
+        assert_eq!(header.id_to_sample(1), b"two");
+        assert_eq!(header.sample_to_id(b"one").unwrap(), 0);
+        assert_eq!(header.sample_to_id(b"two").unwrap(), 1);
+        assert!(header.sample_to_id(b"three").is_err());
     }
 }
