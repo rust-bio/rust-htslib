@@ -180,6 +180,49 @@ impl HeaderView {
 
         Ok((_type, length))
     }
+
+    /// Convert string ID (e.g., for a `FILTER` value) to its numeric identifier.
+    pub fn id2int(&self, id: &[u8]) -> Result<u32, IdError> {
+        unsafe {
+            match htslib::bcf_hdr_id2int(
+                self.inner,
+                htslib::BCF_DT_ID as i32,
+                ffi::CString::new(id).unwrap().as_ptr() as *const i8
+            ) {
+                -1 => Err(IdError::UnknownID(str::from_utf8(id).unwrap().to_owned())),
+                i => Ok(i as u32),
+            }
+        }
+    }
+
+    /// Convert integer representing an identifier (e.g., a `FILTER` value) to its string
+    /// name.bam
+    pub fn int2id(&self, id: i32) -> Vec<u8> {
+        let key = unsafe { ffi::CStr::from_ptr(
+            (*(*self.inner).id[htslib::BCF_DT_ID as usize].offset(id as isize)).key) };
+        key.to_bytes().to_vec()
+    }
+
+    /// Convert string sample name to its numeric identifier.
+    pub fn sample2int(&self, id: &[u8]) -> Result<u32, SampleError> {
+        unsafe {
+            match htslib::bcf_hdr_id2int(
+                self.inner,
+                htslib::BCF_DT_SAMPLE as i32,
+                ffi::CString::new(id).unwrap().as_ptr() as *const i8
+            ) {
+                -1 => Err(SampleError::UnknownSample(str::from_utf8(id).unwrap().to_owned())),
+                i => Ok(i as u32),
+            }
+        }
+    }
+
+    /// Convert integer representing an contig to its name.
+    pub fn int2sample(&self, id: i32) -> Vec<u8> {
+        let key = unsafe { ffi::CStr::from_ptr(
+            (*(*self.inner).id[htslib::BCF_DT_SAMPLE as usize].offset(id as isize)).key) };
+        key.to_bytes().to_vec()
+    }
 }
 
 
@@ -226,6 +269,28 @@ quick_error! {
         UnknownSequence(name: String) {
             description("unknown sequence")
             display("sequence {} not found in header", name)
+        }
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug, Clone)]
+    pub enum IdError {
+        UnknownID(name: String) {
+            description("unknown ID")
+            display("ID {} not found in header", name)
+        }
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug, Clone)]
+    pub enum SampleError {
+        UnknownSample(name: String) {
+            description("unknown sample")
+            display("sample {} not found in header", name)
         }
     }
 }

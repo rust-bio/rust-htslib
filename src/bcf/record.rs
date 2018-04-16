@@ -157,27 +157,14 @@ impl Record {
         }
     }
 
-    /// Set the given filters to the FILTER column.
-    ///
-    /// Note that the given strings must have been registered in the header and it will be
-    /// automatically converted to the corresponding integer value for being added.
+    /// Set the given filters IDs to the FILTER column.
     ///
     /// Setting an empty slice removes all filters.
     ///
     /// # Args
     /// - `val` - The corresponding filter string value.
-    pub fn set_filters(&mut self, vals: &[Vec<u8>]) -> Result<(), FilterWriteError> {
-        let mut flt_ids: Vec<i32> = vals.iter().map(|val| {
-                let cval = ffi::CString::new(val.as_slice()).unwrap();
-                unsafe {
-                    htslib::bcf_hdr_id2int(
-                        self.header().inner,
-                        htslib::BCF_DT_ID as i32,
-                        cval.as_ptr() as *const i8,
-                    )
-                }
-            }
-        ).collect();
+    pub fn set_filters(&mut self, flt_ids: &[i32]) -> Result<(), FilterWriteError> {
+        let mut flt_ids = Vec::from(flt_ids);
         if !flt_ids.iter().any(|flt_id| *flt_id < 0) {
             unsafe {
                 htslib::bcf_update_filter(
@@ -194,23 +181,15 @@ impl Record {
 
     /// Add the given filter to the FILTER column.
     ///
-    /// If `val` is `"PASS"` then all existing filters are removed first. If other than
+    /// If `val` corresponds to `"PASS"` then all existing filters are removed first. If other than
     /// `"PASS"`, then existing `"PASS"` is removed.
     ///
-    /// Note that the given string must have been registered in the header and it will be
-    /// automatically converted to the corresponding integer value for being added.
-    ///
     /// # Args
-    /// - `val` - The corresponding filter string value.
-    pub fn push_filter(&mut self, val: &[u8]) -> Result<(), FilterWriteError> {
-        let flt_id = unsafe { htslib::bcf_hdr_id2int(
-            self.header().inner,
-            htslib::BCF_DT_ID as i32,
-            ffi::CString::new(val).unwrap().as_ptr() as *const i8,
-        ) };
+    /// - `val` - The corresponding filter ID value.
+    pub fn push_filter(&mut self, flt_id: u32) -> Result<(), FilterWriteError> {
         if flt_id >= 0 {
             unsafe {
-                htslib::bcf_add_filter(self.header().inner, self.inner, flt_id);
+                htslib::bcf_add_filter(self.header().inner, self.inner, flt_id as i32);
             }
             Ok(())
         } else {
@@ -220,24 +199,18 @@ impl Record {
 
     /// Remove the given filter from the FILTER column.
     ///
-    /// Note that the given string must have been registered in the header and it will be
-    /// automatically converted to the corresponding integer value for being added.
-    ///
     /// # Args
-    /// - `val` - The corresponding filter string value.
+    /// - `val` - The corresponding filter ID.
     /// - `pass_on_empty` - Set to "PASS" when removing the last value.
-    pub fn remove_filter(&mut self, val: &[u8], pass_on_empty: bool) -> Result<(), FilterWriteError> {
-        let flt_id = unsafe { htslib::bcf_hdr_id2int(
-            self.header().inner,
-            htslib::BCF_DT_ID as i32,
-            ffi::CString::new(val).unwrap().as_ptr() as *const i8,
-        ) };
+    pub fn remove_filter(&mut self, flt_id: u32, pass_on_empty: bool)
+            -> Result<(), FilterWriteError>
+    {
         if flt_id >= 0 {
             unsafe {
                 htslib::bcf_remove_filter(
                     self.header().inner,
                     self.inner,
-                    flt_id,
+                    flt_id as i32,
                     pass_on_empty as i32
                 );
             }

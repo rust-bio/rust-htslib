@@ -405,4 +405,26 @@ mod tests {
             assert_eq!(&format!("{}", genotypes.get(0)), exp_gt);
         }
     }
+
+    #[test]
+    fn test_header_ids() {
+        let vcf = Reader::from_path(&"test/test_string.vcf").ok().expect("Error opening file.");
+        let header = &vcf.header();
+
+        assert_eq!(header.int2id(4), b"GT");
+        assert_eq!(header.id2int(b"GT").unwrap(), 4);
+        assert!(header.id2int(b"XX").is_err());
+    }
+
+    #[test]
+    fn test_header_samples() {
+        let vcf = Reader::from_path(&"test/test_string.vcf").ok().expect("Error opening file.");
+        let header = &vcf.header();
+
+        assert_eq!(header.int2sample(0), b"one");
+        assert_eq!(header.int2sample(1), b"two");
+        assert_eq!(header.sample2int(b"one").unwrap(), 0);
+        assert_eq!(header.sample2int(b"two").unwrap(), 1);
+        assert!(header.id2int(b"three").is_err());
+    }
 }
