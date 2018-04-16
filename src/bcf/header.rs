@@ -14,6 +14,26 @@ use htslib;
 pub type SampleSubset = Vec<i32>;
 
 
+custom_derive! {
+    /// A newtype for IDs from BCF headers.
+    #[derive(
+        NewtypeFrom,
+        NewtypeDeref,
+        NewtypeAdd(*),
+        NewtypeSub(*),
+        NewtypeMul(*),
+        NewtypeDiv(*),
+        PartialEq,
+        PartialOrd,
+        Copy,
+        Clone,
+        Debug,
+        Default
+    )]
+    pub struct Id(pub u32);
+}
+
+
 /// A BCF header.
 #[derive(Debug)]
 pub struct Header {
@@ -182,7 +202,7 @@ impl HeaderView {
     }
 
     /// Convert string ID (e.g., for a `FILTER` value) to its numeric identifier.
-    pub fn name_to_id(&self, id: &[u8]) -> Result<u32, IdError> {
+    pub fn name_to_id(&self, id: &[u8]) -> Result<Id, IdError> {
         unsafe {
             match htslib::bcf_hdr_id2int(
                 self.inner,
@@ -190,21 +210,21 @@ impl HeaderView {
                 ffi::CString::new(id).unwrap().as_ptr() as *const i8
             ) {
                 -1 => Err(IdError::UnknownID(str::from_utf8(id).unwrap().to_owned())),
-                i => Ok(i as u32),
+                i => Ok(Id(i as u32)),
             }
         }
     }
 
     /// Convert integer representing an identifier (e.g., a `FILTER` value) to its string
     /// name.bam
-    pub fn id_to_name(&self, id: i32) -> Vec<u8> {
+    pub fn id_to_name(&self, id: Id) -> Vec<u8> {
         let key = unsafe { ffi::CStr::from_ptr(
-            (*(*self.inner).id[htslib::BCF_DT_ID as usize].offset(id as isize)).key) };
+            (*(*self.inner).id[htslib::BCF_DT_ID as usize].offset(*id as isize)).key) };
         key.to_bytes().to_vec()
     }
 
     /// Convert string sample name to its numeric identifier.
-    pub fn sample_to_id(&self, id: &[u8]) -> Result<u32, SampleError> {
+    pub fn sample_to_id(&self, id: &[u8]) -> Result<Id, SampleError> {
         unsafe {
             match htslib::bcf_hdr_id2int(
                 self.inner,
@@ -212,15 +232,15 @@ impl HeaderView {
                 ffi::CString::new(id).unwrap().as_ptr() as *const i8
             ) {
                 -1 => Err(SampleError::UnknownSample(str::from_utf8(id).unwrap().to_owned())),
-                i => Ok(i as u32),
+                i => Ok(Id(i as u32)),
             }
         }
     }
 
     /// Convert integer representing an contig to its name.
-    pub fn id_to_sample(&self, id: i32) -> Vec<u8> {
+    pub fn id_to_sample(&self, id: Id) -> Vec<u8> {
         let key = unsafe { ffi::CStr::from_ptr(
-            (*(*self.inner).id[htslib::BCF_DT_SAMPLE as usize].offset(id as isize)).key) };
+            (*(*self.inner).id[htslib::BCF_DT_SAMPLE as usize].offset(*id as isize)).key) };
         key.to_bytes().to_vec()
     }
 }

@@ -14,7 +14,7 @@ use std::rc::Rc;
 use ieee754::Ieee754;
 use itertools::Itertools;
 
-use bcf::header::HeaderView;
+use bcf::header::{HeaderView, Id};
 use htslib;
 
 const MISSING_INTEGER: i32 = i32::MIN;
@@ -163,8 +163,8 @@ impl Record {
     ///
     /// # Args
     /// - `val` - The corresponding filter string value.
-    pub fn set_filters(&mut self, flt_ids: &[i32]) {
-        let mut flt_ids = Vec::from(flt_ids);
+    pub fn set_filters(&mut self, flt_ids: &[Id]) {
+        let mut flt_ids: Vec<i32> = flt_ids.iter().map(|x| **x as i32).collect();
         unsafe {
             htslib::bcf_update_filter(
                 self.header().inner,
@@ -181,9 +181,9 @@ impl Record {
     ///
     /// # Args
     /// - `val` - The corresponding filter ID value.
-    pub fn push_filter(&mut self, flt_id: u32) {
+    pub fn push_filter(&mut self, flt_id: Id) {
         unsafe {
-            htslib::bcf_add_filter(self.header().inner, self.inner, flt_id as i32);
+            htslib::bcf_add_filter(self.header().inner, self.inner, *flt_id as i32);
         }
     }
 
@@ -192,12 +192,12 @@ impl Record {
     /// # Args
     /// - `val` - The corresponding filter ID.
     /// - `pass_on_empty` - Set to "PASS" when removing the last value.
-    pub fn remove_filter(&mut self, flt_id: u32, pass_on_empty: bool) {
+    pub fn remove_filter(&mut self, flt_id: Id, pass_on_empty: bool) {
         unsafe {
             htslib::bcf_remove_filter(
                 self.header().inner,
                 self.inner,
-                flt_id as i32,
+                *flt_id as i32,
                 pass_on_empty as i32
             );
         }
