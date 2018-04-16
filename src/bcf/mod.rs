@@ -4,6 +4,7 @@
 // except according to those terms.
 
 use std::ffi;
+use std::mem;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -22,8 +23,26 @@ pub use bcf::buffer::RecordBuffer;
 
 
 /// Redefinition of corresponding `#define` in `vcf.h.`.
-#[allow(non_upper_case_globals)]
 pub const GT_MISSING: i32 = 0;
+
+
+/// A trait for a BCF reader with a read method.
+pub trait Read: Sized {
+    /// Read the next record.
+    ///
+    /// # Arguments
+    /// * record - an empty record, that can be created with `bcf::Reader::empty_record`.
+    fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError>;
+
+    /// Return an iterator over all records of the VCF/BCF file.
+    fn records(&mut self) -> Records<Self>;
+
+    /// Return the header.
+    fn header(&self) -> &HeaderView;
+
+    /// Return empty record.  Can be reused multiple times.
+    fn empty_record(&self) -> Record;
+}
 
 
 /// A VCF/BCF reader.
@@ -79,23 +98,11 @@ impl Reader {
         let header = unsafe { htslib::bcf_hdr_read(htsfile) };
         Ok(Reader { inner: htsfile, header: Rc::new(HeaderView::new(header)) })
     }
+}
 
-    /// Get header of the read VCF/BCF file.
-    pub fn header(&self) -> &HeaderView {
-        &self.header
-    }
 
-    /// Create empty record for this reader.
-    /// The record can be reused multiple times.
-    pub fn empty_record(&self) -> Record {
-        record::Record::new(self.header.clone())
-    }
-
-    /// Read the next record.
-    ///
-    /// # Arguments
-    /// * record - an empty record, that can be created with `bcf::Reader::empty_record`.
-    pub fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError> {
+impl Read for Reader {
+    fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError> {
         match unsafe { htslib::bcf_read(self.inner, self.header.inner, record.inner) } {
             0  => {
                 record.set_header(self.header.clone());
@@ -106,11 +113,11 @@ impl Reader {
         }
     }
 
-    /// Return an iterator over all records of the VCF/BCF file.
-    pub fn records(&mut self) -> Records {
+    fn records(&mut self) -> Records<Self> {
         Records { reader: self }
     }
 
+<<<<<<< HEAD
     /// Activate multi-threaded BCF read support in htslib. This should permit faster
     /// reading of large BCF files.
     ///
@@ -119,6 +126,14 @@ impl Reader {
     /// * `n_threads` - number of extra background reader threads to use, must be `> 0`.
     pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
         set_threads(self.inner, n_threads)
+=======
+    fn header(&self) -> &HeaderView {
+        &self.header
+    }
+
+    fn empty_record(&self) -> Record {
+        record::Record::new(self.header.clone())
+>>>>>>> Starting bcf::IndexedReader
     }
 }
 
@@ -128,6 +143,125 @@ impl Drop for Reader {
         unsafe {
             htslib::hts_close(self.inner);
         }
+    }
+}
+
+
+/// An indexed VCF/BCF reader.
+#[derive(Debug)]
+pub struct IndexedReader {
+    /// The synced VCF/BCF reader to use internally.
+    inner: *mut htslib::bcf_srs_t,
+    /// The header.
+    header: Rc<HeaderView>,
+
+    /// The position of the previous fetch, if any.
+    current_region: Option<(u32, u32, u32)>,
+}
+
+
+unsafe impl Send for IndexedReader {}
+
+
+impl IndexedReader {
+    /// Create a new `IndexedReader` from path.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - the path to open.
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, IndexedReaderPathError> {
+        match path.as_ref().to_str() {
+            Some(p) if path.as_ref().exists() => {
+                Ok(try!(Self::new(&ffi::CString::new(p).unwrap())))
+            },
+            _ => {
+                Err(IndexedReaderPathError::InvalidPath)
+            }
+        }
+    }
+
+    pub fn from_url(url: &Url) -> Result<Self, IndexedReaderError> {
+        Self::new(&ffi::CString::new(url.as_str()).unwrap())
+    }
+
+    /// Create a new `IndexedReader`.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - the path. Use "-" for stdin.
+    fn new(path: &ffi::CStr) -> Result<Self, IndexedReaderError> {
+        // Create reader and require existence of index file.
+        let ser_reader = unsafe { htslib::bcf_sr_init() };
+        unsafe { htslib::bcf_sr_set_opt(ser_reader, 0); } // 0: BCF_SR_REQUIRE_IDX
+        // Attach a file with the path from the arguments.
+        if unsafe { htslib::bcf_sr_add_reader(ser_reader, path.as_ptr()) } >= 0 {
+            let header = Rc::new(HeaderView::new(unsafe {
+                htslib::bcf_hdr_dup((*(*ser_reader).readers.offset(0)).header) }));
+            Ok(IndexedReader {
+                inner: ser_reader, header: header, current_region: None
+            })
+        } else {
+            Err(IndexedReaderError::InvalidPath)
+        }
+    }
+
+    pub fn fetch(&mut self, rid: u32, beg: u32, end: u32) -> Result<(), FetchError> {
+        let contig = self.header.rid2name(rid);
+        let contig = ffi::CString::new(contig).unwrap();
+        let contig = contig.as_ptr();
+        if unsafe { htslib::bcf_sr_seek(self.inner, contig, beg as i32) } != 0 {
+            Err(FetchError::Some)
+        } else {
+            self.current_region = Some((rid, beg, end));
+            Ok(())
+        }
+    }
+}
+
+
+impl Read for IndexedReader {
+    fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError> {
+        match unsafe { htslib::bcf_sr_next_line(self.inner) } {
+            0 => Err(ReadError::NoMoreRecord),
+            i => {
+                assert!(i > 0, "Must not be negative");
+                mem::swap(
+                    &mut unsafe { *(*(*self.inner).readers.offset(0)).buffer.offset(0) },
+                    &mut record.inner);
+                record.set_header(self.header.clone());
+
+                match self.current_region {
+                    Some((rid, _start, end)) => {
+                        if record.rid().is_some() && rid == record.rid().unwrap() &&
+                                record.pos() <= end {
+                            Ok(())
+                        } else {
+                            Err(ReadError::NoMoreRecord)
+                        }
+                    },
+                    None => Ok(()),
+                }
+            }
+        }
+    }
+
+    fn records(&mut self) -> Records<Self> {
+        Records { reader: self }
+    }
+
+    fn header(&self) -> &HeaderView {
+        &self.header
+    }
+
+    fn empty_record(&self) -> Record {
+        record::Record::new(self.header.clone())
+    }
+}
+
+
+impl Drop for IndexedReader {
+    fn drop(&mut self) {
+        unsafe { htslib::bcf_sr_destroy(self.inner) };
     }
 }
 
@@ -245,12 +379,12 @@ impl Drop for Writer {
 
 
 #[derive(Debug)]
-pub struct Records<'a> {
-    reader: &'a mut Reader,
+pub struct Records<'a, R: 'a + Read> {
+    reader: &'a mut R,
 }
 
 
-impl<'a> Iterator for Records<'a> {
+impl<'a, R: Read> Iterator for Records<'a, R> {
     type Item = Result<record::Record, ReadError>;
 
     fn next(&mut self) -> Option<Result<record::Record, ReadError>> {
@@ -340,9 +474,42 @@ impl ReadError {
 
 quick_error! {
     #[derive(Debug, Clone)]
+    pub enum IndexedReaderPathError {
+        InvalidPath {
+            description("invalid path")
+        }
+        IndexedReaderError(err: IndexedReaderError) {
+            from()
+        }
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug, Clone)]
+    pub enum IndexedReaderError {
+        InvalidPath {
+            description("invalid path")
+        }
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug, Clone)]
     pub enum WriteError {
         Some {
             description("failed to write record")
+        }
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug, Clone)]
+    pub enum FetchError {
+        Some {
+            description("error fetching a locus")
         }
     }
 }
@@ -406,6 +573,11 @@ mod tests {
         let header = Header::subset_template(&bcf.header, &[b"NA12878.subsample-0.25-0"]).ok().expect("Error subsetting samples.");
         let mut writer = Writer::from_path(&bcfpath, &header, false, false).ok().expect("Error opening file.");
         writer.set_threads(2).unwrap();
+    fn test_fetch() {
+        let mut bcf = IndexedReader::from_path(&"test/test.bcf").ok().expect("Error opening file.");
+        let rid = bcf.header().name2rid(b"1").expect("Translating from contig '1' to ID failed.");
+        bcf.fetch(rid, 10_033, 10_060).expect("Fetching failed");
+        assert_eq!(bcf.records().count(), 27);
     }
 
     #[test]
