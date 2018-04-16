@@ -37,11 +37,11 @@ pub trait Read: Sized {
     fn records(&mut self) -> Records<Self>;
 
     /// Return the header.
-    fn header(&self) -> &HeaderView;
+    fn header(&self) -> Rc<HeaderView>;
 
     /// Return empty record.  Can be reused multiple times.
     fn empty_record(&self) -> Record  {
-        record::Record::new(self.header().clone())
+        record::Record::new(self.header())
     }
 
     /// Activate multi-threaded BCF/VCF read support in htslib. This should permit faster
@@ -133,8 +133,8 @@ impl Read for Reader {
         set_threads(self.inner, n_threads)
     }
 
-    fn header(&self) -> &HeaderView {
-        &self.header
+    fn header(&self) -> Rc<HeaderView> {
+        return self.header.clone();
     }
 }
 
@@ -257,10 +257,6 @@ impl Read for IndexedReader {
         Records { reader: self }
     }
 
-    fn header(&self) -> &HeaderView {
-        &self.header
-    }
-
     fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
         assert!(n_threads > 0, "n_threads must be > 0");
 
@@ -270,6 +266,10 @@ impl Read for IndexedReader {
         } else {
             Ok(())
         }
+    }
+
+    fn header(&self) -> Rc<HeaderView> {
+        return self.header.clone();
     }
 }
 
