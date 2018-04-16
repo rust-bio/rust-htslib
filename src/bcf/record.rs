@@ -163,19 +163,14 @@ impl Record {
     ///
     /// # Args
     /// - `val` - The corresponding filter string value.
-    pub fn set_filters(&mut self, flt_ids: &[i32]) -> Result<(), FilterWriteError> {
+    pub fn set_filters(&mut self, flt_ids: &[i32]) {
         let mut flt_ids = Vec::from(flt_ids);
-        if !flt_ids.iter().any(|flt_id| *flt_id < 0) {
-            unsafe {
-                htslib::bcf_update_filter(
-                    self.header().inner,
-                    self.inner,
-                    flt_ids.as_mut_ptr(),
-                    flt_ids.len() as i32);
-            };
-            Ok(())
-        } else {
-            Err(FilterWriteError::Some)
+        unsafe {
+            htslib::bcf_update_filter(
+                self.header().inner,
+                self.inner,
+                flt_ids.as_mut_ptr(),
+                flt_ids.len() as i32);
         }
     }
 
@@ -186,14 +181,9 @@ impl Record {
     ///
     /// # Args
     /// - `val` - The corresponding filter ID value.
-    pub fn push_filter(&mut self, flt_id: u32) -> Result<(), FilterWriteError> {
-        if flt_id >= 0 {
-            unsafe {
-                htslib::bcf_add_filter(self.header().inner, self.inner, flt_id as i32);
-            }
-            Ok(())
-        } else {
-            Err(FilterWriteError::Some)
+    pub fn push_filter(&mut self, flt_id: u32) {
+        unsafe {
+            htslib::bcf_add_filter(self.header().inner, self.inner, flt_id as i32);
         }
     }
 
@@ -202,21 +192,14 @@ impl Record {
     /// # Args
     /// - `val` - The corresponding filter ID.
     /// - `pass_on_empty` - Set to "PASS" when removing the last value.
-    pub fn remove_filter(&mut self, flt_id: u32, pass_on_empty: bool)
-            -> Result<(), FilterWriteError>
-    {
-        if flt_id >= 0 {
-            unsafe {
-                htslib::bcf_remove_filter(
-                    self.header().inner,
-                    self.inner,
-                    flt_id as i32,
-                    pass_on_empty as i32
-                );
-            }
-            Ok(())
-        } else {
-            Err(FilterWriteError::Some)
+    pub fn remove_filter(&mut self, flt_id: u32, pass_on_empty: bool) {
+        unsafe {
+            htslib::bcf_remove_filter(
+                self.header().inner,
+                self.inner,
+                flt_id as i32,
+                pass_on_empty as i32
+            );
         }
     }
 
