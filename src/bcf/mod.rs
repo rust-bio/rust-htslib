@@ -37,6 +37,20 @@ pub struct Reader {
 unsafe impl Send for Reader {}
 
 
+/// Implementation for `Reader::set_threads()` and `Writer::set_threads`.
+pub fn set_threads(hts_file: *mut htslib::htsFile, n_threads: usize)
+        -> Result<(), ThreadingError> {
+    assert!(n_threads > 0, "n_threads must be > 0");
+
+    let r = unsafe { htslib::hts_set_threads(hts_file, n_threads as i32) };
+    if r != 0 {
+        Err(ThreadingError::Some)
+    } else {
+        Ok(())
+    }
+}
+
+
 impl Reader {
     /// Create a new reader from a given path.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, BCFPathError> {
@@ -95,6 +109,16 @@ impl Reader {
     /// Return an iterator over all records of the VCF/BCF file.
     pub fn records(&mut self) -> Records {
         Records { reader: self }
+    }
+
+    /// Activate multi-threaded BCF read support in htslib. This should permit faster
+    /// reading of large BCF files.
+    ///
+    /// # Arguments
+    ///
+    /// * `n_threads` - number of extra background reader threads to use, must be `> 0`.
+    pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
+        set_threads(self.inner, n_threads)
     }
 }
 
@@ -198,6 +222,16 @@ impl Writer {
             Ok(())
         }
     }
+
+    /// Activate multi-threaded BCF write support in htslib. This should permit faster
+    /// writing of large BCF files.
+    ///
+    /// # Arguments
+    ///
+    /// * `n_threads` - number of extra background writer threads to use, must be `> 0`.
+    pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
+        set_threads(self.inner, n_threads)
+    }
 }
 
 
@@ -248,6 +282,16 @@ quick_error! {
         }
         BCFError(err: BCFError) {
             from()
+        }
+    }
+}
+
+
+quick_error! {
+    #[derive(Debug, Clone)]
+    pub enum ThreadingError {
+        Some {
+            description("error setting threads for multi-threaded I/O")
         }
     }
 }
@@ -344,6 +388,24 @@ mod tests {
     #[test]
     fn test_read() {
         _test_read(&"test/test.bcf");
+    }
+
+    #[test]
+    fn test_reader_set_threads() {
+        let path = &"test/test.bcf";
+        let mut bcf = Reader::from_path(path).ok().expect("Error opening file.");
+        bcf.set_threads(2).unwrap();
+    }
+
+    #[test]
+    fn test_writer_set_threads() {
+        let path = &"test/test.bcf";
+        let tmp = tempdir::TempDir::new("rust-htslib").ok().expect("Cannot create temp dir");
+        let bcfpath = tmp.path().join("test.bcf");
+        let bcf = Reader::from_path(path).ok().expect("Error opening file.");
+        let header = Header::subset_template(&bcf.header, &[b"NA12878.subsample-0.25-0"]).ok().expect("Error subsetting samples.");
+        let mut writer = Writer::from_path(&bcfpath, &header, false, false).ok().expect("Error opening file.");
+        writer.set_threads(2).unwrap();
     }
 
     #[test]

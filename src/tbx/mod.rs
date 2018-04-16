@@ -197,6 +197,22 @@ impl Reader {
 
         result
     }
+
+    /// Activate multi-threaded BGZF read support in htslib. This should permit faster
+    /// reading of large BGZF files.
+    /// # Arguments
+    ///
+    /// * `n_threads` - number of extra background reader threads to use
+    pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
+        assert!(n_threads > 0, "n_threads must be > 0");
+
+        let r = unsafe { htslib::hts_set_threads(self.hts_file, n_threads as i32) };
+        if r != 0 {
+            Err(ThreadingError::Some)
+        } else {
+            Ok(())
+        }
+    }
 }
 
 /// Return whether the two given genomic intervals overlap.
@@ -333,6 +349,7 @@ quick_error! {
     }
 }
 
+
 quick_error! {
     #[derive(Debug, Clone)]
     pub enum BGZFError {
@@ -342,6 +359,17 @@ quick_error! {
     }
 }
 
+
+quick_error! {
+    #[derive(Debug, Clone)]
+    pub enum ThreadingError {
+        Some {
+            description("error setting threads for multi-threaded I/O")
+        }
+    }
+}
+
+
 quick_error! {
     #[derive(Debug, Clone)]
     pub enum FetchError {
@@ -350,6 +378,7 @@ quick_error! {
         }
     }
 }
+
 
 quick_error! {
     #[derive(Debug, Clone)]
