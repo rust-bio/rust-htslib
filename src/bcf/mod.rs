@@ -24,8 +24,7 @@ pub mod record;
 use bcf::header::{HeaderView, SampleSubset};
 use htslib;
 
-pub use bcf::buffer::RecordBuffer;
-pub use bcf::header::Header;
+pub use bcf::header::{Header, HeaderRecord};
 pub use bcf::record::Record;
 
 /// Redefinition of corresponding `#define` in `vcf.h.`.
@@ -839,6 +838,7 @@ mod tests {
         assert!(header.sample_to_id(b"three").is_err());
     }
 
+
     // Helper function reading full file into string.
     fn read_all<P: AsRef<Path>>(path: P) -> String {
         let mut file = File::open(path.as_ref())
@@ -958,5 +958,11 @@ mod tests {
         let expected = read_all("test/test_headers.out.vcf");
         let actual = read_all(&bcfpath);
         assert_eq!(expected, actual);
+
+    #[test]
+    fn test_header_records() {
+        let vcf = Reader::from_path(&"test/test_string.vcf").ok().expect("Error opening file.");
+        let records = vcf.header().header_records();
+        assert_eq!(records.len(), 8);
     }
 }
