@@ -7,7 +7,7 @@ use std::collections::{vec_deque, VecDeque};
 use std::mem;
 use std::error::Error;
 
-use bcf;
+use bcf::{self, Read};
 
 
 /// A buffer for BCF records. This allows access regions in a sorted BCF file while iterating

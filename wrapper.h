@@ -4,3 +4,4 @@
 #include "htslib/htslib/bgzf.h"
 #include "htslib/htslib/vcfutils.h"
 #include "htslib/htslib/tbx.h"
+#include "htslib/htslib/synced_bcf_reader.h"
