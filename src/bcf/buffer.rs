@@ -9,7 +9,6 @@ use std::error::Error;
 
 use bcf::{self, Read};
 
-
 /// A buffer for BCF records. This allows access regions in a sorted BCF file while iterating
 /// over it in a single pass.
 /// The buffer is implemented as a ringbuffer, such that extension or movement to the right has
@@ -21,13 +20,11 @@ pub struct RecordBuffer {
     reader: bcf::Reader,
     ringbuffer: VecDeque<bcf::Record>,
     ringbuffer2: VecDeque<bcf::Record>,
-    overflow: Option<bcf::Record>
+    overflow: Option<bcf::Record>,
 }
-
 
 unsafe impl Sync for RecordBuffer {}
 unsafe impl Send for RecordBuffer {}
-
 
 impl RecordBuffer {
     /// Create new buffer.
@@ -36,7 +33,7 @@ impl RecordBuffer {
             reader: reader,
             ringbuffer: VecDeque::new(),
             ringbuffer2: VecDeque::new(),
-            overflow: None
+            overflow: None,
         }
     }
 
@@ -59,9 +56,10 @@ impl RecordBuffer {
         // remove records too far left or from wrong rid
         // rec.rid() will always yield Some(), because otherwise we won't put the rec into the
         // buffer.
-        let to_remove = self.ringbuffer.iter().take_while(
-            |rec| rec.pos() < window_start || rec.rid().unwrap() != rid
-        ).count();
+        let to_remove = self.ringbuffer
+            .iter()
+            .take_while(|rec| rec.pos() < window_start || rec.rid().unwrap() != rid)
+            .count();
         self.ringbuffer.drain(..to_remove);
         to_remove
     }
@@ -70,7 +68,12 @@ impl RecordBuffer {
     /// the start coordinate of any previous `fill` operation.
     /// Coordinates are 0-based, and end is exclusive.
     /// Returns tuple with numbers of added and deleted records compared to previous fetch.
-    pub fn fetch(&mut self, chrom: &[u8], start: u32, end: u32) -> Result<(usize, usize), Box<Error>> {
+    pub fn fetch(
+        &mut self,
+        chrom: &[u8],
+        start: u32,
+        end: u32,
+    ) -> Result<(usize, usize), Box<Error>> {
         // TODO panic if start is left of previous start or we have moved past the given chrom
         // before.
         let rid = try!(self.reader.header.name2rid(chrom));
@@ -84,11 +87,11 @@ impl RecordBuffer {
                     deleted = self.ringbuffer.len();
                     self.swap_buffers();
                     added = self.ringbuffer.len();
-                    // TODO drain left?
+                // TODO drain left?
                 } else {
                     deleted = self.drain_left(rid, start);
                 }
-            },
+            }
             (_, Some(_)) => {
                 // TODO is this really necessary? If there was no fetch before, there is nothing
                 // to delete.
@@ -96,14 +99,14 @@ impl RecordBuffer {
                 self.swap_buffers();
                 deleted += self.drain_left(rid, start);
                 added = self.ringbuffer.len();
-            },
-            _ => ()
+            }
+            _ => (),
         }
 
         if !self.ringbuffer2.is_empty() {
             // We have already read beyond the current rid. Hence we can't extend to the right for
             // this rid.
-            return Ok((added, deleted))
+            return Ok((added, deleted));
         }
 
         // move overflow from last fill into ringbuffer
@@ -144,7 +147,7 @@ impl RecordBuffer {
                         added += 1;
                     } else {
                         // Record is upstream of our window, ignore it
-                        continue
+                        continue;
                     }
                 } else if rec_rid > rid {
                     // record comes from next rid. Store it in second buffer but stop filling.
@@ -177,7 +180,6 @@ impl RecordBuffer {
         self.ringbuffer.len()
     }
 }
-
 
 #[cfg(test)]
 mod tests {

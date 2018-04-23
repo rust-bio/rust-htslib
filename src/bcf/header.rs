@@ -3,16 +3,13 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use std::slice;
 use std::ffi;
 use std::str;
 
 use htslib;
 
-
 pub type SampleSubset = Vec<i32>;
-
 
 custom_derive! {
     /// A newtype for IDs from BCF headers.
@@ -30,14 +27,12 @@ custom_derive! {
     pub struct Id(pub u32);
 }
 
-
 /// A BCF header.
 #[derive(Debug)]
 pub struct Header {
     pub inner: *mut htslib::bcf_hdr_t,
     pub subset: Option<SampleSubset>,
 }
-
 
 impl Header {
     /// Create a new header.
@@ -49,31 +44,41 @@ impl Header {
     }
 
     pub fn with_template(header: &HeaderView) -> Self {
-        Header { inner: unsafe { htslib::bcf_hdr_dup(header.inner) }, subset: None }
+        Header {
+            inner: unsafe { htslib::bcf_hdr_dup(header.inner) },
+            subset: None,
+        }
     }
 
     pub fn subset_template(header: &HeaderView, samples: &[&[u8]]) -> Result<Self, SubsetError> {
         let mut imap = vec![0; samples.len()];
-        let names: Vec<_> = samples.iter().map(|&s| ffi::CString::new(s).unwrap()).collect();
+        let names: Vec<_> = samples
+            .iter()
+            .map(|&s| ffi::CString::new(s).unwrap())
+            .collect();
         let name_pointers: Vec<_> = names.iter().map(|s| s.as_ptr() as *mut i8).collect();
         let inner = unsafe {
             htslib::bcf_hdr_subset(
                 header.inner,
                 samples.len() as i32,
                 name_pointers.as_ptr() as *const *const i8,
-                imap.as_mut_ptr() as *mut i32
+                imap.as_mut_ptr() as *mut i32,
             )
         };
         if inner.is_null() {
             Err(SubsetError::DuplicateSampleName)
-        }
-        else {
-            Ok(Header { inner: inner, subset: Some(imap) })
+        } else {
+            Ok(Header {
+                inner: inner,
+                subset: Some(imap),
+            })
         }
     }
 
     pub fn push_sample(&mut self, sample: &[u8]) -> &mut Self {
-        unsafe { htslib::bcf_hdr_add_sample(self.inner, ffi::CString::new(sample).unwrap().as_ptr()) };
+        unsafe {
+            htslib::bcf_hdr_add_sample(self.inner, ffi::CString::new(sample).unwrap().as_ptr())
+        };
         self
     }
 
@@ -85,7 +90,11 @@ impl Header {
 
     pub fn remove_info(&mut self, tag: &[u8]) -> &mut Self {
         unsafe {
-            htslib::bcf_hdr_remove(self.inner, htslib::BCF_HL_INFO as i32, tag.as_ptr() as *const i8);
+            htslib::bcf_hdr_remove(
+                self.inner,
+                htslib::BCF_HL_INFO as i32,
+                tag.as_ptr() as *const i8,
+            );
         }
         self
     }
@@ -95,13 +104,12 @@ impl Header {
             htslib::bcf_hdr_remove(
                 self.inner,
                 htslib::BCF_HL_FMT as i32,
-                tag.as_ptr() as *const i8
+                tag.as_ptr() as *const i8,
             );
         }
         self
     }
 }
-
 
 impl Drop for Header {
     fn drop(&mut self) {
@@ -109,12 +117,10 @@ impl Drop for Header {
     }
 }
 
-
 #[derive(Debug)]
 pub struct HeaderView {
     pub inner: *mut htslib::bcf_hdr_t,
 }
-
 
 impl HeaderView {
     pub fn new(inner: *mut htslib::bcf_hdr_t) -> Self {
@@ -131,8 +137,12 @@ impl HeaderView {
     }
 
     pub fn samples(&self) -> Vec<&[u8]> {
-        let names = unsafe { slice::from_raw_parts(self.inner().samples, self.sample_count() as usize) };
-        names.iter().map(|name| unsafe { ffi::CStr::from_ptr(*name).to_bytes() }).collect()
+        let names =
+            unsafe { slice::from_raw_parts(self.inner().samples, self.sample_count() as usize) };
+        names
+            .iter()
+            .map(|name| unsafe { ffi::CStr::from_ptr(*name).to_bytes() })
+            .collect()
     }
 
     pub fn rid2name(&self, rid: u32) -> &[u8] {
@@ -148,10 +158,12 @@ impl HeaderView {
             match htslib::bcf_hdr_id2int(
                 self.inner,
                 htslib::BCF_DT_CTG as i32,
-                ffi::CString::new(name).unwrap().as_ptr() as *mut i8
+                ffi::CString::new(name).unwrap().as_ptr() as *mut i8,
             ) {
-                -1 => Err(RidError::UnknownSequence(str::from_utf8(name).unwrap().to_owned())),
-                i  => Ok(i as u32)
+                -1 => Err(RidError::UnknownSequence(
+                    str::from_utf8(name).unwrap().to_owned(),
+                )),
+                i => Ok(i as u32),
             }
         }
     }
@@ -164,15 +176,21 @@ impl HeaderView {
         self.tag_type(tag, htslib::BCF_HL_FMT)
     }
 
-    fn tag_type(&self, tag: &[u8], hdr_type: ::libc::c_uint) -> Result<(TagType, TagLength), TagTypeError> {
+    fn tag_type(
+        &self,
+        tag: &[u8],
+        hdr_type: ::libc::c_uint,
+    ) -> Result<(TagType, TagLength), TagTypeError> {
         let (_type, length) = unsafe {
             let id = htslib::bcf_hdr_id2int(
                 self.inner,
                 htslib::BCF_DT_ID as i32,
-                ffi::CString::new(tag).unwrap().as_ptr() as *mut i8
+                ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
             );
             if id < 0 {
-                return Err(TagTypeError::UndefinedTag(str::from_utf8(tag).unwrap().to_owned()));
+                return Err(TagTypeError::UndefinedTag(
+                    str::from_utf8(tag).unwrap().to_owned(),
+                ));
             }
             let n = (*self.inner).n[htslib::BCF_DT_ID as usize] as usize;
             let entry = slice::from_raw_parts((*self.inner).id[htslib::BCF_DT_ID as usize], n);
@@ -184,7 +202,7 @@ impl HeaderView {
             htslib::BCF_HT_INT => TagType::Integer,
             htslib::BCF_HT_REAL => TagType::Float,
             htslib::BCF_HT_STR => TagType::String,
-            _ => return Err(TagTypeError::UnexpectedTagType)
+            _ => return Err(TagTypeError::UnexpectedTagType),
         };
         let length = match length as ::libc::c_uint {
             htslib::BCF_VL_FIXED => TagLength::Fixed,
@@ -192,7 +210,7 @@ impl HeaderView {
             htslib::BCF_VL_A => TagLength::AltAlleles,
             htslib::BCF_VL_R => TagLength::Alleles,
             htslib::BCF_VL_G => TagLength::Genotypes,
-            _ => return Err(TagTypeError::UnexpectedTagType)
+            _ => return Err(TagTypeError::UnexpectedTagType),
         };
 
         Ok((_type, length))
@@ -204,7 +222,7 @@ impl HeaderView {
             match htslib::bcf_hdr_id2int(
                 self.inner,
                 htslib::BCF_DT_ID as i32,
-                ffi::CString::new(id).unwrap().as_ptr() as *const i8
+                ffi::CString::new(id).unwrap().as_ptr() as *const i8,
             ) {
                 -1 => Err(IdError::UnknownID(str::from_utf8(id).unwrap().to_owned())),
                 i => Ok(Id(i as u32)),
@@ -215,8 +233,11 @@ impl HeaderView {
     /// Convert integer representing an identifier (e.g., a `FILTER` value) to its string
     /// name.bam
     pub fn id_to_name(&self, id: Id) -> Vec<u8> {
-        let key = unsafe { ffi::CStr::from_ptr(
-            (*(*self.inner).id[htslib::BCF_DT_ID as usize].offset(*id as isize)).key) };
+        let key = unsafe {
+            ffi::CStr::from_ptr(
+                (*(*self.inner).id[htslib::BCF_DT_ID as usize].offset(*id as isize)).key,
+            )
+        };
         key.to_bytes().to_vec()
     }
 
@@ -226,9 +247,11 @@ impl HeaderView {
             match htslib::bcf_hdr_id2int(
                 self.inner,
                 htslib::BCF_DT_SAMPLE as i32,
-                ffi::CString::new(id).unwrap().as_ptr() as *const i8
+                ffi::CString::new(id).unwrap().as_ptr() as *const i8,
             ) {
-                -1 => Err(SampleError::UnknownSample(str::from_utf8(id).unwrap().to_owned())),
+                -1 => Err(SampleError::UnknownSample(
+                    str::from_utf8(id).unwrap().to_owned(),
+                )),
                 i => Ok(Id(i as u32)),
             }
         }
@@ -236,21 +259,22 @@ impl HeaderView {
 
     /// Convert integer representing an contig to its name.
     pub fn id_to_sample(&self, id: Id) -> Vec<u8> {
-        let key = unsafe { ffi::CStr::from_ptr(
-            (*(*self.inner).id[htslib::BCF_DT_SAMPLE as usize].offset(*id as isize)).key) };
+        let key = unsafe {
+            ffi::CStr::from_ptr(
+                (*(*self.inner).id[htslib::BCF_DT_SAMPLE as usize].offset(*id as isize)).key,
+            )
+        };
         key.to_bytes().to_vec()
     }
 }
 
-
 impl Clone for HeaderView {
     fn clone(&self) -> Self {
         HeaderView {
-            inner: unsafe { htslib::bcf_hdr_dup(self.inner) }
+            inner: unsafe { htslib::bcf_hdr_dup(self.inner) },
         }
     }
 }
-
 
 impl Drop for HeaderView {
     fn drop(&mut self) {
@@ -260,15 +284,13 @@ impl Drop for HeaderView {
     }
 }
 
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TagType {
     Flag,
     Integer,
     Float,
-    String
+    String,
 }
-
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TagLength {
@@ -276,9 +298,8 @@ pub enum TagLength {
     AltAlleles,
     Alleles,
     Genotypes,
-    Variable
+    Variable,
 }
-
 
 quick_error! {
     #[derive(Debug, Clone)]
@@ -290,7 +311,6 @@ quick_error! {
     }
 }
 
-
 quick_error! {
     #[derive(Debug, Clone)]
     pub enum IdError {
@@ -300,7 +320,6 @@ quick_error! {
         }
     }
 }
-
 
 quick_error! {
     #[derive(Debug, Clone)]
@@ -312,7 +331,6 @@ quick_error! {
     }
 }
 
-
 quick_error! {
     #[derive(Debug, Clone)]
     pub enum SubsetError {
@@ -321,7 +339,6 @@ quick_error! {
         }
     }
 }
-
 
 quick_error! {
     #[derive(Debug, Clone)]

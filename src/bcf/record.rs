@@ -24,7 +24,6 @@ lazy_static!{
     static ref VECTOR_END_FLOAT: f32 = Ieee754::from_bits(0x7F800002);
 }
 
-
 /// Common methods for numeric INFO and FORMAT entries
 pub trait Numeric {
     /// Return true if entry is a missing value
@@ -33,7 +32,6 @@ pub trait Numeric {
     /// Return missing value for storage in BCF record.
     fn missing() -> Self;
 }
-
 
 impl Numeric for f32 {
     fn is_missing(&self) -> bool {
@@ -45,7 +43,6 @@ impl Numeric for f32 {
     }
 }
 
-
 impl Numeric for i32 {
     fn is_missing(&self) -> bool {
         *self == MISSING_INTEGER
@@ -56,12 +53,10 @@ impl Numeric for i32 {
     }
 }
 
-
 trait NumericUtils {
     /// Return true if entry marks the end of the record.
     fn is_vector_end(&self) -> bool;
 }
-
 
 impl NumericUtils for f32 {
     fn is_vector_end(&self) -> bool {
@@ -69,13 +64,11 @@ impl NumericUtils for f32 {
     }
 }
 
-
 impl NumericUtils for i32 {
     fn is_vector_end(&self) -> bool {
         *self == VECTOR_END_INTEGER
     }
 }
-
 
 /// A BCF record.
 /// New records can be created by the `empty_record` methods of `bcf::Reader` and `bcf::Writer`.
@@ -86,15 +79,18 @@ pub struct Record {
     buffer: *mut ::std::os::raw::c_void,
 }
 
-
 impl Record {
     pub(crate) fn new(header: Rc<HeaderView>) -> Self {
         let inner = unsafe { htslib::bcf_init() };
-        Record { inner: inner, header: header, buffer: ptr::null_mut() }
+        Record {
+            inner: inner,
+            header: header,
+            buffer: ptr::null_mut(),
+        }
     }
 
     /// Return associated header.
-    pub fn header(&self) -> &HeaderView  {
+    pub fn header(&self) -> &HeaderView {
         self.header.as_ref()
     }
 
@@ -115,8 +111,8 @@ impl Record {
     /// use `bcf::header::HeaderView::rid2name`.
     pub fn rid(&self) -> Option<u32> {
         match self.inner().rid {
-            -1  => None,
-            rid => Some(rid as u32)
+            -1 => None,
+            rid => Some(rid as u32),
         }
     }
 
@@ -125,7 +121,6 @@ impl Record {
         self.inner().pos as u32
     }
 
-
     /// Set 0-based position.
     pub fn set_pos(&mut self, pos: i32) {
         self.inner_mut().pos = pos;
@@ -133,11 +128,14 @@ impl Record {
 
     /// Update the ID string to the given value.
     pub fn set_id(&mut self, id: &[u8]) -> Result<(), IdWriteError> {
-        if unsafe { htslib::bcf_update_id(
-            self.header().inner,
-            self.inner,
-            ffi::CString::new(id).unwrap().as_ptr() as *mut i8,
-        ) } == 0 {
+        if unsafe {
+            htslib::bcf_update_id(
+                self.header().inner,
+                self.inner,
+                ffi::CString::new(id).unwrap().as_ptr() as *mut i8,
+            )
+        } == 0
+        {
             Ok(())
         } else {
             Err(IdWriteError::Some)
@@ -146,11 +144,14 @@ impl Record {
 
     /// Add the ID string (the ID field is semicolon-separated), checking for duplicates.
     pub fn push_id(&mut self, id: &[u8]) -> Result<(), IdWriteError> {
-        if unsafe { htslib::bcf_add_id(
-            self.header().inner,
-            self.inner,
-            ffi::CString::new(id).unwrap().as_ptr() as *mut i8,
-        ) } == 0 {
+        if unsafe {
+            htslib::bcf_add_id(
+                self.header().inner,
+                self.inner,
+                ffi::CString::new(id).unwrap().as_ptr() as *mut i8,
+            )
+        } == 0
+        {
             Ok(())
         } else {
             Err(IdWriteError::Some)
@@ -170,7 +171,8 @@ impl Record {
                 self.header().inner,
                 self.inner,
                 flt_ids.as_mut_ptr(),
-                flt_ids.len() as i32);
+                flt_ids.len() as i32,
+            );
         }
     }
 
@@ -198,7 +200,7 @@ impl Record {
                 self.header().inner,
                 self.inner,
                 *flt_id as i32,
-                pass_on_empty as i32
+                pass_on_empty as i32,
             );
         }
     }
@@ -209,20 +211,30 @@ impl Record {
         let n = self.inner().n_allele() as usize;
         let dec = self.inner().d;
         let alleles = unsafe { slice::from_raw_parts(dec.allele, n) };
-        (0..n).map(|i| unsafe { ffi::CStr::from_ptr(alleles[i]).to_bytes() }).collect()
+        (0..n)
+            .map(|i| unsafe { ffi::CStr::from_ptr(alleles[i]).to_bytes() })
+            .collect()
     }
 
     /// Set alleles.
-    pub fn set_alleles(&mut self, alleles: &[Vec<u8>]) -> Result<(), AlleleWriteError>
-    {
-        let cstrings: Vec<ffi::CString> = alleles.iter().map(|vec| ffi::CString::new(vec.as_slice()).unwrap()).collect();
-        let mut ptrs: Vec<*const i8> = cstrings.iter().map(|cstr| cstr.as_ptr() as *const i8).collect();
-        if unsafe { htslib::bcf_update_alleles(
-            self.header().inner,
-            self.inner,
-            ptrs.as_mut_ptr(),
-            alleles.len() as i32
-        ) } == 0 {
+    pub fn set_alleles(&mut self, alleles: &[Vec<u8>]) -> Result<(), AlleleWriteError> {
+        let cstrings: Vec<ffi::CString> = alleles
+            .iter()
+            .map(|vec| ffi::CString::new(vec.as_slice()).unwrap())
+            .collect();
+        let mut ptrs: Vec<*const i8> = cstrings
+            .iter()
+            .map(|cstr| cstr.as_ptr() as *const i8)
+            .collect();
+        if unsafe {
+            htslib::bcf_update_alleles(
+                self.header().inner,
+                self.inner,
+                ptrs.as_mut_ptr(),
+                alleles.len() as i32,
+            )
+        } == 0
+        {
             Ok(())
         } else {
             Err(AlleleWriteError::Some)
@@ -241,7 +253,10 @@ impl Record {
 
     /// Get the value of the given info tag.
     pub fn info<'a>(&'a mut self, tag: &'a [u8]) -> Info {
-        Info { record: self, tag: tag }
+        Info {
+            record: self,
+            tag: tag,
+        }
     }
 
     /// Get the number of samples.
@@ -257,7 +272,7 @@ impl Record {
     /// Get genotypes as vector of one `Genotype` per sample.
     pub fn genotypes(&mut self) -> Result<Genotypes, FormatReadError> {
         Ok(Genotypes {
-            encoded: try!(self.format(b"GT").integer())
+            encoded: try!(self.format(b"GT").integer()),
         })
     }
 
@@ -291,11 +306,11 @@ impl Record {
                 ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
                 data.as_ptr() as *const ::std::os::raw::c_void,
                 data.len() as i32,
-                ht as i32
-            ) == 0 {
+                ht as i32,
+            ) == 0
+            {
                 Ok(())
-            }
-            else {
+            } else {
                 Err(TagWriteError::Some)
             }
         }
@@ -321,11 +336,11 @@ impl Record {
                 ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
                 data.as_ptr() as *const ::std::os::raw::c_void,
                 data.len() as i32,
-                ht as i32
-            ) == 0 {
+                ht as i32,
+            ) == 0
+            {
                 Ok(())
-            }
-            else {
+            } else {
                 Err(TagWriteError::Some)
             }
         }
@@ -335,11 +350,10 @@ impl Record {
     pub fn trim_alleles(&mut self) -> Result<(), TrimAllelesError> {
         match unsafe { htslib::bcf_trim_alleles(self.header().inner, self.inner) } {
             -1 => Err(TrimAllelesError::Some),
-            _  => Ok(())
+            _ => Ok(()),
         }
     }
 }
-
 
 /// Phased or unphased alleles, represented as indices.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -347,9 +361,8 @@ pub enum GenotypeAllele {
     Unphased(i32),
     Phased(i32),
     UnphasedMissing,
-    PhasedMissing
+    PhasedMissing,
 }
-
 
 impl GenotypeAllele {
     /// Decode given integer according to BCF standard.
@@ -359,7 +372,7 @@ impl GenotypeAllele {
             (1, 1) => GenotypeAllele::PhasedMissing,
             (e, 1) => GenotypeAllele::Phased((e >> 1) - 1),
             (e, 0) => GenotypeAllele::Unphased((e >> 1) - 1),
-            _ => panic!("unexpected phasing type")
+            _ => panic!("unexpected phasing type"),
         }
     }
 
@@ -369,28 +382,25 @@ impl GenotypeAllele {
             &GenotypeAllele::Unphased(i) => Some(i as u32),
             &GenotypeAllele::Phased(i) => Some(i as u32),
             &GenotypeAllele::UnphasedMissing => None,
-            &GenotypeAllele::PhasedMissing => None
+            &GenotypeAllele::PhasedMissing => None,
         }
     }
 }
-
 
 impl fmt::Display for GenotypeAllele {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.index() {
             Some(a) => write!(f, "{}", a),
-            None => write!(f, ".")
+            None => write!(f, "."),
         }
     }
 }
-
 
 custom_derive! {
     /// Genotype representation as a vector of `GenotypeAllele`.
     #[derive(NewtypeDeref, Debug, Clone, PartialEq, Eq, Hash)]
     pub struct Genotype(Vec<GenotypeAllele>);
 }
-
 
 impl fmt::Display for Genotype {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -401,7 +411,7 @@ impl fmt::Display for Genotype {
                 &GenotypeAllele::Phased(_) => '|',
                 &GenotypeAllele::Unphased(_) => '/',
                 &GenotypeAllele::UnphasedMissing => '/',
-                &GenotypeAllele::PhasedMissing => '|'
+                &GenotypeAllele::PhasedMissing => '|',
             };
             try!(write!(f, "{}{}", sep, a));
         }
@@ -409,16 +419,13 @@ impl fmt::Display for Genotype {
     }
 }
 
-
 /// Lazy representation of genotypes, that does no computation until a particular genotype is queried.
 #[derive(Debug, Clone)]
 pub struct Genotypes<'a> {
-    encoded: Vec<&'a [i32]>
+    encoded: Vec<&'a [i32]>,
 }
 
-
 impl<'a> Genotypes<'a> {
-
     /// Get genotype of ith sample. So far, only supports diploid genotypes.
     ///
     /// Note that the result complies with the BCF spec. This means that the
@@ -426,11 +433,14 @@ impl<'a> Genotypes<'a> {
     /// this method will return `[Unphased(1), Phased(1)]`.
     pub fn get(&self, i: usize) -> Genotype {
         let igt = self.encoded[i];
-        let gt = Genotype(igt.into_iter().map(|&e| GenotypeAllele::from_encoded(e)).collect_vec());
+        let gt = Genotype(
+            igt.into_iter()
+                .map(|&e| GenotypeAllele::from_encoded(e))
+                .collect_vec(),
+        );
         gt
     }
 }
-
 
 impl Drop for Record {
     fn drop(&mut self) {
@@ -441,10 +451,8 @@ impl Drop for Record {
     }
 }
 
-
 unsafe impl Send for Record {}
 unsafe impl Sync for Record {}
-
 
 /// Info tag representation.
 #[derive(Debug)]
@@ -452,7 +460,6 @@ pub struct Info<'a> {
     record: &'a mut Record,
     tag: &'a [u8],
 }
-
 
 impl<'a> Info<'a> {
     fn data(&mut self, data_type: u32) -> Result<Option<(usize, i32)>, InfoReadError> {
@@ -464,92 +471,100 @@ impl<'a> Info<'a> {
                 ffi::CString::new(self.tag).unwrap().as_ptr() as *mut i8,
                 &mut self.record.buffer,
                 &mut n,
-                data_type as i32
+                data_type as i32,
             )
         } {
             -1 => Err(InfoReadError::UndefinedTag),
             -2 => Err(InfoReadError::UnexpectedType),
             -3 => Ok(None),
-            ret  => Ok(Some((n as usize, ret))),
+            ret => Ok(Some((n as usize, ret))),
         }
     }
 
     /// Get integers from tag. `None` if tag not present in record.
     /// Import `bcf::record::Numeric` for missing value handling.
     pub fn integer(&mut self) -> Result<Option<&'a [i32]>, InfoReadError> {
-        self.data(htslib::BCF_HT_INT).map(|data| data.map(|(n, _)| {
-            trim_slice(
-                unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) }
-            )
-        }))
+        self.data(htslib::BCF_HT_INT).map(|data| {
+            data.map(|(n, _)| {
+                trim_slice(unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) })
+            })
+        })
     }
 
     /// Get mutable integers from tag. `None` if tag not present in record.
     /// Import `bcf::record::Numeric` for missing value handling.
     pub fn integer_mut(&mut self) -> Result<Option<&'a mut [i32]>, InfoReadError> {
-        self.data(htslib::BCF_HT_INT).map(|data| data.map(|(n, _)| {
-            unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut i32, n) }
-        }))
+        self.data(htslib::BCF_HT_INT).map(|data| {
+            data.map(|(n, _)| unsafe {
+                slice::from_raw_parts_mut(self.record.buffer as *mut i32, n)
+            })
+        })
     }
 
     /// Get floats from tag. `None` if tag not present in record.
     /// Import `bcf::record::Numeric` for missing value handling.
     pub fn float(&mut self) -> Result<Option<&'a [f32]>, InfoReadError> {
-        self.data(htslib::BCF_HT_REAL).map(|data| data.map(|(n, _)| {
-            trim_slice(
-                unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) }
-            )
-        }))
+        self.data(htslib::BCF_HT_REAL).map(|data| {
+            data.map(|(n, _)| {
+                trim_slice(unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) })
+            })
+        })
     }
 
     /// Get mutable floats from tag. `None` if tag not present in record.
     /// Import `bcf::record::Numeric` for missing value handling.
     pub fn float_mut(&mut self) -> Result<Option<&'a mut [f32]>, InfoReadError> {
-        self.data(htslib::BCF_HT_REAL).map(|data| data.map(|(n, _)| {
-            unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut f32, n) }
-        }))
+        self.data(htslib::BCF_HT_REAL).map(|data| {
+            data.map(|(n, _)| unsafe {
+                slice::from_raw_parts_mut(self.record.buffer as *mut f32, n)
+            })
+        })
     }
 
     pub fn flag(&mut self) -> Result<bool, InfoReadError> {
-        self.data(htslib::BCF_HT_FLAG).map(|data| {
-            match data {
-                Some((_, ret)) => ret == 1,
-                None => false
-            }
+        self.data(htslib::BCF_HT_FLAG).map(|data| match data {
+            Some((_, ret)) => ret == 1,
+            None => false,
         })
     }
 
     /// Get strings from tag. `None` if tag not present in record.
     pub fn string(&mut self) -> Result<Option<Vec<&'a [u8]>>, InfoReadError> {
-        self.data(htslib::BCF_HT_STR).map(|data| data.map(|(n, ret)| {
-            unsafe {
-                slice::from_raw_parts(self.record.buffer as *const u8, ret as usize)
-            }.chunks(n).map(|s| {
-                // stop at zero character
-                s.split(|c| *c == 0u8).next().expect("Bug: returned string should not be empty.")
-            }).collect()
-        }))
+        self.data(htslib::BCF_HT_STR).map(|data| {
+            data.map(|(n, ret)| {
+                unsafe { slice::from_raw_parts(self.record.buffer as *const u8, ret as usize) }
+                    .chunks(n)
+                    .map(|s| {
+                        // stop at zero character
+                        s.split(|c| *c == 0u8)
+                            .next()
+                            .expect("Bug: returned string should not be empty.")
+                    })
+                    .collect()
+            })
+        })
     }
 
     /// Get mutable strings from tag. `None` if tag not present in record.
     pub fn string_mut(&mut self) -> Result<Option<Vec<&'a mut [u8]>>, InfoReadError> {
-        self.data(htslib::BCF_HT_STR).map(|data| data.map(|(n, ret)| {
-            unsafe {
-                slice::from_raw_parts_mut(self.record.buffer as *mut u8, ret as usize)
-            }.chunks_mut(n).collect()
-        }))
+        self.data(htslib::BCF_HT_STR).map(|data| {
+            data.map(|(n, ret)| {
+                unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut u8, ret as usize) }
+                    .chunks_mut(n)
+                    .collect()
+            })
+        })
     }
 }
-
 
 unsafe impl<'a> Send for Info<'a> {}
 unsafe impl<'a> Sync for Info<'a> {}
 
-
 fn trim_slice<T: PartialEq + NumericUtils>(s: &[T]) -> &[T] {
-    s.split(|v| v.is_vector_end()).next().expect("Bug: returned slice should not be empty.")
+    s.split(|v| v.is_vector_end())
+        .next()
+        .expect("Bug: returned slice should not be empty.")
 }
-
 
 // Representation of per-sample data.
 #[derive(Debug)]
@@ -559,16 +574,21 @@ pub struct Format<'a> {
     inner: *mut htslib::bcf_fmt_t,
 }
 
-
 impl<'a> Format<'a> {
     /// Create new format data in a given record.
     fn new(record: &'a mut Record, tag: &'a [u8]) -> Format<'a> {
-        let inner = unsafe { htslib::bcf_get_fmt(
-            record.header().inner,
-            record.inner,
-            ffi::CString::new(tag).unwrap().as_ptr() as *mut i8
-        ) };
-        Format { record: record, tag: tag, inner: inner }
+        let inner = unsafe {
+            htslib::bcf_get_fmt(
+                record.header().inner,
+                record.inner,
+                ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
+            )
+        };
+        Format {
+            record: record,
+            tag: tag,
+            inner: inner,
+        }
     }
 
     pub fn inner(&self) -> &htslib::bcf_fmt_t {
@@ -593,78 +613,81 @@ impl<'a> Format<'a> {
                 ffi::CString::new(self.tag).unwrap().as_ptr() as *mut i8,
                 &mut self.record.buffer,
                 &mut n,
-                data_type as i32
+                data_type as i32,
             )
         } {
             -1 => Err(FormatReadError::UndefinedTag),
             -2 => Err(FormatReadError::UnexpectedType),
             -3 => Err(FormatReadError::MissingTag),
-            ret  => Ok((n as usize, ret)),
+            ret => Ok((n as usize, ret)),
         }
     }
 
     /// Get format data as integers.
     pub fn integer(&mut self) -> Result<Vec<&'a [i32]>, FormatReadError> {
         self.data(htslib::BCF_HT_INT).map(|(n, _)| {
-            unsafe {
-                slice::from_raw_parts(self.record.buffer as *const i32, n)
-            }.chunks(self.values_per_sample()).map(|s| trim_slice(s)).collect()
+            unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) }
+                .chunks(self.values_per_sample())
+                .map(|s| trim_slice(s))
+                .collect()
         })
     }
 
     /// Get format data as mutable integers.
     pub fn integer_mut(&mut self) -> Result<Vec<&'a mut [i32]>, FormatReadError> {
         self.data(htslib::BCF_HT_INT).map(|(n, _)| {
-            unsafe {
-                slice::from_raw_parts_mut(self.record.buffer as *mut i32, n)
-            }.chunks_mut(self.values_per_sample()).collect()
+            unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut i32, n) }
+                .chunks_mut(self.values_per_sample())
+                .collect()
         })
     }
 
     /// Get format data as floats.
     pub fn float(&mut self) -> Result<Vec<&'a [f32]>, FormatReadError> {
         self.data(htslib::BCF_HT_REAL).map(|(n, _)| {
-            unsafe {
-                slice::from_raw_parts(self.record.buffer as *const f32, n)
-            }.chunks(self.values_per_sample()).map(|s| trim_slice(s)).collect()
+            unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) }
+                .chunks(self.values_per_sample())
+                .map(|s| trim_slice(s))
+                .collect()
         })
     }
 
     /// Get format data as mutable floats.
     pub fn float_mut(&mut self) -> Result<Vec<&'a mut [f32]>, FormatReadError> {
         self.data(htslib::BCF_HT_REAL).map(|(n, _)| {
-            unsafe {
-                slice::from_raw_parts_mut(self.record.buffer as *mut f32, n)
-            }.chunks_mut(self.values_per_sample()).collect()
+            unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut f32, n) }
+                .chunks_mut(self.values_per_sample())
+                .collect()
         })
     }
 
     /// Get format data as byte slices. To obtain the values strings, use `std::str::from_utf8`.
     pub fn string(&mut self) -> Result<Vec<&'a [u8]>, FormatReadError> {
         self.data(htslib::BCF_HT_STR).map(|(n, _)| {
-            unsafe {
-                slice::from_raw_parts(self.record.buffer as *const u8, n)
-            }.chunks(self.values_per_sample()).map(|s| {
-                // stop at zero character
-                s.split(|c| *c == 0u8).next().expect("Bug: returned string should not be empty.")
-            }).collect()
+            unsafe { slice::from_raw_parts(self.record.buffer as *const u8, n) }
+                .chunks(self.values_per_sample())
+                .map(|s| {
+                    // stop at zero character
+                    s.split(|c| *c == 0u8)
+                        .next()
+                        .expect("Bug: returned string should not be empty.")
+                })
+                .collect()
         })
     }
 
     /// Get format data as mutable byte slices.
     pub fn string_mut(&mut self) -> Result<Vec<&'a mut [u8]>, FormatReadError> {
         self.data(htslib::BCF_HT_STR).map(|(n, _)| {
-            unsafe {
-                slice::from_raw_parts_mut(self.record.buffer as *mut u8, n)
-            }.chunks_mut(self.values_per_sample()).collect()
+            unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut u8, n) }
+                .chunks_mut(self.values_per_sample())
+                .collect()
         })
     }
 }
 
-
 unsafe impl<'a> Send for Format<'a> {}
 unsafe impl<'a> Sync for Format<'a> {}
-
 
 quick_error! {
     #[derive(Debug, Clone)]
@@ -677,7 +700,6 @@ quick_error! {
         }
     }
 }
-
 
 quick_error! {
     #[derive(Debug, Clone)]
@@ -694,7 +716,6 @@ quick_error! {
     }
 }
 
-
 quick_error! {
     #[derive(Debug, Clone)]
     pub enum TagWriteError {
@@ -703,7 +724,6 @@ quick_error! {
         }
     }
 }
-
 
 quick_error! {
     #[derive(Debug, Clone)]
@@ -714,7 +734,6 @@ quick_error! {
     }
 }
 
-
 quick_error! {
     #[derive(Debug, Clone)]
     pub enum AlleleWriteError {
@@ -724,7 +743,6 @@ quick_error! {
     }
 }
 
-
 quick_error! {
     #[derive(Debug, Clone)]
     pub enum FilterWriteError {
@@ -733,7 +751,6 @@ quick_error! {
         }
     }
 }
-
 
 quick_error! {
     #[derive(Debug, Clone)]
