@@ -536,6 +536,8 @@ mod tests {
     use super::*;
     use std::path::Path;
     use bcf::record::Numeric;
+    use bcf::header::Id;
+
 
     fn _test_read<P: AsRef<Path>>(path: &P) {
         let mut bcf = Reader::from_path(path).ok().expect("Error opening file.");
