@@ -5,18 +5,18 @@
 
 use bam::HeaderView;
 
-
 /// A BAM header.
 #[derive(Debug, Clone)]
 pub struct Header {
-    records: Vec<Vec<u8>>
+    records: Vec<Vec<u8>>,
 }
-
 
 impl Header {
     /// Create a new header.
     pub fn new() -> Self {
-        Header { records: Vec::new() }
+        Header {
+            records: Vec::new(),
+        }
     }
 
     pub fn from_template(header: &HeaderView) -> Self {
@@ -32,7 +32,9 @@ impl Header {
                 break;
             }
         }
-        Header { records: vec![record] }
+        Header {
+            records: vec![record],
+        }
     }
 
     /// Add a record to the header.
@@ -52,7 +54,6 @@ impl Header {
     }
 }
 
-
 /// Header record.
 #[derive(Debug, Clone)]
 pub struct HeaderRecord<'a> {
@@ -60,12 +61,14 @@ pub struct HeaderRecord<'a> {
     tags: Vec<(&'a [u8], Vec<u8>)>,
 }
 
-
 impl<'a> HeaderRecord<'a> {
     /// Create a new header record.
     /// See SAM format specification for possible record types.
     pub fn new(rec_type: &'a [u8]) -> Self {
-        HeaderRecord { rec_type: [&b"@"[..], rec_type].concat(), tags: Vec::new() }
+        HeaderRecord {
+            rec_type: [&b"@"[..], rec_type].concat(),
+            tags: Vec::new(),
+        }
     }
 
     /// Add a new tag to the record.
@@ -73,7 +76,8 @@ impl<'a> HeaderRecord<'a> {
     /// # Arguments
     ///
     /// * `tag` - the tag identifier
-    /// * `value` - the value. Can be any type convertible into a string. Preferably numbers or strings.
+    /// * `value` - the value. Can be any type convertible into a string. Preferably numbers or
+    ///   strings.
     pub fn push_tag<V: ToString>(&mut self, tag: &'a [u8], value: &V) -> &mut Self {
         self.tags.push((tag, value.to_string().into_bytes()));
         self

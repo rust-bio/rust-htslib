@@ -2,13 +2,14 @@ use std::fmt;
 
 use serde::{Serialize, Serializer};
 use serde::ser::SerializeStruct;
-use serde::de::{self, Deserialize, Deserializer, Visitor, SeqAccess, MapAccess};
+use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 
 use bam::record::Record;
 
 impl Serialize for Record {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> 
-        where S: Serializer 
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
     {
         let core = self.inner().core;
         let mut state = serializer.serialize_struct("Record", 12)?;
@@ -30,15 +31,29 @@ impl Serialize for Record {
 
 impl<'de> Deserialize<'de> for Record {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where D: Deserializer<'de>
+    where
+        D: Deserializer<'de>,
     {
-
-        enum Field { Tid, Pos, Bin, Mapq, QnameLen, Flag, NCigar, SeqLen, Mtid, Mpos, Isize, Data };
+        enum Field {
+            Tid,
+            Pos,
+            Bin,
+            Mapq,
+            QnameLen,
+            Flag,
+            NCigar,
+            SeqLen,
+            Mtid,
+            Mpos,
+            Isize,
+            Data,
+        };
 
 
         impl<'de> Deserialize<'de> for Field {
             fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
-                where D: Deserializer<'de>
+            where
+                D: Deserializer<'de>,
             {
                 struct FieldVisitor;
 
@@ -50,7 +65,8 @@ impl<'de> Deserialize<'de> for Record {
                     }
 
                     fn visit_str<E>(self, value: &str) -> Result<Field, E>
-                        where E: de::Error
+                    where
+                        E: de::Error,
                     {
                         match value {
                             "tid" => Ok(Field::Tid),
@@ -84,33 +100,33 @@ impl<'de> Deserialize<'de> for Record {
             }
 
             fn visit_seq<V>(self, mut seq: V) -> Result<Record, V::Error>
-                where V: SeqAccess<'de>
+            where
+                V: SeqAccess<'de>,
             {
                 let tid = seq.next_element()?
-                              .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let pos  = seq.next_element()?
-                              .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let pos = seq.next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
                 let bin = seq.next_element()?
-                              .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
                 let mapq = seq.next_element()?
-                              .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
                 let qname_len = seq.next_element()?
-                              .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
                 let flag = seq.next_element()?
-                              .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
                 let n_cigar = seq.next_element()?
-                              .ok_or_else(|| de::Error::invalid_length(0, &self))?;              
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
                 let seq_len = seq.next_element()?
-                              .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
                 let mtid = seq.next_element()?
-                              .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
                 let mpos = seq.next_element()?
-                              .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
                 let isize = seq.next_element()?
-                              .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
                 let data: Vec<u8> = seq.next_element()?
-                              .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                              
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
 
                 let mut rec = Record::new();
                 {
@@ -135,9 +151,9 @@ impl<'de> Deserialize<'de> for Record {
             }
 
             fn visit_map<V>(self, mut map: V) -> Result<Record, V::Error>
-                where V: MapAccess<'de>
+            where
+                V: MapAccess<'de>,
             {
-
                 let mut tid = None;
                 let mut pos = None;
                 let mut bin = None;
@@ -225,15 +241,14 @@ impl<'de> Deserialize<'de> for Record {
                             }
                             data = Some(map.next_value()?);
                         }
-
                     }
                 }
 
                 let tid = tid.ok_or_else(|| de::Error::missing_field("tid"))?;
                 let pos = pos.ok_or_else(|| de::Error::missing_field("pos"))?;
                 let bin = bin.ok_or_else(|| de::Error::missing_field("bin"))?;
-                let mapq = mapq.ok_or_else(|| de::Error::missing_field("mapq"))?; 
-                let qname_len = qname_len.ok_or_else(|| de::Error::missing_field("qname_len"))?; 
+                let mapq = mapq.ok_or_else(|| de::Error::missing_field("mapq"))?;
+                let qname_len = qname_len.ok_or_else(|| de::Error::missing_field("qname_len"))?;
                 let flag = flag.ok_or_else(|| de::Error::missing_field("flag"))?;
                 let n_cigar = n_cigar.ok_or_else(|| de::Error::missing_field("n_cigar"))?;
                 let seq_len = seq_len.ok_or_else(|| de::Error::missing_field("seq_len"))?;
@@ -264,11 +279,13 @@ impl<'de> Deserialize<'de> for Record {
             }
         }
 
-        const FIELDS: &'static [&'static str] = &["tid", "pos", "bin", "qual", "l_qname", "flag", "n_cigar", "seq_len", "mtid", "mpos", "isize", "data"];
+        const FIELDS: &'static [&'static str] = &[
+            "tid", "pos", "bin", "qual", "l_qname", "flag", "n_cigar", "seq_len", "mtid", "mpos",
+            "isize", "data",
+        ];
         deserializer.deserialize_struct("Record", FIELDS, RecordVisitor)
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -278,13 +295,15 @@ mod tests {
 
     use std::path::Path;
 
-    use bincode::{serialize, deserialize, Infinite};
+    use bincode::{deserialize, serialize, Infinite};
     use serde_json;
 
     #[test]
     fn test_bincode() {
-        let mut bam = Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening file.");
-        
+        let mut bam = Reader::from_path(&Path::new("test/test.bam"))
+            .ok()
+            .expect("Error opening file.");
+
         let mut recs = Vec::new();
         for record in bam.records() {
             recs.push(record.unwrap());
@@ -297,8 +316,10 @@ mod tests {
 
     #[test]
     fn test_serde_json() {
-        let mut bam = Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening file.");
-        
+        let mut bam = Reader::from_path(&Path::new("test/test.bam"))
+            .ok()
+            .expect("Error opening file.");
+
         let mut recs = Vec::new();
         for record in bam.records() {
             recs.push(record.unwrap());

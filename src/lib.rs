@@ -64,20 +64,20 @@
 //! // afterwards, read or pileup in this region
 //! ```
 
-extern crate libc;
+extern crate bitflags;
+#[macro_use]
+extern crate custom_derive;
+extern crate ieee754;
 extern crate itertools;
 #[macro_use]
-extern crate quick_error;
+extern crate lazy_static;
+extern crate libc;
 #[macro_use]
 extern crate newtype_derive;
 #[macro_use]
-extern crate custom_derive;
-extern crate url;
-extern crate ieee754;
-#[macro_use]
-extern crate lazy_static;
-extern crate bitflags;
+extern crate quick_error;
 extern crate regex;
+extern crate url;
 
 #[cfg(feature = "serde")]
 extern crate serde;
