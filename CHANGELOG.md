@@ -2,6 +2,15 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.18.0] - 2018-05-04
+### Added
+- bcf::IndexedReader
+- support for writing bcf FILTER field
+- setting thread count in all readers and writers
+- setting ID and alleles in bcf records
+- support for tabix indexes
+- convert CIGAR to and from strings
+
 ## [0.17.0] - 2018-02-22
 ### Added
 - Serde support for bam records.

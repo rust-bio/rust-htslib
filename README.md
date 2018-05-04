@@ -17,7 +17,11 @@ git clone --recursive https://github.com/rust-bio/rust-htslib.git
 ensuring that the HTSlib submodule is fetched, too.
 If you only want to use the library, there is no need to clone the repository. Go on to the **Usage** section in this case.
 
-### Usage
+## Requirements
+
+To compile this crate you need the development headers of zlib, bzip2 and xz.
+
+## Usage
 
 Add this to your `Cargo.toml`:
 
