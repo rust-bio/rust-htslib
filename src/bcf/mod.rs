@@ -3,6 +3,14 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Module for working with VCF and BCF files.
+//! 
+//! # Performance Remarks
+//! 
+//! Note that BCF corresponds to the in-memory representation of BCF/VCF records in Htslib
+//! itself. Thus, it comes without a runtime penalty for parsing, in contrast to reading VCF
+//! files.
+
 use std::ffi;
 use std::path::Path;
 use std::rc::Rc;

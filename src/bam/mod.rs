@@ -3,6 +3,8 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Module for working with BAM files.
+
 pub mod record;
 pub mod header;
 pub mod pileup;
