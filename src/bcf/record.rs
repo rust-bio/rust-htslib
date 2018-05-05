@@ -80,6 +80,7 @@ pub struct Record {
 }
 
 impl Record {
+    /// Construct record with reference to header `HeaderView`, for create-internal use.
     pub(crate) fn new(header: Rc<HeaderView>) -> Self {
         let inner = unsafe { htslib::bcf_init() };
         Record {
@@ -99,16 +100,34 @@ impl Record {
         self.header = header;
     }
 
+    /// Return reference to the inner C struct.
+    ///
+    /// # Remarks
+    ///
+    /// Note that this function is only required as long as Rust-Htslib does not provide full
+    /// access to all aspects of Htslib.
     pub fn inner(&self) -> &htslib::bcf1_t {
         unsafe { &*self.inner }
     }
 
+    /// Return mutable reference to inner C struct.
+    ///
+    /// # Remarks
+    ///
+    /// Note that this function is only required as long as Rust-Htslib does not provide full
+    /// access to all aspects of Htslib.
     pub fn inner_mut(&mut self) -> &mut htslib::bcf1_t {
         unsafe { &mut *self.inner }
     }
 
-    /// Get the reference id of the record. To look up the contig name,
-    /// use `bcf::header::HeaderView::rid2name`.
+    /// Get the reference id of the record.
+    ///
+    /// To look up the contig name, use `bcf::header::HeaderView::rid2name`.
+    ///
+    /// # Returns
+    ///
+    /// - `Some(rid)` if the internal `rid` is set to a value that is not `-1`
+    /// - `None` if the internal `rid` is set to `-1`
     pub fn rid(&self) -> Option<u32> {
         match self.inner().rid {
             -1 => None,
@@ -116,7 +135,15 @@ impl Record {
         }
     }
 
-    // 0-based position.
+    // Update the internal reference ID number.
+    pub fn set_rid(&mut self, rid: &Option<u32>) {
+        match rid {
+            &Some(rid) => self.inner_mut().rid = rid as i32,
+            &None => self.inner_mut().rid = -1,
+        }
+    }
+
+    // Return 0-based position.
     pub fn pos(&self) -> u32 {
         self.inner().pos as u32
     }
@@ -126,6 +153,18 @@ impl Record {
         self.inner_mut().pos = pos;
     }
 
+    /// Return the value of the ID column.
+    ///
+    /// When empty, returns `b".".to_vec()`.
+    pub fn id(&self) -> Vec<u8> {
+        if self.inner().d.id.is_null() {
+            b".".to_vec()
+        } else {
+            let id = unsafe { ffi::CStr::from_ptr(self.inner().d.id) };
+            id.to_bytes().to_vec()
+        }
+    }
+
     /// Update the ID string to the given value.
     pub fn set_id(&mut self, id: &[u8]) -> Result<(), IdWriteError> {
         if unsafe {
@@ -133,6 +172,22 @@ impl Record {
                 self.header().inner,
                 self.inner,
                 ffi::CString::new(id).unwrap().as_ptr() as *mut i8,
+            )
+        } == 0
+        {
+            Ok(())
+        } else {
+            Err(IdWriteError::Some)
+        }
+    }
+
+    /// Clear the ID column (set it to `"."`).
+    pub fn clear_id(&mut self) -> Result<(), IdWriteError> {
+        if unsafe {
+            htslib::bcf_update_id(
+                self.header().inner,
+                self.inner,
+                ffi::CString::new(".".as_bytes()).unwrap().as_ptr() as *mut i8,
             )
         } == 0
         {
@@ -158,12 +213,49 @@ impl Record {
         }
     }
 
+    /// Return `Filters` iterator for enumerating all filters that have been set.
+    ///
+    /// A record having the `PASS` filter will return an empty `Filter` here.
+    pub fn filters(&self) -> Filters {
+        // TODO: do we have to use `&mut self` here because of the unpack?!
+        if self.inner().unpacked == 0 {
+            unsafe {
+                htslib::bcf_unpack(self.inner, htslib::BCF_UN_FLT as i32);
+            }
+        }
+        Filters::new(self)
+    }
+
+    /// Query whether the filter with the given ID has been set.
+    ///
+    /// # Arguments
+    ///
+    /// - `flt_id` - The filter ID to query for.
+    pub fn has_filter(&self, flt_id: &Id) -> bool {
+        // TODO: do we have to use `&mut self` here because of the unpack?!
+        if self.inner().unpacked == 0 {
+            unsafe {
+                htslib::bcf_unpack(self.inner, htslib::BCF_UN_FLT as i32);
+            }
+        }
+        if **flt_id == 0 && self.inner().d.n_flt == 0 {
+            return true;
+        }
+        for i in 0..(self.inner().d.n_flt as isize) {
+            if unsafe { *self.inner().d.flt.offset(i) } == **flt_id as i32 {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Set the given filters IDs to the FILTER column.
     ///
     /// Setting an empty slice removes all filters.
     ///
-    /// # Args
-    /// - `val` - The corresponding filter string value.
+    /// # Arguments
+    ///
+    /// - `flt_ids` - The identifiers of the filter values to set.
     pub fn set_filters(&mut self, flt_ids: &[Id]) {
         let mut flt_ids: Vec<i32> = flt_ids.iter().map(|x| **x as i32).collect();
         unsafe {
@@ -181,8 +273,9 @@ impl Record {
     /// If `val` corresponds to `"PASS"` then all existing filters are removed first. If other than
     /// `"PASS"`, then existing `"PASS"` is removed.
     ///
-    /// # Args
-    /// - `val` - The corresponding filter ID value.
+    /// # Arguments
+    ///
+    /// - `flt_id` - The corresponding filter ID value to add.
     pub fn push_filter(&mut self, flt_id: Id) {
         unsafe {
             htslib::bcf_add_filter(self.header().inner, self.inner, *flt_id as i32);
@@ -191,8 +284,9 @@ impl Record {
 
     /// Remove the given filter from the FILTER column.
     ///
-    /// # Args
-    /// - `val` - The corresponding filter ID.
+    /// # Arguments
+    ///
+    /// - `val` - The corresponding filter ID to remove.
     /// - `pass_on_empty` - Set to "PASS" when removing the last value.
     pub fn remove_filter(&mut self, flt_id: Id, pass_on_empty: bool) {
         unsafe {
@@ -205,7 +299,9 @@ impl Record {
         }
     }
 
-    /// Get alleles. The first allele is the reference allele.
+    /// Get alleles strings.
+    ///
+    /// The first allele is the reference allele.
     pub fn alleles(&self) -> Vec<&[u8]> {
         unsafe { htslib::bcf_unpack(self.inner, htslib::BCF_UN_STR as i32) };
         let n = self.inner().n_allele() as usize;
@@ -217,10 +313,10 @@ impl Record {
     }
 
     /// Set alleles.
-    pub fn set_alleles(&mut self, alleles: &[Vec<u8>]) -> Result<(), AlleleWriteError> {
+    pub fn set_alleles(&mut self, alleles: &[&[u8]]) -> Result<(), AlleleWriteError> {
         let cstrings: Vec<ffi::CString> = alleles
             .iter()
-            .map(|vec| ffi::CString::new(vec.as_slice()).unwrap())
+            .map(|vec| ffi::CString::new(*vec).unwrap())
             .collect();
         let mut ptrs: Vec<*const i8> = cstrings
             .iter()
@@ -269,6 +365,8 @@ impl Record {
         self.inner().n_allele()
     }
 
+    // TODO fn push_genotypes(&mut self, Genotypes) {}?
+
     /// Get genotypes as vector of one `Genotype` per sample.
     pub fn genotypes(&mut self) -> Result<Genotypes, FormatReadError> {
         Ok(Genotypes {
@@ -281,18 +379,49 @@ impl Record {
         Format::new(self, tag)
     }
 
-    /// Add an integer format tag. Data is a flattened two-dimensional array.
-    /// The first dimension contains one array for each sample.
+    /// Add an integer-typed FORMAT tag.
+    ///
+    /// # Arguments
+    ///
+    /// - `tag` - The tag's string.
+    /// - `data` - a flattened, two-dimensional array, the first dimension contains one array
+    ///            for each sample.
+    ///
+    /// # Errors
+    ///
     /// Returns error if tag is not present in header.
     pub fn push_format_integer(&mut self, tag: &[u8], data: &[i32]) -> Result<(), TagWriteError> {
         self.push_format(tag, data, htslib::BCF_HT_INT)
     }
 
-    /// Add a float format tag. Data is a flattened two-dimensional array.
-    /// The first dimension contains one array for each sample.
+    /// Add a float-typed FORMAT tag.
+    ///
+    /// # Arguments
+    ///
+    /// - `tag` - The tag's string.
+    /// - `data` - a flattened, two-dimensional array, the first dimension contains one array
+    ///            for each sample.
+    ///
+    /// # Errors
+    ///
     /// Returns error if tag is not present in header.
     pub fn push_format_float(&mut self, tag: &[u8], data: &[f32]) -> Result<(), TagWriteError> {
         self.push_format(tag, data, htslib::BCF_HT_REAL)
+    }
+
+    /// Add a char-typed FORMAT tag.
+    ///
+    /// # Arguments
+    ///
+    /// - `tag` - The tag's string.
+    /// - `data` - a flattened, two-dimensional array, the first dimension contains one array
+    ///            for each sample.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if tag is not present in header.
+    pub fn push_format_char(&mut self, tag: &[u8], data: &[u8]) -> Result<(), TagWriteError> {
+        self.push_format(tag, data, htslib::BCF_HT_STR)
     }
 
     /// Add a format tag. Data is a flattened two-dimensional array.
@@ -316,18 +445,65 @@ impl Record {
         }
     }
 
-    /// Add an integer info tag.
+    // TODO: should we add convenience methods clear_format_*?
+
+    /// Add a string-typed FORMAT tag.
+    ///
+    /// # Arguments
+    ///
+    /// - `tag` - The tag's string.
+    /// - `data` - a flattened, two-dimensional array, the first dimension contains one array
+    ///            for each sample.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if tag is not present in header.
+    pub fn push_format_string(&mut self, tag: &[u8], data: &[&[u8]]) -> Result<(), TagWriteError> {
+        let c_data = data.iter()
+            .map(|&s| ffi::CString::new(s).unwrap())
+            .collect::<Vec<ffi::CString>>();
+        let c_ptrs = c_data
+            .iter()
+            .map(|s| s.as_ptr() as *mut i8)
+            .collect::<Vec<*mut i8>>();
+        unsafe {
+            if htslib::bcf_update_format_string(
+                self.header().inner,
+                self.inner,
+                ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
+                c_ptrs.as_slice().as_ptr() as *mut *const i8,
+                data.len() as i32,
+            ) == 0
+            {
+                Ok(())
+            } else {
+                Err(TagWriteError::Some)
+            }
+        }
+    }
+
+    /// Add an integer-typed INFO entry.
     pub fn push_info_integer(&mut self, tag: &[u8], data: &[i32]) -> Result<(), TagWriteError> {
         self.push_info(tag, data, htslib::BCF_HT_INT)
     }
 
-    /// Add a float info tag.
+    /// Remove the integer-typed INFO entry.
+    pub fn clear_info_integer(&mut self, tag: &[u8]) -> Result<(), TagWriteError> {
+        self.push_info::<i32>(tag, &[], htslib::BCF_HT_INT)
+    }
+
+    /// Add a float-typed INFO entry.
     pub fn push_info_float(&mut self, tag: &[u8], data: &[f32]) -> Result<(), TagWriteError> {
         self.push_info(tag, data, htslib::BCF_HT_REAL)
     }
 
-    /// Add an info tag.
-    pub fn push_info<T>(&mut self, tag: &[u8], data: &[T], ht: u32) -> Result<(), TagWriteError> {
+    /// Remove the float-typed INFO entry.
+    pub fn clear_info_float(&mut self, tag: &[u8]) -> Result<(), TagWriteError> {
+        self.push_info::<u8>(tag, &[], htslib::BCF_HT_REAL)
+    }
+
+    /// Add a not INFO tag.
+    fn push_info<T>(&mut self, tag: &[u8], data: &[T], ht: u32) -> Result<(), TagWriteError> {
         assert!(data.len() > 0);
         unsafe {
             if htslib::bcf_update_info(
@@ -336,6 +512,63 @@ impl Record {
                 ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
                 data.as_ptr() as *const ::std::os::raw::c_void,
                 data.len() as i32,
+                ht as i32,
+            ) == 0
+            {
+                Ok(())
+            } else {
+                Err(TagWriteError::Some)
+            }
+        }
+    }
+
+    /// Set flag into the INFO column.
+    pub fn push_info_flag(&mut self, tag: &[u8]) -> Result<(), TagWriteError> {
+        self.push_info_string_impl(tag, &["".as_bytes()], htslib::BCF_HT_FLAG)
+    }
+
+    /// Remove the flag from the INFO column.
+    pub fn clear_info_flag(&mut self, tag: &[u8]) -> Result<(), TagWriteError> {
+        self.push_info_string_impl(tag, &[], htslib::BCF_HT_FLAG)
+    }
+
+    /// Add a string-typed INFO entry.
+    pub fn push_info_string(&mut self, tag: &[u8], data: &[&[u8]]) -> Result<(), TagWriteError> {
+        self.push_info_string_impl(tag, data, htslib::BCF_HT_STR)
+    }
+
+    /// Remove the string field from the INFO column.
+    pub fn clear_info_string(&mut self, tag: &[u8]) -> Result<(), TagWriteError> {
+        self.push_info_string_impl(tag, &[], htslib::BCF_HT_STR)
+    }
+
+    /// Add an string-valued INFO tag.
+    fn push_info_string_impl(
+        &mut self,
+        tag: &[u8],
+        data: &[&[u8]],
+        ht: u32,
+    ) -> Result<(), TagWriteError> {
+        let mut buf: Vec<u8> = Vec::new();
+        for (i, &s) in data.iter().enumerate() {
+            if i > 0 {
+                buf.extend(b",");
+            }
+            buf.extend(s);
+        }
+        let c_str = ffi::CString::new(buf).unwrap();
+        let len = if ht == htslib::BCF_HT_FLAG {
+            data.len()
+        } else {
+            c_str.to_bytes().len()
+        };
+        unsafe {
+            if htslib::bcf_update_info(
+                self.header().inner,
+                self.inner,
+                ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
+                c_str.as_ptr() as *const ::std::os::raw::c_void,
+                len as i32,
                 ht as i32,
             ) == 0
             {
@@ -482,6 +715,7 @@ impl<'a> Info<'a> {
     }
 
     /// Get integers from tag. `None` if tag not present in record.
+    ///
     /// Import `bcf::record::Numeric` for missing value handling.
     pub fn integer(&mut self) -> Result<Option<&'a [i32]>, InfoReadError> {
         self.data(htslib::BCF_HT_INT).map(|data| {
@@ -491,17 +725,8 @@ impl<'a> Info<'a> {
         })
     }
 
-    /// Get mutable integers from tag. `None` if tag not present in record.
-    /// Import `bcf::record::Numeric` for missing value handling.
-    pub fn integer_mut(&mut self) -> Result<Option<&'a mut [i32]>, InfoReadError> {
-        self.data(htslib::BCF_HT_INT).map(|data| {
-            data.map(|(n, _)| unsafe {
-                slice::from_raw_parts_mut(self.record.buffer as *mut i32, n)
-            })
-        })
-    }
-
     /// Get floats from tag. `None` if tag not present in record.
+    ///
     /// Import `bcf::record::Numeric` for missing value handling.
     pub fn float(&mut self) -> Result<Option<&'a [f32]>, InfoReadError> {
         self.data(htslib::BCF_HT_REAL).map(|data| {
@@ -511,16 +736,7 @@ impl<'a> Info<'a> {
         })
     }
 
-    /// Get mutable floats from tag. `None` if tag not present in record.
-    /// Import `bcf::record::Numeric` for missing value handling.
-    pub fn float_mut(&mut self) -> Result<Option<&'a mut [f32]>, InfoReadError> {
-        self.data(htslib::BCF_HT_REAL).map(|data| {
-            data.map(|(n, _)| unsafe {
-                slice::from_raw_parts_mut(self.record.buffer as *mut f32, n)
-            })
-        })
-    }
-
+    /// Get flags from tag. `false` if not set.
     pub fn flag(&mut self) -> Result<bool, InfoReadError> {
         self.data(htslib::BCF_HT_FLAG).map(|data| match data {
             Some((_, ret)) => ret == 1,
@@ -540,17 +756,6 @@ impl<'a> Info<'a> {
                             .next()
                             .expect("Bug: returned string should not be empty.")
                     })
-                    .collect()
-            })
-        })
-    }
-
-    /// Get mutable strings from tag. `None` if tag not present in record.
-    pub fn string_mut(&mut self) -> Result<Option<Vec<&'a mut [u8]>>, InfoReadError> {
-        self.data(htslib::BCF_HT_STR).map(|data| {
-            data.map(|(n, ret)| {
-                unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut u8, ret as usize) }
-                    .chunks_mut(n)
                     .collect()
             })
         })
@@ -633,30 +838,12 @@ impl<'a> Format<'a> {
         })
     }
 
-    /// Get format data as mutable integers.
-    pub fn integer_mut(&mut self) -> Result<Vec<&'a mut [i32]>, FormatReadError> {
-        self.data(htslib::BCF_HT_INT).map(|(n, _)| {
-            unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut i32, n) }
-                .chunks_mut(self.values_per_sample())
-                .collect()
-        })
-    }
-
     /// Get format data as floats.
     pub fn float(&mut self) -> Result<Vec<&'a [f32]>, FormatReadError> {
         self.data(htslib::BCF_HT_REAL).map(|(n, _)| {
             unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) }
                 .chunks(self.values_per_sample())
                 .map(|s| trim_slice(s))
-                .collect()
-        })
-    }
-
-    /// Get format data as mutable floats.
-    pub fn float_mut(&mut self) -> Result<Vec<&'a mut [f32]>, FormatReadError> {
-        self.data(htslib::BCF_HT_REAL).map(|(n, _)| {
-            unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut f32, n) }
-                .chunks_mut(self.values_per_sample())
                 .collect()
         })
     }
@@ -675,19 +862,47 @@ impl<'a> Format<'a> {
                 .collect()
         })
     }
-
-    /// Get format data as mutable byte slices.
-    pub fn string_mut(&mut self) -> Result<Vec<&'a mut [u8]>, FormatReadError> {
-        self.data(htslib::BCF_HT_STR).map(|(n, _)| {
-            unsafe { slice::from_raw_parts_mut(self.record.buffer as *mut u8, n) }
-                .chunks_mut(self.values_per_sample())
-                .collect()
-        })
-    }
 }
 
 unsafe impl<'a> Send for Format<'a> {}
 unsafe impl<'a> Sync for Format<'a> {}
+
+#[derive(Debug)]
+pub struct Filters<'a> {
+    /// Reference to the `Record` to enumerate records for.
+    record: &'a Record,
+    /// Index of the next filter to return, if not at end.
+    idx: i32,
+}
+
+impl<'a> Filters<'a> {
+    pub fn new(record: &'a Record) -> Self {
+        Filters { record, idx: 0 }
+    }
+}
+
+impl<'a> Iterator for Filters<'a> {
+    type Item = Id;
+
+    fn next(&mut self) -> Option<Id> {
+        if self.record.inner().d.n_flt >= self.idx {
+            None
+        } else {
+            let i = self.idx as isize;
+            self.idx += 1;
+            Some(Id(unsafe { *self.record.inner().d.flt.offset(i) } as u32))
+        }
+    }
+}
+
+quick_error! {
+    #[derive(Debug, Clone)]
+    pub enum IterFilterError {
+        Some {
+            description("problem enumerating FILTER entries")
+        }
+    }
+}
 
 quick_error! {
     #[derive(Debug, Clone)]

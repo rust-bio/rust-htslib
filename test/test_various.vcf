@@ -1,0 +1,14 @@
+##fileformat=VCFv4.1
+##FILTER=<ID=q10,Description="Quality below 10">
+##FILTER=<ID=s50,Description="Less than 50% of samples have data">
+##INFO=<ID=S1,Number=1,Type=String,Description="Single INFO string">
+##INFO=<ID=N1,Number=1,Type=Integer,Description="Single INFO integer">
+##INFO=<ID=F1,Number=1,Type=Float,Description="Single INFO float">
+##INFO=<ID=X1,Number=0,Type=Flag,Description="INFO FLAG">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=FS1,Number=1,Type=String,Description="Single FORMAT string">
+##FORMAT=<ID=FN1,Number=1,Type=Integer,Description="Single FORMAT integer">
+##FORMAT=<ID=FF1,Number=1,Type=Float,Description="Single FORMAT float">
+##FORMAT=<ID=CH1,Number=1,Type=Character,Description="Single FORMAT char">
+##contig=<ID=19,length=59128983>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	one	two
