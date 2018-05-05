@@ -5,9 +5,9 @@
 
 //! Module with utility code.
 
-use std::ptr;
 use std::ffi;
 use std::path::Path;
+use std::ptr;
 
 /// Copies data from `src` to `dst`
 /// TODO remove once stable in standard library.

@@ -111,10 +111,10 @@ quick_error! {
 
 #[cfg(test)]
 mod tests {
-    use bam::record;
     use bam::header;
-    use bam::Reader;
+    use bam::record;
     use bam::Read;
+    use bam::Reader;
     use sam::Writer;
 
     #[test]

@@ -5,26 +5,26 @@
 
 //! Module for working with BAM files.
 
-pub mod record;
+pub mod buffer;
 pub mod header;
 pub mod pileup;
-pub mod buffer;
+pub mod record;
 
 #[cfg(feature = "serde")]
 pub mod record_serde;
 
+use libc;
 use std::ffi;
+use std::path::Path;
 use std::ptr;
 use std::slice;
-use std::path::Path;
 use url::Url;
-use libc;
 
 use htslib;
 
-pub use bam::record::Record;
-pub use bam::header::Header;
 pub use bam::buffer::RecordBuffer;
+pub use bam::header::Header;
+pub use bam::record::Record;
 
 /// Implementation for `Read::set_threads` and `Writer::set_threads`.
 pub fn set_threads(bgzf: *mut htslib::BGZF, n_threads: usize) -> Result<(), ThreadingError> {
@@ -742,12 +742,12 @@ impl Drop for HeaderView {
 #[cfg(test)]
 mod tests {
     extern crate tempdir;
-    use std::collections::HashMap;
-    use super::*;
-    use super::record::{Aux, Cigar, CigarString};
     use super::header::HeaderRecord;
-    use std::str;
+    use super::record::{Aux, Cigar, CigarString};
+    use super::*;
+    use std::collections::HashMap;
     use std::path::Path;
+    use std::str;
 
     fn gold() -> (
         [&'static [u8]; 6],

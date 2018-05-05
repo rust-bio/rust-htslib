@@ -4,10 +4,10 @@
 // except according to those terms.
 
 //! Rust-Htslib provides a high level API to working with the common HTS file formats.
-//! 
+//!
 //! Htslib itself is the *de facto* standard implementation for reading and writing files for
 //! HTS alignments (SAM and BAM) as well as variant calls in VCF and BCF format.
-//! 
+//!
 //! For example, reading and writing BAM files is as easy as
 //!
 //! ```
@@ -92,10 +92,10 @@ extern crate bincode;
 #[cfg(all(test, feature = "serde"))]
 extern crate serde_json;
 
-pub mod htslib;
 pub mod bam;
 pub mod bcf;
-pub mod utils;
+pub mod htslib;
 pub mod prelude;
 pub mod sam;
 pub mod tbx;
+pub mod utils;

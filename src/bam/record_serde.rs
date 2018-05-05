@@ -1,8 +1,8 @@
 use std::fmt;
 
-use serde::{Serialize, Serializer};
-use serde::ser::SerializeStruct;
 use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
+use serde::ser::SerializeStruct;
+use serde::{Serialize, Serializer};
 
 use bam::record::Record;
 
@@ -290,8 +290,8 @@ impl<'de> Deserialize<'de> for Record {
 #[cfg(test)]
 mod tests {
     use bam::record::Record;
-    use bam::Reader;
     use bam::Read;
+    use bam::Reader;
 
     use std::path::Path;
 

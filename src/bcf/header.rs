@@ -3,8 +3,8 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::slice;
 use std::ffi;
+use std::slice;
 use std::str;
 
 use htslib;

@@ -3,14 +3,14 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::slice;
-use std::iter;
 use std::fmt;
+use std::iter;
+use std::slice;
 
 use htslib;
 
-use bam::record;
 use bam;
+use bam::record;
 
 /// Iterator over alignments of a pileup.
 pub type Alignments<'a> = iter::Map<

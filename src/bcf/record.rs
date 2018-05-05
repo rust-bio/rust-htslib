@@ -3,13 +3,13 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::ptr;
-use std::slice;
-use std::ffi;
-use std::i32;
 use std::f32;
+use std::ffi;
 use std::fmt;
+use std::i32;
+use std::ptr;
 use std::rc::Rc;
+use std::slice;
 
 use ieee754::Ieee754;
 use itertools::Itertools;
@@ -19,7 +19,7 @@ use htslib;
 
 const MISSING_INTEGER: i32 = i32::MIN;
 const VECTOR_END_INTEGER: i32 = i32::MIN + 1;
-lazy_static!{
+lazy_static! {
     static ref MISSING_FLOAT: f32 = Ieee754::from_bits(0x7F800001);
     static ref VECTOR_END_FLOAT: f32 = Ieee754::from_bits(0x7F800002);
 }

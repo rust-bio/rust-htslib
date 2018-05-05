@@ -4,49 +4,49 @@
 // except according to those terms.
 
 //! Module for working with tabix-indexed text files.
-//! 
+//!
 //! This module allows to read tabix-indexed text files (such as BED) in a convenient but in a
 //! line-based (and thus format-agnostic way). For accessing tabix-inxed VCF files, using the
 //! `bcf` module is probably a better choice as this module gives you lines from the text files
 //! which you then have to take care of parsing.
-//! 
+//!
 //! In general, for reading tabix-indexed files, first to open the file by creating a `tbx::Reader`
 //! objects, possibly translate the chromosome name to its numeric ID in the file, fetch the region
 //! of interest using `fetch()`, and finally iterate over the records using `records()`.
 //!
 //! # Examples
-//! 
+//!
 //! ```rust,no_run
 //! use rust_htslib::tbx::{self, Read};
-//! 
+//!
 //! // Create a tabix reader for reading a tabix-indexed BED file.
 //! let path_bed = "file.bed.gz";
 //! let mut tbx_reader = tbx::Reader::from_path(&path_bed)
-//!     .expect(format!("Could not open {}", path_bed));
-//! 
+//!     .expect(&format!("Could not open {}", path_bed));
+//!
 //! // Resolve chromosome name to numeric ID.
 //! let tid = match tbx_reader.tid("chr1") {
 //!     Ok(tid) => tid,
 //!     Err(_) => panic!("Could not resolve 'chr1' to contig ID"),
 //! };
-//! 
+//!
 //! // Set region to fetch.
 //! tbx_reader
 //!     .fetch(tid, 0, 100_000)
 //!     .expect("Could not seek to chr1:1-100,000");
-//! 
+//!
 //! // Read through all records in region.
 //! for record in tbx_reader.records() {
 //!     // ... actually do some work
 //! }
 //! ```
 
+use libc;
 use std::ffi;
 use std::mem;
-use std::ptr;
 use std::path::Path;
+use std::ptr;
 use url::Url;
-use libc;
 
 use htslib;
 

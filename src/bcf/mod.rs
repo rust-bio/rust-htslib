@@ -4,9 +4,9 @@
 // except according to those terms.
 
 //! Module for working with VCF and BCF files.
-//! 
+//!
 //! # Performance Remarks
-//! 
+//!
 //! Note that BCF corresponds to the in-memory representation of BCF/VCF records in Htslib
 //! itself. Thus, it comes without a runtime penalty for parsing, in contrast to reading VCF
 //! files.
@@ -17,16 +17,16 @@ use std::rc::Rc;
 
 use url::Url;
 
-pub mod record;
-pub mod header;
 pub mod buffer;
+pub mod header;
+pub mod record;
 
-use htslib;
 use bcf::header::{HeaderView, SampleSubset};
+use htslib;
 
+pub use bcf::buffer::RecordBuffer;
 pub use bcf::header::Header;
 pub use bcf::record::Record;
-pub use bcf::buffer::RecordBuffer;
 
 /// Redefinition of corresponding `#define` in `vcf.h.`.
 pub const GT_MISSING: i32 = 0;
@@ -542,9 +542,9 @@ quick_error! {
 mod tests {
     extern crate tempdir;
     use super::*;
-    use std::path::Path;
-    use bcf::record::Numeric;
     use bcf::header::Id;
+    use bcf::record::Numeric;
+    use std::path::Path;
 
     fn _test_read<P: AsRef<Path>>(path: &P) {
         let mut bcf = Reader::from_path(path).ok().expect("Error opening file.");

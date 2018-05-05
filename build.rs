@@ -8,9 +8,9 @@ extern crate fs_utils;
 
 use fs_utils::copy::copy_directory;
 
-use std::process::Command;
 use std::env;
 use std::path::PathBuf;
+use std::process::Command;
 
 fn main() {
     let out = PathBuf::from(env::var("OUT_DIR").unwrap());
