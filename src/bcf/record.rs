@@ -126,6 +126,17 @@ impl Record {
         self.inner_mut().pos = pos;
     }
 
+    /// Return whether the filter with the given ID is set.
+    pub fn has_filter(&self, id: &[u8]) -> bool {
+        return unsafe {
+            htslib::bcf_has_filter(
+                self.header().inner,
+                self.inner,
+                ffi::CString::new(id).unwrap().as_ptr() as *mut i8,
+            )
+        } != 0;
+    }
+
     /// Update the ID string to the given value.
     pub fn set_id(&mut self, id: &[u8]) -> Result<(), IdWriteError> {
         if unsafe {
