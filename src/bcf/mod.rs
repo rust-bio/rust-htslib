@@ -653,7 +653,7 @@ mod tests {
             .expect("Cannot create temp dir");
         let bcfpath = tmp.path().join("test.bcf");
         let bcf = Reader::from_path(path).ok().expect("Error opening file.");
-        let header = Header::subset_template(&bcf.header, &[b"NA12878.subsample-0.25-0"])
+        let header = Header::from_template_subset(&bcf.header, &[b"NA12878.subsample-0.25-0"])
             .ok()
             .expect("Error subsetting samples.");
         let mut writer = Writer::from_path(&bcfpath, &header, false, false)
@@ -686,7 +686,7 @@ mod tests {
         let bcfpath = tmp.path().join("test.bcf");
         println!("{:?}", bcfpath);
         {
-            let header = Header::subset_template(&bcf.header, &[b"NA12878.subsample-0.25-0"])
+            let header = Header::from_template_subset(&bcf.header, &[b"NA12878.subsample-0.25-0"])
                 .ok()
                 .expect("Error subsetting samples.");
             let mut writer = Writer::from_path(&bcfpath, &header, false, false)
@@ -839,6 +839,16 @@ mod tests {
         assert!(header.sample_to_id(b"three").is_err());
     }
 
+    // Helper function reading full file into string.
+    fn read_all<P: AsRef<Path>>(path: P) -> String {
+        let mut file = File::open(path.as_ref())
+            .expect(&format!("Unable to open the file: {:?}", path.as_ref()));
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)
+            .expect(&format!("Unable to read the file: {:?}", path.as_ref()));
+        contents
+    }
+
     // Open `test_various.vcf`, add a record from scratch to it and write it out again.
     //
     // This exercises the full functionality of updating information in a `record::Record`.
@@ -857,7 +867,7 @@ mod tests {
         // all data is written below.
         {
             let mut writer =
-                Writer::from_path(&out_path, &Header::with_template(&vcf.header()), true, true)
+                Writer::from_path(&out_path, &Header::from_template(&vcf.header()), true, true)
                     .ok()
                     .expect("Error opening file.");
             let header = writer.header().clone();
@@ -916,19 +926,37 @@ mod tests {
         }
 
         // Now, compare expected and real output.
-
-        // Helper function reading full file into string.
-        fn read_all<P: AsRef<Path>>(path: P) -> String {
-            let mut file = File::open(path.as_ref())
-                .expect(&format!("Unable to open the file: {:?}", path.as_ref()));
-            let mut contents = String::new();
-            file.read_to_string(&mut contents)
-                .expect(&format!("Unable to read the file: {:?}", path.as_ref()));
-            contents
-        }
-
         let expected = read_all("test/test_various.out.vcf");
         let actual = read_all(&out_path);
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_remove_headers() {
+        let vcf = Reader::from_path(&"test/test_headers.vcf")
+            .ok()
+            .expect("Error opening file.");
+        let tmp = tempdir::TempDir::new("rust-htslib")
+            .ok()
+            .expect("Cannot create temp dir");
+        let bcfpath = tmp.path().join("test.vcf");
+        let mut header = Header::from_template(&vcf.header);
+        header
+            .remove_contig(b"contig2")
+            .remove_info(b"INFO2")
+            .remove_format(b"FORMAT2")
+            .remove_filter(b"FILTER2")
+            .remove_structured(b"Foo2")
+            .remove_generic(b"Bar2");
+        {
+            let mut _writer = Writer::from_path(&bcfpath, &header, true, true)
+                .ok()
+                .expect("Error opening output file.");
+            // Note that we don't need to write anything, we are just looking at the header.
+        }
+
+        let expected = read_all("test/test_headers.out.vcf");
+        let actual = read_all(&bcfpath);
         assert_eq!(expected, actual);
     }
 }
