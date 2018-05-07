@@ -194,15 +194,30 @@ impl Drop for Header {
 /// A header record.
 pub enum HeaderRecord {
     /// A `FILTER` header record.
-    Filter { key: String, key_value_pairs: Vec<(String, String)> },
+    Filter {
+        key: String,
+        key_value_pairs: Vec<(String, String)>,
+    },
     /// An `INFO` header record.
-    Info { key: String, key_value_pairs: Vec<(String, String)> },
+    Info {
+        key: String,
+        key_value_pairs: Vec<(String, String)>,
+    },
     /// A `FORMAT` header record.
-    Format { key: String, key_value_pairs: Vec<(String, String)> },
+    Format {
+        key: String,
+        key_value_pairs: Vec<(String, String)>,
+    },
     /// A `contig` header record.
-    Contig { key: String, key_value_pairs: Vec<(String, String)> },
+    Contig {
+        key: String,
+        key_value_pairs: Vec<(String, String)>,
+    },
     /// A structured header record.
-    Structured { key: String, key_value_pairs: Vec<(String, String)> },
+    Structured {
+        key: String,
+        key_value_pairs: Vec<(String, String)>,
+    },
     /// A generic, unstructured header record.
     Generic { key: String, value: String },
 }
@@ -362,8 +377,18 @@ impl HeaderView {
         fn parse_kv(rec: &htslib::bcf_hrec_t) -> Vec<(String, String)> {
             let mut result: Vec<(String, String)> = Vec::new();
             for i in 0_i32..(rec.nkeys) {
-                let key = unsafe { ffi::CStr::from_ptr(*rec.keys.offset(i as isize)).to_str().unwrap().to_string() };
-                let value = unsafe { ffi::CStr::from_ptr(*rec.vals.offset(i as isize)).to_str().unwrap().to_string() };
+                let key = unsafe {
+                    ffi::CStr::from_ptr(*rec.keys.offset(i as isize))
+                        .to_str()
+                        .unwrap()
+                        .to_string()
+                };
+                let value = unsafe {
+                    ffi::CStr::from_ptr(*rec.vals.offset(i as isize))
+                        .to_str()
+                        .unwrap()
+                        .to_string()
+                };
                 result.push((key, value));
             }
             result
@@ -372,7 +397,7 @@ impl HeaderView {
         let mut result: Vec<HeaderRecord> = Vec::new();
         for i in 1_i32..unsafe { (*self.inner).nhrec } {
             let rec = unsafe { &(**(*self.inner).hrec.offset(i as isize)) };
-            let key = unsafe { ffi::CStr::from_ptr(rec.key).to_str().unwrap().to_string() } ;
+            let key = unsafe { ffi::CStr::from_ptr(rec.key).to_str().unwrap().to_string() };
             let record = match rec.type_ {
                 0 => HeaderRecord::Filter {
                     key,
@@ -398,7 +423,7 @@ impl HeaderView {
                     key,
                     value: unsafe { ffi::CStr::from_ptr(rec.value).to_str().unwrap().to_string() },
                 },
-                _ => { panic!("Unknown type: {}", rec.type_) }
+                _ => panic!("Unknown type: {}", rec.type_),
             };
             result.push(record);
         }
