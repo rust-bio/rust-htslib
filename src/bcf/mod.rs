@@ -847,7 +847,7 @@ mod tests {
         assert_eq!(records.len(), 9);
 
         match &records[0] {
-            HeaderRecord::Filter {
+            &HeaderRecord::Filter {
                 key,
                 key_value_pairs,
             } => {
