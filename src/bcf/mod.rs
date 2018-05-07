@@ -848,8 +848,8 @@ mod tests {
 
         match &records[0] {
             &HeaderRecord::Filter {
-                key,
-                key_value_pairs,
+                ref key,
+                ref key_value_pairs,
             } => {
                 assert_eq!(key, "FILTER");
                 assert_eq!(key_value_pairs[0], ("ID".to_string(), "PASS".to_string()));
