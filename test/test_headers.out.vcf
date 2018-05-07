@@ -1,0 +1,9 @@
+##fileformat=VCFv4.1
+##FILTER=<ID=PASS,Description="All filters passed">
+##FILTER=<ID=FILTER1,Description="should stay">
+##INFO=<ID=INFO1,Number=1,Type=String,Description="should stay">
+##FORMAT=<ID=FORMAT1,Number=1,Type=String,Description="should stay">
+##contig=<ID=contig1,length=59128983>
+##SOME=<ID=Foo1,Bar=Baz>
+##Bar1=something
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	one	two
