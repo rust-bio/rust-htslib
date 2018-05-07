@@ -3,20 +3,20 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::slice;
-use std::ffi;
-use std::ops;
-use std::fmt;
 use std::error::Error;
-use std::u32;
-use std::str::FromStr;
+use std::ffi;
+use std::fmt;
+use std::ops;
+use std::slice;
 use std::str;
+use std::str::FromStr;
+use std::u32;
 
 use itertools::Itertools;
 use regex::Regex;
 
-use htslib;
 use bam::{AuxWriteError, HeaderView, ReadError};
+use htslib;
 use utils;
 
 /// A macro creating methods for flag access.

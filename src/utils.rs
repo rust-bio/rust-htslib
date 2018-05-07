@@ -1,6 +1,13 @@
-use std::ptr;
+// Copyright 2014 Christopher Schröder, Johannes Köster.
+// Licensed under the MIT license (http://opensource.org/licenses/MIT)
+// This file may not be copied, modified, or distributed
+// except according to those terms.
+
+//! Module with utility code.
+
 use std::ffi;
 use std::path::Path;
+use std::ptr;
 
 /// Copies data from `src` to `dst`
 /// TODO remove once stable in standard library.

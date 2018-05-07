@@ -4,8 +4,8 @@
 // except according to those terms.
 
 use std::collections::{vec_deque, VecDeque};
-use std::mem;
 use std::error::Error;
+use std::mem;
 
 use bcf::{self, Read};
 

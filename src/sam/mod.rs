@@ -1,3 +1,10 @@
+// Copyright 2014 Christopher Schröder, Johannes Köster.
+// Licensed under the MIT license (http://opensource.org/licenses/MIT)
+// This file may not be copied, modified, or distributed
+// except according to those terms.
+
+//! Module for working with SAM files.
+
 use std::ffi;
 use std::path::Path;
 
@@ -104,10 +111,10 @@ quick_error! {
 
 #[cfg(test)]
 mod tests {
-    use bam::record;
     use bam::header;
-    use bam::Reader;
+    use bam::record;
     use bam::Read;
+    use bam::Reader;
     use sam::Writer;
 
     #[test]
