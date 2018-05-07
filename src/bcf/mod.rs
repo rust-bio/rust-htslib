@@ -838,6 +838,27 @@ mod tests {
         assert!(header.sample_to_id(b"three").is_err());
     }
 
+    #[test]
+    fn test_header_records() {
+        let vcf = Reader::from_path(&"test/test_string.vcf")
+            .ok()
+            .expect("Error opening file.");
+        let records = vcf.header().header_records();
+        assert_eq!(records.len(), 9);
+
+        match &records[0] {
+            HeaderRecord::Filter {
+                key,
+                key_value_pairs,
+            } => {
+                assert_eq!(key, "FILTER");
+                assert_eq!(key_value_pairs[0], ("ID".to_string(), "PASS".to_string()));
+            }
+            _ => {
+                assert!(false);
+            }
+        }
+    }
 
     // Helper function reading full file into string.
     fn read_all<P: AsRef<Path>>(path: P) -> String {

@@ -192,6 +192,7 @@ impl Drop for Header {
 }
 
 /// A header record.
+#[derive(Debug)]
 pub enum HeaderRecord {
     /// A `FILTER` header record.
     Filter {
