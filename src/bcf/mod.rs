@@ -177,6 +177,7 @@ impl IndexedReader {
         }
     }
 
+    /// Create a new `IndexedReader` from an URL.
     pub fn from_url(url: &Url) -> Result<Self, IndexedReaderError> {
         Self::new(&ffi::CString::new(url.as_str()).unwrap())
     }
@@ -207,14 +208,22 @@ impl IndexedReader {
         }
     }
 
-    pub fn fetch(&mut self, rid: u32, beg: u32, end: u32) -> Result<(), FetchError> {
+    /// Jump to the given region.
+    ///
+    /// # Arguments
+    ///
+    /// * `rid` - numeric ID of the reference to jump to; use `HeaderView::name2rid` for resolving
+    ///           contig name to ID.
+    /// * `start` - `0`-based start coordinate of region on reference.
+    /// * `end` - `0`-based end coordinate of region on reference.
+    pub fn fetch(&mut self, rid: u32, start: u32, end: u32) -> Result<(), FetchError> {
         let contig = self.header.rid2name(rid);
         let contig = ffi::CString::new(contig).unwrap();
         let contig = contig.as_ptr();
-        if unsafe { htslib::bcf_sr_seek(self.inner, contig, beg as i32) } != 0 {
+        if unsafe { htslib::bcf_sr_seek(self.inner, contig, start as i32) } != 0 {
             Err(FetchError::Some)
         } else {
-            self.current_region = Some((rid, beg, end));
+            self.current_region = Some((rid, start, end));
             Ok(())
         }
     }
@@ -306,7 +315,7 @@ impl Writer {
     ///
     /// # Arguments
     ///
-    /// * `path` - the path.
+    /// * `path` - the path
     /// * `header` - header definition to use
     /// * `uncompressed` - disable compression
     /// * `vcf` - write VCF instead of BCF
@@ -323,6 +332,14 @@ impl Writer {
         }
     }
 
+    /// Create a new writer from a URL.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - the URL
+    /// * `header` - header definition to use
+    /// * `uncompressed` - disable compression
+    /// * `vcf` - write VCF instead of BCF
     pub fn from_url(
         url: &Url,
         header: &Header,
@@ -332,6 +349,13 @@ impl Writer {
         Self::new(url.as_str().as_bytes(), header, uncompressed, vcf)
     }
 
+    /// Create a new writer to stdout.
+    ///
+    /// # Arguments
+    ///
+    /// * `header` - header definition to use
+    /// * `uncompressed` - disable compression
+    /// * `vcf` - write VCF instead of BCF
     pub fn from_stdout(header: &Header, uncompressed: bool, vcf: bool) -> Result<Self, BCFError> {
         Self::new(b"-", header, uncompressed, vcf)
     }
@@ -355,17 +379,23 @@ impl Writer {
         })
     }
 
+    /// Obtain reference to the lightweight `HeaderView` of the BCF header.
     pub fn header(&self) -> &HeaderView {
         &self.header
     }
 
     /// Create empty record for writing to this writer.
-    /// The record can be reused multiple times.
+    ///
+    /// This record can then be reused multiple times.
     pub fn empty_record(&self) -> Record {
         record::Record::new(self.header.clone())
     }
 
     /// Translate record to header of this writer.
+    ///
+    /// # Arguments
+    ///
+    /// - `record` - The `Record` to translate.
     pub fn translate(&mut self, record: &mut record::Record) {
         unsafe {
             htslib::bcf_translate(self.header.inner, record.header().inner, record.inner);
@@ -374,6 +404,10 @@ impl Writer {
     }
 
     /// Subset samples of record to match header of this writer.
+    ///
+    /// # Arguments
+    ///
+    /// - `record` - The `Record` to modify.
     pub fn subset(&mut self, record: &mut record::Record) {
         match self.subset {
             Some(ref mut subset) => unsafe {
@@ -388,6 +422,11 @@ impl Writer {
         }
     }
 
+    /// Write `record` to the Writer.
+    ///
+    /// # Arguments
+    ///
+    /// - `record` - The `Record` to write.
     pub fn write(&mut self, record: &record::Record) -> Result<(), WriteError> {
         if unsafe { htslib::bcf_write(self.inner, self.header.inner, record.inner) } == -1 {
             Err(WriteError::Some)
@@ -544,7 +583,10 @@ mod tests {
     use super::*;
     use bcf::header::Id;
     use bcf::record::Numeric;
+    use std::fs::File;
+    use std::io::prelude::Read as IoRead;
     use std::path::Path;
+    use std::str;
 
     fn _test_read<P: AsRef<Path>>(path: &P) {
         let mut bcf = Reader::from_path(path).ok().expect("Error opening file.");
@@ -795,5 +837,98 @@ mod tests {
         assert_eq!(header.sample_to_id(b"one").unwrap(), Id(0));
         assert_eq!(header.sample_to_id(b"two").unwrap(), Id(1));
         assert!(header.sample_to_id(b"three").is_err());
+    }
+
+    // Open `test_various.vcf`, add a record from scratch to it and write it out again.
+    //
+    // This exercises the full functionality of updating information in a `record::Record`.
+    #[test]
+    fn test_write_various() {
+        // Open reader, then create writer.
+        let tmp = tempdir::TempDir::new("rust-htslib")
+            .ok()
+            .expect("Cannot create temp dir");
+        let out_path = tmp.path().join("test_various.out.vcf");
+
+        let vcf = Reader::from_path(&"test/test_various.vcf")
+            .ok()
+            .expect("Error opening file.");
+        // The writer goes into its own block so we can ensure that the file is closed and
+        // all data is written below.
+        {
+            let mut writer =
+                Writer::from_path(&out_path, &Header::with_template(&vcf.header()), true, true)
+                    .ok()
+                    .expect("Error opening file.");
+            let header = writer.header().clone();
+
+            // Setup empty record, filled below.
+            let mut record = writer.empty_record();
+
+            record.set_rid(&Some(0));
+            assert_eq!(record.rid().unwrap(), 0);
+
+            record.set_pos(12);
+            assert_eq!(record.pos(), 12);
+
+            assert_eq!(str::from_utf8(record.id().as_ref()).ok().unwrap(), ".");
+            record.set_id("to_be_cleared".as_bytes()).unwrap();
+            assert_eq!(
+                str::from_utf8(record.id().as_ref()).ok().unwrap(),
+                "to_be_cleared"
+            );
+            record.clear_id().unwrap();
+            assert_eq!(str::from_utf8(record.id().as_ref()).ok().unwrap(), ".");
+            record.set_id("first_id".as_bytes()).unwrap();
+            record.push_id("second_id".as_bytes()).unwrap();
+            record.push_id("first_id".as_bytes()).unwrap();
+
+            assert!(record.filters().next().is_none());
+            record.set_filters(&[header.name_to_id(b"q10").unwrap()]);
+            record.push_filter(header.name_to_id(b"s50").unwrap());
+            record.remove_filter(header.name_to_id(b"q10").unwrap(), true);
+            record.push_filter(header.name_to_id(b"q10").unwrap());
+
+            record
+                .set_alleles(&["C".as_bytes(), "T".as_bytes(), "G".as_bytes()])
+                .unwrap();
+
+            record.set_qual(10.0);
+
+            record.push_info_integer(b"N1", &[32]).unwrap();
+            record.push_info_float(b"F1", &[33.0]).unwrap();
+            record
+                .push_info_string(b"S1", &["fourtytwo".as_bytes()])
+                .unwrap();
+            record.push_info_flag(b"X1").unwrap();
+
+            record
+                .push_format_string(b"FS1", &[&b"yes"[..], &b"no"[..]])
+                .unwrap();
+            record.push_format_integer(b"FF1", &[43, 11]).unwrap();
+            record.push_format_float(b"FN1", &[42.0, 10.0]).unwrap();
+            record
+                .push_format_char(b"CH1", &[b"A"[0], b"B"[0]])
+                .unwrap();
+
+            // Finally, write out the record.
+            writer.write(&record).unwrap();
+        }
+
+        // Now, compare expected and real output.
+
+        // Helper function reading full file into string.
+        fn read_all<P: AsRef<Path>>(path: P) -> String {
+            let mut file = File::open(path.as_ref())
+                .expect(&format!("Unable to open the file: {:?}", path.as_ref()));
+            let mut contents = String::new();
+            file.read_to_string(&mut contents)
+                .expect(&format!("Unable to read the file: {:?}", path.as_ref()));
+            contents
+        }
+
+        let expected = read_all("test/test_various.out.vcf");
+        let actual = read_all(&out_path);
+        assert_eq!(expected, actual);
     }
 }
