@@ -10,9 +10,9 @@ use std::path::Path;
 
 use htslib;
 
+use bam::HeaderView;
 use bam::header;
 use bam::record;
-use bam::HeaderView;
 
 /// SAM writer.
 #[derive(Debug)]
@@ -111,10 +111,10 @@ quick_error! {
 
 #[cfg(test)]
 mod tests {
-    use bam::header;
-    use bam::record;
     use bam::Read;
     use bam::Reader;
+    use bam::header;
+    use bam::record;
     use sam::Writer;
 
     #[test]

@@ -289,9 +289,9 @@ impl<'de> Deserialize<'de> for Record {
 
 #[cfg(test)]
 mod tests {
-    use bam::record::Record;
     use bam::Read;
     use bam::Reader;
+    use bam::record::Record;
 
     use std::path::Path;
 

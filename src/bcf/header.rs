@@ -197,15 +197,30 @@ impl Drop for Header {
 #[derive(Debug)]
 pub enum HeaderRecord {
     /// A `FILTER` header record.
-    Filter { key: String, values: LinearMap<String, String> },
+    Filter {
+        key: String,
+        values: LinearMap<String, String>,
+    },
     /// An `INFO` header record.
-    Info { key: String, values: LinearMap<String, String> },
+    Info {
+        key: String,
+        values: LinearMap<String, String>,
+    },
     /// A `FORMAT` header record.
-    Format { key: String, values: LinearMap<String, String> },
+    Format {
+        key: String,
+        values: LinearMap<String, String>,
+    },
     /// A `contig` header record.
-    Contig { key: String, values: LinearMap<String, String> },
+    Contig {
+        key: String,
+        values: LinearMap<String, String>,
+    },
     /// A structured header record.
-    Structured { key: String, values: LinearMap<String, String> },
+    Structured {
+        key: String,
+        values: LinearMap<String, String>,
+    },
     /// A generic, unstructured header record.
     Generic { key: String, value: String },
 }
@@ -365,8 +380,18 @@ impl HeaderView {
         fn parse_kv(rec: &htslib::bcf_hrec_t) -> LinearMap<String, String> {
             let mut result: LinearMap<String, String> = LinearMap::new();
             for i in 0_i32..(rec.nkeys) {
-                let key = unsafe { ffi::CStr::from_ptr(*rec.keys.offset(i as isize)).to_str().unwrap().to_string() };
-                let value = unsafe { ffi::CStr::from_ptr(*rec.vals.offset(i as isize)).to_str().unwrap().to_string() };
+                let key = unsafe {
+                    ffi::CStr::from_ptr(*rec.keys.offset(i as isize))
+                        .to_str()
+                        .unwrap()
+                        .to_string()
+                };
+                let value = unsafe {
+                    ffi::CStr::from_ptr(*rec.vals.offset(i as isize))
+                        .to_str()
+                        .unwrap()
+                        .to_string()
+                };
                 result.insert(key, value);
             }
             result
