@@ -24,15 +24,6 @@ before_script:
   - export PATH=$HOME/.cargo/bin:$PATH
   - rustup component add rustfmt-preview
 
-matrix:
-  include:
-    - rust: stable
-    - rust: beta
-    - rust: nightly
-  allow_failures:
-    - rust: nightly
-    - rust: beta
-
 script:
   - cargo fmt --version
   - cargo fmt --all -- --write-mode=diff
