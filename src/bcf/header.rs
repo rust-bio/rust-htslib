@@ -35,7 +35,7 @@ pub struct Header {
 }
 
 impl Header {
-    /// Create a new header.
+    /// Create a new (empty) `Header`.
     pub fn new() -> Self {
         Header {
             inner: unsafe { htslib::bcf_hdr_init(ffi::CString::new(&b"w"[..]).unwrap().as_ptr()) },
@@ -43,14 +43,31 @@ impl Header {
         }
     }
 
-    pub fn with_template(header: &HeaderView) -> Self {
+    /// Create a new `Header` using the given `HeaderView as the template.
+    ///
+    /// After construction, you can modify the header independently from the template `header`.
+    ///
+    /// # Arguments
+    ///
+    /// - `header` - The `HeaderView` to use as the template.
+    pub fn from_template(header: &HeaderView) -> Self {
         Header {
             inner: unsafe { htslib::bcf_hdr_dup(header.inner) },
             subset: None,
         }
     }
 
-    pub fn subset_template(header: &HeaderView, samples: &[&[u8]]) -> Result<Self, SubsetError> {
+    /// Create a new `Header` using the given `HeaderView` as as template, but subsetting to the
+    /// given `samples`.
+    ///
+    /// # Arguments
+    ///
+    /// - `header` - The `HeaderView` to use for the template.
+    /// - `samples` - A slice of byte-encoded (`[u8]`) sample names.
+    pub fn from_template_subset(
+        header: &HeaderView,
+        samples: &[&[u8]],
+    ) -> Result<Self, SubsetError> {
         let mut imap = vec![0; samples.len()];
         let names: Vec<_> = samples
             .iter()
@@ -75,6 +92,11 @@ impl Header {
         }
     }
 
+    /// Add a `sample` to the header.
+    ///
+    /// # Arguments
+    ///
+    /// - `sample` - Name of the sample to add (to the end of the sample list).
     pub fn push_sample(&mut self, sample: &[u8]) -> &mut Self {
         unsafe {
             htslib::bcf_hdr_add_sample(self.inner, ffi::CString::new(sample).unwrap().as_ptr())
@@ -83,29 +105,81 @@ impl Header {
     }
 
     /// Add a record to the header.
+    ///
+    /// # Arguments
+    ///
+    /// - `record` - String representation of the header line
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// header.push_record(format!("##contig=<ID={},length={}>", "chrX", 155270560).as_bytes());
+    /// ```
     pub fn push_record(&mut self, record: &[u8]) -> &mut Self {
         unsafe { htslib::bcf_hdr_append(self.inner, ffi::CString::new(record).unwrap().as_ptr()) };
         self
     }
 
-    pub fn remove_info(&mut self, tag: &[u8]) -> &mut Self {
-        unsafe {
-            htslib::bcf_hdr_remove(
-                self.inner,
-                htslib::BCF_HL_INFO as i32,
-                tag.as_ptr() as *const i8,
-            );
-        }
-        self
+    /// Remove an `FILTER` entry from header.
+    ///
+    /// # Arguments
+    ///
+    /// - `tag` - Name of the `FLT` tag to remove.
+    pub fn remove_filter(&mut self, tag: &[u8]) -> &mut Self {
+        self.remove_impl(tag, htslib::BCF_HL_FLT)
     }
 
+    /// Remove an `INFO` entry from header.
+    ///
+    /// # Arguments
+    ///
+    /// - `tag` - Name of the `INFO` tag to remove.
+    pub fn remove_info(&mut self, tag: &[u8]) -> &mut Self {
+        self.remove_impl(tag, htslib::BCF_HL_INFO)
+    }
+
+    /// Remove an `FORMAT` entry from header.
+    ///
+    /// # Arguments
+    ///
+    /// - `tag` - Name of the `FORMAT` tag to remove.
     pub fn remove_format(&mut self, tag: &[u8]) -> &mut Self {
+        self.remove_impl(tag, htslib::BCF_HL_FMT)
+    }
+
+    /// Remove a contig entry from header.
+    ///
+    /// # Arguments
+    ///
+    /// - `tag` - Name of the `FORMAT` tag to remove.
+    pub fn remove_contig(&mut self, tag: &[u8]) -> &mut Self {
+        self.remove_impl(tag, htslib::BCF_HL_CTG)
+    }
+
+    /// Remove a structured entry from header.
+    ///
+    /// # Arguments
+    ///
+    /// - `tag` - Name of the structured tag to remove.
+    pub fn remove_structured(&mut self, tag: &[u8]) -> &mut Self {
+        self.remove_impl(tag, htslib::BCF_HL_STR)
+    }
+
+    /// Remove a generic entry from header.
+    ///
+    /// # Arguments
+    ///
+    /// - `tag` - Name of the generic tag to remove.
+    pub fn remove_generic(&mut self, tag: &[u8]) -> &mut Self {
+        self.remove_impl(tag, htslib::BCF_HL_GEN)
+    }
+
+    /// Implementation of removing header tags.
+    fn remove_impl(&mut self, tag: &[u8], type_: u32) -> &mut Self {
         unsafe {
-            htslib::bcf_hdr_remove(
-                self.inner,
-                htslib::BCF_HL_FMT as i32,
-                tag.as_ptr() as *const i8,
-            );
+            let v = tag.to_vec();
+            let c_str = ffi::CString::new(v).unwrap();
+            htslib::bcf_hdr_remove(self.inner, type_ as i32, c_str.as_ptr());
         }
         self
     }
