@@ -979,13 +979,5 @@ mod tests {
         let expected = read_all("test/test_headers.out.vcf");
         let actual = read_all(&bcfpath);
         assert_eq!(expected, actual);
-
-    #[test]
-    fn test_header_records() {
-        let vcf = Reader::from_path(&"test/test_string.vcf")
-            .ok()
-            .expect("Error opening file.");
-        let records = vcf.header().header_records();
-        assert_eq!(records.len(), 8);
     }
 }
