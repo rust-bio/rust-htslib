@@ -9,6 +9,8 @@ use std::str;
 
 use htslib;
 
+use linear_map::LinearMap;
+
 pub type SampleSubset = Vec<i32>;
 
 custom_derive! {
@@ -191,6 +193,38 @@ impl Drop for Header {
     }
 }
 
+/// A header record.
+#[derive(Debug)]
+pub enum HeaderRecord {
+    /// A `FILTER` header record.
+    Filter {
+        key: String,
+        values: LinearMap<String, String>,
+    },
+    /// An `INFO` header record.
+    Info {
+        key: String,
+        values: LinearMap<String, String>,
+    },
+    /// A `FORMAT` header record.
+    Format {
+        key: String,
+        values: LinearMap<String, String>,
+    },
+    /// A `contig` header record.
+    Contig {
+        key: String,
+        values: LinearMap<String, String>,
+    },
+    /// A structured header record.
+    Structured {
+        key: String,
+        values: LinearMap<String, String>,
+    },
+    /// A generic, unstructured header record.
+    Generic { key: String, value: String },
+}
+
 #[derive(Debug)]
 pub struct HeaderView {
     pub inner: *mut htslib::bcf_hdr_t,
@@ -339,6 +373,64 @@ impl HeaderView {
             )
         };
         key.to_bytes().to_vec()
+    }
+
+    /// Return structured `HeaderRecord`s.
+    pub fn header_records(&self) -> Vec<HeaderRecord> {
+        fn parse_kv(rec: &htslib::bcf_hrec_t) -> LinearMap<String, String> {
+            let mut result: LinearMap<String, String> = LinearMap::new();
+            for i in 0_i32..(rec.nkeys) {
+                let key = unsafe {
+                    ffi::CStr::from_ptr(*rec.keys.offset(i as isize))
+                        .to_str()
+                        .unwrap()
+                        .to_string()
+                };
+                let value = unsafe {
+                    ffi::CStr::from_ptr(*rec.vals.offset(i as isize))
+                        .to_str()
+                        .unwrap()
+                        .to_string()
+                };
+                result.insert(key, value);
+            }
+            result
+        }
+
+        let mut result: Vec<HeaderRecord> = Vec::new();
+        for i in 1_i32..unsafe { (*self.inner).nhrec } {
+            let rec = unsafe { &(**(*self.inner).hrec.offset(i as isize)) };
+            let key = unsafe { ffi::CStr::from_ptr(rec.key).to_str().unwrap().to_string() };
+            let record = match rec.type_ {
+                0 => HeaderRecord::Filter {
+                    key,
+                    values: parse_kv(rec),
+                },
+                1 => HeaderRecord::Info {
+                    key,
+                    values: parse_kv(rec),
+                },
+                2 => HeaderRecord::Format {
+                    key,
+                    values: parse_kv(rec),
+                },
+                3 => HeaderRecord::Contig {
+                    key,
+                    values: parse_kv(rec),
+                },
+                4 => HeaderRecord::Structured {
+                    key,
+                    values: parse_kv(rec),
+                },
+                5 => HeaderRecord::Generic {
+                    key,
+                    value: unsafe { ffi::CStr::from_ptr(rec.value).to_str().unwrap().to_string() },
+                },
+                _ => panic!("Unknown type: {}", rec.type_),
+            };
+            result.push(record);
+        }
+        result
     }
 }
 
