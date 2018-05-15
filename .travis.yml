@@ -1,4 +1,7 @@
 language: rust
+# TODO remove version restriction once https://github.com/rust-lang-nursery/rust-bindgen/issues/1313 has been resolved
+rust:
+  - 1.25
 
 cache: cargo
 
