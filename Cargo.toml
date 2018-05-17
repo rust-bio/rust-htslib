@@ -21,7 +21,7 @@ url = "1.4"
 ieee754 = "0.2"
 lazy_static = "0.2"
 bitflags = "0.9"
-regex = "0.2.3"
+regex = ">=0.2" # Versions 0.2 - 1.0 have been tested.
 serde = { version = "^1", optional = true }
 linear-map = "1.2.0"
 

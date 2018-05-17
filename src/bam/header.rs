@@ -5,6 +5,7 @@
 
 use bam::HeaderView;
 use std::collections::HashMap;
+use linear_map::LinearMap;
 use regex::Regex;
 
 /// A BAM header.
@@ -55,7 +56,7 @@ impl Header {
         self.records.join(&b'\n')
     }
 
-    pub fn to_hashmap(&self) -> HashMap<String, Vec<HashMap<String, String>>> {
+    pub fn to_hashmap(&self) -> HashMap<String, Vec<LinearMap<String, String>>> {
 
         let mut header_map = HashMap::default();
 
@@ -68,7 +69,7 @@ impl Header {
             let parts: Vec<_> = line.split("\t").filter(|x| x.len() > 0).collect();
             // assert!(rec_type_re.is_match(parts[0]));
             let record_type = rec_type_re.captures(parts[0]).unwrap().get(1).unwrap().as_str().to_owned();
-            let mut field = HashMap::default();
+            let mut field = LinearMap::default();
             for part in parts.iter().skip(1) {
                 let cap = tag_re.captures(part).unwrap();
                 let tag = cap.get(1).unwrap().as_str().to_owned();
