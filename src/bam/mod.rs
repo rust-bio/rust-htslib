@@ -3,25 +3,39 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Module for working with BAM files.
 
-pub mod record;
+pub mod buffer;
 pub mod header;
 pub mod pileup;
-pub mod buffer;
+pub mod record;
 
+#[cfg(feature = "serde")]
+pub mod record_serde;
+
+use libc;
 use std::ffi;
+use std::path::Path;
 use std::ptr;
 use std::slice;
-use std::path::Path;
 use url::Url;
-use libc;
 
 use htslib;
 
-pub use bam::record::Record;
-pub use bam::header::Header;
 pub use bam::buffer::RecordBuffer;
+pub use bam::header::Header;
+pub use bam::record::Record;
 
+/// Implementation for `Read::set_threads` and `Writer::set_threads`.
+pub fn set_threads(bgzf: *mut htslib::BGZF, n_threads: usize) -> Result<(), ThreadingError> {
+    assert!(n_threads != 0, "n_threads must be > 0");
+
+    if unsafe { htslib::bgzf_mt(bgzf, n_threads as i32, 256) } != 0 {
+        Err(ThreadingError::Some)
+    } else {
+        Ok(())
+    }
+}
 
 /// A trait for a BAM reader with a read method.
 pub trait Read: Sized {
@@ -44,7 +58,7 @@ pub trait Read: Sized {
     fn pileup(&mut self) -> pileup::Pileups<Self>;
 
     /// Return the BGZF struct
-    fn bgzf(&self) -> *mut htslib::Struct_BGZF;
+    fn bgzf(&self) -> *mut htslib::BGZF;
 
     /// Return the header.
     fn header(&self) -> &HeaderView;
@@ -53,28 +67,41 @@ pub trait Read: Sized {
     fn seek(&mut self, offset: i64) -> Result<(), SeekError> {
         let ret = unsafe { htslib::bgzf_seek(self.bgzf(), offset, libc::SEEK_SET) };
         if ret == 0 {
-             Ok(())
+            Ok(())
         } else {
             Err(SeekError::Some)
         }
     }
 
     /// Report the current virtual offset
-    fn tell(&self) -> i64  {
-        unsafe { htslib::bgzf_tell_func(self.bgzf()) }
+    fn tell(&self) -> i64 {
+        // this reimplements the bgzf_tell macro
+        let bgzf = unsafe { self.bgzf().as_ref() }.expect("bug: null pointer to BGZF");
+        (bgzf.block_address << 16) | (bgzf.block_offset as i64 & 0xFFFF)
+    }
+
+    /// Activate multi-threaded BAM read support in htslib. This should permit faster
+    /// reading of large BAM files.
+    ///
+    /// Setting `nthreads` to `0` does not change the current state.  Note that it is not
+    /// possible to set the number of background threads below `1` once it has been set.
+    ///
+    /// # Arguments
+    ///
+    /// * `n_threads` - number of extra background writer threads to use, must be `> 0`.
+    fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
+        set_threads(self.bgzf(), n_threads)
     }
 }
 
-
 /// A BAM reader.
+#[derive(Debug)]
 pub struct Reader {
-    bgzf: *mut htslib::Struct_BGZF,
+    bgzf: *mut htslib::BGZF,
     header: HeaderView,
 }
 
-
 unsafe impl Send for Reader {}
-
 
 impl Reader {
     /// Create a new Reader from path.
@@ -84,12 +111,8 @@ impl Reader {
     /// * `path` - the path to open.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, ReaderPathError> {
         match path.as_ref().to_str() {
-            Some(p) if path.as_ref().exists() => {
-                Ok(try!(Self::new(p.as_bytes())))
-            },
-            _ => {
-                Err(ReaderPathError::InvalidPath)
-            }
+            Some(p) if path.as_ref().exists() => Ok(try!(Self::new(p.as_bytes()))),
+            _ => Err(ReaderPathError::InvalidPath),
         }
     }
 
@@ -111,10 +134,16 @@ impl Reader {
     fn new(path: &[u8]) -> Result<Self, BGZFError> {
         let bgzf = try!(bgzf_open(&ffi::CString::new(path).unwrap(), b"r"));
         let header = unsafe { htslib::bam_hdr_read(bgzf) };
-        Ok(Reader { bgzf: bgzf, header: HeaderView::new(header) })
+        Ok(Reader {
+            bgzf: bgzf,
+            header: HeaderView::new(header),
+        })
     }
 
-    extern fn pileup_read(data: *mut ::libc::c_void, record: *mut htslib::bam1_t) -> ::libc::c_int {
+    extern "C" fn pileup_read(
+        data: *mut ::std::os::raw::c_void,
+        record: *mut htslib::bam1_t,
+    ) -> i32 {
         let _self = unsafe { &*(data as *mut Self) };
         unsafe { htslib::bam_read1(_self.bgzf, record) }
     }
@@ -139,14 +168,13 @@ impl Reader {
     }
 }
 
-
 impl Read for Reader {
     fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError> {
         match unsafe { htslib::bam_read1(self.bgzf, record.inner) } {
             -1 => Err(ReadError::NoMoreRecord),
             -2 => Err(ReadError::Truncated),
             -4 => Err(ReadError::Invalid),
-            _  => Ok(())
+            _ => Ok(()),
         }
     }
 
@@ -163,13 +191,13 @@ impl Read for Reader {
         let itr = unsafe {
             htslib::bam_plp_init(
                 Some(Reader::pileup_read),
-                _self as *mut ::libc::c_void
+                _self as *mut ::std::os::raw::c_void,
             )
         };
         pileup::Pileups::new(self, itr)
     }
 
-    fn bgzf(&self) -> *mut htslib::Struct_BGZF {
+    fn bgzf(&self) -> *mut htslib::BGZF {
         self.bgzf
     }
 
@@ -177,7 +205,6 @@ impl Read for Reader {
         &self.header
     }
 }
-
 
 impl Drop for Reader {
     fn drop(&mut self) {
@@ -187,20 +214,17 @@ impl Drop for Reader {
     }
 }
 
-
+#[derive(Debug)]
 pub struct IndexedReader {
-    bgzf: *mut htslib::Struct_BGZF,
+    bgzf: *mut htslib::BGZF,
     header: HeaderView,
     idx: *mut htslib::hts_idx_t,
-    itr: Option<*mut htslib:: hts_itr_t>,
+    itr: Option<*mut htslib::hts_itr_t>,
 }
-
 
 unsafe impl Send for IndexedReader {}
 
-
 impl IndexedReader {
-
     /// Create a new Reader from path.
     ///
     /// # Arguments
@@ -210,10 +234,8 @@ impl IndexedReader {
         match path.as_ref().to_str() {
             Some(p) if path.as_ref().exists() => {
                 Ok(try!(Self::new(&ffi::CString::new(p).unwrap())))
-            },
-            _ => {
-                Err(IndexedReaderPathError::InvalidPath)
             }
+            _ => Err(IndexedReaderPathError::InvalidPath),
         }
     }
 
@@ -229,16 +251,16 @@ impl IndexedReader {
     fn new(path: &ffi::CStr) -> Result<Self, IndexedReaderError> {
         let bgzf = try!(bgzf_open(path, b"r"));
         let header = unsafe { htslib::bam_hdr_read(bgzf) };
-        let idx = unsafe {
-            htslib::hts_idx_load(
-                path.as_ptr(),
-                htslib::HTS_FMT_BAI
-            )
-        };
+        let idx = unsafe { htslib::hts_idx_load(path.as_ptr(), htslib::HTS_FMT_BAI as i32) };
         if idx.is_null() {
             Err(IndexedReaderError::InvalidIndex)
         } else {
-            Ok(IndexedReader { bgzf: bgzf, header: HeaderView::new(header), idx: idx, itr: None })
+            Ok(IndexedReader {
+                bgzf: bgzf,
+                header: HeaderView::new(header),
+                idx: idx,
+                itr: None,
+            })
         }
     }
 
@@ -246,28 +268,27 @@ impl IndexedReader {
         if let Some(itr) = self.itr {
             unsafe { htslib::hts_itr_destroy(itr) }
         }
-        let itr = unsafe {
-            htslib::sam_itr_queryi(self.idx, tid as i32, beg as i32, end as i32)
-        };
+        let itr = unsafe { htslib::sam_itr_queryi(self.idx, tid as i32, beg as i32, end as i32) };
         if itr.is_null() {
             self.itr = None;
             Err(FetchError::Some)
-        }
-        else {
+        } else {
             self.itr = Some(itr);
             Ok(())
         }
     }
 
-    extern fn pileup_read(data: *mut ::libc::c_void, record: *mut htslib::bam1_t) -> ::libc::c_int {
+    extern "C" fn pileup_read(
+        data: *mut ::std::os::raw::c_void,
+        record: *mut htslib::bam1_t,
+    ) -> i32 {
         let _self = unsafe { &*(data as *mut Self) };
         match _self.itr {
             Some(itr) => itr_next(_self.bgzf, itr, record), // read fetched region
-            None      => unsafe { htslib::bam_read1(_self.bgzf, record) } // ordinary reading
+            None => unsafe { htslib::bam_read1(_self.bgzf, record) }, // ordinary reading
         }
     }
 }
-
 
 impl Read for IndexedReader {
     fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError> {
@@ -276,9 +297,9 @@ impl Read for IndexedReader {
                 -1 => Err(ReadError::NoMoreRecord),
                 -2 => Err(ReadError::Truncated),
                 -4 => Err(ReadError::Invalid),
-                _  => Ok(())
+                _ => Ok(()),
             },
-            None      => Err(ReadError::NoMoreRecord)
+            None => Err(ReadError::NoMoreRecord),
         }
     }
 
@@ -295,13 +316,13 @@ impl Read for IndexedReader {
         let itr = unsafe {
             htslib::bam_plp_init(
                 Some(IndexedReader::pileup_read),
-                _self as *mut ::libc::c_void
+                _self as *mut ::std::os::raw::c_void,
             )
         };
         pileup::Pileups::new(self, itr)
     }
 
-    fn bgzf(&self) -> *mut htslib::Struct_BGZF {
+    fn bgzf(&self) -> *mut htslib::BGZF {
         self.bgzf
     }
 
@@ -309,7 +330,6 @@ impl Read for IndexedReader {
         &self.header
     }
 }
-
 
 impl Drop for IndexedReader {
     fn drop(&mut self) {
@@ -323,16 +343,14 @@ impl Drop for IndexedReader {
     }
 }
 
-
 /// A BAM writer.
+#[derive(Debug)]
 pub struct Writer {
-    f: *mut htslib::Struct_BGZF,
+    f: *mut htslib::BGZF,
     header: HeaderView,
 }
 
-
 unsafe impl Send for Writer {}
-
 
 impl Writer {
     /// Create a new BAM file.
@@ -341,9 +359,12 @@ impl Writer {
     ///
     /// * `path` - the path.
     /// * `header` - header definition to use
-    pub fn from_path<P: AsRef<Path>>(path: P, header: &header::Header) -> Result<Self, WriterPathError> {
+    pub fn from_path<P: AsRef<Path>>(
+        path: P,
+        header: &header::Header,
+    ) -> Result<Self, WriterPathError> {
         if let Some(p) = path.as_ref().to_str() {
-                Ok(try!(Self::new(p.as_bytes(), header)))
+            Ok(try!(Self::new(p.as_bytes(), header)))
         } else {
             Err(WriterPathError::InvalidPath)
         }
@@ -379,36 +400,38 @@ impl Writer {
             let l_text = header_string.len();
             let text = ::libc::malloc(l_text + 1);
             libc::memset(text, 0, l_text + 1);
-            libc::memcpy(text, header_string.as_ptr() as *const ::libc::c_void, header_string.len());
+            libc::memcpy(
+                text,
+                header_string.as_ptr() as *const ::libc::c_void,
+                header_string.len(),
+            );
 
             //println!("{}", str::from_utf8(&header_string).unwrap());
-            let rec = htslib::sam_hdr_parse(
-                (l_text + 1) as i32,
-                text as *const i8,
-            );
+            let rec = htslib::sam_hdr_parse((l_text + 1) as i32, text as *const i8);
 
             (*rec).text = text as *mut i8;
             (*rec).l_text = l_text as u32;
             rec
         };
 
-        unsafe { htslib::bam_hdr_write(f, header_record); }
+        unsafe {
+            htslib::bam_hdr_write(f, header_record);
+        }
 
-        Ok(Writer { f: f, header: HeaderView::new(header_record) })
+        Ok(Writer {
+            f: f,
+            header: HeaderView::new(header_record),
+        })
     }
 
     /// Activate multi-threaded BAM write support in htslib. This should permit faster
     /// writing of large BAM files.
+    ///
     /// # Arguments
     ///
-    /// * `n_threads` - number of background writer threads to use
+    /// * `n_threads` - number of extra background writer threads to use, must be `> 0`.
     pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
-        let r = unsafe { htslib::bgzf_mt(self.f, n_threads as ::libc::c_int, 256) };
-        if r != 0 {
-            Err(ThreadingError::Some)
-        } else {
-            Ok(())
-        }
+        set_threads(self.f, n_threads)
     }
 
     /// Write record to BAM.
@@ -419,19 +442,16 @@ impl Writer {
     pub fn write(&mut self, record: &record::Record) -> Result<(), WriteError> {
         if unsafe { htslib::bam_write1(self.f, record.inner) } == -1 {
             Err(WriteError::Some)
-        }
-        else {
+        } else {
             Ok(())
         }
     }
-
 
     /// Return the header.
     pub fn header(&self) -> &HeaderView {
         &self.header
     }
 }
-
 
 impl Drop for Writer {
     fn drop(&mut self) {
@@ -441,12 +461,11 @@ impl Drop for Writer {
     }
 }
 
-
 /// Iterator over the records of a BAM.
+#[derive(Debug)]
 pub struct Records<'a, R: 'a + Read> {
-    reader: &'a mut R
+    reader: &'a mut R,
 }
-
 
 impl<'a, R: Read> Iterator for Records<'a, R> {
     type Item = Result<record::Record, ReadError>;
@@ -455,8 +474,8 @@ impl<'a, R: Read> Iterator for Records<'a, R> {
         let mut record = record::Record::new();
         match self.reader.read(&mut record) {
             Err(ReadError::NoMoreRecord) => None,
-            Ok(())   => Some(Ok(record)),
-            Err(err) => Some(Err(err))
+            Ok(()) => Some(Ok(record)),
+            Err(err) => Some(Err(err)),
         }
     }
 }
@@ -486,7 +505,7 @@ impl<'a, R: Read> Iterator for ChunkedRecords<'a, R> {
 }
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum ReadError {
         Truncated {
             description("truncated record")
@@ -500,20 +519,18 @@ quick_error! {
     }
 }
 
-
 impl ReadError {
     /// Returns true if no record has been read because the end of the file was reached.
     pub fn is_eof(&self) -> bool {
         match self {
             &ReadError::NoMoreRecord => true,
-            _ => false
+            _ => false,
         }
     }
 }
 
-
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum IndexedReaderError {
         InvalidIndex {
             description("invalid index")
@@ -524,9 +541,8 @@ quick_error! {
     }
 }
 
-
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum WriterPathError {
         InvalidPath {
             description("invalid path")
@@ -537,9 +553,8 @@ quick_error! {
     }
 }
 
-
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum IndexedReaderPathError {
         InvalidPath {
             description("invalid path")
@@ -550,9 +565,8 @@ quick_error! {
     }
 }
 
-
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum BGZFError {
         Some {
             description("error reading BGZF file")
@@ -560,9 +574,8 @@ quick_error! {
     }
 }
 
-
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum ReaderPathError {
         InvalidPath {
             description("invalid path")
@@ -573,18 +586,17 @@ quick_error! {
     }
 }
 
-
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum ThreadingError {
         Some {
-            description("error setting threads for multi-threaded writing")
+            description("error setting threads for multi-threaded I/O")
         }
     }
 }
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum WriteError {
         Some {
             description("error writing record")
@@ -592,9 +604,8 @@ quick_error! {
     }
 }
 
-
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum FetchError {
         Some {
             description("error fetching a locus")
@@ -603,7 +614,7 @@ quick_error! {
 }
 
 quick_error! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub enum SeekError {
         Some {
             description("error seeking to voffset")
@@ -611,15 +622,19 @@ quick_error! {
     }
 }
 
+quick_error! {
+    #[derive(Debug, Clone)]
+    pub enum AuxWriteError {
+        Some {
+            description("error pushing aux data to record")
+        }
+    }
+}
 
 /// Wrapper for opening a BAM file.
-fn bgzf_open(path: &ffi::CStr, mode: &[u8]) -> Result<*mut htslib::Struct_BGZF, BGZFError> {
-    let ret = unsafe {
-        htslib::bgzf_open(
-            path.as_ptr(),
-            ffi::CString::new(mode).unwrap().as_ptr()
-        )
-    };
+fn bgzf_open(path: &ffi::CStr, mode: &[u8]) -> Result<*mut htslib::BGZF, BGZFError> {
+    let ret =
+        unsafe { htslib::bgzf_open(path.as_ptr(), ffi::CString::new(mode).unwrap().as_ptr()) };
     if ret.is_null() {
         Err(BGZFError::Some)
     } else {
@@ -627,31 +642,31 @@ fn bgzf_open(path: &ffi::CStr, mode: &[u8]) -> Result<*mut htslib::Struct_BGZF, 
     }
 }
 
-
 /// Wrapper for iterating an indexed BAM file.
-fn itr_next(bgzf: *mut htslib::Struct_BGZF, itr: *mut htslib:: hts_itr_t, record: *mut htslib::bam1_t) -> i32 {
+fn itr_next(
+    bgzf: *mut htslib::BGZF,
+    itr: *mut htslib::hts_itr_t,
+    record: *mut htslib::bam1_t,
+) -> i32 {
     unsafe {
         htslib::hts_itr_next(
             bgzf,
             itr,
-            record as *mut ::libc::c_void,
-            ptr::null_mut()
+            record as *mut ::std::os::raw::c_void,
+            ptr::null_mut(),
         )
     }
 }
 
-
+#[derive(Debug)]
 pub struct HeaderView {
     inner: *mut htslib::bam_hdr_t,
     owned: bool,
 }
 
-
 impl HeaderView {
-
     /// Create a new HeaderView from a pre-populated Header object
     pub fn from_header(header: &Header) -> Self {
-
         let header_record = unsafe {
             let mut header_string = header.to_bytes();
             if !header_string.is_empty() && header_string[header_string.len() - 1] != b'\n' {
@@ -660,12 +675,13 @@ impl HeaderView {
             let l_text = header_string.len();
             let text = ::libc::malloc(l_text + 1);
             ::libc::memset(text, 0, l_text + 1);
-            ::libc::memcpy(text, header_string.as_ptr() as *const ::libc::c_void, header_string.len());
-            //println!("{}", std::str::from_utf8(&header_string).unwrap());
-            let rec = htslib::sam_hdr_parse(
-                (l_text + 1) as i32,
-                text as *const i8,
+            ::libc::memcpy(
+                text,
+                header_string.as_ptr() as *const ::libc::c_void,
+                header_string.len(),
             );
+            //println!("{}", std::str::from_utf8(&header_string).unwrap());
+            let rec = htslib::sam_hdr_parse((l_text + 1) as i32, text as *const i8);
             (*rec).text = text as *mut i8;
             (*rec).l_text = l_text as u32;
             rec
@@ -703,13 +719,15 @@ impl HeaderView {
         let tid = unsafe {
             htslib::bam_name2id(
                 self.inner,
-                ffi::CString::new(name).ok().expect("Expected valid name.").as_ptr()
+                ffi::CString::new(name)
+                    .ok()
+                    .expect("Expected valid name.")
+                    .as_ptr(),
             )
         };
         if tid < 0 {
             None
-        }
-        else {
+        } else {
             Some(tid as u32)
         }
     }
@@ -719,75 +737,104 @@ impl HeaderView {
     }
 
     pub fn target_names(&self) -> Vec<&[u8]> {
-        let names = unsafe { slice::from_raw_parts(self.inner().target_name, self.target_count() as usize) };
-        names.iter().map(|name| unsafe { ffi::CStr::from_ptr(*name).to_bytes() }).collect()
+        let names = unsafe {
+            slice::from_raw_parts(self.inner().target_name, self.target_count() as usize)
+        };
+        names
+            .iter()
+            .map(|name| unsafe { ffi::CStr::from_ptr(*name).to_bytes() })
+            .collect()
     }
 
     pub fn target_len(&self, tid: u32) -> Option<u32> {
         let inner = unsafe { *self.inner };
         if (tid as i32) < inner.n_targets {
-            let l: &[u32] = unsafe { slice::from_raw_parts(inner.target_len, inner.n_targets as usize) };
+            let l: &[u32] =
+                unsafe { slice::from_raw_parts(inner.target_len, inner.n_targets as usize) };
             Some(l[tid as usize])
-        }
-        else {
+        } else {
             None
         }
     }
 
     /// Retrieve the textual SAM header as bytes
     pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
-        unsafe{ ffi::CStr::from_ptr((*self.inner).text).to_bytes() }
+        unsafe { ffi::CStr::from_ptr((*self.inner).text).to_bytes() }
     }
 }
-
 
 impl Clone for HeaderView {
     fn clone(&self) -> Self {
         HeaderView {
             inner: unsafe { htslib::bam_hdr_dup(self.inner) },
-            owned: true
+            owned: true,
         }
     }
 }
-
 
 impl Drop for HeaderView {
     fn drop(&mut self) {
         if self.owned {
-            unsafe { htslib::bam_hdr_destroy(self.inner); }
+            unsafe {
+                htslib::bam_hdr_destroy(self.inner);
+            }
         }
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     extern crate tempdir;
-    use std::collections::HashMap;
-    use super::*;
-    use super::record::{Cigar, CigarString, Aux};
     use super::header::HeaderRecord;
-    use std::str;
+    use super::record::{Aux, Cigar, CigarString};
+    use super::*;
+    use std::collections::HashMap;
     use std::path::Path;
+    use std::str;
 
-    fn gold() -> ([&'static [u8]; 6], [u16; 6], [&'static [u8]; 6], [&'static [u8]; 6], [CigarString; 6]) {
-        let names = [&b"I"[..], &b"II.14978392"[..], &b"III"[..], &b"IV"[..], &b"V"[..], &b"VI"[..]];
+    fn gold() -> (
+        [&'static [u8]; 6],
+        [u16; 6],
+        [&'static [u8]; 6],
+        [&'static [u8]; 6],
+        [CigarString; 6],
+    ) {
+        let names = [
+            &b"I"[..],
+            &b"II.14978392"[..],
+            &b"III"[..],
+            &b"IV"[..],
+            &b"V"[..],
+            &b"VI"[..],
+        ];
         let flags = [16u16, 16u16, 16u16, 16u16, 16u16, 2048u16];
         let seqs = [
-            &b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA"[..],
-            &b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA"[..],
-            &b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA"[..],
-            &b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA"[..],
-            &b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAA"[..],
-            &b"ACTAAGCCTAAGCCTAAGCCTAAGCCAATTATCGATTTCTGAAAAAATTATCGAATTTTCTAGAAATTTTGCAAATTTTTTCATAAAATTATCGATTTTA"[..],
+            &b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCC\
+TAAGCCTAAGCCTAAGCCTAA"[..],
+            &b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCC\
+TAAGCCTAAGCCTAAGCCTAA"[..],
+            &b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCC\
+TAAGCCTAAGCCTAAGCCTAA"[..],
+            &b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCC\
+TAAGCCTAAGCCTAAGCCTAA"[..],
+            &b"CCTAGCCCTAACCCTAACCCTAACCCTAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCCTAAGCC\
+TAAGCCTAAGCCTAAGCCTAA"[..],
+            &b"ACTAAGCCTAAGCCTAAGCCTAAGCCAATTATCGATTTCTGAAAAAATTATCGAATTTTCTAGAAATTTTGCAAATTTT\
+TTCATAAAATTATCGATTTTA"[..],
         ];
         let quals = [
-            &b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"[..],
-            &b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"[..],
-            &b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"[..],
-            &b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"[..],
-            &b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"[..],
-            &b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"[..],
+            &b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCC\
+CCCCCCCCCCCCCCCCCCC"[..],
+            &b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCC\
+CCCCCCCCCCCCCCCCCCC"[..],
+            &b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCC\
+CCCCCCCCCCCCCCCCCCC"[..],
+            &b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCC\
+CCCCCCCCCCCCCCCCCCC"[..],
+            &b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCC\
+CCCCCCCCCCCCCCCCCCC"[..],
+            &b"#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCC\
+CCCCCCCCCCCCCCCCCCC"[..],
         ];
         let cigars = [
             CigarString(vec![Cigar::Match(27), Cigar::Del(1), Cigar::Match(73)]),
@@ -800,12 +847,12 @@ mod tests {
         (names, flags, seqs, quals, cigars)
     }
 
-
-
     #[test]
     fn test_read() {
         let (names, flags, seqs, quals, cigars) = gold();
-        let mut bam = Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening file.");
+        let mut bam = Reader::from_path(&Path::new("test/test.bam"))
+            .ok()
+            .expect("Error opening file.");
         let del_len = [1, 1, 1, 1, 1, 100000];
 
         for (i, record) in bam.records().enumerate() {
@@ -817,12 +864,24 @@ mod tests {
             assert_eq!(*rec.cigar(), cigars[i]);
             let cigar = rec.cigar();
             if let Ok(end_pos) = cigar.end_pos() {
-                assert_eq!( end_pos, rec.pos() + 100 + del_len[i]);
-                assert_eq!(cigar.read_pos( end_pos as u32 - 10, false, false).unwrap().unwrap(), 90);
+                assert_eq!(end_pos, rec.pos() + 100 + del_len[i]);
+                assert_eq!(
+                    cigar
+                        .read_pos(end_pos as u32 - 10, false, false)
+                        .unwrap()
+                        .unwrap(),
+                    90
+                );
             } else {
                 panic!("bug: failed to fetch cigar.end_pos() in test_read()")
             }
-            assert_eq!(cigar.read_pos(rec.pos() as u32 + 20, false, false).unwrap().unwrap(), 20);
+            assert_eq!(
+                cigar
+                    .read_pos(rec.pos() as u32 + 20, false, false)
+                    .unwrap()
+                    .unwrap(),
+                20
+            );
             assert_eq!(cigar.read_pos(4000000, false, false).unwrap(), None);
             // fix qual offset
             let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
@@ -832,7 +891,9 @@ mod tests {
 
     #[test]
     fn test_seek() {
-        let mut bam = Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening file.");
+        let mut bam = Reader::from_path(&Path::new("test/test.bam"))
+            .ok()
+            .expect("Error opening file.");
 
         let mut names_by_voffset = HashMap::new();
 
@@ -861,31 +922,41 @@ mod tests {
         }
     }
 
-
     #[test]
     fn test_read_sam_header() {
-        let mut bam = Reader::from_path(&"test/test.bam").ok().expect("Error opening file.");
+        let bam = Reader::from_path(&"test/test.bam")
+            .ok()
+            .expect("Error opening file.");
 
-        let true_header = "@SQ\tSN:CHROMOSOME_I\tLN:15072423\n@SQ\tSN:CHROMOSOME_II\tLN:15279345\n@SQ\tSN:CHROMOSOME_III\tLN:13783700\n@SQ\tSN:CHROMOSOME_IV\tLN:17493793\n@SQ\tSN:CHROMOSOME_V\tLN:20924149\n".to_string();
+        let true_header =
+            "@SQ\tSN:CHROMOSOME_I\tLN:15072423\n@SQ\tSN:CHROMOSOME_II\tLN:15279345\
+             \n@SQ\tSN:CHROMOSOME_III\tLN:13783700\n@SQ\tSN:CHROMOSOME_IV\tLN:17493793\n@SQ\t\
+             SN:CHROMOSOME_V\tLN:20924149\n"
+                .to_string();
         let header_text = String::from_utf8(bam.header.as_bytes().to_owned()).unwrap();
         assert_eq!(header_text, true_header);
     }
 
-
     #[test]
     fn test_read_indexed() {
         let (names, flags, seqs, quals, cigars) = gold();
-        let mut bam = IndexedReader::from_path(&"test/test.bam").ok().expect("Expected valid index.");
+        let mut bam = IndexedReader::from_path(&"test/test.bam")
+            .ok()
+            .expect("Expected valid index.");
 
         let tid = bam.header.tid(b"CHROMOSOME_I").expect("Expected tid.");
         assert!(bam.header.target_len(tid).expect("Expected target len.") == 15072423);
 
         // fetch to position containing reads
-        bam.fetch(tid, 0, 2).ok().expect("Expected successful fetch.");
+        bam.fetch(tid, 0, 2)
+            .ok()
+            .expect("Expected successful fetch.");
         assert!(bam.records().count() == 6);
 
         // compare reads
-        bam.fetch(tid, 0, 2).ok().expect("Expected successful fetch.");
+        bam.fetch(tid, 0, 2)
+            .ok()
+            .expect("Expected successful fetch.");
         for (i, record) in bam.records().enumerate() {
             let rec = record.ok().expect("Expected valid record");
             println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
@@ -906,7 +977,6 @@ mod tests {
 
     #[test]
     fn test_set_record() {
-
         let (names, _, seqs, quals, cigars) = gold();
 
         let mut rec = record::Record::new();
@@ -914,7 +984,7 @@ mod tests {
         rec.set(names[0], &cigars[0], seqs[0], quals[0]);
         // note: this segfaults if you push_aux() before set()
         //       because set() obliterates aux
-        rec.push_aux(b"NM", &Aux::Integer(15));
+        rec.push_aux(b"NM", &Aux::Integer(15)).unwrap();
 
         assert_eq!(rec.qname(), names[0]);
         assert_eq!(*rec.cigar(), cigars[0]);
@@ -926,14 +996,13 @@ mod tests {
 
     #[test]
     fn test_set_qname() {
-
         let (names, _, seqs, quals, cigars) = gold();
 
         assert!(names[0] != names[1]);
 
         let mut rec = record::Record::new();
         rec.set(names[0], &cigars[0], seqs[0], quals[0]);
-        rec.push_aux(b"NM", &Aux::Integer(15));
+        rec.push_aux(b"NM", &Aux::Integer(15)).unwrap();
 
         assert_eq!(rec.qname(), names[0]);
         assert_eq!(*rec.cigar(), cigars[0]);
@@ -980,7 +1049,9 @@ mod tests {
 
     #[test]
     fn test_remove_aux() {
-        let mut bam = Reader::from_path(&Path::new("test/test.bam")).ok().expect("Error opening file.");
+        let mut bam = Reader::from_path(&Path::new("test/test.bam"))
+            .ok()
+            .expect("Error opening file.");
 
         for record in bam.records() {
             let rec = record.ok().expect("Expected valid record");
@@ -990,45 +1061,49 @@ mod tests {
             }
 
             if rec.aux(b"YT").is_some() {
-	            rec.remove_aux(b"YT");
+                rec.remove_aux(b"YT");
             }
 
-	    rec.remove_aux(b"ab");
+            rec.remove_aux(b"ab");
 
-	    assert_eq!(rec.aux(b"XS"), None);
-	    assert_eq!(rec.aux(b"YT"), None);
+            assert_eq!(rec.aux(b"XS"), None);
+            assert_eq!(rec.aux(b"YT"), None);
         }
     }
-
-
 
     #[test]
     fn test_write() {
         let (names, _, seqs, quals, cigars) = gold();
 
-        let tmp = tempdir::TempDir::new("rust-htslib").ok().expect("Cannot create temp dir");
+        let tmp = tempdir::TempDir::new("rust-htslib")
+            .ok()
+            .expect("Cannot create temp dir");
         let bampath = tmp.path().join("test.bam");
         println!("{:?}", bampath);
         {
             let mut bam = Writer::from_path(
                 &bampath,
                 Header::new().push_record(
-                    HeaderRecord::new(b"SQ").push_tag(b"SN", &"chr1")
-                                            .push_tag(b"LN", &15072423)
-                )
-            ).ok().expect("Error opening file.");
+                    HeaderRecord::new(b"SQ")
+                        .push_tag(b"SN", &"chr1")
+                        .push_tag(b"LN", &15072423),
+                ),
+            ).ok()
+                .expect("Error opening file.");
 
             for i in 0..names.len() {
                 let mut rec = record::Record::new();
                 rec.set(names[i], &cigars[i], seqs[i], quals[i]);
-                rec.push_aux(b"NM", &Aux::Integer(15));
+                rec.push_aux(b"NM", &Aux::Integer(15)).unwrap();
 
                 bam.write(&mut rec).ok().expect("Failed to write record.");
             }
         }
 
         {
-            let mut bam = Reader::from_path(&bampath).ok().expect("Error opening file.");
+            let mut bam = Reader::from_path(&bampath)
+                .ok()
+                .expect("Error opening file.");
 
             for i in 0..names.len() {
                 let mut rec = record::Record::new();
@@ -1045,29 +1120,32 @@ mod tests {
         tmp.close().ok().expect("Failed to delete temp dir");
     }
 
-
     #[test]
     fn test_write_threaded() {
         let (names, _, seqs, quals, cigars) = gold();
 
-        let tmp = tempdir::TempDir::new("rust-htslib").ok().expect("Cannot create temp dir");
+        let tmp = tempdir::TempDir::new("rust-htslib")
+            .ok()
+            .expect("Cannot create temp dir");
         let bampath = tmp.path().join("test.bam");
         println!("{:?}", bampath);
         {
             let mut bam = Writer::from_path(
                 &bampath,
                 Header::new().push_record(
-                    HeaderRecord::new(b"SQ").push_tag(b"SN", &"chr1")
-                                            .push_tag(b"LN", &15072423)
-                )
-            ).ok().expect("Error opening file.");
+                    HeaderRecord::new(b"SQ")
+                        .push_tag(b"SN", &"chr1")
+                        .push_tag(b"LN", &15072423),
+                ),
+            ).ok()
+                .expect("Error opening file.");
             bam.set_threads(4).unwrap();
 
-            for i in 0 .. 10000 {
+            for i in 0..10000 {
                 let mut rec = record::Record::new();
                 let idx = i % names.len();
                 rec.set(names[idx], &cigars[idx], seqs[idx], quals[idx]);
-                rec.push_aux(b"NM", &Aux::Integer(15));
+                rec.push_aux(b"NM", &Aux::Integer(15)).unwrap();
                 rec.set_pos(i as i32);
 
                 bam.write(&mut rec).ok().expect("Failed to write record.");
@@ -1075,7 +1153,9 @@ mod tests {
         }
 
         {
-            let mut bam = Reader::from_path(&bampath).ok().expect("Error opening file.");
+            let mut bam = Reader::from_path(&bampath)
+                .ok()
+                .expect("Error opening file.");
 
             for (i, _rec) in bam.records().enumerate() {
                 let idx = i % names.len();
@@ -1094,31 +1174,37 @@ mod tests {
         tmp.close().ok().expect("Failed to delete temp dir");
     }
 
-
-
     #[test]
     fn test_copy_template() {
-        // Verify that BAM headers are transmitted correctly when using an existing BAM as a template for headers.
+        // Verify that BAM headers are transmitted correctly when using an existing BAM as a
+        // template for headers.
 
-        let tmp = tempdir::TempDir::new("rust-htslib").ok().expect("Cannot create temp dir");
+        let tmp = tempdir::TempDir::new("rust-htslib")
+            .ok()
+            .expect("Cannot create temp dir");
         let bampath = tmp.path().join("test.bam");
         println!("{:?}", bampath);
 
-        let mut input_bam = Reader::from_path(&"test/test.bam").ok().expect("Error opening file.");
+        let mut input_bam = Reader::from_path(&"test/test.bam")
+            .ok()
+            .expect("Error opening file.");
 
         {
-            let mut bam = Writer::from_path(
-                &bampath,
-                &Header::from_template(&input_bam.header()),
-            ).ok().expect("Error opening file.");
+            let mut bam = Writer::from_path(&bampath, &Header::from_template(&input_bam.header()))
+                .ok()
+                .expect("Error opening file.");
 
             for rec in input_bam.records() {
-                bam.write(&rec.unwrap()).ok().expect("Failed to write record.");
+                bam.write(&rec.unwrap())
+                    .ok()
+                    .expect("Failed to write record.");
             }
         }
 
         {
-            let mut copy_bam = Reader::from_path(&bampath).ok().expect("Error opening file.");
+            let copy_bam = Reader::from_path(&bampath)
+                .ok()
+                .expect("Error opening file.");
 
             // Verify that the header came across correctly
             assert_eq!(input_bam.header().as_bytes(), copy_bam.header().as_bytes());
@@ -1127,13 +1213,13 @@ mod tests {
         tmp.close().ok().expect("Failed to delete temp dir");
     }
 
-
-
     #[test]
     fn test_pileup() {
         let (_, _, seqs, quals, _) = gold();
 
-        let mut bam = Reader::from_path(&"test/test.bam").ok().expect("Error opening file.");
+        let mut bam = Reader::from_path(&"test/test.bam")
+            .ok()
+            .expect("Error opening file.");
         let pileups = bam.pileup();
         for pileup in pileups.take(26) {
             let _pileup = pileup.ok().expect("Expected successful pileup.");
@@ -1152,7 +1238,9 @@ mod tests {
 
     #[test]
     fn test_idx_pileup() {
-        let mut bam = IndexedReader::from_path(&"test/test.bam").ok().expect("Error opening file.");
+        let mut bam = IndexedReader::from_path(&"test/test.bam")
+            .ok()
+            .expect("Error opening file.");
         // read without fetch
         for pileup in bam.pileup() {
             pileup.unwrap();
@@ -1180,19 +1268,13 @@ mod tests {
         let mut sam = Vec::new();
         assert!(File::open(samfile).unwrap().read_to_end(&mut sam).is_ok());
 
-        let sam_recs: Vec<Record> =
-            sam
-            .split(|x| *x == b'\n')
+        let sam_recs: Vec<Record> = sam.split(|x| *x == b'\n')
             .filter(|x| x.len() > 0 && x[0] != b'@')
             .map(|line| Record::from_sam(rdr.header(), line).unwrap())
             .collect();
 
         for (b1, s1) in bam_recs.iter().zip(sam_recs.iter()) {
-            assert_eq!(b1.qname(),          s1.qname());
-            assert_eq!(b1.seq().as_bytes(), s1.seq().as_bytes());
-            assert_eq!(b1.qual(),           s1.qual());
-            assert_eq!(b1.cigar(),          s1.cigar());
-            assert_eq!(b1.pos(),            s1.pos());
+            assert!(b1 == s1);
         }
     }
 }

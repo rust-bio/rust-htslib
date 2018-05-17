@@ -1,16 +1,16 @@
 ##fileformat=VCFv4.1
+##FILTER=<ID=PASS,Description="All filters passed">
+##FILTER=<ID=q10,Description="Quality below 10">
+##FILTER=<ID=s50,Description="Less than 50% of samples have data">
 ##INFO=<ID=S1,Number=1,Type=String,Description="Single INFO string">
 ##INFO=<ID=N1,Number=1,Type=Integer,Description="Single INFO integer">
 ##INFO=<ID=F1,Number=1,Type=Float,Description="Single INFO float">
+##INFO=<ID=X1,Number=0,Type=Flag,Description="INFO FLAG">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
 ##FORMAT=<ID=FS1,Number=1,Type=String,Description="Single FORMAT string">
 ##FORMAT=<ID=FN1,Number=1,Type=Integer,Description="Single FORMAT integer">
 ##FORMAT=<ID=FF1,Number=1,Type=Float,Description="Single FORMAT float">
+##FORMAT=<ID=CH1,Number=1,Type=Character,Description="Single FORMAT char">
 ##contig=<ID=19,length=59128983>
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	one	two
-19	3111939	rs1234	A	AG	.	PASS	S1=string1;N1=1;F1=1.0	GT:FS1:FN1	./1:LongString1:1	1/1:ss1:2
-19	3113255	rs2345	G	GC	.	PASS	S1=string2;N1=2;F1=2.0	GT:FS1:FN1	1|1:LongString2:1	1/1:ss2:2
-19	3113259	rs2345	G	GC	.	PASS	S1=string3;N1=3;F1=3.0	GT:FS1:FN1	0/1:.:1	1/1:ss3:2
-19	3113262	rs2345	G	GC	.	PASS	S1=string4;N1=4;F1=4.0	GT:FS1:FN1	0|1:LongString4:1	1/1:.:2
-19	3113268	rs2345	G	GC	.	PASS	S1=string5;N1=5;F1=5.0	GT:FS1:FN1	1|.:evenlength:1	1/1:veenlength:2
-19	3113272	rs2345	G	GC	.	PASS	S1=string6;N1=6;F1=6.0	GT:FS1:FN1	1/1:ss6:1	1/1:longstring6:2
+19	13	first_id;second_id	C	T,G	10	s50;q10	N1=32;F1=33;S1=fourtytwo;X1	FS1:FF1:FN1:CH1	yes:43:42:A	no:11:10:B
