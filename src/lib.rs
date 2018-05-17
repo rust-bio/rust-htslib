@@ -73,6 +73,8 @@ extern crate bitflags;
 extern crate custom_derive;
 extern crate ieee754;
 extern crate itertools;
+#[macro_use]
+extern crate lazy_static;
 extern crate libc;
 #[macro_use]
 extern crate newtype_derive;
@@ -89,13 +91,9 @@ extern crate serde;
 #[cfg(all(test, feature = "serde"))]
 extern crate bincode;
 
-#[cfg(test)]
+#[cfg(test)] // <-- not needed in examples + integration tests
 #[macro_use]
 extern crate pretty_assertions;
-
-#[macro_use]
-extern crate lazy_static;
-
 #[cfg(all(test, feature = "serde"))]
 extern crate serde_json;
 
