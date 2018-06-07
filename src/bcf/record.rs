@@ -885,7 +885,7 @@ impl<'a> Iterator for Filters<'a> {
     type Item = Id;
 
     fn next(&mut self) -> Option<Id> {
-        if self.record.inner().d.n_flt >= self.idx {
+        if self.record.inner().d.n_flt <= self.idx {
             None
         } else {
             let i = self.idx as isize;
