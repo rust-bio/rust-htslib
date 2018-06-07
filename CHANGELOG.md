@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.19.1] - 2018-06-07
+### Changed
+- Fixed bug in the filter iterator of BCF.
+
 ## [0.19.0] - 2018-06-01
 ### Added
 - more push functions for BCF.
