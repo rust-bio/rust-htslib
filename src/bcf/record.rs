@@ -157,6 +157,12 @@ impl Record {
     ///
     /// When empty, returns `b".".to_vec()`.
     pub fn id(&self) -> Vec<u8> {
+        // TODO: do we have to use `&mut self` here because of the unpack?!
+        if self.inner().unpacked == 0 {
+            unsafe {
+                htslib::bcf_unpack(self.inner, htslib::BCF_UN_FLT as i32);
+            }
+        }
         if self.inner().d.id.is_null() {
             b".".to_vec()
         } else {
