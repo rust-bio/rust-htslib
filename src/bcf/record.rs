@@ -162,7 +162,6 @@ impl Record {
     ///
     /// When empty, returns `b".".to_vec()`.
     pub fn id(&self) -> Vec<u8> {
-        assert!(self.inner().unpacked != 0);
         if self.inner().d.id.is_null() {
             b".".to_vec()
         } else {
@@ -223,7 +222,6 @@ impl Record {
     ///
     /// A record having the `PASS` filter will return an empty `Filter` here.
     pub fn filters(&self) -> Filters {
-        assert!(self.inner().unpacked != 0);
         Filters::new(self)
     }
 
@@ -233,7 +231,6 @@ impl Record {
     ///
     /// - `flt_id` - The filter ID to query for.
     pub fn has_filter(&self, flt_id: &Id) -> bool {
-        assert!(self.inner().unpacked != 0);
         if **flt_id == 0 && self.inner().d.n_flt == 0 {
             return true;
         }
