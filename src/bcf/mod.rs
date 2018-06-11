@@ -115,7 +115,7 @@ impl Read for Reader {
             0 => {
                 unsafe {
                     // Always unpack record.
-                    htslib::bcf_unpack(record.inner_mut(), htslib::BCF_UN_FLT as i32);
+                    htslib::bcf_unpack(record.inner_mut(), htslib::BCF_UN_ALL as i32);
                 }
                 record.set_header(self.header.clone());
                 Ok(())
