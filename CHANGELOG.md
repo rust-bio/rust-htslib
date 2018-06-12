@@ -4,6 +4,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.19.1] - 2018-06-07
 ### Changed
+- Moved unpacking of BCF records into constructor to prevent race conditions.
+- Fixed bug in retrieving BCF record id.
 - Fixed bug in the filter iterator of BCF.
 
 ## [0.19.0] - 2018-06-01
