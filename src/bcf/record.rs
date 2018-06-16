@@ -82,7 +82,12 @@ pub struct Record {
 impl Record {
     /// Construct record with reference to header `HeaderView`, for create-internal use.
     pub(crate) fn new(header: Rc<HeaderView>) -> Self {
-        let inner = unsafe { htslib::bcf_init() };
+        let inner = unsafe {
+            let inner = htslib::bcf_init();
+            // Always unpack record.
+            htslib::bcf_unpack(inner, htslib::BCF_UN_ALL as i32);
+            inner
+        };
         Record {
             inner: inner,
             header: header,
@@ -217,12 +222,6 @@ impl Record {
     ///
     /// A record having the `PASS` filter will return an empty `Filter` here.
     pub fn filters(&self) -> Filters {
-        // TODO: do we have to use `&mut self` here because of the unpack?!
-        if self.inner().unpacked == 0 {
-            unsafe {
-                htslib::bcf_unpack(self.inner, htslib::BCF_UN_FLT as i32);
-            }
-        }
         Filters::new(self)
     }
 
@@ -232,12 +231,6 @@ impl Record {
     ///
     /// - `flt_id` - The filter ID to query for.
     pub fn has_filter(&self, flt_id: &Id) -> bool {
-        // TODO: do we have to use `&mut self` here because of the unpack?!
-        if self.inner().unpacked == 0 {
-            unsafe {
-                htslib::bcf_unpack(self.inner, htslib::BCF_UN_FLT as i32);
-            }
-        }
         if **flt_id == 0 && self.inner().d.n_flt == 0 {
             return true;
         }
@@ -303,7 +296,7 @@ impl Record {
     ///
     /// The first allele is the reference allele.
     pub fn alleles(&self) -> Vec<&[u8]> {
-        unsafe { htslib::bcf_unpack(self.inner, htslib::BCF_UN_STR as i32) };
+        unsafe { htslib::bcf_unpack(self.inner, htslib::BCF_UN_ALL as i32) };
         let n = self.inner().n_allele() as usize;
         let dec = self.inner().d;
         let alleles = unsafe { slice::from_raw_parts(dec.allele, n) };
@@ -885,7 +878,7 @@ impl<'a> Iterator for Filters<'a> {
     type Item = Id;
 
     fn next(&mut self) -> Option<Id> {
-        if self.record.inner().d.n_flt >= self.idx {
+        if self.record.inner().d.n_flt <= self.idx {
             None
         } else {
             let i = self.idx as isize;
