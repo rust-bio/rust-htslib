@@ -158,12 +158,13 @@ impl Reader {
     /// * `end` - Read until the virtual offset is less than `end`
     pub fn iter_chunk(&mut self, start: Option<i64>, end: Option<i64>) -> ChunkIterator<Self> {
         if let Some(pos) = start {
-            self.seek(pos).expect("Failed to seek to the starting position");
+            self.seek(pos)
+                .expect("Failed to seek to the starting position");
         };
 
         ChunkIterator {
             reader: self,
-            end: end
+            end: end,
         }
     }
 }
@@ -483,9 +484,8 @@ impl<'a, R: Read> Iterator for Records<'a, R> {
 /// Iterator over the records of a BAM until the virtual offset is less than `end`
 pub struct ChunkIterator<'a, R: 'a + Read> {
     reader: &'a mut R,
-    end: Option<i64>
+    end: Option<i64>,
 }
-
 
 impl<'a, R: Read> Iterator for ChunkIterator<'a, R> {
     type Item = Result<record::Record, ReadError>;
@@ -498,8 +498,8 @@ impl<'a, R: Read> Iterator for ChunkIterator<'a, R> {
         let mut record = record::Record::new();
         match self.reader.read(&mut record) {
             Err(ReadError::NoMoreRecord) => None,
-            Ok(())   => Some(Ok(record)),
-            Err(err) => Some(Err(err))
+            Ok(()) => Some(Ok(record)),
+            Err(err) => Some(Err(err)),
         }
     }
 }
