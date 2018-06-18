@@ -113,6 +113,10 @@ impl Read for Reader {
     fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError> {
         match unsafe { htslib::bcf_read(self.inner, self.header.inner, record.inner) } {
             0 => {
+                unsafe {
+                    // Always unpack record.
+                    htslib::bcf_unpack(record.inner_mut(), htslib::BCF_UN_ALL as i32);
+                }
                 record.set_header(self.header.clone());
                 Ok(())
             }
