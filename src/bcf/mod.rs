@@ -303,6 +303,158 @@ impl Drop for IndexedReader {
     }
 }
 
+/// This module contains bitmask constants for `SyncedReader`.
+pub mod sr_pairing {
+    /// Allow different alleles, as long as they all are SNPs.
+    pub const SNPS: u32 = ::htslib::BCF_SR_PAIR_SNPS;
+    /// The same as above, but with indels.
+    pub const INDELS: u32 = ::htslib::BCF_SR_PAIR_INDELS;
+    /// Any combination of alleles can be returned by `bcf_sr_next_line()`.
+    pub const ANY: u32 = ::htslib::BCF_SR_PAIR_ANY;
+    /// At least some of multiallelic ALTs must match.  Implied by all the others with the exception of `EXACT`.
+    pub const SOME: u32 = ::htslib::BCF_SR_PAIR_SOME;
+    /// Allow REF-only records with SNPs.
+    pub const SNP_REF: u32 = ::htslib::BCF_SR_PAIR_SNP_REF;
+    /// Allow REF-only records with indels.
+    pub const INDEL_REF: u32 = ::htslib::BCF_SR_PAIR_INDEL_REF;
+    /// Require the exact same set of alleles in all files.
+    pub const EXACT: u32 = ::htslib::BCF_SR_PAIR_EXACT;
+    /// `SNPS | INDELS`.
+    pub const BOTH: u32 = ::htslib::BCF_SR_PAIR_BOTH;
+    /// `SNPS | INDELS | SNP_REF | INDEL_REF`.
+    pub const BOTH_REF: u32 = ::htslib::BCF_SR_PAIR_BOTH_REF;
+}
+
+/// A wrapper for `bcf_srs_t`; allows joint traversal of multiple VCF and/or BCF files.
+#[derive(Debug)]
+pub struct SyncedReader {
+    /// Internal handle for the synced reader.
+    inner: *mut htslib::bcf_srs_t,
+
+    /// RC's of `HeaderView`s of the readers.
+    headers: Vec<Rc<HeaderView>>,
+}
+
+// TODO: add interface for setting threads, ensure that the pool is freed properly
+
+impl SyncedReader {
+    pub fn new() -> Result<Self, AllocationError> {
+        let inner = unsafe { htslib::bcf_sr_init() };
+        if inner.is_null() {
+            Err(AllocationError::Some)
+        } else {
+            Ok(SyncedReader {
+                inner: inner,
+                headers: Vec::new(),
+            })
+        }
+    }
+
+    /// Enable or disable requiring of index
+    pub fn set_require_index(&mut self, do_require: bool) {
+        unsafe {
+            (*self.inner).require_index = if do_require { 1 } else { 0 };
+        }
+    }
+
+    /// Set the given bitmask of values from `sr_pairing` module.
+    pub fn set_pairing(&mut self, bitmask: u32) {
+        unsafe {
+            // TODO: 1 actually is BCF_SR_PAIR_LOGIC but is not available here?
+            htslib::bcf_sr_set_opt(self.inner, 1, bitmask);
+        }
+    }
+
+    /// Add new reader with the path to the file.
+    pub fn add_reader<P: AsRef<Path>>(&mut self, path: P) -> Result<(), BCFError> {
+        match path.as_ref().to_str() {
+            Some(p) if path.as_ref().exists() => {
+                let p_cstring = ffi::CString::new(p).unwrap();
+                let res = unsafe { htslib::bcf_sr_add_reader(self.inner, p_cstring.as_ptr()) };
+                if res != 0 {
+                    let i = (self.reader_count() - 1) as isize;
+                    let header = Rc::new(HeaderView::new(unsafe {
+                        htslib::bcf_hdr_dup((*(*self.inner).readers.offset(i)).header)
+                    }));
+                    self.headers.push(header);
+                    Ok(())
+                } else {
+                    Err(BCFError::Some)
+                }
+            }
+            _ => Err(BCFError::Some),
+        }
+    }
+
+    /// Remove reader with the given index.
+    pub fn remove_reader(&mut self, idx: u32) {
+        if idx >= self.reader_count() {
+            panic!("Invalid reader!");
+        } else {
+            unsafe {
+                htslib::bcf_sr_remove_reader(self.inner, idx as i32);
+            }
+            self.headers.remove(idx as usize);
+        }
+    }
+
+    /// Return number of open files/readers.
+    pub fn reader_count(&self) -> u32 {
+        unsafe { (*self.inner).nreaders as u32 }
+    }
+
+    /// Read next line and return number of readers that have the given line.
+    pub fn read_next(&mut self) -> Result<u32, BCFError> {
+        let num = unsafe { htslib::bcf_sr_next_line(self.inner) as u32 };
+        if unsafe { (*self.inner).errnum } != 0 {
+            Err(BCFError::Some)
+        } else {
+            Ok(num)
+        }
+    }
+
+    /// Return whether the given reader has the line.
+    pub fn has_line(&self, idx: u32) -> bool {
+        if idx >= self.reader_count() {
+            panic!("Invalid reader!");
+        } else {
+            unsafe { (*(*self.inner).has_line.offset(idx as isize)) != 0 }
+        }
+    }
+
+    /// Return record from the given reader, if any.
+    pub fn get_record(&self, idx: u32) -> Option<Record> {
+        if self.has_line(idx) {
+            let record = Record::new(self.headers[idx as usize].clone());
+            unsafe {
+                ::htslib::bcf_copy(
+                    record.inner,
+                    *(*(*self.inner).readers.offset(0)).buffer.offset(0),
+                );
+            }
+            Some(record)
+        } else {
+            None
+        }
+    }
+
+    /// Return header from the given reader.
+    pub fn get_header(&self, idx: u32) -> &HeaderView {
+        // TODO: is the mutability here correct?
+        if idx >= self.reader_count() {
+            panic!("Invalid reader!");
+        } else {
+            &self.headers[idx as usize]
+        }
+    }
+}
+
+impl Drop for SyncedReader {
+    fn drop(&mut self) {
+        unsafe { htslib::bcf_sr_destroy(self.inner) };
+    }
+}
+
 /// A VCF/BCF writer.
 #[derive(Debug)]
 pub struct Writer {
@@ -471,6 +623,15 @@ impl<'a, R: Read> Iterator for Records<'a, R> {
             Err(ReadError::NoMoreRecord) => None,
             Err(e) => Some(Err(e)),
             Ok(()) => Some(Ok(record)),
+        }
+    }
+}
+
+quick_error! {
+    #[derive(Debug, Clone)]
+    pub enum AllocationError {
+        Some {
+            description("Error allocating internal data structure")
         }
     }
 }
@@ -848,9 +1009,9 @@ mod tests {
             .ok()
             .expect("Error opening file.");
         let records = vcf.header().header_records();
-        assert_eq!(records.len(), 9);
+        assert_eq!(records.len(), 10);
 
-        match &records[0] {
+        match &records[1] {
             &HeaderRecord::Filter {
                 ref key,
                 ref values,
@@ -983,5 +1144,35 @@ mod tests {
         let expected = read_all("test/test_headers.out.vcf");
         let actual = read_all(&bcfpath);
         assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_synced_reader() {
+        let mut reader = SyncedReader::new().unwrap();
+        reader.set_require_index(true);
+        reader.set_pairing(sr_pairing::SNPS);
+
+        assert_eq!(reader.reader_count(), 0);
+        reader.add_reader(&"test/test_left.vcf.gz").unwrap();
+        reader.add_reader(&"test/test_right.vcf.gz").unwrap();
+        assert_eq!(reader.reader_count(), 2);
+
+        let res1 = reader.read_next();
+        assert_eq!(res1.unwrap(), 2);
+        assert!(reader.has_line(0));
+        assert!(reader.has_line(1));
+
+        let res2 = reader.read_next();
+        assert_eq!(res2.unwrap(), 1);
+        assert!(reader.has_line(0));
+        assert!(!reader.has_line(1));
+
+        let res3 = reader.read_next();
+        assert_eq!(res3.unwrap(), 1);
+        assert!(!reader.has_line(0));
+        assert!(reader.has_line(1));
+
+        let res4 = reader.read_next();
+        assert_eq!(res4.unwrap(), 0);
     }
 }
