@@ -368,7 +368,7 @@ impl Record {
         }
     }
 
-    fn cigar_len(&self) -> usize {
+    pub fn cigar_len(&self) -> usize {
         self.inner().core.n_cigar as usize
     }
 
@@ -1262,9 +1262,7 @@ mod tests {
     #[test]
     fn test_cigar_parse() {
         let cigar = "1S20M1D2I3X1=2H";
-
         let parsed = CigarString::from_str(cigar).unwrap();
-
         assert_eq!(parsed.to_string(), cigar);
     }
 }
