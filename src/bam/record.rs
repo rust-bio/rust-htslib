@@ -54,7 +54,7 @@ quick_error! {
 pub struct Record {
     pub inner: *mut htslib::bam1_t,
     own: bool,
-    cigar: Option<CigarStringView>
+    cigar: Option<CigarStringView>,
 }
 
 unsafe impl Send for Record {}
@@ -96,7 +96,7 @@ impl Record {
         let mut record = Record {
             inner: inner,
             own: true,
-            cigar: None
+            cigar: None,
         };
         record.inner_mut().m_data = 0;
         record
@@ -106,7 +106,7 @@ impl Record {
         Record {
             inner: inner,
             own: false,
-            cigar: None
+            cigar: None,
         }
     }
 
@@ -400,25 +400,27 @@ impl Record {
     pub fn unpack_cigar(&mut self) {
         self.cigar = {
             let raw = self.raw_cigar();
-            Some(CigarString(
-                raw.iter()
-                    .map(|&c| {
-                        let len = c >> 4;
-                        match c & 0b1111 {
-                            0 => Cigar::Match(len),
-                            1 => Cigar::Ins(len),
-                            2 => Cigar::Del(len),
-                            3 => Cigar::RefSkip(len),
-                            4 => Cigar::SoftClip(len),
-                            5 => Cigar::HardClip(len),
-                            6 => Cigar::Pad(len),
-                            7 => Cigar::Equal(len),
-                            8 => Cigar::Diff(len),
-                            _ => panic!("Unexpected cigar operation"),
-                        }
-                    })
-                    .collect(),
-            ).into_view(self.pos()))
+            Some(
+                CigarString(
+                    raw.iter()
+                        .map(|&c| {
+                            let len = c >> 4;
+                            match c & 0b1111 {
+                                0 => Cigar::Match(len),
+                                1 => Cigar::Ins(len),
+                                2 => Cigar::Del(len),
+                                3 => Cigar::RefSkip(len),
+                                4 => Cigar::SoftClip(len),
+                                5 => Cigar::HardClip(len),
+                                6 => Cigar::Pad(len),
+                                7 => Cigar::Equal(len),
+                                8 => Cigar::Diff(len),
+                                _ => panic!("Unexpected cigar operation"),
+                            }
+                        })
+                        .collect(),
+                ).into_view(self.pos()),
+            )
         };
     }
 
