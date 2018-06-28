@@ -2,10 +2,16 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [unreleased]
+### Changes
+- `bam::Record::cigar()` now returns a reference (in constant time) and needs `bam::Record::unpack_cigar()` to be called first.
+
 ## [0.20.0] - 2018-06-18
 ### Added
+- Initial implementation of synced BCF reader interface.
 - Several small helper methods for BAM readers.
 ### Changes
+- Not skipping `fileformat=` header any more.
 - BCF records are always unpacked when reading.
 
 ## [0.19.1] - 2018-06-07

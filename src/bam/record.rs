@@ -54,6 +54,7 @@ quick_error! {
 pub struct Record {
     pub inner: *mut htslib::bam1_t,
     own: bool,
+    cigar: Option<CigarStringView>,
 }
 
 unsafe impl Send for Record {}
@@ -95,6 +96,7 @@ impl Record {
         let mut record = Record {
             inner: inner,
             own: true,
+            cigar: None,
         };
         record.inner_mut().m_data = 0;
         record
@@ -104,6 +106,7 @@ impl Record {
         Record {
             inner: inner,
             own: false,
+            cigar: None,
         }
     }
 
@@ -241,6 +244,8 @@ impl Record {
 
     /// Set the variable length data buffer
     pub fn set_data(&mut self, new_data: &[u8]) {
+        self.cigar = None;
+
         self.inner_mut().l_data = new_data.len() as i32;
         if (self.inner().m_data as i32) < self.inner().l_data {
             // Verbosity due to lexical borrowing
@@ -259,6 +264,8 @@ impl Record {
     /// if called on an existing record. For this
     /// reason, never call push_aux() before set().
     pub fn set(&mut self, qname: &[u8], cigar: &CigarString, seq: &[u8], qual: &[u8]) {
+        self.cigar = None;
+
         self.inner_mut().l_data = (qname.len() + 1 + cigar.len() * 4
             + ((seq.len() as f32 / 2.0).ceil() as usize)
             + qual.len()) as i32;
@@ -383,28 +390,38 @@ impl Record {
         }
     }
 
-    /// Get cigar string. Complexity: O(k) with k being the length of the cigar string.
-    pub fn cigar(&self) -> CigarStringView {
-        let raw = self.raw_cigar();
-        CigarString(
-            raw.iter()
-                .map(|&c| {
-                    let len = c >> 4;
-                    match c & 0b1111 {
-                        0 => Cigar::Match(len),
-                        1 => Cigar::Ins(len),
-                        2 => Cigar::Del(len),
-                        3 => Cigar::RefSkip(len),
-                        4 => Cigar::SoftClip(len),
-                        5 => Cigar::HardClip(len),
-                        6 => Cigar::Pad(len),
-                        7 => Cigar::Equal(len),
-                        8 => Cigar::Diff(len),
-                        _ => panic!("Unexpected cigar operation"),
-                    }
-                })
-                .collect(),
-        ).into_view(self.pos())
+    /// Return unpacked cigar string. This returns None unless you have first called
+    /// `bam::Record::UnpackCigar`.
+    pub fn cigar(&self) -> Option<&CigarStringView> {
+        self.cigar.as_ref()
+    }
+
+    /// Unpack cigar string. Complexity: O(k) with k being the length of the cigar string.
+    pub fn unpack_cigar(&mut self) {
+        self.cigar = {
+            let raw = self.raw_cigar();
+            Some(
+                CigarString(
+                    raw.iter()
+                        .map(|&c| {
+                            let len = c >> 4;
+                            match c & 0b1111 {
+                                0 => Cigar::Match(len),
+                                1 => Cigar::Ins(len),
+                                2 => Cigar::Del(len),
+                                3 => Cigar::RefSkip(len),
+                                4 => Cigar::SoftClip(len),
+                                5 => Cigar::HardClip(len),
+                                6 => Cigar::Pad(len),
+                                7 => Cigar::Equal(len),
+                                8 => Cigar::Diff(len),
+                                _ => panic!("Unexpected cigar operation"),
+                            }
+                        })
+                        .collect(),
+                ).into_view(self.pos()),
+            )
+        };
     }
 
     fn seq_len(&self) -> usize {

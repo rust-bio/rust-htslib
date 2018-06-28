@@ -398,7 +398,7 @@ impl HeaderView {
         }
 
         let mut result: Vec<HeaderRecord> = Vec::new();
-        for i in 1_i32..unsafe { (*self.inner).nhrec } {
+        for i in 0_i32..unsafe { (*self.inner).nhrec } {
             let rec = unsafe { &(**(*self.inner).hrec.offset(i as isize)) };
             let key = unsafe { ffi::CStr::from_ptr(rec.key).to_str().unwrap().to_string() };
             let record = match rec.type_ {
