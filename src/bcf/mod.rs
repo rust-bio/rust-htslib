@@ -375,7 +375,8 @@ pub mod synced {
             match path.as_ref().to_str() {
                 Some(p) if path.as_ref().exists() => {
                     let p_cstring = ffi::CString::new(p).unwrap();
-                    let res = unsafe { ::htslib::bcf_sr_add_reader(self.inner, p_cstring.as_ptr()) };
+                    let res =
+                        unsafe { ::htslib::bcf_sr_add_reader(self.inner, p_cstring.as_ptr()) };
                     if res != 0 {
                         let i = (self.reader_count() - 1) as isize;
                         let header = Rc::new(HeaderView::new(unsafe {
@@ -434,7 +435,9 @@ pub mod synced {
                 unsafe {
                     ::htslib::bcf_copy(
                         record.inner,
-                        *(*(*self.inner).readers.offset(0)).buffer.offset(0),
+                        *(*(*self.inner).readers.offset(idx as isize))
+                            .buffer
+                            .offset(0),
                     );
                 }
                 Some(record)

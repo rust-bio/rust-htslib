@@ -4,6 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [unreleased]
 ### Changes
+- Fixed `bcf::synced::SyncedReader::record()`.
 - `bam::Record::cigar()` now returns a reference (in constant time) and needs `bam::Record::unpack_cigar()` to be called first.
 
 ## [0.20.0] - 2018-06-18
