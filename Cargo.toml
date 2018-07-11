@@ -26,7 +26,9 @@ serde = { version = "^1", optional = true }
 linear-map = "1.2.0"
 
 [features]
-default = []
+default = ["bzip2", "lzma"]
+bzip2 = []
+lzma = []
 
 [dev-dependencies]
 tempdir = "0.3"

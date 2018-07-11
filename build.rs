@@ -12,10 +12,39 @@ use std::env;
 use std::path::PathBuf;
 use std::process::Command;
 
+fn sed_htslib_makefile(out: &PathBuf, patterns: &Vec<&str>, feature: &str) {
+    for pattern in patterns {
+        if Command::new("sed")
+            .current_dir(out.join("htslib"))
+            .arg("-i")
+            .arg("-e")
+            .arg(pattern)
+            .arg("Makefile")
+            .status()
+            .unwrap()
+            .success() != true
+        {
+            panic!("failed to strip {} support", feature);
+        }
+    }
+}
+
 fn main() {
     let out = PathBuf::from(env::var("OUT_DIR").unwrap());
     if !out.join("htslib").exists() {
         copy_directory("htslib", &out).unwrap();
+    }
+
+    let use_bzip2 = env::var("CARGO_FEATURE_BZIP2").is_ok();
+    if !use_bzip2 {
+        let bzip2_patterns = vec!["s/ -lbz2//", "/#define HAVE_LIBBZ2/d"];
+        sed_htslib_makefile(&out, &bzip2_patterns, "bzip2");
+    }
+
+    let use_lzma = env::var("CARGO_FEATURE_LZMA").is_ok();
+    if !use_lzma {
+        let lzma_patterns = vec!["s/ -llzma//", "/#define HAVE_LIBLZMA/d"];
+        sed_htslib_makefile(&out, &lzma_patterns, "lzma");
     }
 
     if Command::new("make")
@@ -41,7 +70,9 @@ fn main() {
         .expect("Could not write bindings.");
 
     println!(
-        "cargo:rustc-flags=-L {out}/htslib -L {out} -l static=hts -l z -l lzma -l bz2",
-        out = out.to_str().unwrap()
+        "cargo:rustc-flags=-L {out}/htslib -L {out} -l static=hts -l z {lzma} {bzip2}",
+        out = out.to_str().unwrap(),
+        lzma = if use_lzma { "-l lzma" } else { "" },
+        bzip2 = if use_bzip2 { "-l bz2" } else { "" },
     );
 }
