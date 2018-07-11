@@ -45,7 +45,7 @@ impl Header {
         }
     }
 
-    /// Create a new `Header` using the given `HeaderView as the template.
+    /// Create a new `Header` using the given `HeaderView` as the template.
     ///
     /// After construction, you can modify the header independently from the template `header`.
     ///
@@ -122,7 +122,7 @@ impl Header {
         self
     }
 
-    /// Remove an `FILTER` entry from header.
+    /// Remove a `FILTER` entry from the header.
     ///
     /// # Arguments
     ///
@@ -131,7 +131,7 @@ impl Header {
         self.remove_impl(tag, htslib::BCF_HL_FLT)
     }
 
-    /// Remove an `INFO` entry from header.
+    /// Remove an `INFO` entry from the header.
     ///
     /// # Arguments
     ///
@@ -140,7 +140,7 @@ impl Header {
         self.remove_impl(tag, htslib::BCF_HL_INFO)
     }
 
-    /// Remove an `FORMAT` entry from header.
+    /// Remove a `FORMAT` entry from the header.
     ///
     /// # Arguments
     ///
@@ -149,7 +149,7 @@ impl Header {
         self.remove_impl(tag, htslib::BCF_HL_FMT)
     }
 
-    /// Remove a contig entry from header.
+    /// Remove a contig entry from the header.
     ///
     /// # Arguments
     ///
@@ -158,7 +158,7 @@ impl Header {
         self.remove_impl(tag, htslib::BCF_HL_CTG)
     }
 
-    /// Remove a structured entry from header.
+    /// Remove a structured entry from the header.
     ///
     /// # Arguments
     ///
@@ -167,7 +167,7 @@ impl Header {
         self.remove_impl(tag, htslib::BCF_HL_STR)
     }
 
-    /// Remove a generic entry from header.
+    /// Remove a generic entry from the header.
     ///
     /// # Arguments
     ///
@@ -339,7 +339,7 @@ impl HeaderView {
     }
 
     /// Convert integer representing an identifier (e.g., a `FILTER` value) to its string
-    /// name.bam
+    /// name.bam.
     pub fn id_to_name(&self, id: Id) -> Vec<u8> {
         let key = unsafe {
             ffi::CStr::from_ptr(
