@@ -2,6 +2,29 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [unreleased]
+### Changes
+- Fixed `bcf::synced::SyncedReader::record()`.
+- `bam::Record::cigar()` now returns a reference (in constant time) and needs `bam::Record::unpack_cigar()` to be called first.
+
+## [0.20.0] - 2018-06-18
+### Added
+- Initial implementation of synced BCF reader interface.
+- Several small helper methods for BAM readers.
+### Changes
+- Not skipping `fileformat=` header any more.
+- BCF records are always unpacked when reading.
+
+## [0.19.1] - 2018-06-07
+### Changed
+- Moved unpacking of BCF records into constructor to prevent race conditions.
+- Fixed bug in retrieving BCF record id.
+- Fixed bug in the filter iterator of BCF.
+
+## [0.19.0] - 2018-06-01
+### Added
+- more push functions for BCF.
+
 ## [0.18.0] - 2018-05-04
 ### Added
 - bcf::IndexedReader

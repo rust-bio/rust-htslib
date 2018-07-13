@@ -9,6 +9,8 @@ use std::str;
 
 use htslib;
 
+use linear_map::LinearMap;
+
 pub type SampleSubset = Vec<i32>;
 
 custom_derive! {
@@ -43,7 +45,7 @@ impl Header {
         }
     }
 
-    /// Create a new `Header` using the given `HeaderView as the template.
+    /// Create a new `Header` using the given `HeaderView` as the template.
     ///
     /// After construction, you can modify the header independently from the template `header`.
     ///
@@ -120,7 +122,7 @@ impl Header {
         self
     }
 
-    /// Remove an `FILTER` entry from header.
+    /// Remove a `FILTER` entry from the header.
     ///
     /// # Arguments
     ///
@@ -129,7 +131,7 @@ impl Header {
         self.remove_impl(tag, htslib::BCF_HL_FLT)
     }
 
-    /// Remove an `INFO` entry from header.
+    /// Remove an `INFO` entry from the header.
     ///
     /// # Arguments
     ///
@@ -138,7 +140,7 @@ impl Header {
         self.remove_impl(tag, htslib::BCF_HL_INFO)
     }
 
-    /// Remove an `FORMAT` entry from header.
+    /// Remove a `FORMAT` entry from the header.
     ///
     /// # Arguments
     ///
@@ -147,7 +149,7 @@ impl Header {
         self.remove_impl(tag, htslib::BCF_HL_FMT)
     }
 
-    /// Remove a contig entry from header.
+    /// Remove a contig entry from the header.
     ///
     /// # Arguments
     ///
@@ -156,7 +158,7 @@ impl Header {
         self.remove_impl(tag, htslib::BCF_HL_CTG)
     }
 
-    /// Remove a structured entry from header.
+    /// Remove a structured entry from the header.
     ///
     /// # Arguments
     ///
@@ -165,7 +167,7 @@ impl Header {
         self.remove_impl(tag, htslib::BCF_HL_STR)
     }
 
-    /// Remove a generic entry from header.
+    /// Remove a generic entry from the header.
     ///
     /// # Arguments
     ///
@@ -189,6 +191,38 @@ impl Drop for Header {
     fn drop(&mut self) {
         unsafe { htslib::bcf_hdr_destroy(self.inner) };
     }
+}
+
+/// A header record.
+#[derive(Debug)]
+pub enum HeaderRecord {
+    /// A `FILTER` header record.
+    Filter {
+        key: String,
+        values: LinearMap<String, String>,
+    },
+    /// An `INFO` header record.
+    Info {
+        key: String,
+        values: LinearMap<String, String>,
+    },
+    /// A `FORMAT` header record.
+    Format {
+        key: String,
+        values: LinearMap<String, String>,
+    },
+    /// A `contig` header record.
+    Contig {
+        key: String,
+        values: LinearMap<String, String>,
+    },
+    /// A structured header record.
+    Structured {
+        key: String,
+        values: LinearMap<String, String>,
+    },
+    /// A generic, unstructured header record.
+    Generic { key: String, value: String },
 }
 
 #[derive(Debug)]
@@ -305,7 +339,7 @@ impl HeaderView {
     }
 
     /// Convert integer representing an identifier (e.g., a `FILTER` value) to its string
-    /// name.bam
+    /// name.bam.
     pub fn id_to_name(&self, id: Id) -> Vec<u8> {
         let key = unsafe {
             ffi::CStr::from_ptr(
@@ -339,6 +373,64 @@ impl HeaderView {
             )
         };
         key.to_bytes().to_vec()
+    }
+
+    /// Return structured `HeaderRecord`s.
+    pub fn header_records(&self) -> Vec<HeaderRecord> {
+        fn parse_kv(rec: &htslib::bcf_hrec_t) -> LinearMap<String, String> {
+            let mut result: LinearMap<String, String> = LinearMap::new();
+            for i in 0_i32..(rec.nkeys) {
+                let key = unsafe {
+                    ffi::CStr::from_ptr(*rec.keys.offset(i as isize))
+                        .to_str()
+                        .unwrap()
+                        .to_string()
+                };
+                let value = unsafe {
+                    ffi::CStr::from_ptr(*rec.vals.offset(i as isize))
+                        .to_str()
+                        .unwrap()
+                        .to_string()
+                };
+                result.insert(key, value);
+            }
+            result
+        }
+
+        let mut result: Vec<HeaderRecord> = Vec::new();
+        for i in 0_i32..unsafe { (*self.inner).nhrec } {
+            let rec = unsafe { &(**(*self.inner).hrec.offset(i as isize)) };
+            let key = unsafe { ffi::CStr::from_ptr(rec.key).to_str().unwrap().to_string() };
+            let record = match rec.type_ {
+                0 => HeaderRecord::Filter {
+                    key,
+                    values: parse_kv(rec),
+                },
+                1 => HeaderRecord::Info {
+                    key,
+                    values: parse_kv(rec),
+                },
+                2 => HeaderRecord::Format {
+                    key,
+                    values: parse_kv(rec),
+                },
+                3 => HeaderRecord::Contig {
+                    key,
+                    values: parse_kv(rec),
+                },
+                4 => HeaderRecord::Structured {
+                    key,
+                    values: parse_kv(rec),
+                },
+                5 => HeaderRecord::Generic {
+                    key,
+                    value: unsafe { ffi::CStr::from_ptr(rec.value).to_str().unwrap().to_string() },
+                },
+                _ => panic!("Unknown type: {}", rec.type_),
+            };
+            result.push(record);
+        }
+        result
     }
 }
 

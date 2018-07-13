@@ -83,6 +83,8 @@ extern crate quick_error;
 extern crate regex;
 extern crate url;
 
+extern crate linear_map;
+
 #[cfg(feature = "serde")]
 extern crate serde;
 
