@@ -2,6 +2,51 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [unreleased]
+### Changes
+- Fixed `bcf::synced::SyncedReader::record()`.
+- `bam::Record::cigar()` now returns a reference (in constant time) and needs `bam::Record::unpack_cigar()` to be called first.
+
+## [0.20.0] - 2018-06-18
+### Added
+- Initial implementation of synced BCF reader interface.
+- Several small helper methods for BAM readers.
+### Changes
+- Not skipping `fileformat=` header any more.
+- BCF records are always unpacked when reading.
+
+## [0.19.1] - 2018-06-07
+### Changed
+- Moved unpacking of BCF records into constructor to prevent race conditions.
+- Fixed bug in retrieving BCF record id.
+- Fixed bug in the filter iterator of BCF.
+
+## [0.19.0] - 2018-06-01
+### Added
+- more push functions for BCF.
+
+## [0.18.0] - 2018-05-04
+### Added
+- bcf::IndexedReader
+- support for writing bcf FILTER field
+- setting thread count in all readers and writers
+- setting ID and alleles in bcf records
+- support for tabix indexes
+- convert CIGAR to and from strings
+
+## [0.17.0] - 2018-02-22
+### Added
+- Serde support for bam records.
+### Changed
+- Various convenience improvements in the API.
+
+## [0.16.0] - 2018-01-05
+### Changed
+- Raw Htslib bindings are now generated on the fly.
+- Switched to Htslib 1.6.
+- Fixed a potential dangling pointer to the header in bcf records.
+- Various small API improvements.
+
 ## [0.15.0] - 2017-12-05
 ### Changed
 - HeaderView of bam and bcf can now be cloned.

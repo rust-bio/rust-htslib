@@ -3,8 +3,12 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Rust-HTSlib provides a high level BAM API.
-//! Reading and writing BAM files is as easy as
+//! Rust-Htslib provides a high level API to working with the common HTS file formats.
+//!
+//! Htslib itself is the *de facto* standard implementation for reading and writing files for
+//! HTS alignments (SAM and BAM) as well as variant calls in VCF and BCF format.
+//!
+//! For example, reading and writing BAM files is as easy as
 //!
 //! ```
 //! use rust_htslib::bam;
@@ -64,27 +68,42 @@
 //! // afterwards, read or pileup in this region
 //! ```
 
-
-extern crate libc;
+extern crate bitflags;
+#[macro_use]
+extern crate custom_derive;
+extern crate ieee754;
 extern crate itertools;
 #[macro_use]
-extern crate quick_error;
+extern crate lazy_static;
+extern crate libc;
 #[macro_use]
 extern crate newtype_derive;
 #[macro_use]
-extern crate custom_derive;
+extern crate quick_error;
+extern crate regex;
 extern crate url;
-extern crate ieee754;
+
+extern crate linear_map;
+
+#[cfg(feature = "serde")]
+extern crate serde;
+
+#[cfg(all(test, feature = "serde"))]
+extern crate bincode;
+
+#[cfg(test)] // <-- not needed in examples + integration tests
 #[macro_use]
-extern crate lazy_static;
-extern crate bitflags;
+extern crate pretty_assertions;
+#[cfg(all(test, feature = "serde"))]
+extern crate serde_json;
 
 #[cfg(feature = "bio")]
 extern crate bio;
 
-pub mod htslib;
 pub mod bam;
 pub mod bcf;
-pub mod utils;
+pub mod htslib;
 pub mod prelude;
 pub mod sam;
+pub mod tbx;
+pub mod utils;

@@ -1,6 +1,6 @@
 [package]
 name = "rust-htslib"
-version = "0.15.0"
+version = "0.20.1-alpha.0"
 authors = ["Christopher Schröder <christopher.schroeder@tu-dortmund.de>", "Johannes Köster <johannes.koester@tu-dortmund.de>"]
 build = "build.rs"
 description = "This library provides HTSlib bindings and a high level Rust API for reading and writing BAM files."
@@ -21,10 +21,23 @@ url = "1.4"
 ieee754 = "0.2"
 lazy_static = "0.2"
 bitflags = "0.9"
-bio = { git = "https://github.com/rust-bio/rust-bio.git" , optional = true }
+regex = "1.0"
+linear-map = "1.2.0"
+serde = { version = "^1", optional = true }
+bio = { version = ">=0.20", optional = true }
+
+[features]
+default = ["bzip2", "lzma"]
+bzip2 = []
+lzma = []
+
 
 [dev-dependencies]
 tempdir = "0.3"
+bincode = "1.0"
+serde_json = "1.0"
+pretty_assertions = "0.5.1"
 
 [build-dependencies]
 fs-utils = "1.0"
+bindgen = "0.36"
