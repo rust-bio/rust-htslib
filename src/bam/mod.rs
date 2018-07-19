@@ -665,13 +665,21 @@ pub struct HeaderView {
 }
 
 impl HeaderView {
+
     /// Create a new HeaderView from a pre-populated Header object
     pub fn from_header(header: &Header) -> Self {
+        
+        let mut header_string = header.to_bytes();
+        if !header_string.is_empty() && header_string[header_string.len() - 1] != b'\n' {
+            header_string.push(b'\n');
+        }
+        Self::from_bytes(&header_string)
+    }
+
+    /// Create a new HeaderView from bytes
+    pub fn from_bytes(header_string: &[u8]) -> Self {
+
         let header_record = unsafe {
-            let mut header_string = header.to_bytes();
-            if !header_string.is_empty() && header_string[header_string.len() - 1] != b'\n' {
-                header_string.push(b'\n');
-            }
             let l_text = header_string.len();
             let text = ::libc::malloc(l_text + 1);
             ::libc::memset(text, 0, l_text + 1);
@@ -680,8 +688,11 @@ impl HeaderView {
                 header_string.as_ptr() as *const ::libc::c_void,
                 header_string.len(),
             );
-            //println!("{}", std::str::from_utf8(&header_string).unwrap());
-            let rec = htslib::sam_hdr_parse((l_text + 1) as i32, text as *const i8);
+
+            let rec = htslib::sam_hdr_parse(
+                (l_text + 1) as i32,
+                text as *const i8,
+            );
             (*rec).text = text as *mut i8;
             (*rec).l_text = l_text as u32;
             rec
