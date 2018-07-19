@@ -359,7 +359,7 @@ impl Record {
             unsafe { slice::from_raw_parts_mut((*self.inner).data, self.inner().l_data as usize) };
         utils::copy_memory(new_qname, data);
         data[new_q_len - 1] = b'\0';
-
+        self.inner_mut().core.l_extranul = 0;
         self.inner_mut().core.l_qname = new_q_len as u8;
     }
 
