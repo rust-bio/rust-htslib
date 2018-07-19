@@ -390,38 +390,47 @@ impl Record {
         }
     }
 
-    /// Return unpacked cigar string. This returns None unless you have first called
-    /// `bam::Record::UnpackCigar`.
-    pub fn cigar(&self) -> Option<&CigarStringView> {
+    /// Return unpacked cigar string. This will create a fresh copy the Cigar data.
+    pub fn cigar(&self) -> CigarStringView {
+        match self.cigar {
+            Some(ref c) => c.clone(),
+            None => self.unpack_cigar()
+        }
+    }
+
+    // Return unpacked cigar string. This returns None unless you have first called `bam::Record::cache_cigar`.
+    pub fn cigar_cached(&self) -> Option<&CigarStringView> 
+    {
         self.cigar.as_ref()
     }
 
+
+    /// Decode the cigar string and cache it inside the `Record`
+    pub fn cache_cigar(&mut self) {
+        self.cigar = Some(self.unpack_cigar())
+    }
+
     /// Unpack cigar string. Complexity: O(k) with k being the length of the cigar string.
-    pub fn unpack_cigar(&mut self) {
-        self.cigar = {
-            let raw = self.raw_cigar();
-            Some(
-                CigarString(
-                    raw.iter()
-                        .map(|&c| {
-                            let len = c >> 4;
-                            match c & 0b1111 {
-                                0 => Cigar::Match(len),
-                                1 => Cigar::Ins(len),
-                                2 => Cigar::Del(len),
-                                3 => Cigar::RefSkip(len),
-                                4 => Cigar::SoftClip(len),
-                                5 => Cigar::HardClip(len),
-                                6 => Cigar::Pad(len),
-                                7 => Cigar::Equal(len),
-                                8 => Cigar::Diff(len),
-                                _ => panic!("Unexpected cigar operation"),
-                            }
-                        })
-                        .collect(),
-                ).into_view(self.pos()),
-            )
-        };
+    fn unpack_cigar(&self) -> CigarStringView {
+        CigarString(
+            self.raw_cigar().iter()
+                .map(|&c| {
+                    let len = c >> 4;
+                    match c & 0b1111 {
+                        0 => Cigar::Match(len),
+                        1 => Cigar::Ins(len),
+                        2 => Cigar::Del(len),
+                        3 => Cigar::RefSkip(len),
+                        4 => Cigar::SoftClip(len),
+                        5 => Cigar::HardClip(len),
+                        6 => Cigar::Pad(len),
+                        7 => Cigar::Equal(len),
+                        8 => Cigar::Diff(len),
+                        _ => panic!("Unexpected cigar operation"),
+                    }
+                })
+                .collect(),
+        ).into_view(self.pos())
     }
 
     fn seq_len(&self) -> usize {
