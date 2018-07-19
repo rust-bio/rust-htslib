@@ -70,7 +70,8 @@ impl RecordBuffer {
         if let Some(tid) = self.reader.header.tid(chrom) {
             let mut deleted = 0;
             let window_start = start;
-            if self.inner.is_empty() || self.end().unwrap() < window_start
+            if self.inner.is_empty()
+                || self.end().unwrap() < window_start
                 || self.tid().unwrap() != tid as i32
                 || self.start().unwrap() > window_start
             {

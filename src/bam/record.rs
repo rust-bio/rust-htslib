@@ -70,10 +70,15 @@ impl Clone for Record {
 
 impl PartialEq for Record {
     fn eq(&self, other: &Record) -> bool {
-        self.tid() == other.tid() && self.pos() == other.pos() && self.bin() == other.bin()
-            && self.mapq() == other.mapq() && self.flags() == other.flags()
-            && self.mtid() == other.mtid() && self.mpos() == other.mpos()
-            && self.insert_size() == other.insert_size() && self.data() == other.data()
+        self.tid() == other.tid()
+            && self.pos() == other.pos()
+            && self.bin() == other.bin()
+            && self.mapq() == other.mapq()
+            && self.flags() == other.flags()
+            && self.mtid() == other.mtid()
+            && self.mpos() == other.mpos()
+            && self.insert_size() == other.insert_size()
+            && self.data() == other.data()
     }
 }
 
@@ -266,7 +271,9 @@ impl Record {
     pub fn set(&mut self, qname: &[u8], cigar: &CigarString, seq: &[u8], qual: &[u8]) {
         self.cigar = None;
 
-        self.inner_mut().l_data = (qname.len() + 1 + cigar.len() * 4
+        self.inner_mut().l_data = (qname.len()
+            + 1
+            + cigar.len() * 4
             + ((seq.len() as f32 / 2.0).ceil() as usize)
             + qual.len()) as i32;
 
@@ -394,16 +401,14 @@ impl Record {
     pub fn cigar(&self) -> CigarStringView {
         match self.cigar {
             Some(ref c) => c.clone(),
-            None => self.unpack_cigar()
+            None => self.unpack_cigar(),
         }
     }
 
     // Return unpacked cigar string. This returns None unless you have first called `bam::Record::cache_cigar`.
-    pub fn cigar_cached(&self) -> Option<&CigarStringView> 
-    {
+    pub fn cigar_cached(&self) -> Option<&CigarStringView> {
         self.cigar.as_ref()
     }
-
 
     /// Decode the cigar string and cache it inside the `Record`
     pub fn cache_cigar(&mut self) {
@@ -413,7 +418,8 @@ impl Record {
     /// Unpack cigar string. Complexity: O(k) with k being the length of the cigar string.
     fn unpack_cigar(&self) -> CigarStringView {
         CigarString(
-            self.raw_cigar().iter()
+            self.raw_cigar()
+                .iter()
                 .map(|&c| {
                     let len = c >> 4;
                     match c & 0b1111 {

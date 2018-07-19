@@ -259,7 +259,8 @@ impl Read for IndexedReader {
 
                 match self.current_region {
                     Some((rid, _start, end)) => {
-                        if record.rid().is_some() && rid == record.rid().unwrap()
+                        if record.rid().is_some()
+                            && rid == record.rid().unwrap()
                             && record.pos() <= end
                         {
                             Ok(())
