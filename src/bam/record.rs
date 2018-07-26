@@ -19,8 +19,7 @@ use bam::{AuxWriteError, HeaderView, ReadError};
 use htslib;
 use utils;
 
-#[cfg(feature = "bio")]
-use bio::alignment::{Alignment, AlignmentOperation, AlignmentMode};
+use bio_types::alignment::{Alignment, AlignmentOperation, AlignmentMode};
 
 /// A macro creating methods for flag access.
 macro_rules! flag {
@@ -804,7 +803,6 @@ impl CigarString {
 
     /// Calculate the bam cigar from the alignment struct. x is the target string
     /// and y is the reference.
-    #[cfg(feature = "bio")]
     pub fn from_alignment(alignment: &Alignment, hard_clip: bool) -> Self {
 
         match alignment.mode {
@@ -1360,12 +1358,11 @@ mod tests {
     }
 }
 
-#[cfg(feature = "bio")]
 #[cfg(test)]
 mod alignment_cigar_tests {
     use super::*;
-    use bio::alignment::{Alignment, AlignmentMode};
-     use bio::alignment::AlignmentOperation::{Match, Subst, Ins, Del, Yclip, Xclip};
+    use bio_types::alignment::{Alignment, AlignmentMode};
+    use bio_types::alignment::AlignmentOperation::{Match, Subst, Ins, Del, Yclip, Xclip};
 
     #[test]
     fn test_cigar() {

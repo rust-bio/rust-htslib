@@ -24,7 +24,7 @@ bitflags = "0.9"
 regex = "1.0"
 linear-map = "1.2.0"
 serde = { version = "^1", optional = true }
-bio = { version = ">=0.20", optional = true }
+bio-types = ">=0.1.1"
 
 [features]
 default = ["bzip2", "lzma"]
