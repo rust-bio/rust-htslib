@@ -25,11 +25,14 @@ regex = "1.0"
 linear-map = "1.2.0"
 serde = { version = "^1", optional = true }
 bio-types = ">=0.1.1"
+flame = { git = "https://github.com/TyOverby/flame.git", branch = "master", optional = true }
+flamer = { version = "^0.2.3", optional = true }
 
 [features]
 default = ["bzip2", "lzma"]
 bzip2 = []
 lzma = []
+flame_it_details = ["flame", "flamer"]
 
 [dev-dependencies]
 tempdir = "0.3"
