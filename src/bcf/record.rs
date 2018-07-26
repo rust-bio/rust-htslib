@@ -95,6 +95,11 @@ impl Record {
         }
     }
 
+    /// Force unpacking of internal record values.
+    pub fn unpack(&mut self) {
+        unsafe { htslib::bcf_unpack(self.inner, htslib::BCF_UN_ALL as i32) };
+    }
+
     /// Return associated header.
     pub fn header(&self) -> &HeaderView {
         self.header.as_ref()

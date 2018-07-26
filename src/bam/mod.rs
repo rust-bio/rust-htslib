@@ -667,11 +667,16 @@ pub struct HeaderView {
 impl HeaderView {
     /// Create a new HeaderView from a pre-populated Header object
     pub fn from_header(header: &Header) -> Self {
+        let mut header_string = header.to_bytes();
+        if !header_string.is_empty() && header_string[header_string.len() - 1] != b'\n' {
+            header_string.push(b'\n');
+        }
+        Self::from_bytes(&header_string)
+    }
+
+    /// Create a new HeaderView from bytes
+    pub fn from_bytes(header_string: &[u8]) -> Self {
         let header_record = unsafe {
-            let mut header_string = header.to_bytes();
-            if !header_string.is_empty() && header_string[header_string.len() - 1] != b'\n' {
-                header_string.push(b'\n');
-            }
             let l_text = header_string.len();
             let text = ::libc::malloc(l_text + 1);
             ::libc::memset(text, 0, l_text + 1);
@@ -680,7 +685,7 @@ impl HeaderView {
                 header_string.as_ptr() as *const ::libc::c_void,
                 header_string.len(),
             );
-            //println!("{}", std::str::from_utf8(&header_string).unwrap());
+
             let rec = htslib::sam_hdr_parse((l_text + 1) as i32, text as *const i8);
             (*rec).text = text as *mut i8;
             (*rec).l_text = l_text as u32;
@@ -861,9 +866,9 @@ CCCCCCCCCCCCCCCCCCC"[..],
             assert_eq!(rec.qname(), names[i]);
             assert_eq!(rec.flags(), flags[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
-            rec.unpack_cigar();
-            let cigar = rec.cigar().unwrap();
-            assert_eq!(**cigar, cigars[i]);
+
+            let cigar = rec.cigar();
+            assert_eq!(*cigar, cigars[i]);
 
             if let Ok(end_pos) = cigar.end_pos() {
                 assert_eq!(end_pos, rec.pos() + 100 + del_len[i]);
@@ -961,12 +966,12 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .expect("Expected successful fetch.");
         for (i, record) in bam.records().enumerate() {
             let mut rec = record.ok().expect("Expected valid record");
-            rec.unpack_cigar();
+
             println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
             assert_eq!(rec.qname(), names[i]);
             assert_eq!(rec.flags(), flags[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
-            assert_eq!(**rec.cigar().unwrap(), cigars[i]);
+            assert_eq!(*rec.cigar(), cigars[i]);
             // fix qual offset
             let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
             assert_eq!(rec.qual(), &qual[..]);
@@ -988,10 +993,9 @@ CCCCCCCCCCCCCCCCCCC"[..],
         // note: this segfaults if you push_aux() before set()
         //       because set() obliterates aux
         rec.push_aux(b"NM", &Aux::Integer(15)).unwrap();
-        rec.unpack_cigar();
 
         assert_eq!(rec.qname(), names[0]);
-        assert_eq!(**rec.cigar().unwrap(), cigars[0]);
+        assert_eq!(*rec.cigar(), cigars[0]);
         assert_eq!(rec.seq().as_bytes(), seqs[0]);
         assert_eq!(rec.qual(), quals[0]);
         assert!(rec.is_reverse());
@@ -1004,53 +1008,71 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
         assert!(names[0] != names[1]);
 
-        let mut rec = record::Record::new();
-        rec.set(names[0], &cigars[0], seqs[0], quals[0]);
-        rec.push_aux(b"NM", &Aux::Integer(15)).unwrap();
-        rec.unpack_cigar();
+        for i in 0..names.len() {
+            let mut rec = record::Record::new();
+            rec.set(names[i], &cigars[i], seqs[i], quals[i]);
+            rec.push_aux(b"NM", &Aux::Integer(15)).unwrap();
 
-        assert_eq!(rec.qname(), names[0]);
-        assert_eq!(**rec.cigar().unwrap(), cigars[0]);
-        assert_eq!(rec.seq().as_bytes(), seqs[0]);
-        assert_eq!(rec.qual(), quals[0]);
-        assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+            assert_eq!(rec.qname(), names[i]);
+            assert_eq!(*rec.cigar(), cigars[i]);
+            assert_eq!(rec.seq().as_bytes(), seqs[i]);
+            assert_eq!(rec.qual(), quals[i]);
+            assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
 
-        // Equal length qname
-        assert!(rec.qname()[0] != 'X' as u8);
-        rec.set_qname(b"X");
-        assert_eq!(rec.qname(), b"X");
+            // Equal length qname
+            assert!(rec.qname()[0] != 'X' as u8);
+            rec.set_qname(b"X");
+            assert_eq!(rec.qname(), b"X");
 
-        // Longer qname
-        let mut longer_name = names[0].to_owned().clone();
-        let extension = b"BuffaloBUffaloBUFFaloBUFFAloBUFFALoBUFFALO";
-        longer_name.extend(extension.iter());
-        rec.set_qname(&longer_name);
-        rec.unpack_cigar();
+            // Longer qname
+            let mut longer_name = names[i].to_owned().clone();
+            let extension = b"BuffaloBUffaloBUFFaloBUFFAloBUFFALoBUFFALO";
+            longer_name.extend(extension.iter());
+            rec.set_qname(&longer_name);
 
-        assert_eq!(rec.qname(), longer_name.as_slice());
-        assert_eq!(**rec.cigar().unwrap(), cigars[0]);
-        assert_eq!(rec.seq().as_bytes(), seqs[0]);
-        assert_eq!(rec.qual(), quals[0]);
-        assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+            assert_eq!(rec.qname(), longer_name.as_slice());
+            assert_eq!(*rec.cigar(), cigars[i]);
+            assert_eq!(rec.seq().as_bytes(), seqs[i]);
+            assert_eq!(rec.qual(), quals[i]);
+            assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
 
-        // Shorter qname
-        let shorter_name = b"42";
-        rec.set_qname(shorter_name);
+            // Shorter qname
+            let shorter_name = b"42";
+            rec.set_qname(shorter_name);
 
-        assert_eq!(rec.qname(), shorter_name);
-        assert_eq!(**rec.cigar().unwrap(), cigars[0]);
-        assert_eq!(rec.seq().as_bytes(), seqs[0]);
-        assert_eq!(rec.qual(), quals[0]);
-        assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+            assert_eq!(rec.qname(), shorter_name);
+            assert_eq!(*rec.cigar(), cigars[i]);
+            assert_eq!(rec.seq().as_bytes(), seqs[i]);
+            assert_eq!(rec.qual(), quals[i]);
+            assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
 
-        // Zero-length qname
-        rec.set_qname(b"");
+            // Zero-length qname
+            rec.set_qname(b"");
 
-        assert_eq!(rec.qname(), b"");
-        assert_eq!(**rec.cigar().unwrap(), cigars[0]);
-        assert_eq!(rec.seq().as_bytes(), seqs[0]);
-        assert_eq!(rec.qual(), quals[0]);
-        assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+            assert_eq!(rec.qname(), b"");
+            assert_eq!(*rec.cigar(), cigars[i]);
+            assert_eq!(rec.seq().as_bytes(), seqs[i]);
+            assert_eq!(rec.qual(), quals[i]);
+            assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+        }
+    }
+
+    #[test]
+    fn test_set_qname2() {
+        let mut _header = Header::new();
+        _header.push_record(
+            HeaderRecord::new(b"SQ")
+                .push_tag(b"SN", &"1")
+                .push_tag(b"LN", &10000000),
+        );
+        let header = HeaderView::from_header(&_header);
+
+        let line = b"blah1	0	1	1	255	1M	*	0	0	A	F	CB:Z:AAAA-1	UR:Z:AAAA	UB:Z:AAAA	GX:Z:G1	xf:i:1	fx:Z:G1\tli:i:0\ttf:Z:cC";
+
+        let mut rec = Record::from_sam(&header, line).unwrap();
+        assert_eq!(rec.qname(), b"blah1");
+        rec.set_qname(b"r0");
+        assert_eq!(rec.qname(), b"r0");
     }
 
     #[test]
@@ -1114,10 +1136,9 @@ CCCCCCCCCCCCCCCCCCC"[..],
             for i in 0..names.len() {
                 let mut rec = record::Record::new();
                 bam.read(&mut rec).ok().expect("Failed to read record.");
-                rec.unpack_cigar();
 
                 assert_eq!(rec.qname(), names[i]);
-                assert_eq!(**rec.cigar().unwrap(), cigars[i]);
+                assert_eq!(*rec.cigar(), cigars[i]);
                 assert_eq!(rec.seq().as_bytes(), seqs[i]);
                 assert_eq!(rec.qual(), quals[i]);
                 assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
@@ -1168,11 +1189,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 let idx = i % names.len();
 
                 let mut rec = _rec.expect("Failed to read record.");
-                rec.unpack_cigar();
 
                 assert_eq!(rec.pos(), i as i32);
                 assert_eq!(rec.qname(), names[idx]);
-                assert_eq!(**rec.cigar().unwrap(), cigars[idx]);
+                assert_eq!(*rec.cigar(), cigars[idx]);
                 assert_eq!(rec.seq().as_bytes(), seqs[idx]);
                 assert_eq!(rec.qual(), quals[idx]);
                 assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
@@ -1283,6 +1303,34 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
         for (b1, s1) in bam_recs.iter().zip(sam_recs.iter()) {
             assert!(b1 == s1);
+        }
+    }
+
+    #[test]
+    fn test_cigar_modes() {
+        // test the cached and uncached ways of getting the cigar string.
+
+        let (_, _, _, _, cigars) = gold();
+        let mut bam = Reader::from_path(&Path::new("test/test.bam"))
+            .ok()
+            .expect("Error opening file.");
+
+        for (i, record) in bam.records().enumerate() {
+            let mut rec = record.ok().expect("Expected valid record");
+
+            let cigar = rec.cigar();
+            assert_eq!(*cigar, cigars[i]);
+        }
+
+        for (i, record) in bam.records().enumerate() {
+            let mut rec = record.ok().expect("Expected valid record");
+            rec.cache_cigar();
+
+            let cigar = rec.cigar_cached().unwrap();
+            assert_eq!(**cigar, cigars[i]);
+
+            let cigar = rec.cigar();
+            assert_eq!(*cigar, cigars[i]);
         }
     }
 }
