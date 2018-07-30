@@ -31,7 +31,6 @@ default = ["bzip2", "lzma"]
 bzip2 = []
 lzma = []
 
-
 [dev-dependencies]
 tempdir = "0.3"
 bincode = "1.0"
