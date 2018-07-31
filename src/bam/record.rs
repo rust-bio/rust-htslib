@@ -802,7 +802,9 @@ impl CigarString {
     }
 
     /// Calculate the bam cigar from the alignment struct. x is the target string
-    /// and y is the reference.
+    /// and y is the reference. `hard_clip` controls how unaligned read bases are encoded in the
+    /// cigar string. Set to true to use the hard clip (`H`) code, or false to use soft clip
+    /// (`S`) code. See the [SAM spec](https://samtools.github.io/hts-specs/SAMv1.pdf) for more details.
     pub fn from_alignment(alignment: &Alignment, hard_clip: bool) -> Self {
 
         match alignment.mode {
