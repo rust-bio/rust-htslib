@@ -2,11 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [unreleased]
+## [0.21.0] - 2018-08-01
 ### Changes
 - Adding `bcf::Record::unpack()` for explicitely unpacking BCF records.
 - Fixed `bcf::synced::SyncedReader::record()`.
 - `bam::Record::cigar()` now returns a reference (in constant time) and needs `bam::Record::unpack_cigar()` to be called first.
+- Allow to create Cigar string from `bio_types::Alignment`.
+- Provide a cached variant of obtaining cigar string.
+- Lots of small usability improvements.
 
 ## [0.20.0] - 2018-06-18
 ### Added
