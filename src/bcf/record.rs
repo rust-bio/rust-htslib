@@ -457,7 +457,8 @@ impl Record {
     ///
     /// Returns error if tag is not present in header.
     pub fn push_format_string(&mut self, tag: &[u8], data: &[&[u8]]) -> Result<(), TagWriteError> {
-        let c_data = data.iter()
+        let c_data = data
+            .iter()
             .map(|&s| ffi::CString::new(s).unwrap())
             .collect::<Vec<ffi::CString>>();
         let c_ptrs = c_data

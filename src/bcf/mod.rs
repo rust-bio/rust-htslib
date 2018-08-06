@@ -843,7 +843,8 @@ mod tests {
             .ok()
             .expect("Error opening file.");
         bcf.set_threads(2).unwrap();
-        let rid = bcf.header()
+        let rid = bcf
+            .header()
             .name2rid(b"1")
             .expect("Translating from contig '1' to ID failed.");
         bcf.fetch(rid, 10_033, 10_060).expect("Fetching failed");

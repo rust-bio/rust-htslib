@@ -56,7 +56,8 @@ impl RecordBuffer {
         // remove records too far left or from wrong rid
         // rec.rid() will always yield Some(), because otherwise we won't put the rec into the
         // buffer.
-        let to_remove = self.ringbuffer
+        let to_remove = self
+            .ringbuffer
             .iter()
             .take_while(|rec| rec.pos() < window_start || rec.rid().unwrap() != rid)
             .count();

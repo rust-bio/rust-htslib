@@ -103,29 +103,41 @@ impl<'de> Deserialize<'de> for Record {
             where
                 V: SeqAccess<'de>,
             {
-                let tid = seq.next_element()?
+                let tid = seq
+                    .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let pos = seq.next_element()?
+                let pos = seq
+                    .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let bin = seq.next_element()?
+                let bin = seq
+                    .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let mapq = seq.next_element()?
+                let mapq = seq
+                    .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let qname_len = seq.next_element()?
+                let qname_len = seq
+                    .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let flag = seq.next_element()?
+                let flag = seq
+                    .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let n_cigar = seq.next_element()?
+                let n_cigar = seq
+                    .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let seq_len = seq.next_element()?
+                let seq_len = seq
+                    .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let mtid = seq.next_element()?
+                let mtid = seq
+                    .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let mpos = seq.next_element()?
+                let mpos = seq
+                    .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let isize = seq.next_element()?
+                let isize = seq
+                    .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let data: Vec<u8> = seq.next_element()?
+                let data: Vec<u8> = seq
+                    .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
 
                 let mut rec = Record::new();

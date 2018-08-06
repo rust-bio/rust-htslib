@@ -1296,7 +1296,8 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let mut sam = Vec::new();
         assert!(File::open(samfile).unwrap().read_to_end(&mut sam).is_ok());
 
-        let sam_recs: Vec<Record> = sam.split(|x| *x == b'\n')
+        let sam_recs: Vec<Record> = sam
+            .split(|x| *x == b'\n')
             .filter(|x| x.len() > 0 && x[0] != b'@')
             .map(|line| Record::from_sam(rdr.header(), line).unwrap())
             .collect();
