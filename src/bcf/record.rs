@@ -14,8 +14,8 @@ use std::slice;
 use ieee754::Ieee754;
 use itertools::Itertools;
 
-use bcf::header::{HeaderView, Id};
-use htslib;
+use crate::bcf::header::{HeaderView, Id};
+use crate::htslib;
 
 const MISSING_INTEGER: i32 = i32::MIN;
 const VECTOR_END_INTEGER: i32 = i32::MIN + 1;

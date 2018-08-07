@@ -7,10 +7,10 @@ use std::fmt;
 use std::iter;
 use std::slice;
 
-use htslib;
+use crate::htslib;
 
-use bam;
-use bam::record;
+use crate::bam;
+use crate::bam::record;
 
 /// Iterator over alignments of a pileup.
 pub type Alignments<'a> = iter::Map<

@@ -9,5 +9,5 @@
 //! use rust_htslib::prelude::*;
 //! ```
 
-pub use bam::Read;
-pub use bcf::record::Numeric;
+pub use crate::bam::Read;
+pub use crate::bcf::record::Numeric;

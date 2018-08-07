@@ -7,7 +7,7 @@ use std::ffi;
 use std::slice;
 use std::str;
 
-use htslib;
+use crate::htslib;
 
 use linear_map::LinearMap;
 

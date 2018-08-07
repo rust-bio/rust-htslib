@@ -15,9 +15,9 @@ use std::u32;
 use itertools::Itertools;
 use regex::Regex;
 
-use bam::{AuxWriteError, HeaderView, ReadError};
-use htslib;
-use utils;
+use crate::bam::{AuxWriteError, HeaderView, ReadError};
+use crate::htslib;
+use crate::utils;
 
 use bio_types::alignment::{Alignment, AlignmentMode, AlignmentOperation};
 

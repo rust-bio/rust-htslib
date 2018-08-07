@@ -20,11 +20,11 @@ use std::ptr;
 use std::slice;
 use url::Url;
 
-use htslib;
+use crate::htslib;
 
-pub use bam::buffer::RecordBuffer;
-pub use bam::header::Header;
-pub use bam::record::Record;
+pub use crate::bam::buffer::RecordBuffer;
+pub use crate::bam::header::Header;
+pub use crate::bam::record::Record;
 
 /// Implementation for `Read::set_threads` and `Writer::set_threads`.
 pub fn set_threads(bgzf: *mut htslib::BGZF, n_threads: usize) -> Result<(), ThreadingError> {

@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use bam::HeaderView;
+use crate::bam::HeaderView;
 use linear_map::LinearMap;
 use regex::Regex;
 use std::collections::HashMap;

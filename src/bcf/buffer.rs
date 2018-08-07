@@ -7,7 +7,7 @@ use std::collections::{vec_deque, VecDeque};
 use std::error::Error;
 use std::mem;
 
-use bcf::{self, Read};
+use crate::bcf::{self, Read};
 
 /// A buffer for BCF records. This allows access regions in a sorted BCF file while iterating
 /// over it in a single pass.
@@ -185,7 +185,7 @@ impl RecordBuffer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bcf;
+    use crate::bcf;
     use itertools::Itertools;
 
     #[test]

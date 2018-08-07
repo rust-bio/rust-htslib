@@ -48,7 +48,7 @@ use std::path::Path;
 use std::ptr;
 use url::Url;
 
-use htslib;
+use crate::htslib;
 
 /// A trait for a Tabix reader with a read method.
 pub trait Read: Sized {

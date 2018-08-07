@@ -7,8 +7,8 @@ use std::collections::{vec_deque, VecDeque};
 use std::error::Error;
 use std::str;
 
-use bam;
-use bam::Read;
+use crate::bam;
+use crate::bam::Read;
 
 /// A buffer for BAM records. This allows access regions in a sorted BAM file while iterating
 /// over it in a single pass.
@@ -152,7 +152,7 @@ quick_error! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bam;
+    use crate::bam;
     use itertools::Itertools;
 
     #[test]

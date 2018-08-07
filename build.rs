@@ -3,6 +3,8 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(rust_2018_preview)]
+
 extern crate bindgen;
 extern crate fs_utils;
 
