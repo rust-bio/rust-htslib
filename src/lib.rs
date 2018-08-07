@@ -68,6 +68,8 @@
 //! // afterwards, read or pileup in this region
 //! ```
 
+#![feature(rust_2018_preview)]
+
 extern crate bitflags;
 #[macro_use]
 extern crate custom_derive;
