@@ -79,9 +79,9 @@ use itertools;
 use lazy_static;
 use libc;
 #[macro_use]
-use newtype_derive;
+extern crate newtype_derive;
 #[macro_use]
-use quick_error;
+extern crate quick_error;
 use regex;
 use url;
 

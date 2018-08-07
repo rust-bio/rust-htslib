@@ -14,6 +14,7 @@
 use std::ffi;
 use std::path::Path;
 use std::rc::Rc;
+use quick_error::quick_error;
 
 use url::Url;
 

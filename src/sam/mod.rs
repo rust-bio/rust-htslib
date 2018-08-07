@@ -7,6 +7,7 @@
 
 use std::ffi;
 use std::path::Path;
+use quick_error::quick_error;
 
 use crate::htslib;
 

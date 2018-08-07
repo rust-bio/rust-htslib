@@ -6,6 +6,7 @@
 use std::ffi;
 use std::slice;
 use std::str;
+use custom_derive::custom_derive;
 
 use crate::htslib;
 

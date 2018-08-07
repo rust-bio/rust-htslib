@@ -12,6 +12,8 @@ use std::str;
 use std::str::FromStr;
 use std::u32;
 
+use quick_error::quick_error;
+use custom_derive::{custom_derive, NewtypeDeref};
 use itertools::Itertools;
 use regex::Regex;
 

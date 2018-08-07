@@ -10,6 +10,9 @@ use std::i32;
 use std::ptr;
 use std::rc::Rc;
 use std::slice;
+use lazy_static::{lazy_static, __lazy_static_internal, __lazy_static_create};
+use quick_error::quick_error;
+use custom_derive::{custom_derive, NewtypeDeref};
 
 use ieee754::Ieee754;
 use itertools::Itertools;

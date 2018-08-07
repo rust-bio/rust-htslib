@@ -6,6 +6,7 @@
 use std::collections::{vec_deque, VecDeque};
 use std::error::Error;
 use std::str;
+use quick_error::quick_error;
 
 use crate::bam;
 use crate::bam::Read;

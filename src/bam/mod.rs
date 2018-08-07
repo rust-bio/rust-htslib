@@ -19,6 +19,7 @@ use std::path::Path;
 use std::ptr;
 use std::slice;
 use url::Url;
+use quick_error::quick_error;
 
 use crate::htslib;
 
