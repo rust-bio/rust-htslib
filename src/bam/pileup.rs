@@ -40,7 +40,7 @@ impl Pileup {
         self.depth
     }
 
-    pub fn alignments(&self) -> Alignments {
+    pub fn alignments(&self) -> Alignments<'_> {
         self.inner().iter().map(Alignment::new)
     }
 
@@ -60,7 +60,7 @@ pub struct Alignment<'a> {
 }
 
 impl<'a> fmt::Debug for Alignment<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Alignment")
     }
 }

@@ -41,7 +41,7 @@ impl Header {
     }
 
     /// Add a record to the header.
-    pub fn push_record(&mut self, record: &HeaderRecord) -> &mut Self {
+    pub fn push_record(&mut self, record: &HeaderRecord<'_>) -> &mut Self {
         self.records.push(record.to_bytes());
         self
     }

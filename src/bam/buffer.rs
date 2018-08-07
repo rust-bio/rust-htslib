@@ -59,7 +59,7 @@ impl RecordBuffer {
         chrom: &[u8],
         start: u32,
         end: u32,
-    ) -> Result<(usize, usize), Box<Error>> {
+    ) -> Result<(usize, usize), Box<dyn Error>> {
         let mut added = 0;
         // move overflow from last fetch into ringbuffer
         if self.overflow.is_some() {
@@ -125,12 +125,12 @@ impl RecordBuffer {
     }
 
     /// Iterate over records that have been fetched with `fetch`.
-    pub fn iter(&self) -> vec_deque::Iter<bam::Record> {
+    pub fn iter(&self) -> vec_deque::Iter<'_, bam::Record> {
         self.inner.iter()
     }
 
     /// Iterate over mutable references to records that have been fetched with `fetch`.
-    pub fn iter_mut(&mut self) -> vec_deque::IterMut<bam::Record> {
+    pub fn iter_mut(&mut self) -> vec_deque::IterMut<'_, bam::Record> {
         self.inner.iter_mut()
     }
 

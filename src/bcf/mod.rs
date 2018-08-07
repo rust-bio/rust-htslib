@@ -39,7 +39,7 @@ pub trait Read: Sized {
     fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError>;
 
     /// Return an iterator over all records of the VCF/BCF file.
-    fn records(&mut self) -> Records<Self>;
+    fn records(&mut self) -> Records<'_, Self>;
 
     /// Return the header.
     fn header(&self) -> &HeaderView;
@@ -125,7 +125,7 @@ impl Read for Reader {
         }
     }
 
-    fn records(&mut self) -> Records<Self> {
+    fn records(&mut self) -> Records<'_, Self> {
         Records { reader: self }
     }
 
@@ -274,7 +274,7 @@ impl Read for IndexedReader {
         }
     }
 
-    fn records(&mut self) -> Records<Self> {
+    fn records(&mut self) -> Records<'_, Self> {
         Records { reader: self }
     }
 

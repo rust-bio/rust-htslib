@@ -52,10 +52,10 @@ pub trait Read: Sized {
     /// Note that, while being convenient, this is less efficient than pre-allocating a
     /// `Record` and reading into it with the `read` method, since every iteration involves
     /// the allocation of a new `Record`.
-    fn records(&mut self) -> Records<Self>;
+    fn records(&mut self) -> Records<'_, Self>;
 
     /// Iterator over pileups.
-    fn pileup(&mut self) -> pileup::Pileups<Self>;
+    fn pileup(&mut self) -> pileup::Pileups<'_, Self>;
 
     /// Return the BGZF struct
     fn bgzf(&self) -> *mut htslib::BGZF;
@@ -156,7 +156,7 @@ impl Reader {
     /// a valid virtual offset.
     ///
     /// * `end` - Read until the virtual offset is less than `end`
-    pub fn iter_chunk(&mut self, start: Option<i64>, end: Option<i64>) -> ChunkIterator<Self> {
+    pub fn iter_chunk(&mut self, start: Option<i64>, end: Option<i64>) -> ChunkIterator<'_, Self> {
         if let Some(pos) = start {
             self.seek(pos)
                 .expect("Failed to seek to the starting position");
@@ -183,11 +183,11 @@ impl Read for Reader {
     /// Note that, while being convenient, this is less efficient than pre-allocating a
     /// `Record` and reading into it with the `read` method, since every iteration involves
     /// the allocation of a new `Record`.
-    fn records(&mut self) -> Records<Self> {
+    fn records(&mut self) -> Records<'_, Self> {
         Records { reader: self }
     }
 
-    fn pileup(&mut self) -> pileup::Pileups<Self> {
+    fn pileup(&mut self) -> pileup::Pileups<'_, Self> {
         let _self = self as *const Self;
         let itr = unsafe {
             htslib::bam_plp_init(
@@ -308,11 +308,11 @@ impl Read for IndexedReader {
     /// Note that, while being convenient, this is less efficient than pre-allocating a
     /// `Record` and reading into it with the `read` method, since every iteration involves
     /// the allocation of a new `Record`.
-    fn records(&mut self) -> Records<Self> {
+    fn records(&mut self) -> Records<'_, Self> {
         Records { reader: self }
     }
 
-    fn pileup(&mut self) -> pileup::Pileups<Self> {
+    fn pileup(&mut self) -> pileup::Pileups<'_, Self> {
         let _self = self as *const Self;
         let itr = unsafe {
             htslib::bam_plp_init(

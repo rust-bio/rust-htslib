@@ -70,36 +70,36 @@
 
 #![feature(rust_2018_preview)]
 
-extern crate bitflags;
+use bitflags;
 #[macro_use]
-extern crate custom_derive;
-extern crate ieee754;
-extern crate itertools;
+use custom_derive;
+use ieee754;
+use itertools;
 #[macro_use]
-extern crate lazy_static;
-extern crate libc;
+use lazy_static;
+use libc;
 #[macro_use]
-extern crate newtype_derive;
+use newtype_derive;
 #[macro_use]
-extern crate quick_error;
-extern crate regex;
-extern crate url;
+use quick_error;
+use regex;
+use url;
 
-extern crate linear_map;
+use linear_map;
 
 #[cfg(feature = "serde")]
-extern crate serde;
+use serde;
 
 #[cfg(all(test, feature = "serde"))]
-extern crate bincode;
+use bincode;
 
 #[cfg(test)] // <-- not needed in examples + integration tests
 #[macro_use]
-extern crate pretty_assertions;
+use pretty_assertions;
 #[cfg(all(test, feature = "serde"))]
-extern crate serde_json;
+use serde_json;
 
-extern crate bio_types;
+use bio_types;
 
 pub mod bam;
 pub mod bcf;
