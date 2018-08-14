@@ -68,6 +68,14 @@
 //! // afterwards, read or pileup in this region
 //! ```
 
+// activate flame for the whole crate
+#![cfg_attr(feature="flame_it_details", feature(plugin))]
+#![cfg_attr(feature="flame_it_details", plugin(flamer))]
+
+#[cfg(feature="flame_it_details")]
+extern crate flame;
+
+
 extern crate bitflags;
 #[macro_use]
 extern crate custom_derive;
