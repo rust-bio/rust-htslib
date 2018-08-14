@@ -587,7 +587,6 @@ impl Record {
     );
     flag!(is_duplicate, set_duplicate, unset_duplicate, 1024u16);
     flag!(
-        #[cfg_attr(feature="flame_it_details", flame)]
         is_supplementary,
         set_supplementary,
         unset_supplementary,
