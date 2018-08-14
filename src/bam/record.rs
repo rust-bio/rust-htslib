@@ -167,7 +167,7 @@ impl Record {
     }
 
     /// Get position (0-based).
-    #[cfg_attr(feature="flame_it_details", flame)]
+    #[cfg_attr(feature = "flame_it_details", flame)]
     pub fn pos(&self) -> i32 {
         self.inner().core.pos
     }
@@ -447,7 +447,7 @@ impl Record {
     }
 
     /// Get read sequence. Complexity: O(1).
-    #[cfg_attr(feature="flame_it_details", flame)]
+    #[cfg_attr(feature = "flame_it_details", flame)]
     pub fn seq(&self) -> Seq {
         Seq {
             encoded: &self.data()[self.qname_len() + self.cigar_len() * 4..]
