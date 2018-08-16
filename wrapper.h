@@ -5,3 +5,4 @@
 #include "htslib/htslib/vcfutils.h"
 #include "htslib/htslib/tbx.h"
 #include "htslib/htslib/synced_bcf_reader.h"
+#include "htslib/htslib/kbitset.h"
