@@ -11,6 +11,11 @@
 // The following functions have to be wrapped here because they are inline in htslib.
 
 /**
+ * <div rustbindgen replaces="kbs_init2"></div>
+ */
+kbitset_t *wrap_kbs_init2(size_t ni, int fill);
+
+/**
  * <div rustbindgen replaces="kbs_init"></div>
  */
 kbitset_t *wrap_kbs_init(size_t ni);
