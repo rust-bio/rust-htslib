@@ -69,8 +69,35 @@ fn main() {
         .write_to_file(out.join("bindings.rs"))
         .expect("Could not write bindings.");
 
+    // we additionally build and link to the wrapper in order to enable redefinition of inline
+    // functions
+    if Command::new("gcc")
+        .arg("-static")
+        .arg("-fPIC")
+        .arg("-c")
+        .arg("wrapper.c")
+        .arg("-o")
+        .arg(out.join("wrapper.o"))
+        .status()
+        .unwrap()
+        .success() != true
+    {
+        panic!("failed to build wrapper.o");
+    }
+    if Command::new("ar")
+        .current_dir(&out)
+        .arg("rcs")
+        .arg("libwrapper.a")
+        .arg("wrapper.o")
+        .status()
+        .unwrap()
+        .success() != true
+    {
+        panic!("failed to build wrapper.a");
+    }
+
     println!(
-        "cargo:rustc-flags=-L {out}/htslib -L {out} -l static=hts -l z {lzma} {bzip2}",
+        "cargo:rustc-flags=-L {out}/htslib -L {out} -l static=hts -l static=wrapper -l z {lzma} {bzip2}",
         out = out.to_str().unwrap(),
         lzma = if use_lzma { "-l lzma" } else { "" },
         bzip2 = if use_bzip2 { "-l bz2" } else { "" },

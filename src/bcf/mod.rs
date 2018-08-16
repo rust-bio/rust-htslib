@@ -1037,6 +1037,18 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_remove_alleles() {
+        let mut bcf = Reader::from_path(&"test/test_multi.bcf").unwrap();
+        for res in bcf.records() {
+            let mut record = res.unwrap();
+            if record.pos() == 10080 {
+                record.remove_alleles(&[false, false, true]).unwrap();
+                assert_eq!(record.alleles(), [b"A", b"C"]);
+            }
+        }
+    }
+
     // Helper function reading full file into string.
     fn read_all<P: AsRef<Path>>(path: P) -> String {
         let mut file = File::open(path.as_ref())

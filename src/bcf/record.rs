@@ -13,9 +13,11 @@ use std::slice;
 
 use ieee754::Ieee754;
 use itertools::Itertools;
+use bv::BitSlice;
 
 use bcf::header::{HeaderView, Id};
 use htslib;
+use utils;
 
 const MISSING_INTEGER: i32 = i32::MIN;
 const VECTOR_END_INTEGER: i32 = i32::MIN + 1;
@@ -588,12 +590,18 @@ impl Record {
 
     pub fn remove_alleles(&mut self, remove: &[bool]) -> Result<(), RemoveAllelesError> {
         let rm_set = unsafe { htslib::kbs_init(remove.len()) };
+
         for (i, &r) in remove.iter().enumerate() {
             if r {
-                unsafe { htslib::kbs_insert(rm_set, i); }
+                unsafe { htslib::kbs_insert(rm_set, i as i32); }
             }
         }
-        match unsafe { htslib::bcf_remove_allele_set(self.header().inner, self.inner, rm_set) } {
+
+        let ret = unsafe { htslib::bcf_remove_allele_set(self.header().inner, self.inner, rm_set) };
+
+        unsafe { htslib::kbs_destroy(rm_set); }
+
+        match ret {
             -1 => Err(RemoveAllelesError::Some),
             _  => Ok(())
         }
