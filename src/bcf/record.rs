@@ -11,13 +11,11 @@ use std::ptr;
 use std::rc::Rc;
 use std::slice;
 
-use bv::BitSlice;
 use ieee754::Ieee754;
 use itertools::Itertools;
 
 use bcf::header::{HeaderView, Id};
 use htslib;
-use utils;
 
 const MISSING_INTEGER: i32 = i32::MIN;
 const VECTOR_END_INTEGER: i32 = i32::MIN + 1;
