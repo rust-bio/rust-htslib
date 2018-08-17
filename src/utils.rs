@@ -5,13 +5,13 @@
 
 //! Module with utility code.
 
+use bv::BitVec;
+use bv::{BitSlice, Bits};
+use htslib;
 use std::ffi;
+use std::mem;
 use std::path::Path;
 use std::ptr;
-use bv::BitVec;
-use htslib;
-use std::mem;
-use bv::{BitSlice, Bits};
 
 /// Copies data from `src` to `dst`
 /// TODO remove once stable in standard library.
@@ -37,7 +37,7 @@ pub fn path_to_cstring<P: AsRef<Path>>(path: &P) -> Option<ffi::CString> {
         .and_then(|p| ffi::CString::new(p).ok())
 }
 
-// 
+//
 // pub fn kbitset(values: &[bool]) -> *mut htslib::kbitset_t {
 //     let block_size = mem::size_of::<u64>();
 //     let n = (values.len() + block_size - 1) / block_size;

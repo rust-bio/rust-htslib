@@ -11,9 +11,9 @@ use std::ptr;
 use std::rc::Rc;
 use std::slice;
 
+use bv::BitSlice;
 use ieee754::Ieee754;
 use itertools::Itertools;
-use bv::BitSlice;
 
 use bcf::header::{HeaderView, Id};
 use htslib;
@@ -593,17 +593,21 @@ impl Record {
 
         for (i, &r) in remove.iter().enumerate() {
             if r {
-                unsafe { htslib::kbs_insert(rm_set, i as i32); }
+                unsafe {
+                    htslib::kbs_insert(rm_set, i as i32);
+                }
             }
         }
 
         let ret = unsafe { htslib::bcf_remove_allele_set(self.header().inner, self.inner, rm_set) };
 
-        unsafe { htslib::kbs_destroy(rm_set); }
+        unsafe {
+            htslib::kbs_destroy(rm_set);
+        }
 
         match ret {
             -1 => Err(RemoveAllelesError::Some),
-            _  => Ok(())
+            _ => Ok(()),
         }
     }
 }

@@ -94,9 +94,9 @@ extern crate bincode;
 #[cfg(test)] // <-- not needed in examples + integration tests
 #[macro_use]
 extern crate pretty_assertions;
+extern crate bv;
 #[cfg(all(test, feature = "serde"))]
 extern crate serde_json;
-extern crate bv;
 
 extern crate bio_types;
 
