@@ -579,9 +579,32 @@ impl Record {
     }
 
     /// Remove unused alleles.
-    pub fn trim_alleles(&mut self) -> Result<(), TrimAllelesError> {
+    pub fn trim_alleles(&mut self) -> Result<(), RemoveAllelesError> {
         match unsafe { htslib::bcf_trim_alleles(self.header().inner, self.inner) } {
-            -1 => Err(TrimAllelesError::Some),
+            -1 => Err(RemoveAllelesError::Some),
+            _ => Ok(()),
+        }
+    }
+
+    pub fn remove_alleles(&mut self, remove: &[bool]) -> Result<(), RemoveAllelesError> {
+        let rm_set = unsafe { htslib::kbs_init(remove.len()) };
+
+        for (i, &r) in remove.iter().enumerate() {
+            if r {
+                unsafe {
+                    htslib::kbs_insert(rm_set, i as i32);
+                }
+            }
+        }
+
+        let ret = unsafe { htslib::bcf_remove_allele_set(self.header().inner, self.inner, rm_set) };
+
+        unsafe {
+            htslib::kbs_destroy(rm_set);
+        }
+
+        match ret {
+            -1 => Err(RemoveAllelesError::Some),
             _ => Ok(()),
         }
     }
@@ -968,7 +991,7 @@ quick_error! {
 
 quick_error! {
     #[derive(Debug, Clone)]
-    pub enum TrimAllelesError {
+    pub enum RemoveAllelesError {
         Some {
             description("error trimming alleles")
         }
