@@ -4,6 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.21.0] - 2018-08-01
 ### Changes
+- Adding `bcf::synced::SyncedReader::fetch()`, changing error type for `bcf::synced::SyncedReader::read_next()`.
 - Adding `bcf::Record::unpack()` for explicitely unpacking BCF records.
 - Fixed `bcf::synced::SyncedReader::record()`.
 - `bam::Record::cigar()` now returns a reference (in constant time) and needs `bam::Record::unpack_cigar()` to be called first.

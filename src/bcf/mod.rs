@@ -339,6 +339,9 @@ pub mod synced {
 
         /// RC's of `HeaderView`s of the readers.
         headers: Vec<Rc<HeaderView>>,
+
+        /// The position of the previous fetch, if any.
+        current_region: Option<(u32, u32, u32)>,
     }
 
     // TODO: add interface for setting threads, ensure that the pool is freed properly
@@ -352,6 +355,7 @@ pub mod synced {
                 Ok(SyncedReader {
                     inner: inner,
                     headers: Vec::new(),
+                    current_region: None,
                 })
             }
         }
@@ -411,12 +415,36 @@ pub mod synced {
         }
 
         /// Read next line and return number of readers that have the given line.
-        pub fn read_next(&mut self) -> Result<u32, BCFError> {
+        pub fn read_next(&mut self) -> Result<u32, ReadError> {
             let num = unsafe { ::htslib::bcf_sr_next_line(self.inner) as u32 };
-            if unsafe { (*self.inner).errnum } != 0 {
-                Err(BCFError::Some)
+
+            if num == 0 {
+                if unsafe { (*self.inner).errnum } != 0 {
+                    Err(ReadError::Invalid)
+                } else {
+                    Ok(0)
+                }
             } else {
-                Ok(num)
+                assert!(num > 0, "Must not be negative");
+                match self.current_region {
+                    Some((rid, _start, end)) => {
+                        for idx in 0..self.reader_count() {
+                            if !self.has_line(idx) {
+                                continue;
+                            }
+                            unsafe {
+                                let record = *(*(*self.inner).readers.offset(idx as isize))
+                                    .buffer
+                                    .offset(0);
+                                if (*record).rid != (rid as i32) || (*record).pos >= (end as i32) {
+                                    return Err(ReadError::NoMoreRecord);
+                                }
+                            }
+                        }
+                        Ok(num)
+                    }
+                    None => Ok(num),
+                }
             }
         }
 
@@ -454,6 +482,28 @@ pub mod synced {
                 panic!("Invalid reader!");
             } else {
                 &self.headers[idx as usize]
+            }
+        }
+
+        /// Jump to the given region.
+        ///
+        /// # Arguments
+        ///
+        /// * `rid` - numeric ID of the reference to jump to; use `HeaderView::name2rid` for resolving
+        ///           contig name to ID.
+        /// * `start` - `0`-based start coordinate of region on reference.
+        /// * `end` - `0`-based end coordinate of region on reference.
+        pub fn fetch(&mut self, rid: u32, start: u32, end: u32) -> Result<(), FetchError> {
+            let contig = {
+                let contig = self.header(0).rid2name(rid).clone();
+                ffi::CString::new(contig).unwrap()
+            };
+            let contig = contig.as_ptr();
+            if unsafe { htslib::bcf_sr_seek(self.inner, contig, start as i32) } != 0 {
+                Err(FetchError::Some)
+            } else {
+                self.current_region = Some((rid, start, end));
+                Ok(())
             }
         }
     }
@@ -1181,6 +1231,37 @@ mod tests {
         reader.add_reader(&"test/test_right.vcf.gz").unwrap();
         assert_eq!(reader.reader_count(), 2);
 
+        let res1 = reader.read_next();
+        assert_eq!(res1.unwrap(), 2);
+        assert!(reader.has_line(0));
+        assert!(reader.has_line(1));
+
+        let res2 = reader.read_next();
+        assert_eq!(res2.unwrap(), 1);
+        assert!(reader.has_line(0));
+        assert!(!reader.has_line(1));
+
+        let res3 = reader.read_next();
+        assert_eq!(res3.unwrap(), 1);
+        assert!(!reader.has_line(0));
+        assert!(reader.has_line(1));
+
+        let res4 = reader.read_next();
+        assert_eq!(res4.unwrap(), 0);
+    }
+
+    #[test]
+    fn test_synced_reader_fetch() {
+        let mut reader = synced::SyncedReader::new().unwrap();
+        reader.set_require_index(true);
+        reader.set_pairing(synced::pairing::SNPS);
+
+        assert_eq!(reader.reader_count(), 0);
+        reader.add_reader(&"test/test_left.vcf.gz").unwrap();
+        reader.add_reader(&"test/test_right.vcf.gz").unwrap();
+        assert_eq!(reader.reader_count(), 2);
+
+        reader.fetch(0, 0, 1000).unwrap();
         let res1 = reader.read_next();
         assert_eq!(res1.unwrap(), 2);
         assert!(reader.has_line(0));
