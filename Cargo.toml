@@ -13,6 +13,9 @@ documentation = "https://docs.rs/rust-htslib"
 
 [dependencies]
 libc = "0.2"
+libz-sys ="1.0"
+bzip2-sys = { version = "0.1.6", git = "https://github.com/alexcrichton/bzip2-rs.git", optional = true }
+lzma-sys = { version = "0.1.10", optional = true }
 itertools = "0.6"
 quick-error = "1.2"
 newtype_derive = "0.1"
@@ -28,8 +31,8 @@ bio-types = ">=0.1.1"
 
 [features]
 default = ["bzip2", "lzma"]
-bzip2 = []
-lzma = []
+bzip2 = ["bzip2-sys"]
+lzma = ["lzma-sys"]
 
 [dev-dependencies]
 tempdir = "0.3"
@@ -40,3 +43,4 @@ pretty_assertions = "0.5.1"
 [build-dependencies]
 fs-utils = "1.0"
 bindgen = "0.36"
+cc = "1.0"

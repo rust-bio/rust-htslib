@@ -98,6 +98,8 @@ extern crate pretty_assertions;
 extern crate serde_json;
 
 extern crate bio_types;
+#[cfg(feature = "bzip2")]
+extern crate bzip2_sys;
 
 pub mod bam;
 pub mod bcf;
