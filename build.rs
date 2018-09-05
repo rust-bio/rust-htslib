@@ -34,7 +34,7 @@ fn sed_htslib_makefile(out: &PathBuf, patterns: &Vec<&str>, feature: &str) {
 fn main() {
     let out = PathBuf::from(env::var("OUT_DIR").unwrap());
     let mut cfg = cc::Build::new();
-    cfg.warnings(false).static_flag(true);
+    cfg.warnings(false).static_flag(true).pic(true);
 
     if let Ok(z_inc) = env::var("DEP_Z_INCLUDE") {
         cfg.include(z_inc);
@@ -102,11 +102,4 @@ fn main() {
     println!("cargo:include={}", include.display());
     println!("cargo:libdir={}", out.display());
     println!("cargo:rustc-link-lib=static=hts");
-    println!("cargo:rustc-link-lib=static=z");
-    if use_bzip2 {
-        println!("cargo:rustc-link-lib=static=bz2");
-    }
-    if use_lzma {
-        println!("cargo:rustc-link-lib=static=lzma");
-    }
 }

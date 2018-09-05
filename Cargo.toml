@@ -13,7 +13,7 @@ documentation = "https://docs.rs/rust-htslib"
 
 [dependencies]
 libc = "0.2"
-libz-sys ="1.0"
+libz-sys = "1.0"
 bzip2-sys = { version = "0.1.6", git = "https://github.com/alexcrichton/bzip2-rs.git", optional = true }
 lzma-sys = { version = "0.1.10", optional = true }
 itertools = "0.6"
