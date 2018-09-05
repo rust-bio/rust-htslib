@@ -23,7 +23,7 @@ addons:
       - kalakris-cmake
 
 before_script:
-  - cargo install --force cargo-travis
+  - cargo install cargo-travis || true
   - export PATH=$HOME/.cargo/bin:$PATH
   - rustup component add rustfmt-preview
   - rustup target add x86_64-unknown-linux-musl
