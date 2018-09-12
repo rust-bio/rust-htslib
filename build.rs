@@ -4,11 +4,13 @@
 // except according to those terms.
 
 extern crate bindgen;
+extern crate cc;
 extern crate fs_utils;
 
 use fs_utils::copy::copy_directory;
 
 use std::env;
+use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -31,6 +33,13 @@ fn sed_htslib_makefile(out: &PathBuf, patterns: &Vec<&str>, feature: &str) {
 
 fn main() {
     let out = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let mut cfg = cc::Build::new();
+    cfg.warnings(false).static_flag(true).pic(true);
+
+    if let Ok(z_inc) = env::var("DEP_Z_INCLUDE") {
+        cfg.include(z_inc);
+    }
+
     if !out.join("htslib").exists() {
         copy_directory("htslib", &out).unwrap();
     }
@@ -39,17 +48,28 @@ fn main() {
     if !use_bzip2 {
         let bzip2_patterns = vec!["s/ -lbz2//", "/#define HAVE_LIBBZ2/d"];
         sed_htslib_makefile(&out, &bzip2_patterns, "bzip2");
+    } else if let Ok(inc) = env::var("DEP_BZIP2_ROOT")
+        .map(PathBuf::from)
+        .map(|path| path.join("include"))
+    {
+        cfg.include(inc);
     }
 
     let use_lzma = env::var("CARGO_FEATURE_LZMA").is_ok();
     if !use_lzma {
         let lzma_patterns = vec!["s/ -llzma//", "/#define HAVE_LIBLZMA/d"];
         sed_htslib_makefile(&out, &lzma_patterns, "lzma");
+    } else if let Ok(inc) = env::var("DEP_LZMA_INCLUDE").map(PathBuf::from) {
+        cfg.include(inc);
     }
 
+    let tool = cfg.get_compiler();
+    let (cc_path, cflags_env) = (tool.path(), tool.cflags_env());
+    let cc_cflags = cflags_env.to_string_lossy().replace("-O0", "");
     if Command::new("make")
         .current_dir(out.join("htslib"))
-        .arg("CFLAGS=-g -Wall -O2 -fPIC")
+        .arg(format!("CC={}", cc_path.display()))
+        .arg(format!("CFLAGS={}", cc_cflags))
         .arg("lib-static")
         .arg("-B")
         .status()
@@ -59,47 +79,27 @@ fn main() {
         panic!("failed to build htslib");
     }
 
-    let bindings = bindgen::Builder::default()
+    cfg.file("wrapper.c").compile("wrapper");
+
+    bindgen::Builder::default()
         .header("wrapper.h")
         .generate_comments(false)
         .blacklist_type("max_align_t")
         .generate()
-        .expect("Unable to generate bindings.");
-    bindings
+        .expect("Unable to generate bindings.")
         .write_to_file(out.join("bindings.rs"))
         .expect("Could not write bindings.");
 
-    // we additionally build and link to the wrapper in order to enable redefinition of inline
-    // functions
-    if Command::new("gcc")
-        .arg("-static")
-        .arg("-fPIC")
-        .arg("-c")
-        .arg("wrapper.c")
-        .arg("-o")
-        .arg(out.join("wrapper.o"))
-        .status()
-        .unwrap()
-        .success() != true
-    {
-        panic!("failed to build wrapper.o");
+    let include = out.join("include");
+    fs::create_dir_all(&include).unwrap();
+    if include.join("htslib").exists() {
+        fs::remove_dir_all(include.join("htslib")).expect("remove exist include dir");
     }
-    if Command::new("ar")
-        .current_dir(&out)
-        .arg("rcs")
-        .arg("libwrapper.a")
-        .arg("wrapper.o")
-        .status()
-        .unwrap()
-        .success() != true
-    {
-        panic!("failed to build wrapper.a");
-    }
+    copy_directory(out.join("htslib").join("htslib"), &include).unwrap();
+    fs::copy(out.join("htslib").join("libhts.a"), out.join("libhts.a")).unwrap();
 
-    println!(
-        "cargo:rustc-flags=-L {out}/htslib -L {out} -l static=hts -l static=wrapper -l z {lzma} {bzip2}",
-        out = out.to_str().unwrap(),
-        lzma = if use_lzma { "-l lzma" } else { "" },
-        bzip2 = if use_bzip2 { "-l bz2" } else { "" },
-    );
+    println!("cargo:root={}", out.display());
+    println!("cargo:include={}", include.display());
+    println!("cargo:libdir={}", out.display());
+    println!("cargo:rustc-link-lib=static=hts");
 }

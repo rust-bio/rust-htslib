@@ -15,20 +15,31 @@ addons:
       - libelf-dev
       - libdw-dev
       - binutils-dev
+      - libiberty-dev
       - cmake
+      - musl
+      - musl-dev
+      - musl-tools
     sources:
       - kalakris-cmake
 
 before_script:
-  - cargo install --force cargo-travis
+  - cargo install cargo-travis || true
   - export PATH=$HOME/.cargo/bin:$PATH
   - rustup component add rustfmt-preview
+  - rustup target add x86_64-unknown-linux-musl
 
 script:
   - cargo fmt --version
   - cargo fmt -- --check
   - cargo build
   - cargo test
+  - cargo build --no-default-features
+  - cargo test --no-default-features
+  - cargo build --target x86_64-unknown-linux-musl
+  - cargo test --target x86_64-unknown-linux-musl
+  - cargo build --target x86_64-unknown-linux-musl --no-default-features
+  - cargo test --target x86_64-unknown-linux-musl --no-default-features
 
 after_success:
   - cargo coveralls
