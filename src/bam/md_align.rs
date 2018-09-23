@@ -1184,7 +1184,9 @@ impl<'a> MatchDescIter<'a> {
     /// If the record does not have a string-valued MD aux field, an
     /// error variant is returned.
     pub fn new_from_record(record: &'a bam::record::Record) -> Result<Self, MDAlignError> {
-        Ok(Self::new(record.aux_md().ok_or_else(|| MDAlignError::NoMD)?))
+        Ok(Self::new(
+            record.aux_md().ok_or_else(|| MDAlignError::NoMD)?,
+        ))
     }
 
     // Requires self.md is non-empty, guaranteed to yield a MatchDesc
@@ -1406,10 +1408,7 @@ mod tests {
             let mut rec = record.ok().expect("Error reading BAM record");
             assert_eq!(rec.qname(), TEST_READ_NAMES[i]);
 
-            assert_eq!(
-                rec.get_md().ok().expect("No MD field"),
-                TEST_MD[i]
-            );
+            assert_eq!(rec.aux_md().unwrap(), TEST_MD[i]);
             assert_eq!(rec.cigar().to_string(), TEST_CIGAR[i]);
 
             let ap_iter = AlignPosIter::new_from_record(&rec)
