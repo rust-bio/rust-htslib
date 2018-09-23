@@ -590,6 +590,19 @@ impl Record {
         unset_supplementary,
         2048u16
     );
+
+    /// Shorthand to return MD aux field bytestring from a BAM
+    /// record. If the record doesn't have an MD field, or the field
+    /// isn't a string field, then `None` is returned.
+    pub fn aux_md(&self) -> Option<&[u8]> {
+        self.aux(b"MD").map_or(
+            None,
+            |aux| match aux {
+                Aux::String(md) => Some(md),
+                _ => None,
+            },
+        )
+    }
 }
 
 impl Drop for Record {

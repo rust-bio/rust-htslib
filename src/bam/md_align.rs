@@ -1037,7 +1037,7 @@ impl MatchDesc {
     /// If `record` has no MD aux field, or if the value of the aux field is malformed,
     /// an error variant will be returned.
     pub fn parse_from_record(record: &bam::record::Record) -> Result<Vec<MatchDesc>, MDAlignError> {
-        Self::parse(Self::get_md(record)?)
+        Self::parse(record.aux_md().ok_or_else(|| MDAlignError::NoMD)?)
     }
 
     /// Parses a bytestring as an MD aux field description.
@@ -1156,25 +1156,6 @@ impl MatchDesc {
 
         mdstr
     }
-
-    /// Extract an MD aux field bytestring from a BAM record.
-    ///
-    /// # Arguments
-    ///
-    /// * `rec` is the record whose MD aux field is extracted
-    ///
-    /// # Errors
-    ///
-    /// If `rec` does not have a string type MD aux field, an error variant is returned.
-    pub fn get_md(rec: &bam::record::Record) -> Result<&[u8], MDAlignError> {
-        rec.aux(b"MD").map_or_else(
-            || Err(MDAlignError::NoMD),
-            |aux| match aux {
-                bam::record::Aux::String(md) => Ok(md),
-                _ => Err(MDAlignError::NoMD),
-            },
-        )
-    }
 }
 
 /// Iterator over `MatchDesc` entries in an MD aux field
@@ -1203,7 +1184,7 @@ impl<'a> MatchDescIter<'a> {
     /// If the record does not have a string-valued MD aux field, an
     /// error variant is returned.
     pub fn new_from_record(record: &'a bam::record::Record) -> Result<Self, MDAlignError> {
-        Ok(Self::new(MatchDesc::get_md(record)?))
+        Ok(Self::new(record.aux_md().ok_or_else(|| MDAlignError::NoMD)?))
     }
 
     // Requires self.md is non-empty, guaranteed to yield a MatchDesc
@@ -1426,7 +1407,7 @@ mod tests {
             assert_eq!(rec.qname(), TEST_READ_NAMES[i]);
 
             assert_eq!(
-                MatchDesc::get_md(&rec).ok().expect("No MD field"),
+                rec.get_md().ok().expect("No MD field"),
                 TEST_MD[i]
             );
             assert_eq!(rec.cigar().to_string(), TEST_CIGAR[i]);
