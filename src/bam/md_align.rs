@@ -6,27 +6,60 @@ use bio_types::alignment::{Alignment, AlignmentMode, AlignmentOperation};
 use bam;
 use bam::record::{Cigar, CigarString};
 
-/// Position in a BAM record alignment, based on CIGAR and MD
-/// information.
-pub trait MDAlignPos {
+/// Alignment position on a BAM record, reconstructed using read
+/// sequence information along with the Cigar string and the MD Aux
+/// field.
+pub struct MDAlignPos<'a> {
+    record: &'a bam::record::Record,
+    pos: CigarMDPos,
+}
+
+impl<'a> MDAlignPos<'a> {
+    fn new(record: &'a bam::record::Record, pos: CigarMDPos) -> Self {
+        MDAlignPos {
+            record: record,
+            pos: pos,
+        }
+    }
+
+    fn read_nt_at(&self, at: u32) -> u8 {
+        self.record.seq()[at as usize]
+    }
+
+    fn qual_at(&self, at: u32) -> u8 {
+        self.record.qual()[at as usize]
+    }
+
     /// Read nucleotide sequence as reported in the BAM
     /// alignment. _Note_ that this is the complement of the read
     /// sequence itself for reverse-strand alignments.
     ///
     /// `None` is returned for read deletions.
-    fn read_nt(&self) -> Option<u8>;
+    pub fn read_nt(&self) -> Option<u8> {
+        self.pos.read_seq_pos().map(|pos| self.read_nt_at(pos))
+    }
 
     /// Reference nucleotide sequence as reported in the BAM alignment.
     ///
     /// `None` is returned for read insertions and
     /// soft clipped positions.
-    fn ref_nt(&self) -> Option<u8>;
+    pub fn ref_nt(&self) -> Option<u8> {
+        self.pos.ref_nt().or_else(|| {
+            if self.ref_pos().is_some() {
+                self.read_nt()
+            } else {
+                None
+            }
+        })
+    }
 
     /// Read nucleotide quality score as reported in the BAM
     /// alignment.
     ///
     /// `None` is returned at read deletion positions.
-    fn read_qual(&self) -> Option<u8>;
+    pub fn read_qual(&self) -> Option<u8> {
+        self.pos.read_seq_pos().map(|pos| self.qual_at(pos))
+    }
 
     /// Zero-based offset in the read sequence as reported in the BAM
     /// alignment. _Note_ that these positions will run from the last
@@ -34,41 +67,65 @@ pub trait MDAlignPos {
     /// reverse-strand alignments.
     ///
     /// `None is returned for read deletions.
-    fn read_seq_pos(&self) -> Option<u32>;
+    pub fn read_seq_pos(&self) -> Option<u32> {
+        self.pos.read_seq_pos()
+    }
 
     /// Zero-based offset in the read sequence as reported in the BAM
     /// alignment. For read deletions, the offset of the next aligned
     /// read sequence nucleotide is reported. _Note_ that these
     /// positions will run from the last to the first base in the
     /// original input sequence for reverse-strand alignments.
-    fn read_seq_pos_or_next(&self) -> u32;
+    pub fn read_seq_pos_or_next(&self) -> u32 {
+        self.pos.read_seq_pos_or_next()
+    }
 
     /// Zero-based offset in the reference sequence.
     ///
     /// `None` is returned for read insertions and
     /// soft clipped positions.
-    fn ref_pos(&self) -> Option<u32>;
+    pub fn ref_pos(&self) -> Option<u32> {
+        self.pos.ref_pos()
+    }
 
     /// Zero-based offset in the reference sequence. For read
     /// insertions, the offset of the next aligned reference sequence
     /// nucleotide is reported.
     ///
     /// `None` is returned for soft clipped positions.
-    fn ref_pos_or_next(&self) -> Option<u32>;
+    pub fn ref_pos_or_next(&self) -> Option<u32> {
+        self.pos.ref_pos_or_next()
+    }
 
     /// Zero-based offset for this position in the original input read
     /// sequence. Position 0 is the first nucleotide from the input
     /// read sequence for either forward or reverse strand alignments.
     ///
     /// `None` is returned for read deletions.
-    fn read_true_pos(&self) -> Option<u32>;
+    pub fn read_true_pos(&self) -> Option<u32> {
+        self.read_seq_pos().map(|seq_pos| {
+            if self.record.is_reverse() {
+                self.record.qual().len() as u32 - (1 + seq_pos)
+            } else {
+                seq_pos
+            }
+        })
+    }
 
     /// Nucleotide in the original input read sequence, taking into
     /// account the fact that reverse-strand alignments report the
     /// reverse-complement of the input read sequence.
     ///
     /// `None` is returned for read deletions.
-    fn read_true_nt(&self) -> Option<u8>;
+    pub fn read_true_nt(&self) -> Option<u8> {
+        self.read_nt().map(|nt| {
+            if self.record.is_reverse() {
+                fast_compl(nt)
+            } else {
+                nt
+            }
+        })
+    }
 
     /// Nucleotide for the reference sequence that is matched against
     /// `read_true_nt()`. _Note_ that this is the complement of the
@@ -77,13 +134,21 @@ pub trait MDAlignPos {
     ///
     /// `None` is returned for read insertions and soft-clipped
     /// positions.
-    fn ref_true_nt(&self) -> Option<u8>;
+    pub fn ref_true_nt(&self) -> Option<u8> {
+        self.ref_nt().map(|nt| {
+            if self.record.is_reverse() {
+                fast_compl(nt)
+            } else {
+                nt
+            }
+        })
+    }
 
     /// Character for read sequence line in pretty-printed alignment
     /// format. This character is the read sequence base, in
     /// lower-case for soft-clipped positions, or a `-` for read
     /// deletions.
-    fn read_line_char(&self) -> char {
+    pub fn read_line_char(&self) -> char {
         if self.ref_pos_or_next().is_none() {
             self.read_nt()
                 .map_or('-', |nt| nt.to_ascii_lowercase() as char)
@@ -95,7 +160,7 @@ pub trait MDAlignPos {
     /// Character for middle match line in pretty-printed alignment
     /// format. This is a vertical bar at match positions and a space
     /// otherwise.
-    fn match_line_char(&self) -> char {
+    pub fn match_line_char(&self) -> char {
         let read = self.read_nt();
         if read.is_some() && read == self.ref_nt() {
             '|'
@@ -108,7 +173,7 @@ pub trait MDAlignPos {
     /// alignment format. This character is the reference sequence
     /// base when present, a `-` for read insertions, and a space for
     /// soft-clipped positions.
-    fn ref_line_char(&self) -> char {
+    pub fn ref_line_char(&self) -> char {
         self.ref_nt().map_or_else(
             || {
                 if self.ref_pos_or_next().is_none() {
@@ -122,324 +187,55 @@ pub trait MDAlignPos {
     }
 }
 
-/// Self-contained data type containing all information about an
-/// alignment position in a BAM record.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AlignPos {
-    ref_nt: Option<u8>,
-    read_nt_qual: Option<(u8, u8)>,
-    is_reverse: bool,
-    read_seq_pos_or_next: u32,
-    ref_pos_or_next: Option<u32>,
-    read_len: u32,
-}
-
-impl MDAlignPos for AlignPos {
-    fn read_nt(&self) -> Option<u8> {
-        self.read_nt_qual.as_ref().map(|(nt, _q)| *nt)
-    }
-
-    fn ref_nt(&self) -> Option<u8> {
-        self.ref_nt
-    }
-
-    fn read_qual(&self) -> Option<u8> {
-        self.read_nt_qual.as_ref().map(|(_nt, q)| *q)
-    }
-
-    fn read_seq_pos(&self) -> Option<u32> {
-        if self.read_nt_qual.is_some() {
-            Some(self.read_seq_pos_or_next)
-        } else {
-            None
-        }
-    }
-
-    fn read_seq_pos_or_next(&self) -> u32 {
-        self.read_seq_pos_or_next
-    }
-
-    fn ref_pos(&self) -> Option<u32> {
-        if self.ref_nt.is_some() {
-            self.ref_pos_or_next
-        } else {
-            None
-        }
-    }
-
-    fn ref_pos_or_next(&self) -> Option<u32> {
-        self.ref_pos_or_next
-    }
-
-    fn read_true_pos(&self) -> Option<u32> {
-        self.read_seq_pos().map(|seq_pos| {
-            if self.is_reverse {
-                self.read_len - (1 + seq_pos)
-            } else {
-                seq_pos
-            }
-        })
-    }
-
-    fn read_true_nt(&self) -> Option<u8> {
-        self.read_nt().map(|seq_nt| {
-            if self.is_reverse {
-                fast_compl(seq_nt)
-            } else {
-                seq_nt
-            }
-        })
-    }
-
-    fn ref_true_nt(&self) -> Option<u8> {
-        self.ref_nt().map(|seq_nt| {
-            if self.is_reverse {
-                fast_compl(seq_nt)
-            } else {
-                seq_nt
-            }
-        })
-    }
-}
-
-/// Iterator that generates `AlignPos` alignment positions for a BAM
+/// Iterator that generates `MDAlignPos` alignment positions for a BAM
 /// record.
 ///
 /// Note that these positions are generated in reference sequence
 /// order. For a reverse-strand alignment, they run from the last to
 /// the first sequenced base.
-pub struct AlignPosIter {
-    align_iter: MDPosIter,
-    read_seq: Vec<u8>,
-    read_qual: Vec<u8>,
-    is_reverse: bool,
-}
-
-impl AlignPosIter {
-    /// Create a new iterator for a BAM record.
-    ///
-    /// # Arguments
-    ///
-    /// * `record` is the BAM record whose alignment will be extracted    
-    pub fn new_from_record(record: &bam::record::Record) -> Result<Self, MDAlignError> {
-        let align_iter = MDPosIter::new_from_record(record)?;
-        Ok(AlignPosIter {
-            align_iter: align_iter,
-            read_seq: record.seq().as_bytes(),
-            read_qual: record.qual().to_vec(),
-            is_reverse: record.is_reverse(),
-        })
-    }
-
-    fn pos_to_align_pos(&self, pos: MDPos) -> Result<AlignPos, MDAlignError> {
-        let read_seq_pos = pos.read_seq_pos();
-        let ref_pos = pos.ref_pos();
-        let read_nt_qual = match read_seq_pos {
-            Some(p) => Some((
-                *self
-                    .read_seq
-                    .get(p as usize)
-                    .ok_or_else(|| MDAlignError::BadSeqLen)?,
-                *self
-                    .read_qual
-                    .get(p as usize)
-                    .ok_or_else(|| MDAlignError::BadSeqLen)?,
-            )),
-            None => None,
-        };
-        // When we don't have a ref_nt but we do have a ref_pos, this should be a match
-        //   and there should be a defined read_nt
-        let ref_nt = pos.ref_nt().or_else(|| {
-            if ref_pos.is_some() {
-                Some(read_nt_qual.unwrap().0)
-            } else {
-                None
-            }
-        });
-        Ok(AlignPos {
-            ref_nt: ref_nt,
-            read_nt_qual: read_nt_qual,
-            is_reverse: self.is_reverse,
-            read_seq_pos_or_next: pos.read_seq_pos_or_next(),
-            ref_pos_or_next: pos.ref_pos_or_next(),
-            read_len: self.read_seq.len() as u32,
-        })
-    }
-
-    /// Collects all alignment positions into a _read strand_ vector
-    /// of alignment positions. This is right to left on the reference
-    /// sequence, for reverse strand alignments.
-    #[allow(unused_must_use)]
-    pub fn read_strand_alignment(&mut self) -> Result<Vec<AlignPos>, MDAlignError> {
-        let mut aln: Result<Vec<AlignPos>, MDAlignError> = self.collect();
-
-        if self.is_reverse {
-            aln.as_mut().map(|a| a.reverse());
-        }
-
-        aln
-    }
-}
-
-impl Iterator for AlignPosIter {
-    type Item = Result<AlignPos, MDAlignError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.align_iter.next().map(|res| {
-            let pos = res?;
-            self.pos_to_align_pos(pos)
-        })
-    }
-}
-
-/// Alignment position on a BAM record. Read sequence and quality
-/// information can be extracted directly because a reference to the
-/// original record is retained.
-pub struct RecAlignPos<'a> {
-    record: &'a bam::record::Record,
-    pos: MDPos,
-}
-
-impl<'a> RecAlignPos<'a> {
-    fn new(record: &'a bam::record::Record, pos: MDPos) -> Self {
-        RecAlignPos {
-            record: record,
-            pos: pos,
-        }
-    }
-
-    fn read_nt_at(&self, at: u32) -> u8 {
-        self.record.seq()[at as usize]
-    }
-
-    fn qual_at(&self, at: u32) -> u8 {
-        self.record.qual()[at as usize]
-    }
-}
-
-impl<'a> MDAlignPos for RecAlignPos<'a> {
-    fn read_nt(&self) -> Option<u8> {
-        self.pos.read_seq_pos().map(|pos| self.read_nt_at(pos))
-    }
-
-    fn ref_nt(&self) -> Option<u8> {
-        self.pos.ref_nt().or_else(|| {
-            if self.ref_pos().is_some() {
-                self.read_nt()
-            } else {
-                None
-            }
-        })
-    }
-
-    fn read_qual(&self) -> Option<u8> {
-        self.pos.read_seq_pos().map(|pos| self.qual_at(pos))
-    }
-
-    fn read_seq_pos(&self) -> Option<u32> {
-        self.pos.read_seq_pos()
-    }
-
-    fn read_seq_pos_or_next(&self) -> u32 {
-        self.pos.read_seq_pos_or_next()
-    }
-
-    fn ref_pos(&self) -> Option<u32> {
-        self.pos.ref_pos()
-    }
-
-    fn ref_pos_or_next(&self) -> Option<u32> {
-        self.pos.ref_pos_or_next()
-    }
-
-    fn read_true_pos(&self) -> Option<u32> {
-        self.read_seq_pos().map(|seq_pos| {
-            if self.record.is_reverse() {
-                self.record.qual().len() as u32 - (1 + seq_pos)
-            } else {
-                seq_pos
-            }
-        })
-    }
-
-    fn read_true_nt(&self) -> Option<u8> {
-        self.read_nt().map(|nt| {
-            if self.record.is_reverse() {
-                fast_compl(nt)
-            } else {
-                nt
-            }
-        })
-    }
-
-    fn ref_true_nt(&self) -> Option<u8> {
-        self.ref_nt().map(|nt| {
-            if self.record.is_reverse() {
-                fast_compl(nt)
-            } else {
-                nt
-            }
-        })
-    }
-}
-
-/// Iterator that generates `RecAlignPos` alignment positions for a BAM
-/// record.
-///
-/// Note that these positions are generated in reference sequence
-/// order. For a reverse-strand alignment, they run from the last to
-/// the first sequenced base.
-pub struct RecAlignPosIter<'a> {
-    align_iter: MDPosIter,
+pub struct MDAlignPosIter<'a> {
+    align_iter: CigarMDPosIter,
     record: &'a bam::record::Record,
 }
 
-impl<'a> RecAlignPosIter<'a> {
+impl<'a> MDAlignPosIter<'a> {
     /// Create a new iterator for a BAM record.
     ///
     /// # Arguments
     ///
     /// * `record` is the BAM record whose alignment will be extracted
+    ///
+    /// # Errors
+    ///
+    /// An error variant is returned when `record` has no MD aux
+    /// field, when the aux field cannot be parsed, or when there is a
+    /// conflict between the MD, Cigar, and read sequence.
     pub fn new(record: &'a bam::record::Record) -> Result<Self, MDAlignError> {
-        let align_iter = MDPosIter::new_from_record(record)?;
-        Ok(RecAlignPosIter {
+        let align_iter = CigarMDPosIter::new_from_record(record)?;
+        Ok(MDAlignPosIter {
             align_iter: align_iter,
             record: record,
         })
     }
-
-    /// Collects all alignment positions into a _read strand_ vector
-    /// of alignment positions. This is right to left on the reference
-    /// sequence, for reverse strand alignments.
-    #[allow(unused_must_use)]
-    pub fn read_strand_alignment(&mut self) -> Result<Vec<RecAlignPos<'a>>, MDAlignError> {
-        let mut aln: Result<Vec<RecAlignPos<'a>>, MDAlignError> = self.collect();
-
-        if self.record.is_reverse() {
-            aln.as_mut().map(|a| a.reverse());
-        }
-
-        aln
-    }
 }
 
-impl<'a> Iterator for RecAlignPosIter<'a> {
-    type Item = Result<RecAlignPos<'a>, MDAlignError>;
+impl<'a> Iterator for MDAlignPosIter<'a> {
+    type Item = Result<MDAlignPos<'a>, MDAlignError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.align_iter
             .next()
-            .map(|res| res.map(|mdpos| RecAlignPos::new(self.record, mdpos)))
+            .map(|res| res.map(|mdpos| MDAlignPos::new(self.record, mdpos)))
     }
 }
 
 /// Alignment position based on information in the CIGAR and MD aux
-/// field for a BAM record. The `MDPos` entries for a BAM record
+/// field for a BAM record. The `CigarMDPos` entries for a BAM record
 /// represent all information from these fields -- together with the
 /// sequence itself, these can fully reconstruct the read-vs-reference
 /// alignment.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum MDPos {
+pub enum CigarMDPos {
     Match {
         read_seq_pos: u32,
         ref_pos: u32,
@@ -464,7 +260,7 @@ pub enum MDPos {
 }
 
 #[allow(unused_variables)]
-impl MDPos {
+impl CigarMDPos {
     /// Zero-based offset in the read sequence as reported in the BAM
     /// alignment. _Note_ that these positions will run from the last
     /// to the first base in the original input sequence for
@@ -473,25 +269,25 @@ impl MDPos {
     /// `None is returned for read deletions.
     pub fn read_seq_pos(&self) -> Option<u32> {
         match self {
-            MDPos::Match {
+            CigarMDPos::Match {
                 read_seq_pos,
                 ref_pos,
             } => Some(*read_seq_pos),
-            MDPos::Mismatch {
+            CigarMDPos::Mismatch {
                 ref_nt,
                 read_seq_pos,
                 ref_pos,
             } => Some(*read_seq_pos),
-            MDPos::Insert {
+            CigarMDPos::Insert {
                 read_seq_pos,
                 ref_pos_next,
             } => Some(*read_seq_pos),
-            MDPos::Delete {
+            CigarMDPos::Delete {
                 ref_nt,
                 read_seq_pos_next,
                 ref_pos,
             } => None,
-            MDPos::SoftClip { read_seq_pos } => Some(*read_seq_pos),
+            CigarMDPos::SoftClip { read_seq_pos } => Some(*read_seq_pos),
         }
     }
 
@@ -502,25 +298,25 @@ impl MDPos {
     /// original input sequence for reverse-strand alignments.
     pub fn read_seq_pos_or_next(&self) -> u32 {
         match self {
-            MDPos::Match {
+            CigarMDPos::Match {
                 read_seq_pos,
                 ref_pos,
             } => *read_seq_pos,
-            MDPos::Mismatch {
+            CigarMDPos::Mismatch {
                 ref_nt,
                 read_seq_pos,
                 ref_pos,
             } => *read_seq_pos,
-            MDPos::Insert {
+            CigarMDPos::Insert {
                 read_seq_pos,
                 ref_pos_next,
             } => *read_seq_pos,
-            MDPos::Delete {
+            CigarMDPos::Delete {
                 ref_nt,
                 read_seq_pos_next,
                 ref_pos,
             } => *read_seq_pos_next,
-            MDPos::SoftClip { read_seq_pos } => *read_seq_pos,
+            CigarMDPos::SoftClip { read_seq_pos } => *read_seq_pos,
         }
     }
 
@@ -530,25 +326,25 @@ impl MDPos {
     /// soft clipped positions.
     pub fn ref_pos(&self) -> Option<u32> {
         match self {
-            MDPos::Match {
+            CigarMDPos::Match {
                 read_seq_pos,
                 ref_pos,
             } => Some(*ref_pos),
-            MDPos::Mismatch {
+            CigarMDPos::Mismatch {
                 ref_nt,
                 read_seq_pos,
                 ref_pos,
             } => Some(*ref_pos),
-            MDPos::Insert {
+            CigarMDPos::Insert {
                 read_seq_pos,
                 ref_pos_next,
             } => None,
-            MDPos::Delete {
+            CigarMDPos::Delete {
                 ref_nt,
                 read_seq_pos_next,
                 ref_pos,
             } => Some(*ref_pos),
-            MDPos::SoftClip { read_seq_pos } => None,
+            CigarMDPos::SoftClip { read_seq_pos } => None,
         }
     }
 
@@ -559,25 +355,25 @@ impl MDPos {
     /// `None` is returned for soft clipped positions.
     pub fn ref_pos_or_next(&self) -> Option<u32> {
         match self {
-            MDPos::Match {
+            CigarMDPos::Match {
                 read_seq_pos,
                 ref_pos,
             } => Some(*ref_pos),
-            MDPos::Mismatch {
+            CigarMDPos::Mismatch {
                 ref_nt,
                 read_seq_pos,
                 ref_pos,
             } => Some(*ref_pos),
-            MDPos::Insert {
+            CigarMDPos::Insert {
                 read_seq_pos,
                 ref_pos_next,
             } => Some(*ref_pos_next),
-            MDPos::Delete {
+            CigarMDPos::Delete {
                 ref_nt,
                 read_seq_pos_next,
                 ref_pos,
             } => Some(*ref_pos),
-            MDPos::SoftClip { read_seq_pos } => None,
+            CigarMDPos::SoftClip { read_seq_pos } => None,
         }
     }
 
@@ -587,44 +383,44 @@ impl MDPos {
     /// clipped positions.
     pub fn ref_nt(&self) -> Option<u8> {
         match self {
-            MDPos::Match {
+            CigarMDPos::Match {
                 read_seq_pos,
                 ref_pos,
             } => None,
-            MDPos::Mismatch {
+            CigarMDPos::Mismatch {
                 ref_nt,
                 read_seq_pos,
                 ref_pos,
             } => Some(*ref_nt),
-            MDPos::Insert {
+            CigarMDPos::Insert {
                 read_seq_pos,
                 ref_pos_next,
             } => None,
-            MDPos::Delete {
+            CigarMDPos::Delete {
                 ref_nt,
                 read_seq_pos_next,
                 ref_pos,
             } => Some(*ref_nt),
-            MDPos::SoftClip { read_seq_pos } => None,
+            CigarMDPos::SoftClip { read_seq_pos } => None,
         }
     }
 }
 
-/// Iterator over the `MDPos` positions represented by a BAM
+/// Iterator over the `CigarMDPos` positions represented by a BAM
 /// record.
 ///
 /// Note that these positions are generated in reference sequence
 /// order. For a reverse-strand alignment, they run from the last to
 /// the first sequenced base.
 #[derive(Debug)]
-pub struct MDPosIter {
+pub struct CigarMDPosIter {
     md_stack: Vec<MatchDesc>,
     cigar_stack: Vec<Cigar>,
     ref_pos_curr: u32,
     read_pos_curr: u32,
 }
 
-impl MDPosIter {
+impl CigarMDPosIter {
     /// Create a new iterator for a BAM record.
     ///
     /// # Arguments
@@ -637,7 +433,7 @@ impl MDPosIter {
         let CigarString(mut cigar_stack) = (*record.cigar()).clone();
         cigar_stack.reverse();
 
-        Ok(MDPosIter {
+        Ok(CigarMDPosIter {
             md_stack: md_stack,
             cigar_stack: cigar_stack,
             ref_pos_curr: record.pos() as u32,
@@ -645,11 +441,11 @@ impl MDPosIter {
         })
     }
 
-    // Utility function that yields the next MDPos.
+    // Utility function that yields the next CigarMDPos.
     // Requires the cigar stack is non-empty
     // Requires that 0-length matches and non-yielding cigar entries
     //   are cleared from the tops of those respective stacks.
-    fn next_with_some(&mut self) -> Result<MDPos, MDAlignError> {
+    fn next_with_some(&mut self) -> Result<CigarMDPos, MDAlignError> {
         let pop_cigar;
 
         let res = match self.cigar_stack.last_mut().unwrap() {
@@ -661,7 +457,7 @@ impl MDPosIter {
                     .ok_or_else(|| MDAlignError::MDvsCIGAR)?
                 {
                     MatchDesc::Matches(ref mut mdlen) => {
-                        let pos = MDPos::Match {
+                        let pos = CigarMDPos::Match {
                             read_seq_pos: self.read_pos_curr,
                             ref_pos: self.ref_pos_curr,
                         };
@@ -674,7 +470,7 @@ impl MDPosIter {
                         pos
                     }
                     MatchDesc::Mismatch(ref_nt) => {
-                        let pos = MDPos::Mismatch {
+                        let pos = CigarMDPos::Mismatch {
                             ref_nt: *ref_nt,
                             read_seq_pos: self.read_pos_curr,
                             ref_pos: self.ref_pos_curr,
@@ -703,7 +499,7 @@ impl MDPosIter {
                     .ok_or_else(|| MDAlignError::MDvsCIGAR)?
                 {
                     MatchDesc::Matches(ref mut mdlen) => {
-                        let pos = MDPos::Match {
+                        let pos = CigarMDPos::Match {
                             read_seq_pos: self.read_pos_curr,
                             ref_pos: self.ref_pos_curr,
                         };
@@ -731,7 +527,7 @@ impl MDPosIter {
                     .ok_or_else(|| MDAlignError::MDvsCIGAR)?
                 {
                     MatchDesc::Mismatch(ref_nt) => {
-                        let pos = MDPos::Mismatch {
+                        let pos = CigarMDPos::Mismatch {
                             ref_nt: *ref_nt,
                             read_seq_pos: self.read_pos_curr,
                             ref_pos: self.ref_pos_curr,
@@ -751,7 +547,7 @@ impl MDPosIter {
                 mm
             }
             Cigar::Ins(ref mut len) => {
-                let mut pos = MDPos::Insert {
+                let mut pos = CigarMDPos::Insert {
                     read_seq_pos: self.read_pos_curr,
                     ref_pos_next: self.ref_pos_curr,
                 };
@@ -768,7 +564,7 @@ impl MDPosIter {
                         if ref_nts.len() > 0 {
                             let ref_nt = ref_nts.remove(0);
                             pop_md = ref_nts.is_empty();
-                            let pos = MDPos::Delete {
+                            let pos = CigarMDPos::Delete {
                                 ref_nt: ref_nt,
                                 ref_pos: self.ref_pos_curr,
                                 read_seq_pos_next: self.read_pos_curr,
@@ -789,7 +585,7 @@ impl MDPosIter {
                 del
             }
             Cigar::SoftClip(ref mut len) => {
-                let pos = MDPos::SoftClip {
+                let pos = CigarMDPos::SoftClip {
                     read_seq_pos: self.read_pos_curr,
                 };
                 self.read_pos_curr += 1;
@@ -813,7 +609,7 @@ impl MDPosIter {
     /// `Alignment`. This is always a semi-global alignment that
     /// includes the soft clipping from the read as `Xclip` operations.
     pub fn collect_into_alignment(self) -> Result<Alignment, MDAlignError> {
-        let mds_result: Result<Vec<MDPos>, MDAlignError> = self.collect();
+        let mds_result: Result<Vec<CigarMDPos>, MDAlignError> = self.collect();
         let mds = mds_result?;
         let mut iter = mds.as_slice().into_iter();
 
@@ -835,7 +631,7 @@ impl MDPosIter {
         let (xstart, ystart) = if let Some(md) = curr {
             (md.read_seq_pos_or_next(), md.ref_pos_or_next().unwrap())
         } else {
-            panic!("No MDPos remaining after left clip")
+            panic!("No CigarMDPos remaining after left clip")
         };
 
         let mut xend = xstart;
@@ -843,7 +639,7 @@ impl MDPosIter {
 
         while let Some(md) = curr {
             match md {
-                MDPos::Match {
+                CigarMDPos::Match {
                     read_seq_pos,
                     ref_pos,
                 } => {
@@ -851,7 +647,7 @@ impl MDPosIter {
                     xend = *read_seq_pos;
                     yend = *ref_pos;
                 }
-                MDPos::Mismatch {
+                CigarMDPos::Mismatch {
                     ref_nt: _,
                     read_seq_pos,
                     ref_pos,
@@ -860,14 +656,14 @@ impl MDPosIter {
                     xend = *read_seq_pos;
                     yend = *ref_pos;
                 }
-                MDPos::Insert {
+                CigarMDPos::Insert {
                     read_seq_pos,
                     ref_pos_next: _,
                 } => {
                     ops.push(AlignmentOperation::Ins);
                     xend = *read_seq_pos;
                 }
-                MDPos::Delete {
+                CigarMDPos::Delete {
                     ref_nt: _,
                     read_seq_pos_next: _,
                     ref_pos,
@@ -875,7 +671,7 @@ impl MDPosIter {
                     ops.push(AlignmentOperation::Del);
                     yend = *ref_pos;
                 }
-                MDPos::SoftClip { read_seq_pos: _ } => break,
+                CigarMDPos::SoftClip { read_seq_pos: _ } => break,
             }
             curr = iter.next();
         }
@@ -884,7 +680,7 @@ impl MDPosIter {
         let mut xlen = xend;
         while let Some(md) = curr {
             match md {
-                MDPos::SoftClip { read_seq_pos } => {
+                CigarMDPos::SoftClip { read_seq_pos } => {
                     xlen = *read_seq_pos;
                 }
                 _ => {
@@ -910,8 +706,8 @@ impl MDPosIter {
     }
 }
 
-impl Iterator for MDPosIter {
-    type Item = Result<MDPos, MDAlignError>;
+impl Iterator for CigarMDPosIter {
+    type Item = Result<CigarMDPos, MDAlignError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // Process non-yielding cigar entries
@@ -1421,19 +1217,19 @@ mod tests {
             let ap_ref_line: String = aps.iter().map(|ap| ap.ref_line_char()).collect();
             assert_eq!(ap_ref_line, TEST_REF_LINE[i]);
 
-            let rap_iter = RecAlignPosIter::new(&rec)
+            let rap_iter = MDAlignPosIter::new(&rec)
                 .ok()
-                .expect("Creating RecAlignPosIter");
-            let rap_res: Result<Vec<RecAlignPos>, MDAlignError> = rap_iter.collect();
-            let raps = rap_res.ok().expect("Unable to create Vec<RecAlignPos>");
+                .expect("Creating MDAlignPosIter");
+            let rap_res: Result<Vec<MDAlignPos>, MDAlignError> = rap_iter.collect();
+            let raps = rap_res.ok().expect("Unable to create Vec<MDAlignPos>");
             let rap_read_line: String = raps.iter().map(|rap| rap.read_line_char()).collect();
             assert_eq!(rap_read_line, TEST_READ_LINE[i]);
             let rap_ref_line: String = raps.iter().map(|rap| rap.ref_line_char()).collect();
             assert_eq!(rap_ref_line, TEST_REF_LINE[i]);
 
-            let md_iter = MDPosIter::new_from_record(&rec)
+            let md_iter = CigarMDPosIter::new_from_record(&rec)
                 .ok()
-                .expect("Creating MDPosIter");
+                .expect("Creating CigarMDPosIter");
             let alignment = md_iter
                 .collect_into_alignment()
                 .ok()
