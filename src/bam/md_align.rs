@@ -1207,16 +1207,6 @@ mod tests {
             assert_eq!(rec.aux_md().unwrap(), TEST_MD[i]);
             assert_eq!(rec.cigar().to_string(), TEST_CIGAR[i]);
 
-            let ap_iter = AlignPosIter::new_from_record(&rec)
-                .ok()
-                .expect("Creating AlignPosIter");
-            let ap_res: Result<Vec<AlignPos>, MDAlignError> = ap_iter.collect();
-            let aps = ap_res.ok().expect("Unable to create Vec<AlignPos>");
-            let ap_read_line: String = aps.iter().map(|ap| ap.read_line_char()).collect();
-            assert_eq!(ap_read_line, TEST_READ_LINE[i]);
-            let ap_ref_line: String = aps.iter().map(|ap| ap.ref_line_char()).collect();
-            assert_eq!(ap_ref_line, TEST_REF_LINE[i]);
-
             let rap_iter = MDAlignPosIter::new(&rec)
                 .ok()
                 .expect("Creating MDAlignPosIter");

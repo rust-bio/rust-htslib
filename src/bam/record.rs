@@ -16,6 +16,7 @@ use itertools::Itertools;
 use regex::Regex;
 
 use bam::{AuxWriteError, HeaderView, ReadError};
+use bam::md_align::{MDAlignError, MDAlignPos, MDAlignPosIter};
 use htslib;
 use utils;
 
@@ -599,6 +600,20 @@ impl Record {
             Aux::String(md) => Some(md),
             _ => None,
         })
+    }
+
+    /// Reconstruct reference sequence from Cigar and MD information
+    /// along with the read sequence.
+    ///
+    /// # Errors
+    ///
+    /// An error variant is returned when the record has no MD aux
+    /// field, when the MD aux field is malformed, or when there are
+    /// inconsistencies between the Cigar string, the MD field, and
+    /// the read sequence.
+    pub fn reference_md_seq(&self) -> Result<Vec<u8>, MDAlignError> {
+        let md_align: Result<Vec<MDAlignPos>, MDAlignError> = MDAlignPosIter::new(&self)?.collect();
+        Ok( md_align?.iter().filter_map(|pos| pos.ref_nt()).collect() )
     }
 }
 
