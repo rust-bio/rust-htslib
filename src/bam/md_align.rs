@@ -1,3 +1,4 @@
+use std::fmt;
 use std::fmt::Write;
 use std::str;
 
@@ -427,7 +428,7 @@ impl CigarMDPosIter {
     ///
     /// * `record` is the BAM record whose alignment will be extracted
     pub fn new_from_record(record: &bam::record::Record) -> Result<Self, MDAlignError> {
-        let mut md_stack = MatchDesc::parse_from_record(record)?;
+        let mut md_stack = MDString::new_from_record(record)?.0;
         md_stack.reverse();
 
         let CigarString(mut cigar_stack) = (*record.cigar()).clone();
@@ -821,8 +822,13 @@ impl MatchDesc {
             _ => false,
         }
     }
+}
 
-    /// Create a `Vec` of `MatchDesc` entries corresponding to the MD aux field on a record.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MDString(pub Vec<MatchDesc>);
+
+impl MDString {
+    /// Create an `MDString` corresponding to the MD aux field on a record.
     ///
     /// # Arguments
     ///
@@ -832,11 +838,11 @@ impl MatchDesc {
     ///
     /// If `record` has no MD aux field, or if the value of the aux field is malformed,
     /// an error variant will be returned.
-    pub fn parse_from_record(record: &bam::record::Record) -> Result<Vec<MatchDesc>, MDAlignError> {
-        Self::parse(record.aux_md().ok_or_else(|| MDAlignError::NoMD)?)
+    pub fn new_from_record(record: &bam::record::Record) -> Result<Self, MDAlignError> {
+        Self::new(record.aux_md().ok_or_else(|| MDAlignError::NoMD)?)
     }
-
-    /// Parses a bytestring as an MD aux field description.
+    
+    /// Create an `MDString` by parseing a bytestring as an MD aux field description.
     ///
     /// # Arguments
     ///
@@ -849,183 +855,142 @@ impl MatchDesc {
     /// # Examples
     ///
     /// ```
-    /// use rust_htslib::bam::md_align::{MatchDesc,MDAlignError};
+    /// use rust_htslib::bam::md_align::{MatchDesc,MDString,MDAlignError};
     /// # fn try_main() -> Result<(), MDAlignError> {
-    /// assert_eq!(MatchDesc::parse(b"10A5^AC6")?,
-    ///            [MatchDesc::Matches(10),
+    /// assert_eq!(MDString::new(b"10A5^AC6")?,
+    ///            MDString(vec![MatchDesc::Matches(10),
     ///             MatchDesc::Mismatch(b'A'),
     ///             MatchDesc::Matches(5),
     ///             MatchDesc::Deletion(b"AC".to_vec()),
-    ///             MatchDesc::Matches(6)]);
+    ///             MatchDesc::Matches(6)]));
     /// # Ok( () )
     /// # }
     /// # fn main() { try_main().unwrap(); }
     /// ```
-    pub fn parse(mdstring: &[u8]) -> Result<Vec<MatchDesc>, MDAlignError> {
-        MatchDescIter::new(mdstring).collect()
-    }
+    // This can fail, to it can't be From<&[u8]>. Consider TryFrom<&[u8]> when stabilized
+    pub fn new(mdstring: &[u8]) -> Result<Self, MDAlignError> {
+        let mut mdvec = Vec::new();
+        
+        let mut mdrest = mdstring;
 
+        while !mdrest.is_empty() {
+            let ch = mdrest.first().unwrap();
+            if ch.is_ascii_digit() {
+                let endpos = mdrest
+                    .iter()
+                    .position(|&c| !c.is_ascii_digit())
+                    .unwrap_or(mdrest.len());
+                let numstr = str::from_utf8(&mdrest[0..endpos])?;
+                mdrest = &mdrest[endpos..];
+                mdvec.push(MatchDesc::Matches(numstr.parse()?))
+            } else if *ch == b'^' {
+                let endpos = mdrest
+                    .iter()
+                    .skip(1)
+                    .position(|&c| !c.is_ascii_uppercase())
+                    .unwrap_or(mdrest.len() - 1) + 1;
+                mdvec.push(MatchDesc::Deletion(mdrest[1..endpos].to_vec()));
+                mdrest = &mdrest[endpos..];
+            } else if ch.is_ascii_uppercase() {
+                mdrest = &mdrest[1..];
+                mdvec.push(MatchDesc::Mismatch(*ch));
+            } else {
+                return Err(MDAlignError::BadMD)
+            }
+        }
+
+        Ok( MDString(mdvec) )
+    }
+}
+
+impl fmt::Display for MDString {
     /// Convert a vector of `MatchDesc` entries into an MD aux field
     /// string. The string will be partly normalized by merging
     /// adjacent matches (but not deletions), which guarantees
-    /// unambiguous parsing.
+    /// unambiguous parsing. Zero-length matches will be added between
+    /// a mismatch and a subsequent mismatch, deletion, or
+    /// end-of-string. This ensures that the resulting MD field string
+    /// matches the regexp
+    ///
+    /// `[0-9]+(([A-Z]|\^[A-Z]+)[0-9]+)*`
     ///
     /// # Arguments
     ///
     /// * `mds` are a vector of `MatchDesc` entries    
-    /// * `strict_match0` controls whether 0-length matches are added
-    /// whenever a mismatch or deletion is not followed immediately by a
-    /// run of matches. Strictly adding a 0-length match between a mismatch
-    /// and a subsequent mismatch, deletion, or end-of-string ensures
-    /// that the resulting MD field string matches the regexp
-    ///
-    /// `[0-9]+(([A-Z]|\^[A-Z]+)[0-9]+)*`
-    ///
-    /// _Note_ that 0-length matches are always added when a deletion is
-    /// followed by a mismatch, which is required for unambiguous parsing.
     ///
     /// # Examples
     ///
     /// ```
-    /// use rust_htslib::bam::md_align::{MatchDesc,MDAlignError};
+    /// use rust_htslib::bam::md_align::{MatchDesc,MDString,MDAlignError};
     /// # fn try_main() -> Result<(), MDAlignError> {
     /// let mdvec = vec![MatchDesc::Matches(10),
     ///                  MatchDesc::Mismatch(b'A'),
     ///                  MatchDesc::Matches(5),
     ///                  MatchDesc::Deletion(b"AC".to_vec()),
     ///                  MatchDesc::Matches(6)];
-    /// assert_eq!(MatchDesc::unparse(&mdvec, false), "10A5^AC6");
-    /// assert_eq!(MatchDesc::unparse(&mdvec, true),  "10A5^AC6");
-    /// let unnorm = vec![MatchDesc::Matches(10),
-    ///                   MatchDesc::Mismatch(b'A'),
-    ///                   MatchDesc::Mismatch(b'G'),
-    ///                   MatchDesc::Matches(2),
-    ///                   MatchDesc::Matches(2),
-    ///                   MatchDesc::Deletion(b"AC".to_vec()),
-    ///                   MatchDesc::Mismatch(b'T'),
-    ///                   MatchDesc::Matches(5)];
-    /// assert_eq!(MatchDesc::unparse(&unnorm, false), "10AG4^AC0T5");
-    /// assert_eq!(MatchDesc::unparse(&unnorm, true), "10A0G4^AC0T5");
+    /// let mdstr = MDString(mdvec);
+    /// assert_eq!(mdstr.to_string(), "10A5^AC6");
+    /// let unnorm_vec = vec![MatchDesc::Matches(10),
+    ///                       MatchDesc::Mismatch(b'A'),
+    ///                       MatchDesc::Mismatch(b'G'),
+    ///                       MatchDesc::Matches(2),
+    ///                       MatchDesc::Matches(2),
+    ///                       MatchDesc::Deletion(b"AC".to_vec()),
+    ///                       MatchDesc::Mismatch(b'T'),
+    ///                       MatchDesc::Matches(5)];
+    /// let unnorm_str = MDString(unnorm_vec);
+    /// assert_eq!(unnorm_str.to_string(), "10A0G4^AC0T5");
     /// # Ok( () )
     /// # }
     /// # fn main() { try_main().unwrap(); }
     /// ```
-    pub fn unparse(mds: &[MatchDesc], strict_match0: bool) -> String {
-        let mut mdstr = String::new();
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let mut match_accum = 0;
 
-        let mut md_iter = mds.iter().peekable();
+        let mut md_iter = self.0.iter().peekable();
         while let Some(md) = md_iter.next() {
             match md {
                 MatchDesc::Matches(mlen) => {
                     if md_iter.peek().map_or(false, |next| next.is_matches()) {
                         match_accum += mlen;
                     } else {
-                        write!(&mut mdstr, "{}", match_accum + mlen).unwrap();
+                        write!(f, "{}", match_accum + mlen)?;
                         match_accum = 0;
                     }
                 }
                 MatchDesc::Mismatch(refnt) => {
-                    if strict_match0 && md_iter.peek().map_or(true, |next| !next.is_matches()) {
-                        write!(&mut mdstr, "{}0", *refnt as char).unwrap();
+                    if md_iter.peek().map_or(true, |next| !next.is_matches()) {
+                        write!(f, "{}0", *refnt as char)?;
                     } else {
-                        write!(&mut mdstr, "{}", *refnt as char).unwrap();
+                        write!(f, "{}", *refnt as char)?;
                     }
                 }
                 MatchDesc::Deletion(refnts) => {
-                    if strict_match0 {
-                        if md_iter.peek().map_or(true, |next| !next.is_matches()) {
-                            write!(&mut mdstr, "^{}0", str::from_utf8(refnts).unwrap()).unwrap();
-                        } else {
-                            write!(&mut mdstr, "^{}", str::from_utf8(refnts).unwrap()).unwrap();
-                        }
+                    if md_iter.peek().map_or(true, |next| !next.is_matches()) {
+                        write!(f, "^{}0", str::from_utf8(refnts).unwrap())?;
                     } else {
-                        if md_iter.peek().map_or(false, |next| next.is_mismatch()) {
-                            write!(&mut mdstr, "^{}0", str::from_utf8(refnts).unwrap()).unwrap();
-                        } else {
-                            write!(&mut mdstr, "^{}", str::from_utf8(refnts).unwrap()).unwrap();
-                        }
+                        write!(f, "^{}", str::from_utf8(refnts).unwrap())?;
                     }
                 }
             };
         }
 
-        mdstr
+        Ok( () )
     }
 }
 
-/// Iterator over `MatchDesc` entries in an MD aux field
-pub struct MatchDescIter<'a> {
-    md: &'a [u8],
+impl <'a> IntoIterator for &'a MDString {
+    type Item = &'a MatchDesc;
+    type IntoIter = ::std::slice::Iter<'a, MatchDesc>;
+    
+    fn into_iter(self) -> Self::IntoIter { (&self.0).into_iter() }
 }
 
-impl<'a> MatchDescIter<'a> {
-    /// Create a new iterator over an MD aux field string
-    ///
-    /// # Arguments
-    ///
-    /// * `md` is a bytestring of an MD aux field entry
-    pub fn new(md: &'a [u8]) -> Self {
-        MatchDescIter { md: md }
-    }
-
-    /// Create a new iterator over the MD aux field from a BAM record
-    ///
-    /// # Arguments
-    ///
-    /// * `record` is the source of the MD aux field for the iterator
-    ///
-    /// # Errors
-    ///
-    /// If the record does not have a string-valued MD aux field, an
-    /// error variant is returned.
-    pub fn new_from_record(record: &'a bam::record::Record) -> Result<Self, MDAlignError> {
-        Ok(Self::new(
-            record.aux_md().ok_or_else(|| MDAlignError::NoMD)?,
-        ))
-    }
-
-    // Requires self.md is non-empty, guaranteed to yield a MatchDesc
-    fn next_nonempty(&mut self) -> Result<MatchDesc, MDAlignError> {
-        let ch = self.md.first().unwrap();
-        if ch.is_ascii_digit() {
-            let endpos = self
-                .md
-                .iter()
-                .position(|&c| !c.is_ascii_digit())
-                .unwrap_or(self.md.len());
-            let numstr = str::from_utf8(&self.md[0..endpos])?;
-            self.md = &self.md[endpos..];
-            Ok(MatchDesc::Matches(numstr.parse()?))
-        } else if *ch == b'^' {
-            let endpos = self
-                .md
-                .iter()
-                .skip(1)
-                .position(|&c| !c.is_ascii_uppercase())
-                .unwrap_or(self.md.len() - 1) + 1;
-            let del = MatchDesc::Deletion(self.md[1..endpos].to_vec());
-            self.md = &self.md[endpos..];
-            Ok(del)
-        } else if ch.is_ascii_uppercase() {
-            self.md = &self.md[1..];
-            Ok(MatchDesc::Mismatch(*ch))
-        } else {
-            Err(MDAlignError::BadMD)
-        }
-    }
-}
-
-impl<'a> Iterator for MatchDescIter<'a> {
-    type Item = Result<MatchDesc, MDAlignError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.md.is_empty() {
-            None
-        } else {
-            Some(self.next_nonempty())
-        }
-    }
+impl IntoIterator for MDString {
+    type Item = MatchDesc;
+    type IntoIter = ::std::vec::IntoIter<MatchDesc>;
+    
+    fn into_iter(self) -> Self::IntoIter { self.0.into_iter() }
 }
 
 quick_error! {
