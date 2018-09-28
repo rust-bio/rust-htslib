@@ -415,7 +415,7 @@ impl CigarMDPos {
 /// order. For a reverse-strand alignment, they run from the last to
 /// the first sequenced base.
 #[derive(Debug)]
-pub struct CigarMDPosIter<I,J> {
+pub struct CigarMDPosIter<I, J> {
     md_iter: I,
     md_curr: Option<MatchDesc>,
     cigar_iter: J,
@@ -448,7 +448,7 @@ impl CigarMDPosIter<IntoIter<MatchDesc>, IntoIter<Cigar>> {
     }
 }
 
-impl <I: Iterator<Item = MatchDesc>, J: Iterator<Item = Cigar>> CigarMDPosIter<I,J> {
+impl<I: Iterator<Item = MatchDesc>, J: Iterator<Item = Cigar>> CigarMDPosIter<I, J> {
     // Utility function that yields the next CigarMDPos.
     // Requires the cigar stack is non-empty
     // Requires that 0-length matches and non-yielding cigar entries
@@ -714,7 +714,7 @@ impl <I: Iterator<Item = MatchDesc>, J: Iterator<Item = Cigar>> CigarMDPosIter<I
     }
 }
 
-impl <I: Iterator<Item = MatchDesc>, J: Iterator<Item = Cigar>> Iterator for CigarMDPosIter<I,J> {
+impl<I: Iterator<Item = MatchDesc>, J: Iterator<Item = Cigar>> Iterator for CigarMDPosIter<I, J> {
     type Item = Result<CigarMDPos, MDAlignError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -848,7 +848,7 @@ impl MDString {
     pub fn new_from_record(record: &bam::record::Record) -> Result<Self, MDAlignError> {
         Self::new(record.aux_md().ok_or_else(|| MDAlignError::NoMD)?)
     }
-    
+
     /// Create an `MDString` by parseing a bytestring as an MD aux field description.
     ///
     /// # Arguments
@@ -877,7 +877,7 @@ impl MDString {
     // This can fail, to it can't be From<&[u8]>. Consider TryFrom<&[u8]> when stabilized
     pub fn new(mdstring: &[u8]) -> Result<Self, MDAlignError> {
         let mut mdvec = Vec::new();
-        
+
         let mut mdrest = mdstring;
 
         while !mdrest.is_empty() {
@@ -902,11 +902,11 @@ impl MDString {
                 mdrest = &mdrest[1..];
                 mdvec.push(MatchDesc::Mismatch(*ch));
             } else {
-                return Err(MDAlignError::BadMD)
+                return Err(MDAlignError::BadMD);
             }
         }
 
-        Ok( MDString(mdvec) )
+        Ok(MDString(mdvec))
     }
 }
 
@@ -982,22 +982,26 @@ impl fmt::Display for MDString {
             };
         }
 
-        Ok( () )
+        Ok(())
     }
 }
 
-impl <'a> IntoIterator for &'a MDString {
+impl<'a> IntoIterator for &'a MDString {
     type Item = &'a MatchDesc;
     type IntoIter = ::std::slice::Iter<'a, MatchDesc>;
-    
-    fn into_iter(self) -> Self::IntoIter { (&self.0).into_iter() }
+
+    fn into_iter(self) -> Self::IntoIter {
+        (&self.0).into_iter()
+    }
 }
 
 impl IntoIterator for MDString {
     type Item = MatchDesc;
     type IntoIter = ::std::vec::IntoIter<MatchDesc>;
-    
-    fn into_iter(self) -> Self::IntoIter { self.0.into_iter() }
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
 }
 
 quick_error! {
