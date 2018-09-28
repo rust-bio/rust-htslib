@@ -196,7 +196,7 @@ impl<'a> MDAlignPos<'a> {
 /// order. For a reverse-strand alignment, they run from the last to
 /// the first sequenced base.
 pub struct MDAlignPosIter<'a> {
-    align_iter: CigarMDPosIter<IntoIter<MatchDesc>>,
+    align_iter: CigarMDPosIter<IntoIter<MatchDesc>, IntoIter<Cigar>>,
     record: &'a bam::record::Record,
 }
 
@@ -415,15 +415,16 @@ impl CigarMDPos {
 /// order. For a reverse-strand alignment, they run from the last to
 /// the first sequenced base.
 #[derive(Debug)]
-pub struct CigarMDPosIter<I> {
+pub struct CigarMDPosIter<I,J> {
     md_iter: I,
     md_curr: Option<MatchDesc>,
-    cigar_stack: Vec<Cigar>,
+    cigar_iter: J,
+    cigar_curr: Option<Cigar>,
     ref_pos_curr: u32,
     read_pos_curr: u32,
 }
 
-impl CigarMDPosIter<IntoIter<MatchDesc>> {
+impl CigarMDPosIter<IntoIter<MatchDesc>, IntoIter<Cigar>> {
     /// Create a new iterator for a BAM record.
     ///
     /// # Arguments
@@ -431,30 +432,31 @@ impl CigarMDPosIter<IntoIter<MatchDesc>> {
     /// * `record` is the BAM record whose alignment will be extracted
     pub fn new_from_record(record: &bam::record::Record) -> Result<Self, MDAlignError> {
         let mut md_iter = MDString::new_from_record(record)?.into_iter();
-        let mut md_curr = md_iter.next();
+        let md_curr = md_iter.next();
 
-        let CigarString(mut cigar_stack) = (*record.cigar()).clone();
-        cigar_stack.reverse();
+        let mut cigar_iter = (*record.cigar()).to_vec().into_iter();
+        let cigar_curr = cigar_iter.next();
 
         Ok(CigarMDPosIter {
             md_iter: md_iter,
             md_curr: md_curr,
-            cigar_stack: cigar_stack,
+            cigar_iter: cigar_iter,
+            cigar_curr: cigar_curr,
             ref_pos_curr: record.pos() as u32,
             read_pos_curr: 0,
         })
     }
 }
 
-impl <I: Iterator<Item = MatchDesc>> CigarMDPosIter<I> {
+impl <I: Iterator<Item = MatchDesc>, J: Iterator<Item = Cigar>> CigarMDPosIter<I,J> {
     // Utility function that yields the next CigarMDPos.
     // Requires the cigar stack is non-empty
     // Requires that 0-length matches and non-yielding cigar entries
     //   are cleared from the tops of those respective stacks.
     fn next_with_some(&mut self) -> Result<CigarMDPos, MDAlignError> {
-        let pop_cigar;
+        let next_cigar;
 
-        let res = match self.cigar_stack.last_mut().unwrap() {
+        let res = match self.cigar_curr.as_mut().unwrap() {
             Cigar::Match(ref mut ciglen) => {
                 let next_md;
                 let mmm = match self
@@ -472,7 +474,7 @@ impl <I: Iterator<Item = MatchDesc>> CigarMDPosIter<I> {
                         *mdlen -= 1;
                         next_md = *mdlen == 0;
                         *ciglen -= 1;
-                        pop_cigar = *ciglen == 0;
+                        next_cigar = *ciglen == 0;
                         pos
                     }
                     MatchDesc::Mismatch(ref_nt) => {
@@ -485,7 +487,7 @@ impl <I: Iterator<Item = MatchDesc>> CigarMDPosIter<I> {
                         self.ref_pos_curr += 1;
                         next_md = true;
                         *ciglen -= 1;
-                        pop_cigar = *ciglen == 0;
+                        next_cigar = *ciglen == 0;
                         pos
                     }
                     _ => {
@@ -515,7 +517,7 @@ impl <I: Iterator<Item = MatchDesc>> CigarMDPosIter<I> {
                         *mdlen -= 1;
                         next_md = *mdlen == 0;
                         *ciglen -= 1;
-                        pop_cigar = *ciglen == 0;
+                        next_cigar = *ciglen == 0;
                         pos
                     }
                     _ => return Err(MDAlignError::MDvsCIGAR),
@@ -542,7 +544,7 @@ impl <I: Iterator<Item = MatchDesc>> CigarMDPosIter<I> {
                         self.ref_pos_curr += 1;
                         next_md = true;
                         *ciglen -= 1;
-                        pop_cigar = *ciglen == 0;
+                        next_cigar = *ciglen == 0;
                         pos
                     }
                     _ => return Err(MDAlignError::MDvsCIGAR),
@@ -559,7 +561,7 @@ impl <I: Iterator<Item = MatchDesc>> CigarMDPosIter<I> {
                 };
                 self.read_pos_curr += 1;
                 *len -= 1;
-                pop_cigar = *len == 0;
+                next_cigar = *len == 0;
                 pos
             }
             Cigar::Del(ref mut len) => {
@@ -584,7 +586,7 @@ impl <I: Iterator<Item = MatchDesc>> CigarMDPosIter<I> {
                     _ => return Err(MDAlignError::MDvsCIGAR),
                 };
                 *len -= 1;
-                pop_cigar = *len == 0;
+                next_cigar = *len == 0;
                 if next_md {
                     self.md_curr = self.md_iter.next();
                 }
@@ -596,7 +598,7 @@ impl <I: Iterator<Item = MatchDesc>> CigarMDPosIter<I> {
                 };
                 self.read_pos_curr += 1;
                 *len -= 1;
-                pop_cigar = *len == 0;
+                next_cigar = *len == 0;
                 pos
             }
             Cigar::RefSkip(_) => panic!("RefSkip in next_with_some"),
@@ -604,8 +606,8 @@ impl <I: Iterator<Item = MatchDesc>> CigarMDPosIter<I> {
             Cigar::Pad(_) => panic!("Pad in next_with_some"),
         };
 
-        if pop_cigar {
-            self.cigar_stack.pop();
+        if next_cigar {
+            self.cigar_curr = self.cigar_iter.next();
         }
 
         Ok(res)
@@ -712,15 +714,15 @@ impl <I: Iterator<Item = MatchDesc>> CigarMDPosIter<I> {
     }
 }
 
-impl <I: Iterator<Item = MatchDesc>> Iterator for CigarMDPosIter<I> {
+impl <I: Iterator<Item = MatchDesc>, J: Iterator<Item = Cigar>> Iterator for CigarMDPosIter<I,J> {
     type Item = Result<CigarMDPos, MDAlignError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // Process non-yielding cigar entries
         loop {
-            let handled = match self.cigar_stack.last() {
+            let handled = match self.cigar_curr {
                 Some(Cigar::RefSkip(len)) => {
-                    self.ref_pos_curr += *len;
+                    self.ref_pos_curr += len;
                     true
                 }
                 Some(Cigar::HardClip(_len)) => true,
@@ -728,7 +730,7 @@ impl <I: Iterator<Item = MatchDesc>> Iterator for CigarMDPosIter<I> {
                 _ => false,
             };
             if handled {
-                self.cigar_stack.pop();
+                self.cigar_curr = self.cigar_iter.next();
             } else {
                 break;
             }
@@ -739,7 +741,7 @@ impl <I: Iterator<Item = MatchDesc>> Iterator for CigarMDPosIter<I> {
             self.md_curr = self.md_iter.next();
         }
 
-        if self.cigar_stack.is_empty() {
+        if self.cigar_curr.is_none() {
             None
         } else {
             Some(
