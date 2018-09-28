@@ -1,6 +1,7 @@
 use std::fmt;
 use std::fmt::Write;
 use std::str;
+use std::vec::IntoIter;
 
 use bio_types::alignment::{Alignment, AlignmentMode, AlignmentOperation};
 
@@ -415,7 +416,8 @@ impl CigarMDPos {
 /// the first sequenced base.
 #[derive(Debug)]
 pub struct CigarMDPosIter {
-    md_stack: Vec<MatchDesc>,
+    md_iter: IntoIter<MatchDesc>,
+    md_curr: Option<MatchDesc>,
     cigar_stack: Vec<Cigar>,
     ref_pos_curr: u32,
     read_pos_curr: u32,
@@ -428,14 +430,15 @@ impl CigarMDPosIter {
     ///
     /// * `record` is the BAM record whose alignment will be extracted
     pub fn new_from_record(record: &bam::record::Record) -> Result<Self, MDAlignError> {
-        let mut md_stack = MDString::new_from_record(record)?.0;
-        md_stack.reverse();
+        let mut md_iter = MDString::new_from_record(record)?.into_iter();
+        let mut md_curr = md_iter.next();
 
         let CigarString(mut cigar_stack) = (*record.cigar()).clone();
         cigar_stack.reverse();
 
         Ok(CigarMDPosIter {
-            md_stack: md_stack,
+            md_iter: md_iter,
+            md_curr: md_curr,
             cigar_stack: cigar_stack,
             ref_pos_curr: record.pos() as u32,
             read_pos_curr: 0,
@@ -451,10 +454,10 @@ impl CigarMDPosIter {
 
         let res = match self.cigar_stack.last_mut().unwrap() {
             Cigar::Match(ref mut ciglen) => {
-                let pop_md;
+                let next_md;
                 let mmm = match self
-                    .md_stack
-                    .last_mut()
+                    .md_curr
+                    .as_mut()
                     .ok_or_else(|| MDAlignError::MDvsCIGAR)?
                 {
                     MatchDesc::Matches(ref mut mdlen) => {
@@ -465,7 +468,7 @@ impl CigarMDPosIter {
                         self.read_pos_curr += 1;
                         self.ref_pos_curr += 1;
                         *mdlen -= 1;
-                        pop_md = *mdlen == 0;
+                        next_md = *mdlen == 0;
                         *ciglen -= 1;
                         pop_cigar = *ciglen == 0;
                         pos
@@ -478,7 +481,7 @@ impl CigarMDPosIter {
                         };
                         self.read_pos_curr += 1;
                         self.ref_pos_curr += 1;
-                        pop_md = true;
+                        next_md = true;
                         *ciglen -= 1;
                         pop_cigar = *ciglen == 0;
                         pos
@@ -487,16 +490,16 @@ impl CigarMDPosIter {
                         return Err(MDAlignError::MDvsCIGAR);
                     }
                 };
-                if pop_md {
-                    self.md_stack.pop();
+                if next_md {
+                    self.md_curr = self.md_iter.next();
                 }
                 mmm
             }
             Cigar::Equal(ref mut ciglen) => {
-                let pop_md;
+                let next_md;
                 let m = match self
-                    .md_stack
-                    .last_mut()
+                    .md_curr
+                    .as_mut()
                     .ok_or_else(|| MDAlignError::MDvsCIGAR)?
                 {
                     MatchDesc::Matches(ref mut mdlen) => {
@@ -508,23 +511,23 @@ impl CigarMDPosIter {
                         self.ref_pos_curr += 1;
 
                         *mdlen -= 1;
-                        pop_md = *mdlen == 0;
+                        next_md = *mdlen == 0;
                         *ciglen -= 1;
                         pop_cigar = *ciglen == 0;
                         pos
                     }
                     _ => return Err(MDAlignError::MDvsCIGAR),
                 };
-                if pop_md {
-                    self.md_stack.pop();
+                if next_md {
+                    self.md_curr = self.md_iter.next();
                 }
                 m
             }
             Cigar::Diff(ref mut ciglen) => {
-                let pop_md;
+                let next_md;
                 let mm = match self
-                    .md_stack
-                    .last_mut()
+                    .md_curr
+                    .as_mut()
                     .ok_or_else(|| MDAlignError::MDvsCIGAR)?
                 {
                     MatchDesc::Mismatch(ref_nt) => {
@@ -535,15 +538,15 @@ impl CigarMDPosIter {
                         };
                         self.read_pos_curr += 1;
                         self.ref_pos_curr += 1;
-                        pop_md = true;
+                        next_md = true;
                         *ciglen -= 1;
                         pop_cigar = *ciglen == 0;
                         pos
                     }
                     _ => return Err(MDAlignError::MDvsCIGAR),
                 };
-                if pop_md {
-                    self.md_stack.pop();
+                if next_md {
+                    self.md_curr = self.md_iter.next();
                 }
                 mm
             }
@@ -558,13 +561,13 @@ impl CigarMDPosIter {
                 pos
             }
             Cigar::Del(ref mut len) => {
-                let pop_md;
+                let next_md;
 
-                let del = match self.md_stack.last_mut() {
+                let del = match self.md_curr.as_mut() {
                     Some(MatchDesc::Deletion(ref mut ref_nts)) => {
                         if ref_nts.len() > 0 {
                             let ref_nt = ref_nts.remove(0);
-                            pop_md = ref_nts.is_empty();
+                            next_md = ref_nts.is_empty();
                             let pos = CigarMDPos::Delete {
                                 ref_nt: ref_nt,
                                 ref_pos: self.ref_pos_curr,
@@ -580,8 +583,8 @@ impl CigarMDPosIter {
                 };
                 *len -= 1;
                 pop_cigar = *len == 0;
-                if pop_md {
-                    self.md_stack.pop();
+                if next_md {
+                    self.md_curr = self.md_iter.next();
                 }
                 del
             }
@@ -730,8 +733,8 @@ impl Iterator for CigarMDPosIter {
         }
 
         // Consume 0-length match
-        while self.md_stack.last() == Some(&MatchDesc::Matches(0)) {
-            self.md_stack.pop();
+        while self.md_curr == Some(MatchDesc::Matches(0)) {
+            self.md_curr = self.md_iter.next();
         }
 
         if self.cigar_stack.is_empty() {
