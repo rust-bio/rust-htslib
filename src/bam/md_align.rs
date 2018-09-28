@@ -196,7 +196,7 @@ impl<'a> MDAlignPos<'a> {
 /// order. For a reverse-strand alignment, they run from the last to
 /// the first sequenced base.
 pub struct MDAlignPosIter<'a> {
-    align_iter: CigarMDPosIter,
+    align_iter: CigarMDPosIter<IntoIter<MatchDesc>>,
     record: &'a bam::record::Record,
 }
 
@@ -415,15 +415,15 @@ impl CigarMDPos {
 /// order. For a reverse-strand alignment, they run from the last to
 /// the first sequenced base.
 #[derive(Debug)]
-pub struct CigarMDPosIter {
-    md_iter: IntoIter<MatchDesc>,
+pub struct CigarMDPosIter<I> {
+    md_iter: I,
     md_curr: Option<MatchDesc>,
     cigar_stack: Vec<Cigar>,
     ref_pos_curr: u32,
     read_pos_curr: u32,
 }
 
-impl CigarMDPosIter {
+impl CigarMDPosIter<IntoIter<MatchDesc>> {
     /// Create a new iterator for a BAM record.
     ///
     /// # Arguments
@@ -444,7 +444,9 @@ impl CigarMDPosIter {
             read_pos_curr: 0,
         })
     }
+}
 
+impl <I: Iterator<Item = MatchDesc>> CigarMDPosIter<I> {
     // Utility function that yields the next CigarMDPos.
     // Requires the cigar stack is non-empty
     // Requires that 0-length matches and non-yielding cigar entries
@@ -710,7 +712,7 @@ impl CigarMDPosIter {
     }
 }
 
-impl Iterator for CigarMDPosIter {
+impl <I: Iterator<Item = MatchDesc>> Iterator for CigarMDPosIter<I> {
     type Item = Result<CigarMDPos, MDAlignError>;
 
     fn next(&mut self) -> Option<Self::Item> {
