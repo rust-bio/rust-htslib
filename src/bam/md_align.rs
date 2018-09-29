@@ -6,7 +6,7 @@ use std::vec::IntoIter;
 use bio_types::alignment::{Alignment, AlignmentMode, AlignmentOperation};
 
 use bam;
-use bam::record::{Cigar};
+use bam::record::Cigar;
 
 /// Alignment position based on information in the CIGAR and MD aux
 /// field for a BAM record. The `CigarMDPos` entries for a BAM record
@@ -329,13 +329,15 @@ impl CigarMDIter<IntoIter<MatchDesc>, IntoIter<Cigar>> {
     /// # Errors An error variant is returned when `record` has no MD
     /// aux field or when there's an error extracting this field.
     pub fn new_from_record(record: &bam::record::Record) -> Result<Self, MDAlignError> {
-        Ok( Self::new(MDString::new_from_record(record)?,
-                      (*record.cigar()).to_vec(),
-                      record.pos() as u32) )
+        Ok(Self::new(
+            MDString::new_from_record(record)?,
+            (*record.cigar()).to_vec(),
+            record.pos() as u32,
+        ))
     }
 }
 
-impl <I: Iterator<Item = MatchDesc>, J: Iterator<Item = Cigar>> CigarMDIter<I, J> {
+impl<I: Iterator<Item = MatchDesc>, J: Iterator<Item = Cigar>> CigarMDIter<I, J> {
     /// Create a new iterator that consumes `MatchDesc` and `Cigar`
     /// entries from iterators in order to yield `CigarMDPos` entries
     /// describing the alignment.
@@ -350,9 +352,10 @@ impl <I: Iterator<Item = MatchDesc>, J: Iterator<Item = Cigar>> CigarMDIter<I, J
     ///
     /// `startpos` is the starting position of the alignment on the
     /// reference sequence
-    pub fn new<S,T>(mdstring: S, cigarstring: T, startpos: u32) -> Self
-        where S: IntoIterator<IntoIter = I, Item = MatchDesc>,
-              T: IntoIterator<IntoIter = J, Item = Cigar>
+    pub fn new<S, T>(mdstring: S, cigarstring: T, startpos: u32) -> Self
+    where
+        S: IntoIterator<IntoIter = I, Item = MatchDesc>,
+        T: IntoIterator<IntoIter = J, Item = Cigar>,
     {
         let mut md_iter = mdstring.into_iter();
         let md_curr = md_iter.next();
@@ -367,7 +370,7 @@ impl <I: Iterator<Item = MatchDesc>, J: Iterator<Item = Cigar>> CigarMDIter<I, J
             cigar_curr: cigar_curr,
             ref_pos_curr: startpos,
             read_pos_curr: 0,
-        }      
+        }
     }
 
     // Utility function that yields the next CigarMDPos.
@@ -380,8 +383,7 @@ impl <I: Iterator<Item = MatchDesc>, J: Iterator<Item = Cigar>> CigarMDIter<I, J
         let res = match self.cigar_curr.as_mut().unwrap() {
             Cigar::Match(ref mut ciglen) => {
                 let next_md;
-                let mmm = match self
-                    .md_curr
+                let mmm = match self.md_curr
                     .as_mut()
                     .ok_or_else(|| MDAlignError::MDvsCIGAR)?
                 {
@@ -422,8 +424,7 @@ impl <I: Iterator<Item = MatchDesc>, J: Iterator<Item = Cigar>> CigarMDIter<I, J
             }
             Cigar::Equal(ref mut ciglen) => {
                 let next_md;
-                let m = match self
-                    .md_curr
+                let m = match self.md_curr
                     .as_mut()
                     .ok_or_else(|| MDAlignError::MDvsCIGAR)?
                 {
@@ -450,8 +451,7 @@ impl <I: Iterator<Item = MatchDesc>, J: Iterator<Item = Cigar>> CigarMDIter<I, J
             }
             Cigar::Diff(ref mut ciglen) => {
                 let next_md;
-                let mm = match self
-                    .md_curr
+                let mm = match self.md_curr
                     .as_mut()
                     .ok_or_else(|| MDAlignError::MDvsCIGAR)?
                 {
@@ -547,8 +547,7 @@ impl <I: Iterator<Item = MatchDesc>, J: Iterator<Item = Cigar>> CigarMDIter<I, J
         let mut curr = iter.next();
 
         let mut left_clip = 0;
-        while curr
-            .ok_or_else(|| MDAlignError::EmptyAlign)?
+        while curr.ok_or_else(|| MDAlignError::EmptyAlign)?
             .ref_pos_or_next()
             .is_none()
         {
@@ -1109,7 +1108,10 @@ mod tests {
                 .expect("Creating CigarMDIter");
             let cigar_md_res: Result<Vec<CigarMDPos>, MDAlignError> = cigar_md_iter.collect();
             let cigar_md_vec = cigar_md_res.ok().expect("Unable to create Vec<CigarMdPos>");
-            let read_line: String = cigar_md_vec.iter().map(|rap| rap.read_line_char(&rec)).collect();
+            let read_line: String = cigar_md_vec
+                .iter()
+                .map(|rap| rap.read_line_char(&rec))
+                .collect();
             assert_eq!(read_line, TEST_READ_LINE[i]);
             let ref_line: String = raps.iter().map(|rap| rap.ref_line_char(&rec)).collect();
             assert_eq!(ref_line, TEST_REF_LINE[i]);

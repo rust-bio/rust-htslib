@@ -15,7 +15,7 @@ use std::u32;
 use itertools::Itertools;
 use regex::Regex;
 
-use bam::md_align::{MDAlignError, CigarMDIter, CigarMDPos};
+use bam::md_align::{CigarMDIter, CigarMDPos, MDAlignError};
 use bam::{AuxWriteError, HeaderView, ReadError};
 use htslib;
 use utils;
@@ -612,8 +612,12 @@ impl Record {
     /// inconsistencies between the Cigar string, the MD field, and
     /// the read sequence.
     pub fn reference_seq_from_md(&self) -> Result<Vec<u8>, MDAlignError> {
-        let cigar_md: Result<Vec<CigarMDPos>, MDAlignError> = CigarMDIter::new_from_record(&self)?.collect();
-        Ok(cigar_md?.iter().filter_map(|pos| pos.ref_nt(&self)).collect())
+        let cigar_md: Result<Vec<CigarMDPos>, MDAlignError> =
+            CigarMDIter::new_from_record(&self)?.collect();
+        Ok(cigar_md?
+            .iter()
+            .filter_map(|pos| pos.ref_nt(&self))
+            .collect())
     }
 }
 
@@ -885,11 +889,8 @@ impl CigarString {
 
     /// Create a CigarString from given bytes.
     pub fn from_bytes(text: &[u8]) -> Result<Self, CigarError> {
-        Self::from_str(
-            str::from_utf8(text).map_err(|_| {
-                CigarError::UnexpectedOperation("unable to parse as UTF8".to_owned())
-            })?,
-        )
+        Self::from_str(str::from_utf8(text)
+            .map_err(|_| CigarError::UnexpectedOperation("unable to parse as UTF8".to_owned()))?)
     }
 
     /// Create a CigarString from given str.
