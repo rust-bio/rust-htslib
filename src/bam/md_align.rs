@@ -1,5 +1,6 @@
 use std::fmt;
-use std::fmt::Write;
+//use std::fmt::Write;
+use std::iter::FromIterator;
 use std::str;
 use std::vec::IntoIter;
 
@@ -533,94 +534,113 @@ impl<I: Iterator<Item = MatchDesc>, J: Iterator<Item = Cigar>> CigarMDIter<I, J>
 
         Ok(res)
     }
+}
 
+impl FromIterator<CigarMDPos> for Alignment {
     /// Collect the alignment positions from this record into an
     /// `Alignment`. This is always a semi-global alignment that
     /// includes the soft clipping from the read as `Xclip` operations.
-    pub fn collect_into_alignment(self) -> Result<Alignment, MDAlignError> {
-        let mds_result: Result<Vec<CigarMDPos>, MDAlignError> = self.collect();
-        let mds = mds_result?;
-        let mut iter = mds.as_slice().into_iter();
+    fn from_iter<T>(into_iterator: T) -> Alignment
+    where
+        T: IntoIterator<Item = CigarMDPos>,
+    {
+        let mut iter = into_iterator.into_iter();
 
         let mut ops = Vec::new();
 
         let mut curr = iter.next();
 
         let mut left_clip = 0;
-        while curr.ok_or_else(|| MDAlignError::EmptyAlign)?
-            .ref_pos_or_next()
-            .is_none()
+        while curr.as_ref()
+            .map_or(false, |cigar_md| cigar_md.ref_pos_or_next().is_none())
         {
             left_clip += 1;
             curr = iter.next();
         }
         ops.push(AlignmentOperation::Xclip(left_clip));
 
-        let (xstart, ystart) = if let Some(md) = curr {
+        let (xstart, ystart) = if let Some(md) = curr.as_ref() {
             (md.read_seq_pos_or_next(), md.ref_pos_or_next().unwrap())
         } else {
-            panic!("No CigarMDPos remaining after left clip")
+            return Alignment {
+                score: 0,
+                xstart: 0,
+                ystart: 0,
+                xend: 0,
+                yend: 0,
+                ylen: 0,
+                xlen: 0,
+                operations: vec![],
+                mode: AlignmentMode::Semiglobal,
+            };
         };
 
         let mut xend = xstart;
         let mut yend = ystart;
 
-        while let Some(md) = curr {
-            match md {
-                CigarMDPos::Match {
-                    read_seq_pos,
-                    ref_pos,
-                } => {
-                    ops.push(AlignmentOperation::Match);
-                    xend = *read_seq_pos;
-                    yend = *ref_pos;
+        loop {
+            if let Some(md) = curr.as_ref() {
+                match md {
+                    CigarMDPos::Match {
+                        read_seq_pos,
+                        ref_pos,
+                    } => {
+                        ops.push(AlignmentOperation::Match);
+                        xend = *read_seq_pos;
+                        yend = *ref_pos;
+                    }
+                    CigarMDPos::Mismatch {
+                        ref_nt: _,
+                        read_seq_pos,
+                        ref_pos,
+                    } => {
+                        ops.push(AlignmentOperation::Subst);
+                        xend = *read_seq_pos;
+                        yend = *ref_pos;
+                    }
+                    CigarMDPos::Insert {
+                        read_seq_pos,
+                        ref_pos_next: _,
+                    } => {
+                        ops.push(AlignmentOperation::Ins);
+                        xend = *read_seq_pos;
+                    }
+                    CigarMDPos::Delete {
+                        ref_nt: _,
+                        read_seq_pos_next: _,
+                        ref_pos,
+                    } => {
+                        ops.push(AlignmentOperation::Del);
+                        yend = *ref_pos;
+                    }
+                    CigarMDPos::SoftClip { read_seq_pos: _ } => break,
                 }
-                CigarMDPos::Mismatch {
-                    ref_nt: _,
-                    read_seq_pos,
-                    ref_pos,
-                } => {
-                    ops.push(AlignmentOperation::Subst);
-                    xend = *read_seq_pos;
-                    yend = *ref_pos;
-                }
-                CigarMDPos::Insert {
-                    read_seq_pos,
-                    ref_pos_next: _,
-                } => {
-                    ops.push(AlignmentOperation::Ins);
-                    xend = *read_seq_pos;
-                }
-                CigarMDPos::Delete {
-                    ref_nt: _,
-                    read_seq_pos_next: _,
-                    ref_pos,
-                } => {
-                    ops.push(AlignmentOperation::Del);
-                    yend = *ref_pos;
-                }
-                CigarMDPos::SoftClip { read_seq_pos: _ } => break,
+            } else {
+                break;
             }
+
             curr = iter.next();
         }
 
         let mut right_clip = 0;
         let mut xlen = xend;
-        while let Some(md) = curr {
-            match md {
-                CigarMDPos::SoftClip { read_seq_pos } => {
-                    xlen = *read_seq_pos;
-                }
-                _ => {
-                    return Err(MDAlignError::BadMD);
-                }
-            };
-            right_clip += 1;
+        loop {
+            if let Some(md) = curr.as_ref() {
+                match md {
+                    CigarMDPos::SoftClip { read_seq_pos } => {
+                        xlen = *read_seq_pos;
+                    }
+                    _ => break,
+                };
+                right_clip += 1;
+            } else {
+                break;
+            }
             curr = iter.next();
         }
         ops.push(AlignmentOperation::Xclip(right_clip));
 
-        Ok(Alignment {
+        Alignment {
             score: 0,
             xstart: xstart as usize,
             ystart: ystart as usize,
@@ -630,7 +650,7 @@ impl<I: Iterator<Item = MatchDesc>, J: Iterator<Item = Cigar>> CigarMDIter<I, J>
             xlen: xlen as usize,
             operations: ops,
             mode: AlignmentMode::Semiglobal,
-        })
+        }
     }
 }
 
@@ -1110,19 +1130,21 @@ mod tests {
             let cigar_md_vec = cigar_md_res.ok().expect("Unable to create Vec<CigarMdPos>");
             let read_line: String = cigar_md_vec
                 .iter()
-                .map(|rap| rap.read_line_char(&rec))
+                .map(|cigar_md| cigar_md.read_line_char(&rec))
                 .collect();
             assert_eq!(read_line, TEST_READ_LINE[i]);
-            let ref_line: String = raps.iter().map(|rap| rap.ref_line_char(&rec)).collect();
+            let ref_line: String = cigar_md_vec
+                .iter()
+                .map(|cigar_md| cigar_md.ref_line_char(&rec))
+                .collect();
             assert_eq!(ref_line, TEST_REF_LINE[i]);
 
-            let md_iter = CigarMDIter::new_from_record(&rec)
+            let cigar_md_iter = CigarMDIter::new_from_record(&rec)
                 .ok()
                 .expect("Creating CigarMDIter");
-            let alignment = md_iter
-                .collect_into_alignment()
-                .ok()
-                .expect("collecting into alignment");
+            let cigar_md_res: Result<Vec<CigarMDPos>, MDAlignError> = cigar_md_iter.collect();
+            let cigar_md_vec = cigar_md_res.ok().expect("Unable to create Vec<CigarMdPos>");
+            let alignment = cigar_md_vec.into_iter().collect::<Alignment>();
             let a_cigar = alignment.cigar(false);
             assert_eq!(a_cigar, TEST_ALIGN_CIGAR[i]);
         }
