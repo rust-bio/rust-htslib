@@ -6,230 +6,7 @@ use std::vec::IntoIter;
 use bio_types::alignment::{Alignment, AlignmentMode, AlignmentOperation};
 
 use bam;
-use bam::record::{Cigar, CigarString};
-
-/// Alignment position on a BAM record, reconstructed using read
-/// sequence information along with the Cigar string and the MD Aux
-/// field.
-pub struct MDAlignPos<'a> {
-    record: &'a bam::record::Record,
-    pos: CigarMDPos,
-}
-
-impl<'a> MDAlignPos<'a> {
-    fn new(record: &'a bam::record::Record, pos: CigarMDPos) -> Self {
-        MDAlignPos {
-            record: record,
-            pos: pos,
-        }
-    }
-
-    fn read_nt_at(&self, at: u32) -> u8 {
-        self.record.seq()[at as usize]
-    }
-
-    fn qual_at(&self, at: u32) -> u8 {
-        self.record.qual()[at as usize]
-    }
-
-    /// Read nucleotide sequence as reported in the BAM
-    /// alignment. _Note_ that this is the complement of the read
-    /// sequence itself for reverse-strand alignments.
-    ///
-    /// `None` is returned for read deletions.
-    pub fn read_nt(&self) -> Option<u8> {
-        self.pos.read_seq_pos().map(|pos| self.read_nt_at(pos))
-    }
-
-    /// Reference nucleotide sequence as reported in the BAM alignment.
-    ///
-    /// `None` is returned for read insertions and
-    /// soft clipped positions.
-    pub fn ref_nt(&self) -> Option<u8> {
-        self.pos.ref_nt().or_else(|| {
-            if self.ref_pos().is_some() {
-                self.read_nt()
-            } else {
-                None
-            }
-        })
-    }
-
-    /// Read nucleotide quality score as reported in the BAM
-    /// alignment.
-    ///
-    /// `None` is returned at read deletion positions.
-    pub fn read_qual(&self) -> Option<u8> {
-        self.pos.read_seq_pos().map(|pos| self.qual_at(pos))
-    }
-
-    /// Zero-based offset in the read sequence as reported in the BAM
-    /// alignment. _Note_ that these positions will run from the last
-    /// to the first base in the original input sequence for
-    /// reverse-strand alignments.
-    ///
-    /// `None is returned for read deletions.
-    pub fn read_seq_pos(&self) -> Option<u32> {
-        self.pos.read_seq_pos()
-    }
-
-    /// Zero-based offset in the read sequence as reported in the BAM
-    /// alignment. For read deletions, the offset of the next aligned
-    /// read sequence nucleotide is reported. _Note_ that these
-    /// positions will run from the last to the first base in the
-    /// original input sequence for reverse-strand alignments.
-    pub fn read_seq_pos_or_next(&self) -> u32 {
-        self.pos.read_seq_pos_or_next()
-    }
-
-    /// Zero-based offset in the reference sequence.
-    ///
-    /// `None` is returned for read insertions and
-    /// soft clipped positions.
-    pub fn ref_pos(&self) -> Option<u32> {
-        self.pos.ref_pos()
-    }
-
-    /// Zero-based offset in the reference sequence. For read
-    /// insertions, the offset of the next aligned reference sequence
-    /// nucleotide is reported.
-    ///
-    /// `None` is returned for soft clipped positions.
-    pub fn ref_pos_or_next(&self) -> Option<u32> {
-        self.pos.ref_pos_or_next()
-    }
-
-    /// Zero-based offset for this position in the original input read
-    /// sequence. Position 0 is the first nucleotide from the input
-    /// read sequence for either forward or reverse strand alignments.
-    ///
-    /// `None` is returned for read deletions.
-    pub fn read_true_pos(&self) -> Option<u32> {
-        self.read_seq_pos().map(|seq_pos| {
-            if self.record.is_reverse() {
-                self.record.qual().len() as u32 - (1 + seq_pos)
-            } else {
-                seq_pos
-            }
-        })
-    }
-
-    /// Nucleotide in the original input read sequence, taking into
-    /// account the fact that reverse-strand alignments report the
-    /// reverse-complement of the input read sequence.
-    ///
-    /// `None` is returned for read deletions.
-    pub fn read_true_nt(&self) -> Option<u8> {
-        self.read_nt().map(|nt| {
-            if self.record.is_reverse() {
-                fast_compl(nt)
-            } else {
-                nt
-            }
-        })
-    }
-
-    /// Nucleotide for the reference sequence that is matched against
-    /// `read_true_nt()`. _Note_ that this is the complement of the
-    /// nucleotide in the reference sequence (as per `ref_nt`) for
-    /// reverse-strand alignments.
-    ///
-    /// `None` is returned for read insertions and soft-clipped
-    /// positions.
-    pub fn ref_true_nt(&self) -> Option<u8> {
-        self.ref_nt().map(|nt| {
-            if self.record.is_reverse() {
-                fast_compl(nt)
-            } else {
-                nt
-            }
-        })
-    }
-
-    /// Character for read sequence line in pretty-printed alignment
-    /// format. This character is the read sequence base, in
-    /// lower-case for soft-clipped positions, or a `-` for read
-    /// deletions.
-    pub fn read_line_char(&self) -> char {
-        if self.ref_pos_or_next().is_none() {
-            self.read_nt()
-                .map_or('-', |nt| nt.to_ascii_lowercase() as char)
-        } else {
-            self.read_nt().map_or('-', |nt| nt as char)
-        }
-    }
-
-    /// Character for middle match line in pretty-printed alignment
-    /// format. This is a vertical bar at match positions and a space
-    /// otherwise.
-    pub fn match_line_char(&self) -> char {
-        let read = self.read_nt();
-        if read.is_some() && read == self.ref_nt() {
-            '|'
-        } else {
-            ' '
-        }
-    }
-
-    /// Character for reference sequence line in pretty-printed
-    /// alignment format. This character is the reference sequence
-    /// base when present, a `-` for read insertions, and a space for
-    /// soft-clipped positions.
-    pub fn ref_line_char(&self) -> char {
-        self.ref_nt().map_or_else(
-            || {
-                if self.ref_pos_or_next().is_none() {
-                    ' '
-                } else {
-                    '-'
-                }
-            },
-            |nt| nt as char,
-        )
-    }
-}
-
-/// Iterator that generates `MDAlignPos` alignment positions for a BAM
-/// record.
-///
-/// Note that these positions are generated in reference sequence
-/// order. For a reverse-strand alignment, they run from the last to
-/// the first sequenced base.
-pub struct MDAlignPosIter<'a> {
-    align_iter: CigarMDPosIter<IntoIter<MatchDesc>, IntoIter<Cigar>>,
-    record: &'a bam::record::Record,
-}
-
-impl<'a> MDAlignPosIter<'a> {
-    /// Create a new iterator for a BAM record.
-    ///
-    /// # Arguments
-    ///
-    /// * `record` is the BAM record whose alignment will be extracted
-    ///
-    /// # Errors
-    ///
-    /// An error variant is returned when `record` has no MD aux
-    /// field, when the aux field cannot be parsed, or when there is a
-    /// conflict between the MD, Cigar, and read sequence.
-    pub fn new(record: &'a bam::record::Record) -> Result<Self, MDAlignError> {
-        let align_iter = CigarMDPosIter::new_from_record(record)?;
-        Ok(MDAlignPosIter {
-            align_iter: align_iter,
-            record: record,
-        })
-    }
-}
-
-impl<'a> Iterator for MDAlignPosIter<'a> {
-    type Item = Result<MDAlignPos<'a>, MDAlignError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.align_iter
-            .next()
-            .map(|res| res.map(|mdpos| MDAlignPos::new(self.record, mdpos)))
-    }
-}
+use bam::record::{Cigar};
 
 /// Alignment position based on information in the CIGAR and MD aux
 /// field for a BAM record. The `CigarMDPos` entries for a BAM record
@@ -379,16 +156,45 @@ impl CigarMDPos {
         }
     }
 
-    /// Reference nucleotide, _when it differs from the read nucleotide_.
+    /// Read nucleotide sequence as reported in the BAM
+    /// alignment. _Note_ that this is the complement of the read
+    /// sequence itself for reverse-strand alignments.
     ///
-    /// `None` is returned for matches, read insertions and soft
-    /// clipped positions.
-    pub fn ref_nt(&self) -> Option<u8> {
+    /// `None` is returned for read deletions.
+    ///
+    /// # Arguments
+    ///
+    /// `record` is the associated BAM alignment
+    pub fn read_nt(&self, record: &bam::record::Record) -> Option<u8> {
+        self.read_seq_pos().map(|pos| record.seq()[pos as usize])
+    }
+
+    /// Read nucleotide quality score as reported in the BAM
+    /// alignment.
+    ///
+    /// `None` is returned at read deletion positions.
+    ///
+    /// # Arguments
+    ///
+    /// `record` is the associated BAM alignment
+    pub fn read_qual(&self, record: &bam::record::Record) -> Option<u8> {
+        self.read_seq_pos().map(|pos| record.qual()[pos as usize])
+    }
+
+    /// Reference nucleotide sequence as reported in the BAM alignment.
+    ///
+    /// `None` is returned for read insertions and soft clipped
+    /// positions.
+    ///
+    /// # Arguments
+    ///
+    /// `record` is the associated BAM alignment
+    pub fn ref_nt(&self, record: &bam::record::Record) -> Option<u8> {
         match self {
             CigarMDPos::Match {
                 read_seq_pos,
                 ref_pos,
-            } => None,
+            } => self.read_nt(record),
             CigarMDPos::Mismatch {
                 ref_nt,
                 read_seq_pos,
@@ -406,6 +212,95 @@ impl CigarMDPos {
             CigarMDPos::SoftClip { read_seq_pos } => None,
         }
     }
+
+    /// Zero-based offset for this position in the original input read
+    /// sequence. Position 0 is the first nucleotide from the input
+    /// read sequence for either forward or reverse strand alignments.
+    ///
+    /// `None` is returned for read deletions.
+    pub fn read_pos_on_read(&self, record: &bam::record::Record) -> Option<u32> {
+        self.read_seq_pos().map(|seq_pos| {
+            if record.is_reverse() {
+                record.qual().len() as u32 - (1 + seq_pos)
+            } else {
+                seq_pos
+            }
+        })
+    }
+
+    /// Nucleotide in the original input read sequence, taking into
+    /// account the fact that reverse-strand alignments report the
+    /// reverse-complement of the input read sequence.
+    ///
+    /// `None` is returned for read deletions.
+    pub fn read_nt_on_read(&self, record: &bam::record::Record) -> Option<u8> {
+        self.read_nt(record).map(|nt| {
+            if record.is_reverse() {
+                fast_compl(nt)
+            } else {
+                nt
+            }
+        })
+    }
+
+    /// Nucleotide for the reference sequence that is matched against
+    /// `read_onread_nt()`. _Note_ that this is the complement of the
+    /// nucleotide in the reference sequence (as per `ref_nt`) for
+    /// reverse-strand alignments.
+    ///
+    /// `None` is returned for read insertions and soft-clipped
+    /// positions.
+    pub fn ref_nt_on_read(&self, record: &bam::record::Record) -> Option<u8> {
+        self.ref_nt(record).map(|nt| {
+            if record.is_reverse() {
+                fast_compl(nt)
+            } else {
+                nt
+            }
+        })
+    }
+
+    /// Character for read sequence line in pretty-printed alignment
+    /// format. This character is the read sequence base, in
+    /// lower-case for soft-clipped positions, or a `-` for read
+    /// deletions.
+    pub fn read_line_char(&self, record: &bam::record::Record) -> char {
+        if self.ref_pos_or_next().is_none() {
+            self.read_nt(record)
+                .map_or('-', |nt| nt.to_ascii_lowercase() as char)
+        } else {
+            self.read_nt(record).map_or('-', |nt| nt as char)
+        }
+    }
+
+    /// Character for middle match line in pretty-printed alignment
+    /// format. This is a vertical bar at match positions and a space
+    /// otherwise.
+    pub fn match_line_char(&self, record: &bam::record::Record) -> char {
+        let read = self.read_nt(record);
+        if read.is_some() && read == self.ref_nt(record) {
+            '|'
+        } else {
+            ' '
+        }
+    }
+
+    /// Character for reference sequence line in pretty-printed
+    /// alignment format. This character is the reference sequence
+    /// base when present, a `-` for read insertions, and a space for
+    /// soft-clipped positions.
+    pub fn ref_line_char(&self, record: &bam::record::Record) -> char {
+        self.ref_nt(record).map_or_else(
+            || {
+                if self.ref_pos_or_next().is_none() {
+                    ' '
+                } else {
+                    '-'
+                }
+            },
+            |nt| nt as char,
+        )
+    }
 }
 
 /// Iterator over the `CigarMDPos` positions represented by a BAM
@@ -415,7 +310,7 @@ impl CigarMDPos {
 /// order. For a reverse-strand alignment, they run from the last to
 /// the first sequenced base.
 #[derive(Debug)]
-pub struct CigarMDPosIter<I, J> {
+pub struct CigarMDIter<I, J> {
     md_iter: I,
     md_curr: Option<MatchDesc>,
     cigar_iter: J,
@@ -424,31 +319,57 @@ pub struct CigarMDPosIter<I, J> {
     read_pos_curr: u32,
 }
 
-impl CigarMDPosIter<IntoIter<MatchDesc>, IntoIter<Cigar>> {
+impl CigarMDIter<IntoIter<MatchDesc>, IntoIter<Cigar>> {
     /// Create a new iterator for a BAM record.
     ///
     /// # Arguments
     ///
     /// * `record` is the BAM record whose alignment will be extracted
+    ///
+    /// # Errors An error variant is returned when `record` has no MD
+    /// aux field or when there's an error extracting this field.
     pub fn new_from_record(record: &bam::record::Record) -> Result<Self, MDAlignError> {
-        let mut md_iter = MDString::new_from_record(record)?.into_iter();
+        Ok( Self::new(MDString::new_from_record(record)?,
+                      (*record.cigar()).to_vec(),
+                      record.pos() as u32) )
+    }
+}
+
+impl <I: Iterator<Item = MatchDesc>, J: Iterator<Item = Cigar>> CigarMDIter<I, J> {
+    /// Create a new iterator that consumes `MatchDesc` and `Cigar`
+    /// entries from iterators in order to yield `CigarMDPos` entries
+    /// describing the alignment.
+    ///
+    /// # Arguments
+    ///
+    /// `mdstring` can be converted into an iterator over `MatchDesc`
+    /// entries
+    ///
+    /// `cigarstring` can be converted into an iterator over `Cigar`
+    /// entires
+    ///
+    /// `startpos` is the starting position of the alignment on the
+    /// reference sequence
+    pub fn new<S,T>(mdstring: S, cigarstring: T, startpos: u32) -> Self
+        where S: IntoIterator<IntoIter = I, Item = MatchDesc>,
+              T: IntoIterator<IntoIter = J, Item = Cigar>
+    {
+        let mut md_iter = mdstring.into_iter();
         let md_curr = md_iter.next();
 
-        let mut cigar_iter = (*record.cigar()).to_vec().into_iter();
+        let mut cigar_iter = cigarstring.into_iter();
         let cigar_curr = cigar_iter.next();
 
-        Ok(CigarMDPosIter {
+        CigarMDIter {
             md_iter: md_iter,
             md_curr: md_curr,
             cigar_iter: cigar_iter,
             cigar_curr: cigar_curr,
-            ref_pos_curr: record.pos() as u32,
+            ref_pos_curr: startpos,
             read_pos_curr: 0,
-        })
+        }      
     }
-}
 
-impl<I: Iterator<Item = MatchDesc>, J: Iterator<Item = Cigar>> CigarMDPosIter<I, J> {
     // Utility function that yields the next CigarMDPos.
     // Requires the cigar stack is non-empty
     // Requires that 0-length matches and non-yielding cigar entries
@@ -714,7 +635,7 @@ impl<I: Iterator<Item = MatchDesc>, J: Iterator<Item = Cigar>> CigarMDPosIter<I,
     }
 }
 
-impl<I: Iterator<Item = MatchDesc>, J: Iterator<Item = Cigar>> Iterator for CigarMDPosIter<I, J> {
+impl<I: Iterator<Item = MatchDesc>, J: Iterator<Item = Cigar>> Iterator for CigarMDIter<I, J> {
     type Item = Result<CigarMDPos, MDAlignError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -1183,19 +1104,19 @@ mod tests {
             assert_eq!(rec.aux_md().unwrap(), TEST_MD[i]);
             assert_eq!(rec.cigar().to_string(), TEST_CIGAR[i]);
 
-            let rap_iter = MDAlignPosIter::new(&rec)
+            let cigar_md_iter = CigarMDIter::new_from_record(&rec)
                 .ok()
-                .expect("Creating MDAlignPosIter");
-            let rap_res: Result<Vec<MDAlignPos>, MDAlignError> = rap_iter.collect();
-            let raps = rap_res.ok().expect("Unable to create Vec<MDAlignPos>");
-            let rap_read_line: String = raps.iter().map(|rap| rap.read_line_char()).collect();
-            assert_eq!(rap_read_line, TEST_READ_LINE[i]);
-            let rap_ref_line: String = raps.iter().map(|rap| rap.ref_line_char()).collect();
-            assert_eq!(rap_ref_line, TEST_REF_LINE[i]);
+                .expect("Creating CigarMDIter");
+            let cigar_md_res: Result<Vec<CigarMDPos>, MDAlignError> = cigar_md_iter.collect();
+            let cigar_md_vec = cigar_md_res.ok().expect("Unable to create Vec<CigarMdPos>");
+            let read_line: String = cigar_md_vec.iter().map(|rap| rap.read_line_char(&rec)).collect();
+            assert_eq!(read_line, TEST_READ_LINE[i]);
+            let ref_line: String = raps.iter().map(|rap| rap.ref_line_char(&rec)).collect();
+            assert_eq!(ref_line, TEST_REF_LINE[i]);
 
-            let md_iter = CigarMDPosIter::new_from_record(&rec)
+            let md_iter = CigarMDIter::new_from_record(&rec)
                 .ok()
-                .expect("Creating CigarMDPosIter");
+                .expect("Creating CigarMDIter");
             let alignment = md_iter
                 .collect_into_alignment()
                 .ok()

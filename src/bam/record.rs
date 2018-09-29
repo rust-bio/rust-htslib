@@ -15,7 +15,7 @@ use std::u32;
 use itertools::Itertools;
 use regex::Regex;
 
-use bam::md_align::{MDAlignError, MDAlignPos, MDAlignPosIter};
+use bam::md_align::{MDAlignError, CigarMDIter, CigarMDPos};
 use bam::{AuxWriteError, HeaderView, ReadError};
 use htslib;
 use utils;
@@ -611,9 +611,9 @@ impl Record {
     /// field, when the MD aux field is malformed, or when there are
     /// inconsistencies between the Cigar string, the MD field, and
     /// the read sequence.
-    pub fn reference_md_seq(&self) -> Result<Vec<u8>, MDAlignError> {
-        let md_align: Result<Vec<MDAlignPos>, MDAlignError> = MDAlignPosIter::new(&self)?.collect();
-        Ok(md_align?.iter().filter_map(|pos| pos.ref_nt()).collect())
+    pub fn reference_seq_from_md(&self) -> Result<Vec<u8>, MDAlignError> {
+        let cigar_md: Result<Vec<CigarMDPos>, MDAlignError> = CigarMDIter::new_from_record(&self)?.collect();
+        Ok(cigar_md?.iter().filter_map(|pos| pos.ref_nt(&self)).collect())
     }
 }
 
