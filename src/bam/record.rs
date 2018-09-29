@@ -619,6 +619,19 @@ impl Record {
             .filter_map(|pos| pos.ref_nt(&self))
             .collect())
     }
+
+    /// Reconstruct alignment from Cigar and MD information on a record.
+    ///
+    /// # Errors
+    ///
+    /// An error variant is returned when the record has no MD aux
+    /// field, when the MD aux field is malformed, or when there are
+    /// inconsistencies between the Cigar string and the MD field.
+    pub fn alignment_from_md(&self) -> Result<Alignment, MDAlignError> {
+        let cigar_md: Result<Vec<CigarMDPos>, MDAlignError> =
+            CigarMDIter::new_from_record(&self)?.collect();
+        Ok(cigar_md?.into_iter().collect::<Alignment>())
+    }
 }
 
 impl Drop for Record {
