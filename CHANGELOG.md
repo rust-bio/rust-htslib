@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.22.0] - 2018-11-02
+### Changes
+- Support compilation against musl.
+- Support for removing alleles.
+- Improvements to SyncedReader API.
+
 ## [0.21.0] - 2018-08-01
 ### Changes
 - Adding `bcf::synced::SyncedReader::fetch()`, changing error type for `bcf::synced::SyncedReader::read_next()`.
