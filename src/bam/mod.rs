@@ -1116,8 +1116,9 @@ CCCCCCCCCCCCCCCCCCC"[..],
                         .push_tag(b"SN", &"chr1")
                         .push_tag(b"LN", &15072423),
                 ),
-            ).ok()
-                .expect("Error opening file.");
+            )
+            .ok()
+            .expect("Error opening file.");
 
             for i in 0..names.len() {
                 let mut rec = record::Record::new();
@@ -1165,8 +1166,9 @@ CCCCCCCCCCCCCCCCCCC"[..],
                         .push_tag(b"SN", &"chr1")
                         .push_tag(b"LN", &15072423),
                 ),
-            ).ok()
-                .expect("Error opening file.");
+            )
+            .ok()
+            .expect("Error opening file.");
             bam.set_threads(4).unwrap();
 
             for i in 0..10000 {

@@ -49,7 +49,6 @@ impl<'de> Deserialize<'de> for Record {
             Data,
         };
 
-
         impl<'de> Deserialize<'de> for Field {
             fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
             where

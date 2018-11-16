@@ -24,7 +24,8 @@ fn sed_htslib_makefile(out: &PathBuf, patterns: &Vec<&str>, feature: &str) {
             .arg("Makefile")
             .status()
             .unwrap()
-            .success() != true
+            .success()
+            != true
         {
             panic!("failed to strip {} support", feature);
         }
@@ -74,7 +75,8 @@ fn main() {
         .arg("-B")
         .status()
         .unwrap()
-        .success() != true
+        .success()
+        != true
     {
         panic!("failed to build htslib");
     }

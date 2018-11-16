@@ -309,11 +309,12 @@ impl Record {
         // seq
         {
             for j in (0..seq.len()).step(2) {
-                data[i + j / 2] = ENCODE_BASE[seq[j] as usize] << 4 | (if j + 1 < seq.len() {
-                    ENCODE_BASE[seq[j + 1] as usize]
-                } else {
-                    0
-                });
+                data[i + j / 2] = ENCODE_BASE[seq[j] as usize] << 4
+                    | (if j + 1 < seq.len() {
+                        ENCODE_BASE[seq[j + 1] as usize]
+                    } else {
+                        0
+                    });
             }
             self.inner_mut().core.l_qseq = seq.len() as i32;
             i += (seq.len() + 1) / 2;
@@ -438,7 +439,8 @@ impl Record {
                     }
                 })
                 .collect(),
-        ).into_view(self.pos())
+        )
+        .into_view(self.pos())
     }
 
     fn seq_len(&self) -> usize {
@@ -1202,7 +1204,8 @@ mod tests {
             Cigar::Del(2),
             Cigar::Diff(1),
             Cigar::Equal(2),
-        ]).into_view(0);
+        ])
+        .into_view(0);
         assert_eq!(c05.read_pos(vpos, true, false).unwrap(), Some(3));
 
         // single nucleotide Deletion covering variant position
@@ -1233,7 +1236,8 @@ mod tests {
             Cigar::Diff(1),
             Cigar::RefSkip(3),
             Cigar::Match(2),
-        ]).into_view(2);
+        ])
+        .into_view(2);
         assert_eq!(c08.read_pos(vpos, false, true).unwrap(), None);
         assert_eq!(c08.read_pos(vpos, false, false).unwrap(), None);
 
@@ -1247,7 +1251,8 @@ mod tests {
             Cigar::Equal(2),
             Cigar::HardClip(3),
             Cigar::Equal(2),
-        ]).into_view(2);
+        ])
+        .into_view(2);
         assert_eq!(c09.read_pos(vpos, false, true).is_err(), true);
 
         // Deletion right before variant position
@@ -1305,7 +1310,8 @@ mod tests {
             Cigar::Equal(2),
             Cigar::SoftClip(5),
             Cigar::HardClip(2),
-        ]).into_view(0);
+        ])
+        .into_view(0);
         assert_eq!(c14.read_pos(vpos2, false, false).unwrap(), Some(19));
 
         // HardClip after Pad
