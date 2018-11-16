@@ -777,8 +777,7 @@ impl<'a> Info<'a> {
                         s.split(|c| *c == 0u8)
                             .next()
                             .expect("Bug: returned string should not be empty.")
-                    })
-                    .collect()
+                    }).collect()
             })
         })
     }
@@ -880,8 +879,7 @@ impl<'a> Format<'a> {
                     s.split(|c| *c == 0u8)
                         .next()
                         .expect("Bug: returned string should not be empty.")
-                })
-                .collect()
+                }).collect()
         })
     }
 }

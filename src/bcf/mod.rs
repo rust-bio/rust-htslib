@@ -1013,13 +1013,15 @@ mod tests {
                     .expect("Error reading integer.")[1],
                 fn4[i]
             );
-            assert!(record
-                .format(b"FF4")
-                .float()
-                .ok()
-                .expect("Error reading float.")[1]
-                .iter()
-                .all(|&v| v.is_missing()));
+            assert!(
+                record
+                    .format(b"FF4")
+                    .float()
+                    .ok()
+                    .expect("Error reading float.")[1]
+                    .iter()
+                    .all(|&v| v.is_missing())
+            );
         }
     }
 
