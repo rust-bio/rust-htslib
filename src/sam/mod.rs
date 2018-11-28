@@ -134,9 +134,11 @@ mod tests {
                 match f(&parsed) {
                     None => return true,
                     Some(false) => {}
-                    Some(true) => if let Err(_) = sam_writer.write(&parsed) {
-                        return false;
-                    },
+                    Some(true) => {
+                        if let Err(_) = sam_writer.write(&parsed) {
+                            return false;
+                        }
+                    }
                 }
             }
             true

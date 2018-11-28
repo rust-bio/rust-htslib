@@ -309,11 +309,12 @@ impl Record {
         // seq
         {
             for j in (0..seq.len()).step(2) {
-                data[i + j / 2] = ENCODE_BASE[seq[j] as usize] << 4 | (if j + 1 < seq.len() {
-                    ENCODE_BASE[seq[j + 1] as usize]
-                } else {
-                    0
-                });
+                data[i + j / 2] = ENCODE_BASE[seq[j] as usize] << 4
+                    | (if j + 1 < seq.len() {
+                        ENCODE_BASE[seq[j + 1] as usize]
+                    } else {
+                        0
+                    });
             }
             self.inner_mut().core.l_qseq = seq.len() as i32;
             i += (seq.len() + 1) / 2;
@@ -436,8 +437,7 @@ impl Record {
                         8 => Cigar::Diff(len),
                         _ => panic!("Unexpected cigar operation"),
                     }
-                })
-                .collect(),
+                }).collect(),
         ).into_view(self.pos())
     }
 

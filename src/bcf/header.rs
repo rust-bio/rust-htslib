@@ -80,7 +80,7 @@ impl Header {
             htslib::bcf_hdr_subset(
                 header.inner,
                 samples.len() as i32,
-                name_pointers.as_ptr() as *const *const i8,
+                name_pointers.as_ptr() as *const *mut i8,
                 imap.as_mut_ptr() as *mut i32,
             )
         };

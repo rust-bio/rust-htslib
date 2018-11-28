@@ -14,7 +14,7 @@ documentation = "https://docs.rs/rust-htslib"
 [dependencies]
 libc = "0.2"
 libz-sys = "1.0"
-bzip2-sys = { version = "0.1.6", optional = true }
+bzip2-sys = { version = "0.1.7", optional = true }
 lzma-sys = { version = "0.1.10", optional = true }
 itertools = "0.6"
 quick-error = "1.2"
@@ -42,5 +42,5 @@ pretty_assertions = "0.5.1"
 
 [build-dependencies]
 fs-utils = "1.0"
-bindgen = "0.36"
+bindgen = ">=0.37"
 cc = "1.0"
