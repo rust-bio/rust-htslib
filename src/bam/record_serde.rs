@@ -6,6 +6,12 @@ use serde::{Serialize, Serializer};
 
 use bam::record::Record;
 
+fn fix_l_extranul(mut rec: Record) -> Record {
+    let l_extranul = rec.qname().iter().rev().take_while(|x| **x == 0u8).count() as u8;
+    rec.inner_mut().core.l_extranul = l_extranul;
+    rec
+}
+
 impl Serialize for Record {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -156,9 +162,8 @@ impl<'de> Deserialize<'de> for Record {
                     m.isize = isize;
                 }
 
-                //println!()
                 rec.set_data(&data);
-                Ok(rec)
+                Ok(fix_l_extranul(rec))
             }
 
             fn visit_map<V>(self, mut map: V) -> Result<Record, V::Error>
@@ -286,7 +291,7 @@ impl<'de> Deserialize<'de> for Record {
                 }
 
                 rec.set_data(&data);
-                Ok(rec)
+                Ok(fix_l_extranul(rec))
             }
         }
 
