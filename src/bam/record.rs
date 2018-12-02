@@ -81,6 +81,7 @@ impl PartialEq for Record {
             && self.mpos() == other.mpos()
             && self.insert_size() == other.insert_size()
             && self.data() == other.data()
+            && self.inner().core.l_extranul == other.inner().core.l_extranul
     }
 }
 

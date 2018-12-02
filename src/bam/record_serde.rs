@@ -6,10 +6,9 @@ use serde::{Serialize, Serializer};
 
 use bam::record::Record;
 
-fn fix_l_extranul(mut rec: Record) -> Record {
+fn fix_l_extranul(rec: &mut Record) {
     let l_extranul = rec.qname().iter().rev().take_while(|x| **x == 0u8).count() as u8;
     rec.inner_mut().core.l_extranul = l_extranul;
-    rec
 }
 
 impl Serialize for Record {
@@ -163,7 +162,8 @@ impl<'de> Deserialize<'de> for Record {
                 }
 
                 rec.set_data(&data);
-                Ok(fix_l_extranul(rec))
+                fix_l_extranul(&mut rec);
+                Ok(rec)
             }
 
             fn visit_map<V>(self, mut map: V) -> Result<Record, V::Error>
@@ -291,7 +291,8 @@ impl<'de> Deserialize<'de> for Record {
                 }
 
                 rec.set_data(&data);
-                Ok(fix_l_extranul(rec))
+                fix_l_extranul(&mut rec);
+                Ok(rec)
             }
         }
 
@@ -311,7 +312,7 @@ mod tests {
 
     use std::path::Path;
 
-    use bincode::{deserialize, serialize, Infinite};
+    use bincode::{deserialize, serialize};
     use serde_json;
 
     #[test]
@@ -325,7 +326,7 @@ mod tests {
             recs.push(record.unwrap());
         }
 
-        let encoded: Vec<u8> = serialize(&recs, Infinite).unwrap();
+        let encoded: Vec<u8> = serialize(&recs).unwrap();
         let decoded: Vec<Record> = deserialize(&encoded[..]).unwrap();
         assert_eq!(recs, decoded);
     }

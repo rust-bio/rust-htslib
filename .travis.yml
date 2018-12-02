@@ -33,12 +33,12 @@ before_script:
 script:
   - cargo fmt --version
   - cargo fmt -- --check
-  - cargo build
-  - cargo test
+  - cargo build --all-features
+  - cargo test --all-features
   - cargo build --no-default-features
   - cargo test --no-default-features
-  - cargo build --target x86_64-unknown-linux-musl
-  - cargo test --target x86_64-unknown-linux-musl
+  - cargo build --target x86_64-unknown-linux-musl --all-features
+  - cargo test --target x86_64-unknown-linux-musl --all-features
   - cargo build --target x86_64-unknown-linux-musl --no-default-features
   - cargo test --target x86_64-unknown-linux-musl --no-default-features
 
