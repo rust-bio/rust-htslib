@@ -81,6 +81,7 @@ impl PartialEq for Record {
             && self.mpos() == other.mpos()
             && self.insert_size() == other.insert_size()
             && self.data() == other.data()
+            && self.inner().core.l_extranul == other.inner().core.l_extranul
     }
 }
 
@@ -239,14 +240,18 @@ impl Record {
         self.inner_mut().core.isize = insert_size;
     }
 
-    fn qname_len(&self) -> usize {
+    fn qname_capacity(&self) -> usize {
         self.inner().core.l_qname as usize
+    }
+
+    fn qname_len(&self) -> usize {
+        // discount all trailing zeros (the default one and extra nulls)
+        self.qname_capacity() - 1 - self.inner().core.l_extranul as usize
     }
 
     /// Get qname (read name). Complexity: O(1).
     pub fn qname(&self) -> &[u8] {
-        // remove all trailing zeros (the default one and extra nulls)
-        &self.data()[..self.qname_len() - 1 - self.inner().core.l_extranul as usize]
+        &self.data()[..self.qname_len()]
     }
 
     /// Set the variable length data buffer
@@ -330,7 +335,7 @@ impl Record {
     pub fn set_qname(&mut self, new_qname: &[u8]) {
         assert!(new_qname.len() <= 256);
 
-        let old_q_len = self.qname_len();
+        let old_q_len = self.qname_capacity();
         // We're going to add a terminal NUL
         let new_q_len = 1 + new_qname.len();
 
@@ -394,7 +399,7 @@ impl Record {
     pub fn raw_cigar(&self) -> &[u32] {
         unsafe {
             slice::from_raw_parts(
-                self.data()[self.qname_len()..].as_ptr() as *const u32,
+                self.data()[self.qname_capacity()..].as_ptr() as *const u32,
                 self.cigar_len(),
             )
         }
@@ -448,7 +453,7 @@ impl Record {
     /// Get read sequence. Complexity: O(1).
     pub fn seq(&self) -> Seq {
         Seq {
-            encoded: &self.data()[self.qname_len() + self.cigar_len() * 4..]
+            encoded: &self.data()[self.qname_capacity() + self.cigar_len() * 4..]
                 [..(self.seq_len() + 1) / 2],
             len: self.seq_len(),
         }
@@ -458,7 +463,7 @@ impl Record {
     /// This does not entail any offsets, hence the qualities can be used directly without
     /// e.g. subtracting 33. Complexity: O(1).
     pub fn qual(&self) -> &[u8] {
-        &self.data()[self.qname_len() + self.cigar_len() * 4 + (self.seq_len() + 1) / 2..]
+        &self.data()[self.qname_capacity() + self.cigar_len() * 4 + (self.seq_len() + 1) / 2..]
             [..self.seq_len()]
     }
 
