@@ -244,6 +244,7 @@ impl HeaderView {
         self.inner().n[htslib::BCF_DT_SAMPLE as usize] as u32
     }
 
+    /// Get vector of sample names defined in the header.
     pub fn samples(&self) -> Vec<&[u8]> {
         let names =
             unsafe { slice::from_raw_parts(self.inner().samples, self.sample_count() as usize) };
@@ -251,6 +252,12 @@ impl HeaderView {
             .iter()
             .map(|name| unsafe { ffi::CStr::from_ptr(*name).to_bytes() })
             .collect()
+    }
+
+    /// Obtain id (column index) of given sample.
+    /// Returns `None` if sample is not present in header.
+    pub fn sample_id(&self, sample: &[u8]) -> Option<usize> {
+        self.samples().iter().position(|s| *s == sample)
     }
 
     pub fn rid2name(&self, rid: u32) -> &[u8] {
