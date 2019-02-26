@@ -10,6 +10,8 @@ use std::i32;
 use std::ptr;
 use std::rc::Rc;
 use std::slice;
+use std::iter::repeat;
+use std::borrow::Borrow;
 
 use ieee754::Ieee754;
 use itertools::Itertools;
@@ -407,7 +409,7 @@ impl Record {
         self.push_format(tag, data, htslib::BCF_HT_REAL)
     }
 
-    /// Add a char-typed FORMAT tag.
+    /// Add a single-char-typed FORMAT tag.
     ///
     /// # Arguments
     ///
@@ -450,36 +452,47 @@ impl Record {
     /// # Arguments
     ///
     /// - `tag` - The tag's string.
-    /// - `data` - a flattened, two-dimensional array, the first dimension contains one array
-    ///            for each sample.
+    /// - `data` - a two-dimensional array, the first dimension contains one array
+    ///            for each sample. Must be non-empty.
     ///
     /// # Errors
     ///
     /// Returns error if tag is not present in header.
-    pub fn push_format_string(&mut self, tag: &[u8], data: &[&[u8]]) -> Result<(), TagWriteError> {
+    pub fn push_format_string<D: Borrow<[u8]>>(&mut self, tag: &[u8], data: &[D]) -> Result<(), TagWriteError> {
+        assert!(data.len() > 0, "given string data must have at least 1 element");
+        let max_len = data.iter().map(|s| s.borrow().len()).max().unwrap();
         let c_data = data
             .iter()
-            .map(|&s| ffi::CString::new(s).unwrap())
-            .collect::<Vec<ffi::CString>>();
-        let c_ptrs = c_data
-            .iter()
-            .map(|s| s.as_ptr() as *mut i8)
-            .collect::<Vec<*mut i8>>();
-        unsafe {
-            if htslib::bcf_update_format_string(
-                self.header().inner,
-                self.inner,
-                ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
-                c_ptrs.as_slice().as_ptr() as *mut *const i8,
-                data.len() as i32,
-            ) == 0
-            {
-                Ok(())
-            } else {
-                Err(TagWriteError::Some)
-            }
-        }
+            .map(|s| {
+                let mut s = s.borrow().to_vec();
+                let k = s.len();
+                s.extend(repeat(b'\0').take(max_len - k));
+                s
+            })
+            .flatten()
+            .collect_vec();
+        self.push_format(tag, &c_data, htslib::BCF_HT_STR)
     }
+
+    //     let c_ptrs = c_data
+    //         .iter()
+    //         .map(|s| s.as_ptr() as *mut i8)
+    //         .collect_vec();
+    //     unsafe {
+    //         if htslib::bcf_update_format_char(
+    //             self.header().inner,
+    //             self.inner,
+    //             ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
+    //             c_ptrs.as_slice().as_ptr() as *mut *const i8,
+    //             data.len() as i32,
+    //         ) == 0
+    //         {
+    //             Ok(())
+    //         } else {
+    //             Err(TagWriteError::Some)
+    //         }
+    //     }
+    // }
 
     /// Add an integer-typed INFO entry.
     pub fn push_info_integer(&mut self, tag: &[u8], data: &[i32]) -> Result<(), TagWriteError> {

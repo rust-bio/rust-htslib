@@ -313,7 +313,7 @@ impl Record {
 
         // seq
         {
-            for j in (0..seq.len()).step(2) {
+            for j in (0..seq.len()).step_by(2) {
                 data[i + j / 2] = ENCODE_BASE[seq[j] as usize] << 4
                     | (if j + 1 < seq.len() {
                         ENCODE_BASE[seq[j + 1] as usize]
