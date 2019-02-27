@@ -460,39 +460,29 @@ impl Record {
     /// Returns error if tag is not present in header.
     pub fn push_format_string<D: Borrow<[u8]>>(&mut self, tag: &[u8], data: &[D]) -> Result<(), TagWriteError> {
         assert!(data.len() > 0, "given string data must have at least 1 element");
-        let max_len = data.iter().map(|s| s.borrow().len()).max().unwrap();
         let c_data = data
             .iter()
-            .map(|s| {
-                let mut s = s.borrow().to_vec();
-                let k = s.len();
-                s.extend(repeat(b'\0').take(max_len - k));
-                s
-            })
-            .flatten()
-            .collect_vec();
-        self.push_format(tag, &c_data, htslib::BCF_HT_STR)
+            .map(|s| ffi::CString::new(s.borrow()).unwrap())
+            .collect::<Vec<ffi::CString>>();
+        let c_ptrs = c_data
+            .iter()
+            .map(|s| s.as_ptr() as *mut i8)
+            .collect::<Vec<*mut i8>>();
+        unsafe {
+            if htslib::bcf_update_format_string(
+                self.header().inner,
+                self.inner,
+                ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
+                c_ptrs.as_slice().as_ptr() as *mut *const i8,
+                data.len() as i32,
+            ) == 0
+            {
+                Ok(())
+            } else {
+                Err(TagWriteError::Some)
+            }
+        }
     }
-
-    //     let c_ptrs = c_data
-    //         .iter()
-    //         .map(|s| s.as_ptr() as *mut i8)
-    //         .collect_vec();
-    //     unsafe {
-    //         if htslib::bcf_update_format_char(
-    //             self.header().inner,
-    //             self.inner,
-    //             ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
-    //             c_ptrs.as_slice().as_ptr() as *mut *const i8,
-    //             data.len() as i32,
-    //         ) == 0
-    //         {
-    //             Ok(())
-    //         } else {
-    //             Err(TagWriteError::Some)
-    //         }
-    //     }
-    // }
 
     /// Add an integer-typed INFO entry.
     pub fn push_info_integer(&mut self, tag: &[u8], data: &[i32]) -> Result<(), TagWriteError> {
