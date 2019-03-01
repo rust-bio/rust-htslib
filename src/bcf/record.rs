@@ -379,7 +379,7 @@ impl Record {
         Format::new(self, tag)
     }
 
-    /// Add an integer-typed FORMAT tag.
+    /// Add/replace an integer-typed FORMAT tag.
     ///
     /// # Arguments
     ///
@@ -394,7 +394,7 @@ impl Record {
         self.push_format(tag, data, htslib::BCF_HT_INT)
     }
 
-    /// Add a float-typed FORMAT tag.
+    /// Add/replace a float-typed FORMAT tag.
     ///
     /// # Arguments
     ///
@@ -409,7 +409,7 @@ impl Record {
         self.push_format(tag, data, htslib::BCF_HT_REAL)
     }
 
-    /// Add a single-char-typed FORMAT tag.
+    /// Add/replace a single-char-typed FORMAT tag.
     ///
     /// # Arguments
     ///
@@ -427,7 +427,6 @@ impl Record {
     /// Add a format tag. Data is a flattened two-dimensional array.
     /// The first dimension contains one array for each sample.
     fn push_format<T>(&mut self, tag: &[u8], data: &[T], ht: u32) -> Result<(), TagWriteError> {
-        assert!(data.len() > 0);
         unsafe {
             if htslib::bcf_update_format(
                 self.header().inner,
@@ -484,7 +483,7 @@ impl Record {
         }
     }
 
-    /// Add an integer-typed INFO entry.
+    /// Add/replace an integer-typed INFO entry.
     pub fn push_info_integer(&mut self, tag: &[u8], data: &[i32]) -> Result<(), TagWriteError> {
         self.push_info(tag, data, htslib::BCF_HT_INT)
     }
@@ -494,7 +493,7 @@ impl Record {
         self.push_info::<i32>(tag, &[], htslib::BCF_HT_INT)
     }
 
-    /// Add a float-typed INFO entry.
+    /// Add/replace a float-typed INFO entry.
     pub fn push_info_float(&mut self, tag: &[u8], data: &[f32]) -> Result<(), TagWriteError> {
         self.push_info(tag, data, htslib::BCF_HT_REAL)
     }
@@ -504,9 +503,8 @@ impl Record {
         self.push_info::<u8>(tag, &[], htslib::BCF_HT_REAL)
     }
 
-    /// Add a not INFO tag.
+    /// Add/replace an INFO tag.
     fn push_info<T>(&mut self, tag: &[u8], data: &[T], ht: u32) -> Result<(), TagWriteError> {
-        assert!(data.len() > 0);
         unsafe {
             if htslib::bcf_update_info(
                 self.header().inner,
@@ -534,7 +532,7 @@ impl Record {
         self.push_info_string_impl(tag, &[], htslib::BCF_HT_FLAG)
     }
 
-    /// Add a string-typed INFO entry.
+    /// Add/replace a string-typed INFO entry.
     pub fn push_info_string(&mut self, tag: &[u8], data: &[&[u8]]) -> Result<(), TagWriteError> {
         self.push_info_string_impl(tag, data, htslib::BCF_HT_STR)
     }
