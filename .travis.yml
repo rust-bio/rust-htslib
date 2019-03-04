@@ -3,8 +3,6 @@ language: rust
 rust:
   - stable
 
-cache: cargo
-
 sudo: false
 
 # Dependencies of kcov, used for cargo-travis
