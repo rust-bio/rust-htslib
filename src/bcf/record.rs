@@ -3,15 +3,15 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::borrow::Borrow;
 use std::f32;
 use std::ffi;
 use std::fmt;
 use std::i32;
+use std::iter::repeat;
 use std::ptr;
 use std::rc::Rc;
 use std::slice;
-use std::iter::repeat;
-use std::borrow::Borrow;
 
 use ieee754::Ieee754;
 use itertools::Itertools;
@@ -79,7 +79,7 @@ pub struct Record {
     pub inner: *mut htslib::bcf1_t,
     header: Rc<HeaderView>,
     buffer: *mut ::std::os::raw::c_void,
-    buffer_len: i32
+    buffer_len: i32,
 }
 
 impl Record {
@@ -95,7 +95,7 @@ impl Record {
             inner: inner,
             header: header,
             buffer: ptr::null_mut(),
-            buffer_len: 0
+            buffer_len: 0,
         }
     }
 
@@ -459,8 +459,15 @@ impl Record {
     /// # Errors
     ///
     /// Returns error if tag is not present in header.
-    pub fn push_format_string<D: Borrow<[u8]>>(&mut self, tag: &[u8], data: &[D]) -> Result<(), TagWriteError> {
-        assert!(data.len() > 0, "given string data must have at least 1 element");
+    pub fn push_format_string<D: Borrow<[u8]>>(
+        &mut self,
+        tag: &[u8],
+        data: &[D],
+    ) -> Result<(), TagWriteError> {
+        assert!(
+            data.len() > 0,
+            "given string data must have at least 1 element"
+        );
         let c_data = data
             .iter()
             .map(|s| ffi::CString::new(s.borrow()).unwrap())
@@ -746,7 +753,7 @@ impl<'a> Info<'a> {
         let data = self.data(data_type)?;
         match data {
             Some((n, ret)) if n as i32 != ret => Err(InfoReadError::ReadFailed),
-            out @ _ => Ok(out)
+            out @ _ => Ok(out),
         }
     }
 
@@ -791,7 +798,8 @@ impl<'a> Info<'a> {
                         s.split(|c| *c == 0u8)
                             .next()
                             .expect("Bug: returned string should not be empty.")
-                    }).collect()
+                    })
+                    .collect()
             })
         })
     }
@@ -895,7 +903,8 @@ impl<'a> Format<'a> {
                     s.split(|c| *c == 0u8)
                         .next()
                         .expect("Bug: returned string should not be empty.")
-                }).collect()
+                })
+                .collect()
         })
     }
 }
