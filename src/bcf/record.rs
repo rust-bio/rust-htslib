@@ -749,19 +749,11 @@ impl<'a> Info<'a> {
         }
     }
 
-    fn data_checked_len(&mut self, data_type: u32) -> Result<Option<(usize, i32)>, InfoReadError> {
-        let data = self.data(data_type)?;
-        match data {
-            Some((n, ret)) if n as i32 != ret => Err(InfoReadError::ReadFailed),
-            out @ _ => Ok(out),
-        }
-    }
-
     /// Get integers from tag. `None` if tag not present in record.
     ///
     /// Import `bcf::record::Numeric` for missing value handling.
     pub fn integer(&mut self) -> Result<Option<&'a [i32]>, InfoReadError> {
-        self.data_checked_len(htslib::BCF_HT_INT).map(|data| {
+        self.data(htslib::BCF_HT_INT).map(|data| {
             data.map(|(n, _)| {
                 trim_slice(unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) })
             })
@@ -772,7 +764,7 @@ impl<'a> Info<'a> {
     ///
     /// Import `bcf::record::Numeric` for missing value handling.
     pub fn float(&mut self) -> Result<Option<&'a [f32]>, InfoReadError> {
-        self.data_checked_len(htslib::BCF_HT_REAL).map(|data| {
+        self.data(htslib::BCF_HT_REAL).map(|data| {
             data.map(|(n, _)| {
                 trim_slice(unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) })
             })
