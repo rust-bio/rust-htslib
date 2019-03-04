@@ -1280,4 +1280,14 @@ mod tests {
         let res4 = reader.read_next();
         assert_eq!(res4.unwrap(), 0);
     }
+
+    #[test]
+    fn test_svlen() {
+        let mut reader = Reader::from_path("test/test_svlen.vcf").unwrap();
+
+        let mut record = reader.empty_record();
+        reader.read(&mut record).unwrap();
+
+        assert_eq!(record.info(b"SVLEN").integer().unwrap(), Some(&[-127][..]));
+    }
 }
