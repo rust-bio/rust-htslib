@@ -442,8 +442,10 @@ impl Record {
                         8 => Cigar::Diff(len),
                         _ => panic!("Unexpected cigar operation"),
                     }
-                }).collect(),
-        ).into_view(self.pos())
+                })
+                .collect(),
+        )
+        .into_view(self.pos())
     }
 
     fn seq_len(&self) -> usize {
@@ -901,7 +903,7 @@ impl CigarString {
                         return Err(CigarError::UnexpectedOperation(format!(
                             "operation {} not expected",
                             op
-                        )))
+                        )));
                     }
                 });
             } else {
@@ -1207,7 +1209,8 @@ mod tests {
             Cigar::Del(2),
             Cigar::Diff(1),
             Cigar::Equal(2),
-        ]).into_view(0);
+        ])
+        .into_view(0);
         assert_eq!(c05.read_pos(vpos, true, false).unwrap(), Some(3));
 
         // single nucleotide Deletion covering variant position
@@ -1238,7 +1241,8 @@ mod tests {
             Cigar::Diff(1),
             Cigar::RefSkip(3),
             Cigar::Match(2),
-        ]).into_view(2);
+        ])
+        .into_view(2);
         assert_eq!(c08.read_pos(vpos, false, true).unwrap(), None);
         assert_eq!(c08.read_pos(vpos, false, false).unwrap(), None);
 
@@ -1252,7 +1256,8 @@ mod tests {
             Cigar::Equal(2),
             Cigar::HardClip(3),
             Cigar::Equal(2),
-        ]).into_view(2);
+        ])
+        .into_view(2);
         assert_eq!(c09.read_pos(vpos, false, true).is_err(), true);
 
         // Deletion right before variant position
@@ -1310,7 +1315,8 @@ mod tests {
             Cigar::Equal(2),
             Cigar::SoftClip(5),
             Cigar::HardClip(2),
-        ]).into_view(0);
+        ])
+        .into_view(0);
         assert_eq!(c14.read_pos(vpos2, false, false).unwrap(), Some(19));
 
         // HardClip after Pad
