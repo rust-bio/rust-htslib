@@ -79,6 +79,7 @@ pub struct Record {
     pub inner: *mut htslib::bcf1_t,
     header: Rc<HeaderView>,
     buffer: *mut ::std::os::raw::c_void,
+    buffer_len: i32
 }
 
 impl Record {
@@ -94,6 +95,7 @@ impl Record {
             inner: inner,
             header: header,
             buffer: ptr::null_mut(),
+            buffer_len: 0
         }
     }
 
@@ -719,8 +721,8 @@ pub struct Info<'a> {
 
 impl<'a> Info<'a> {
     fn data(&mut self, data_type: u32) -> Result<Option<(usize, i32)>, InfoReadError> {
-        let mut n: i32 = 0;
-        match unsafe {
+        let mut n: i32 = self.record.buffer_len;
+        let ret = unsafe {
             htslib::bcf_get_info_values(
                 self.record.header().inner,
                 self.record.inner,
@@ -729,7 +731,10 @@ impl<'a> Info<'a> {
                 &mut n,
                 data_type as i32,
             )
-        } {
+        };
+        self.record.buffer_len = n;
+
+        match ret {
             -1 => Err(InfoReadError::UndefinedTag),
             -2 => Err(InfoReadError::UnexpectedType),
             -3 => Ok(None),
@@ -840,8 +845,8 @@ impl<'a> Format<'a> {
 
     /// Read and decode format data into a given type.
     fn data(&mut self, data_type: u32) -> Result<(usize, i32), FormatReadError> {
-        let mut n: i32 = 0;
-        match unsafe {
+        let mut n: i32 = self.record.buffer_len;
+        let ret = unsafe {
             htslib::bcf_get_format_values(
                 self.record.header().inner,
                 self.record.inner,
@@ -850,7 +855,9 @@ impl<'a> Format<'a> {
                 &mut n,
                 data_type as i32,
             )
-        } {
+        };
+        self.record.buffer_len = n;
+        match ret {
             -1 => Err(FormatReadError::UndefinedTag),
             -2 => Err(FormatReadError::UnexpectedType),
             -3 => Err(FormatReadError::MissingTag),
