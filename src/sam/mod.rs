@@ -152,18 +152,14 @@ mod tests {
         assert!(result);
         let mut expected = Vec::new();
         let mut written = Vec::new();
-        assert!(
-            File::open(expectedfile)
-                .unwrap()
-                .read_to_end(&mut expected)
-                .is_ok()
-        );
-        assert!(
-            File::open(samfile)
-                .unwrap()
-                .read_to_end(&mut written)
-                .is_ok()
-        );
+        assert!(File::open(expectedfile)
+            .unwrap()
+            .read_to_end(&mut expected)
+            .is_ok());
+        assert!(File::open(samfile)
+            .unwrap()
+            .read_to_end(&mut written)
+            .is_ok());
         assert_eq!(expected, written);
     }
 }

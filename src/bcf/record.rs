@@ -3,10 +3,12 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::borrow::Borrow;
 use std::f32;
 use std::ffi;
 use std::fmt;
 use std::i32;
+use std::iter::repeat;
 use std::ptr;
 use std::rc::Rc;
 use std::slice;
@@ -77,6 +79,7 @@ pub struct Record {
     pub inner: *mut htslib::bcf1_t,
     header: Rc<HeaderView>,
     buffer: *mut ::std::os::raw::c_void,
+    buffer_len: i32,
 }
 
 impl Record {
@@ -92,6 +95,7 @@ impl Record {
             inner: inner,
             header: header,
             buffer: ptr::null_mut(),
+            buffer_len: 0,
         }
     }
 
@@ -377,7 +381,7 @@ impl Record {
         Format::new(self, tag)
     }
 
-    /// Add an integer-typed FORMAT tag.
+    /// Add/replace an integer-typed FORMAT tag.
     ///
     /// # Arguments
     ///
@@ -392,7 +396,7 @@ impl Record {
         self.push_format(tag, data, htslib::BCF_HT_INT)
     }
 
-    /// Add a float-typed FORMAT tag.
+    /// Add/replace a float-typed FORMAT tag.
     ///
     /// # Arguments
     ///
@@ -407,7 +411,7 @@ impl Record {
         self.push_format(tag, data, htslib::BCF_HT_REAL)
     }
 
-    /// Add a char-typed FORMAT tag.
+    /// Add/replace a single-char-typed FORMAT tag.
     ///
     /// # Arguments
     ///
@@ -425,7 +429,6 @@ impl Record {
     /// Add a format tag. Data is a flattened two-dimensional array.
     /// The first dimension contains one array for each sample.
     fn push_format<T>(&mut self, tag: &[u8], data: &[T], ht: u32) -> Result<(), TagWriteError> {
-        assert!(data.len() > 0);
         unsafe {
             if htslib::bcf_update_format(
                 self.header().inner,
@@ -450,16 +453,24 @@ impl Record {
     /// # Arguments
     ///
     /// - `tag` - The tag's string.
-    /// - `data` - a flattened, two-dimensional array, the first dimension contains one array
-    ///            for each sample.
+    /// - `data` - a two-dimensional array, the first dimension contains one array
+    ///            for each sample. Must be non-empty.
     ///
     /// # Errors
     ///
     /// Returns error if tag is not present in header.
-    pub fn push_format_string(&mut self, tag: &[u8], data: &[&[u8]]) -> Result<(), TagWriteError> {
+    pub fn push_format_string<D: Borrow<[u8]>>(
+        &mut self,
+        tag: &[u8],
+        data: &[D],
+    ) -> Result<(), TagWriteError> {
+        assert!(
+            data.len() > 0,
+            "given string data must have at least 1 element"
+        );
         let c_data = data
             .iter()
-            .map(|&s| ffi::CString::new(s).unwrap())
+            .map(|s| ffi::CString::new(s.borrow()).unwrap())
             .collect::<Vec<ffi::CString>>();
         let c_ptrs = c_data
             .iter()
@@ -481,7 +492,7 @@ impl Record {
         }
     }
 
-    /// Add an integer-typed INFO entry.
+    /// Add/replace an integer-typed INFO entry.
     pub fn push_info_integer(&mut self, tag: &[u8], data: &[i32]) -> Result<(), TagWriteError> {
         self.push_info(tag, data, htslib::BCF_HT_INT)
     }
@@ -491,7 +502,7 @@ impl Record {
         self.push_info::<i32>(tag, &[], htslib::BCF_HT_INT)
     }
 
-    /// Add a float-typed INFO entry.
+    /// Add/replace a float-typed INFO entry.
     pub fn push_info_float(&mut self, tag: &[u8], data: &[f32]) -> Result<(), TagWriteError> {
         self.push_info(tag, data, htslib::BCF_HT_REAL)
     }
@@ -501,9 +512,8 @@ impl Record {
         self.push_info::<u8>(tag, &[], htslib::BCF_HT_REAL)
     }
 
-    /// Add a not INFO tag.
+    /// Add/replace an INFO tag.
     fn push_info<T>(&mut self, tag: &[u8], data: &[T], ht: u32) -> Result<(), TagWriteError> {
-        assert!(data.len() > 0);
         unsafe {
             if htslib::bcf_update_info(
                 self.header().inner,
@@ -531,7 +541,7 @@ impl Record {
         self.push_info_string_impl(tag, &[], htslib::BCF_HT_FLAG)
     }
 
-    /// Add a string-typed INFO entry.
+    /// Add/replace a string-typed INFO entry.
     pub fn push_info_string(&mut self, tag: &[u8], data: &[&[u8]]) -> Result<(), TagWriteError> {
         self.push_info_string_impl(tag, data, htslib::BCF_HT_STR)
     }
@@ -718,8 +728,8 @@ pub struct Info<'a> {
 
 impl<'a> Info<'a> {
     fn data(&mut self, data_type: u32) -> Result<Option<(usize, i32)>, InfoReadError> {
-        let mut n: i32 = 0;
-        match unsafe {
+        let mut n: i32 = self.record.buffer_len;
+        let ret = unsafe {
             htslib::bcf_get_info_values(
                 self.record.header().inner,
                 self.record.inner,
@@ -728,7 +738,10 @@ impl<'a> Info<'a> {
                 &mut n,
                 data_type as i32,
             )
-        } {
+        };
+        self.record.buffer_len = n;
+
+        match ret {
             -1 => Err(InfoReadError::UndefinedTag),
             -2 => Err(InfoReadError::UnexpectedType),
             -3 => Ok(None),
@@ -777,7 +790,8 @@ impl<'a> Info<'a> {
                         s.split(|c| *c == 0u8)
                             .next()
                             .expect("Bug: returned string should not be empty.")
-                    }).collect()
+                    })
+                    .collect()
             })
         })
     }
@@ -831,8 +845,8 @@ impl<'a> Format<'a> {
 
     /// Read and decode format data into a given type.
     fn data(&mut self, data_type: u32) -> Result<(usize, i32), FormatReadError> {
-        let mut n: i32 = 0;
-        match unsafe {
+        let mut n: i32 = self.record.buffer_len;
+        let ret = unsafe {
             htslib::bcf_get_format_values(
                 self.record.header().inner,
                 self.record.inner,
@@ -841,7 +855,9 @@ impl<'a> Format<'a> {
                 &mut n,
                 data_type as i32,
             )
-        } {
+        };
+        self.record.buffer_len = n;
+        match ret {
             -1 => Err(FormatReadError::UndefinedTag),
             -2 => Err(FormatReadError::UnexpectedType),
             -3 => Err(FormatReadError::MissingTag),
@@ -879,7 +895,8 @@ impl<'a> Format<'a> {
                     s.split(|c| *c == 0u8)
                         .next()
                         .expect("Bug: returned string should not be empty.")
-                }).collect()
+                })
+                .collect()
         })
     }
 }
@@ -932,6 +949,11 @@ quick_error! {
         }
         UnexpectedType {
             description("tag type differs from header definition")
+        }
+        ReadFailed {
+            description("discrepancy between allocated memory and written data for INFO tag \
+                         (this is likely a bug in htslib, see \
+                         https://github.com/samtools/htslib/issues/832)")
         }
     }
 }

@@ -16,7 +16,7 @@ libc = "0.2"
 libz-sys = "1.0"
 bzip2-sys = { version = "0.1.7", optional = true }
 lzma-sys = { version = "0.1.10", optional = true }
-itertools = "0.6"
+itertools = "0.8"
 quick-error = "1.2"
 newtype_derive = "0.1"
 custom_derive = "0.1"
