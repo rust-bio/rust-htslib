@@ -138,9 +138,15 @@ impl<'a, R: bam::Read> Pileups<'a, R> {
         }
     }
 
+    /// Warning: because htslib internally uses signed integer for depth this method
+    /// will panic if `depth` exceeds `i32::max_value()`. 
     pub fn set_max_depth(&mut self, depth: u32) {
+        if depth > i32::max_value() as u32 {
+            panic!("Maximum value for pileup depth is {} but {} was provided", i32::max_value(), depth)
+        }
+        let intdepth = depth as i32;
         unsafe {
-            htslib::bam_plp_set_maxcnt(self.itr, depth as i32);
+            htslib::bam_plp_set_maxcnt(self.itr, intdepth);
         }
     }
 }
@@ -181,4 +187,30 @@ quick_error! {
             description("error generating pileup")
         }
     }
+}
+
+
+#[cfg(test)]
+mod tests {
+    
+    use bam;
+    use prelude::*;
+
+    #[test]
+    fn test_max_pileup() {
+        let mut bam = bam::Reader::from_path(&"test/test.bam").unwrap();
+        let mut p = bam.pileup();
+        p.set_max_depth(0u32);
+        p.set_max_depth(800u32);
+
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_max_pileup_to_high() {
+        let mut bam = bam::Reader::from_path(&"test/test.bam").unwrap();
+        let mut p = bam.pileup();
+        p.set_max_depth((i32::max_value() as u32) + 1);
+    }
+
 }
