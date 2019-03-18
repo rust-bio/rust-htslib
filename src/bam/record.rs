@@ -15,6 +15,7 @@ use std::u32;
 use itertools::Itertools;
 use regex::Regex;
 
+use bam::md_align::{CigarMDIter, CigarMDPos, MDAlignError};
 use bam::{AuxWriteError, HeaderView, ReadError};
 use htslib;
 use utils;
@@ -597,6 +598,47 @@ impl Record {
         unset_supplementary,
         2048u16
     );
+
+    /// Shorthand to return MD aux field bytestring from a BAM
+    /// record. If the record doesn't have an MD field, or the field
+    /// isn't a string field, then `None` is returned.
+    pub fn aux_md(&self) -> Option<&[u8]> {
+        self.aux(b"MD").map_or(None, |aux| match aux {
+            Aux::String(md) => Some(md),
+            _ => None,
+        })
+    }
+
+    /// Reconstruct reference sequence from Cigar and MD information
+    /// along with the read sequence.
+    ///
+    /// # Errors
+    ///
+    /// An error variant is returned when the record has no MD aux
+    /// field, when the MD aux field is malformed, or when there are
+    /// inconsistencies between the Cigar string, the MD field, and
+    /// the read sequence.
+    pub fn reference_seq_from_md(&self) -> Result<Vec<u8>, MDAlignError> {
+        let cigar_md: Result<Vec<CigarMDPos>, MDAlignError> =
+            CigarMDIter::new_from_record(&self)?.collect();
+        Ok(cigar_md?
+            .iter()
+            .filter_map(|pos| pos.ref_nt(&self))
+            .collect())
+    }
+
+    /// Reconstruct alignment from Cigar and MD information on a record.
+    ///
+    /// # Errors
+    ///
+    /// An error variant is returned when the record has no MD aux
+    /// field, when the MD aux field is malformed, or when there are
+    /// inconsistencies between the Cigar string and the MD field.
+    pub fn alignment_from_md(&self) -> Result<Alignment, MDAlignError> {
+        let cigar_md: Result<Vec<CigarMDPos>, MDAlignError> =
+            CigarMDIter::new_from_record(&self)?.collect();
+        Ok(cigar_md?.into_iter().collect::<Alignment>())
+    }
 }
 
 impl Drop for Record {
@@ -867,11 +909,8 @@ impl CigarString {
 
     /// Create a CigarString from given bytes.
     pub fn from_bytes(text: &[u8]) -> Result<Self, CigarError> {
-        Self::from_str(
-            str::from_utf8(text).map_err(|_| {
-                CigarError::UnexpectedOperation("unable to parse as UTF8".to_owned())
-            })?,
-        )
+        Self::from_str(str::from_utf8(text)
+            .map_err(|_| CigarError::UnexpectedOperation("unable to parse as UTF8".to_owned()))?)
     }
 
     /// Create a CigarString from given str.

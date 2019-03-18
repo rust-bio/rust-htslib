@@ -7,6 +7,7 @@
 
 pub mod buffer;
 pub mod header;
+pub mod md_align;
 pub mod pileup;
 pub mod record;
 
