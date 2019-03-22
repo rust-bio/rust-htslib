@@ -37,8 +37,13 @@ pub fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Result<()
 }
 
 /// Set the reference FAI index path in a `htslib::htsFile` struct for reading CRAM format.
-pub fn set_fai_filename(htsfile: *mut htslib::htsFile, path: &[u8]) -> Result<(), ReferencePathError> {
-    if unsafe { htslib::hts_set_fai_filename(htsfile, ffi::CString::new(path).unwrap().as_ptr()) } == 0 {
+pub fn set_fai_filename(
+    htsfile: *mut htslib::htsFile,
+    path: &[u8],
+) -> Result<(), ReferencePathError> {
+    if unsafe { htslib::hts_set_fai_filename(htsfile, ffi::CString::new(path).unwrap().as_ptr()) }
+        == 0
+    {
         Ok(())
     } else {
         Err(ReferencePathError::InvalidPath)
@@ -78,9 +83,7 @@ pub trait Read: Sized {
             htslib::htsExactFormat_cram => unsafe {
                 htslib::cram_seek(htsfile.fp.cram, offset as libc::off_t, libc::SEEK_SET) as i64
             },
-            _ => unsafe {
-                htslib::bgzf_seek(htsfile.fp.bgzf, offset, libc::SEEK_SET)
-            },
+            _ => unsafe { htslib::bgzf_seek(htsfile.fp.bgzf, offset, libc::SEEK_SET) },
         };
 
         if ret == 0 {
@@ -726,8 +729,7 @@ quick_error! {
 
 /// Wrapper for opening a BAM file.
 fn hts_open(path: &ffi::CStr, mode: &[u8]) -> Result<*mut htslib::htsFile, BGZFError> {
-    let ret =
-        unsafe { htslib::hts_open(path.as_ptr(), ffi::CString::new(mode).unwrap().as_ptr()) };
+    let ret = unsafe { htslib::hts_open(path.as_ptr(), ffi::CString::new(mode).unwrap().as_ptr()) };
     if ret.is_null() {
         Err(BGZFError::Some)
     } else {
