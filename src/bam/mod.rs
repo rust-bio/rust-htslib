@@ -1431,4 +1431,99 @@ CCCCCCCCCCCCCCCCCCC"[..],
             assert_eq!(*cigar, cigars[i]);
         }
     }
+
+    #[test]
+    fn test_read_cram() {
+        let cram_path = "./test/test_cram.cram";
+        let bam_path = "./test/test_cram.bam";
+        let ref_path = "./test/test_cram.fa";
+
+        // Load CRAM file, records
+        let mut cram_reader = Reader::from_path(cram_path).unwrap();
+        cram_reader.set_reference(ref_path);
+        let cram_records: Vec<Record> = cram_reader.records().map(|v| v.unwrap()).collect();
+
+        // Load BAM file, records
+        let mut bam_reader = Reader::from_path(bam_path).unwrap();
+        let bam_records: Vec<Record> = bam_reader.records().map(|v| v.unwrap()).collect();
+
+        // Compare CRAM records to BAM records
+        for (c1, b1) in cram_records.iter().zip(bam_records.iter()) {
+            assert!(c1 == b1);
+        }
+    }
+
+    #[test]
+    fn test_write_cram() {
+        // BAM file, records
+        let bam_path = "./test/test_cram.bam";
+        let ref_path = "./test/test_cram.fa";
+        let mut bam_reader = Reader::from_path(bam_path).unwrap();
+        let bam_records: Vec<Record> = bam_reader.records().map(|v| v.unwrap()).collect();
+
+        // New CRAM file
+        let tmp = tempdir::TempDir::new("rust-htslib")
+            .ok()
+            .expect("Cannot create temp dir");
+        let cram_path = tmp.path().join("test.cram");
+
+        // Write BAM records to new CRAM file
+        {
+            let mut header = Header::new();
+            header.push_record(
+                HeaderRecord::new(b"HD")
+                    .push_tag(b"VN", &"1.5")
+                    .push_tag(b"SO", &"coordinate"),
+            );
+            header.push_record(
+                HeaderRecord::new(b"SQ")
+                    .push_tag(b"SN", &"chr1")
+                    .push_tag(b"LN", &120)
+                    .push_tag(b"M5", &"20a9a0fb770814e6c5e49946750f9724")
+                    .push_tag(b"UR", &"test/test_cram.fa"),
+            );
+            header.push_record(
+                HeaderRecord::new(b"SQ")
+                    .push_tag(b"SN", &"chr2")
+                    .push_tag(b"LN", &120)
+                    .push_tag(b"M5", &"7a2006ccca94ea92b6dae5997e1b0d70")
+                    .push_tag(b"UR", &"test/test_cram.fa"),
+            );
+            header.push_record(
+                HeaderRecord::new(b"SQ")
+                    .push_tag(b"SN", &"chr3")
+                    .push_tag(b"LN", &120)
+                    .push_tag(b"M5", &"a66b336bfe3ee8801c744c9545c87e24")
+                    .push_tag(b"UR", &"test/test_cram.fa"),
+            );
+
+            let mut cram_writer = Writer::from_cram_path(&cram_path, &header)
+                .ok()
+                .expect("Error opening CRAM file.");
+            cram_writer.set_reference(ref_path);
+
+            // Write BAM records to CRAM file
+            for rec in bam_records.iter() {
+                cram_writer
+                    .write(&rec)
+                    .ok()
+                    .expect("Faied to write record to CRAM.");
+            }
+        }
+
+        // Compare written CRAM records with BAM records
+        {
+            // Load written CRAM file
+            let mut cram_reader = Reader::from_path(cram_path).unwrap();
+            cram_reader.set_reference(ref_path);
+            let cram_records: Vec<Record> = cram_reader.records().map(|v| v.unwrap()).collect();
+
+            // Compare CRAM records to BAM records
+            for (c1, b1) in cram_records.iter().zip(bam_records.iter()) {
+                assert!(c1 == b1);
+            }
+        }
+
+        tmp.close().ok().expect("Failed to delete temp dir");
+    }
 }
