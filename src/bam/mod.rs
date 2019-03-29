@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Module for working with BAM files.
+//! Module for working with BAM and CRAM files.
 
 pub mod buffer;
 pub mod header;
@@ -16,7 +16,6 @@ pub mod record_serde;
 use libc;
 use std::ffi;
 use std::path::Path;
-use std::ptr;
 use std::slice;
 use url::Url;
 
@@ -27,13 +26,27 @@ pub use bam::header::Header;
 pub use bam::record::Record;
 
 /// Implementation for `Read::set_threads` and `Writer::set_threads`.
-pub fn set_threads(bgzf: *mut htslib::BGZF, n_threads: usize) -> Result<(), ThreadingError> {
+pub fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Result<(), ThreadingError> {
     assert!(n_threads != 0, "n_threads must be > 0");
 
-    if unsafe { htslib::bgzf_mt(bgzf, n_threads as i32, 256) } != 0 {
+    if unsafe { htslib::hts_set_threads(htsfile, n_threads as i32) } != 0 {
         Err(ThreadingError::Some)
     } else {
         Ok(())
+    }
+}
+
+/// Set the reference FAI index path in a `htslib::htsFile` struct for reading CRAM format.
+pub fn set_fai_filename(
+    htsfile: *mut htslib::htsFile,
+    path: &[u8],
+) -> Result<(), ReferencePathError> {
+    if unsafe { htslib::hts_set_fai_filename(htsfile, ffi::CString::new(path).unwrap().as_ptr()) }
+        == 0
+    {
+        Ok(())
+    } else {
+        Err(ReferencePathError::InvalidPath)
     }
 }
 
@@ -57,15 +70,22 @@ pub trait Read: Sized {
     /// Iterator over pileups.
     fn pileup(&mut self) -> pileup::Pileups<Self>;
 
-    /// Return the BGZF struct
-    fn bgzf(&self) -> *mut htslib::BGZF;
+    /// Return the htsFile struct
+    fn htsfile(&self) -> *mut htslib::htsFile;
 
     /// Return the header.
     fn header(&self) -> &HeaderView;
 
     /// Seek to the given virtual offset in the file
     fn seek(&mut self, offset: i64) -> Result<(), SeekError> {
-        let ret = unsafe { htslib::bgzf_seek(self.bgzf(), offset, libc::SEEK_SET) };
+        let htsfile = unsafe { self.htsfile().as_ref() }.expect("bug: null pointer to htsFile");
+        let ret = match htsfile.format.format {
+            htslib::htsExactFormat_cram => unsafe {
+                htslib::cram_seek(htsfile.fp.cram, offset as libc::off_t, libc::SEEK_SET) as i64
+            },
+            _ => unsafe { htslib::bgzf_seek(htsfile.fp.bgzf, offset, libc::SEEK_SET) },
+        };
+
         if ret == 0 {
             Ok(())
         } else {
@@ -76,7 +96,8 @@ pub trait Read: Sized {
     /// Report the current virtual offset
     fn tell(&self) -> i64 {
         // this reimplements the bgzf_tell macro
-        let bgzf = unsafe { self.bgzf().as_ref() }.expect("bug: null pointer to BGZF");
+        let htsfile = unsafe { self.htsfile().as_ref() }.expect("bug: null pointer to htsFile");
+        let bgzf = unsafe { *htsfile.fp.bgzf };
         (bgzf.block_address << 16) | (bgzf.block_offset as i64 & 0xFFFF)
     }
 
@@ -90,14 +111,14 @@ pub trait Read: Sized {
     ///
     /// * `n_threads` - number of extra background writer threads to use, must be `> 0`.
     fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
-        set_threads(self.bgzf(), n_threads)
+        set_threads(self.htsfile(), n_threads)
     }
 }
 
 /// A BAM reader.
 #[derive(Debug)]
 pub struct Reader {
-    bgzf: *mut htslib::BGZF,
+    htsfile: *mut htslib::htsFile,
     header: HeaderView,
 }
 
@@ -132,10 +153,10 @@ impl Reader {
     ///
     /// * `path` - the path to open. Use "-" for stdin.
     fn new(path: &[u8]) -> Result<Self, BGZFError> {
-        let bgzf = try!(bgzf_open(&ffi::CString::new(path).unwrap(), b"r"));
-        let header = unsafe { htslib::bam_hdr_read(bgzf) };
+        let htsfile = try!(hts_open(&ffi::CString::new(path).unwrap(), b"r"));
+        let header = unsafe { htslib::sam_hdr_read(htsfile) };
         Ok(Reader {
-            bgzf: bgzf,
+            htsfile: htsfile,
             header: HeaderView::new(header),
         })
     }
@@ -145,7 +166,7 @@ impl Reader {
         record: *mut htslib::bam1_t,
     ) -> i32 {
         let _self = unsafe { &*(data as *mut Self) };
-        unsafe { htslib::bam_read1(_self.bgzf, record) }
+        unsafe { htslib::sam_read1(_self.htsfile(), &mut _self.header().inner(), record) }
     }
 
     /// Iterator over the records between the (optional) virtual offsets `start` and `end`
@@ -167,11 +188,26 @@ impl Reader {
             end: end,
         }
     }
+
+    /// Set the reference path for reading CRAM files.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - path to the FASTA reference
+    pub fn set_reference<P: AsRef<Path>>(&mut self, path: P) -> Result<(), ReferencePathError> {
+        let fai_path_str = format!("{}.fai", path.as_ref().to_str().unwrap());
+        let fai_path = Path::new(&fai_path_str);
+
+        match fai_path.to_str() {
+            Some(p) if fai_path.exists() => set_fai_filename(self.htsfile, p.as_bytes()),
+            _ => Err(ReferencePathError::InvalidPath),
+        }
+    }
 }
 
 impl Read for Reader {
     fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError> {
-        match unsafe { htslib::bam_read1(self.bgzf, record.inner) } {
+        match unsafe { htslib::sam_read1(self.htsfile, &mut self.header.inner(), record.inner) } {
             -1 => Err(ReadError::NoMoreRecord),
             -2 => Err(ReadError::Truncated),
             -4 => Err(ReadError::Invalid),
@@ -198,8 +234,8 @@ impl Read for Reader {
         pileup::Pileups::new(self, itr)
     }
 
-    fn bgzf(&self) -> *mut htslib::BGZF {
-        self.bgzf
+    fn htsfile(&self) -> *mut htslib::htsFile {
+        self.htsfile
     }
 
     fn header(&self) -> &HeaderView {
@@ -210,14 +246,14 @@ impl Read for Reader {
 impl Drop for Reader {
     fn drop(&mut self) {
         unsafe {
-            htslib::bgzf_close(self.bgzf);
+            htslib::hts_close(self.htsfile);
         }
     }
 }
 
 #[derive(Debug)]
 pub struct IndexedReader {
-    bgzf: *mut htslib::BGZF,
+    htsfile: *mut htslib::htsFile,
     header: HeaderView,
     idx: *mut htslib::hts_idx_t,
     itr: Option<*mut htslib::hts_itr_t>,
@@ -250,14 +286,14 @@ impl IndexedReader {
     ///
     /// * `path` - the path. Use "-" for stdin.
     fn new(path: &ffi::CStr) -> Result<Self, IndexedReaderError> {
-        let bgzf = try!(bgzf_open(path, b"r"));
-        let header = unsafe { htslib::bam_hdr_read(bgzf) };
-        let idx = unsafe { htslib::hts_idx_load(path.as_ptr(), htslib::HTS_FMT_BAI as i32) };
+        let htsfile = try!(hts_open(path, b"r"));
+        let header = unsafe { htslib::sam_hdr_read(htsfile) };
+        let idx = unsafe { htslib::sam_index_load(htsfile, path.as_ptr()) };
         if idx.is_null() {
             Err(IndexedReaderError::InvalidIndex)
         } else {
             Ok(IndexedReader {
-                bgzf: bgzf,
+                htsfile: htsfile,
                 header: HeaderView::new(header),
                 idx: idx,
                 itr: None,
@@ -285,8 +321,23 @@ impl IndexedReader {
     ) -> i32 {
         let _self = unsafe { &*(data as *mut Self) };
         match _self.itr {
-            Some(itr) => itr_next(_self.bgzf, itr, record), // read fetched region
-            None => unsafe { htslib::bam_read1(_self.bgzf, record) }, // ordinary reading
+            Some(itr) => itr_next(_self.htsfile, itr, record), // read fetched region
+            None => unsafe { htslib::sam_read1(_self.htsfile, &mut _self.header.inner(), record) }, // ordinary reading
+        }
+    }
+
+    /// Set the reference path for reading CRAM files.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - path to the FASTA reference
+    pub fn set_reference<P: AsRef<Path>>(&mut self, path: P) -> Result<(), ReferencePathError> {
+        let fai_path_str = format!("{}.fai", path.as_ref().to_str().unwrap());
+        let fai_path = Path::new(&fai_path_str);
+
+        match fai_path.to_str() {
+            Some(p) if fai_path.exists() => set_fai_filename(self.htsfile, p.as_bytes()),
+            _ => Err(ReferencePathError::InvalidPath),
         }
     }
 }
@@ -294,7 +345,7 @@ impl IndexedReader {
 impl Read for IndexedReader {
     fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError> {
         match self.itr {
-            Some(itr) => match itr_next(self.bgzf, itr, record.inner) {
+            Some(itr) => match itr_next(self.htsfile, itr, record.inner) {
                 -1 => Err(ReadError::NoMoreRecord),
                 -2 => Err(ReadError::Truncated),
                 -4 => Err(ReadError::Invalid),
@@ -323,8 +374,8 @@ impl Read for IndexedReader {
         pileup::Pileups::new(self, itr)
     }
 
-    fn bgzf(&self) -> *mut htslib::BGZF {
-        self.bgzf
+    fn htsfile(&self) -> *mut htslib::htsFile {
+        self.htsfile
     }
 
     fn header(&self) -> &HeaderView {
@@ -339,7 +390,7 @@ impl Drop for IndexedReader {
                 htslib::hts_itr_destroy(self.itr.unwrap());
             }
             htslib::hts_idx_destroy(self.idx);
-            htslib::bgzf_close(self.bgzf);
+            htslib::hts_close(self.htsfile);
         }
     }
 }
@@ -347,7 +398,7 @@ impl Drop for IndexedReader {
 /// A BAM writer.
 #[derive(Debug)]
 pub struct Writer {
-    f: *mut htslib::BGZF,
+    f: *mut htslib::htsFile,
     header: HeaderView,
 }
 
@@ -365,7 +416,24 @@ impl Writer {
         header: &header::Header,
     ) -> Result<Self, WriterPathError> {
         if let Some(p) = path.as_ref().to_str() {
-            Ok(try!(Self::new(p.as_bytes(), header)))
+            Ok(try!(Self::new(p.as_bytes(), b"wb", header)))
+        } else {
+            Err(WriterPathError::InvalidPath)
+        }
+    }
+
+    /// Create a new CRAM file.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - the path.
+    /// * `header` - header definition to use
+    pub fn from_cram_path<P: AsRef<Path>>(
+        path: P,
+        header: &header::Header,
+    ) -> Result<Self, WriterPathError> {
+        if let Some(p) = path.as_ref().to_str() {
+            Ok(try!(Self::new(p.as_bytes(), b"wc", header)))
         } else {
             Err(WriterPathError::InvalidPath)
         }
@@ -377,17 +445,18 @@ impl Writer {
     ///
     /// * `header` - header definition to use
     pub fn from_stdout(header: &header::Header) -> Result<Self, BGZFError> {
-        Self::new(b"-", header)
+        Self::new(b"-", b"wb", header)
     }
 
-    /// Create a new BAM file.
+    /// Create a new BAM or CRAM file.
     ///
     /// # Arguments
     ///
-    /// * `path` - the path. Use "-" for stdin.
+    /// * `path` - the path. Use "-" for stdout.
+    /// * `mode` - write mode, refer to htslib::hts_open()
     /// * `header` - header definition to use
-    fn new(path: &[u8], header: &header::Header) -> Result<Self, BGZFError> {
-        let f = try!(bgzf_open(&ffi::CString::new(path).unwrap(), b"w"));
+    fn new(path: &[u8], mode: &[u8], header: &header::Header) -> Result<Self, BGZFError> {
+        let f = try!(hts_open(&ffi::CString::new(path).unwrap(), mode));
 
         // sam_hdr_parse does not populate the text and l_text fields of the header_record.
         // This causes non-SQ headers to be dropped in the output BAM file.
@@ -416,7 +485,7 @@ impl Writer {
         };
 
         unsafe {
-            htslib::bam_hdr_write(f, header_record);
+            htslib::sam_hdr_write(f, header_record);
         }
 
         Ok(Writer {
@@ -441,7 +510,7 @@ impl Writer {
     ///
     /// * `record` - the record to write
     pub fn write(&mut self, record: &record::Record) -> Result<(), WriteError> {
-        if unsafe { htslib::bam_write1(self.f, record.inner) } == -1 {
+        if unsafe { htslib::sam_write1(self.f, &mut self.header.inner(), record.inner) } == -1 {
             Err(WriteError::Some)
         } else {
             Ok(())
@@ -452,12 +521,27 @@ impl Writer {
     pub fn header(&self) -> &HeaderView {
         &self.header
     }
+
+    /// Set the reference path for reading CRAM files.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - path to the FASTA reference
+    pub fn set_reference<P: AsRef<Path>>(&mut self, path: P) -> Result<(), ReferencePathError> {
+        let fai_path_str = format!("{}.fai", path.as_ref().to_str().unwrap());
+        let fai_path = Path::new(&fai_path_str);
+
+        match fai_path.to_str() {
+            Some(p) if fai_path.exists() => set_fai_filename(self.f, p.as_bytes()),
+            _ => Err(ReferencePathError::InvalidPath),
+        }
+    }
 }
 
 impl Drop for Writer {
     fn drop(&mut self) {
         unsafe {
-            htslib::bgzf_close(self.f);
+            htslib::hts_close(self.f);
         }
     }
 }
@@ -588,6 +672,18 @@ quick_error! {
 
 quick_error! {
     #[derive(Debug, Clone)]
+    pub enum ReferencePathError {
+        InvalidPath {
+            description("invalid path")
+        }
+        BGZFError(err: BGZFError) {
+            from()
+        }
+    }
+}
+
+quick_error! {
+    #[derive(Debug, Clone)]
     pub enum ThreadingError {
         Some {
             description("error setting threads for multi-threaded I/O")
@@ -632,9 +728,8 @@ quick_error! {
 }
 
 /// Wrapper for opening a BAM file.
-fn bgzf_open(path: &ffi::CStr, mode: &[u8]) -> Result<*mut htslib::BGZF, BGZFError> {
-    let ret =
-        unsafe { htslib::bgzf_open(path.as_ptr(), ffi::CString::new(mode).unwrap().as_ptr()) };
+fn hts_open(path: &ffi::CStr, mode: &[u8]) -> Result<*mut htslib::htsFile, BGZFError> {
+    let ret = unsafe { htslib::hts_open(path.as_ptr(), ffi::CString::new(mode).unwrap().as_ptr()) };
     if ret.is_null() {
         Err(BGZFError::Some)
     } else {
@@ -644,16 +739,16 @@ fn bgzf_open(path: &ffi::CStr, mode: &[u8]) -> Result<*mut htslib::BGZF, BGZFErr
 
 /// Wrapper for iterating an indexed BAM file.
 fn itr_next(
-    bgzf: *mut htslib::BGZF,
+    htsfile: *mut htslib::htsFile,
     itr: *mut htslib::hts_itr_t,
     record: *mut htslib::bam1_t,
 ) -> i32 {
     unsafe {
         htslib::hts_itr_next(
-            bgzf,
+            (*htsfile).fp.bgzf,
             itr,
             record as *mut ::std::os::raw::c_void,
-            ptr::null_mut(),
+            htsfile as *mut ::std::os::raw::c_void,
         )
     }
 }
@@ -1335,5 +1430,100 @@ CCCCCCCCCCCCCCCCCCC"[..],
             let cigar = rec.cigar();
             assert_eq!(*cigar, cigars[i]);
         }
+    }
+
+    #[test]
+    fn test_read_cram() {
+        let cram_path = "./test/test_cram.cram";
+        let bam_path = "./test/test_cram.bam";
+        let ref_path = "./test/test_cram.fa";
+
+        // Load CRAM file, records
+        let mut cram_reader = Reader::from_path(cram_path).unwrap();
+        cram_reader.set_reference(ref_path);
+        let cram_records: Vec<Record> = cram_reader.records().map(|v| v.unwrap()).collect();
+
+        // Load BAM file, records
+        let mut bam_reader = Reader::from_path(bam_path).unwrap();
+        let bam_records: Vec<Record> = bam_reader.records().map(|v| v.unwrap()).collect();
+
+        // Compare CRAM records to BAM records
+        for (c1, b1) in cram_records.iter().zip(bam_records.iter()) {
+            assert!(c1 == b1);
+        }
+    }
+
+    #[test]
+    fn test_write_cram() {
+        // BAM file, records
+        let bam_path = "./test/test_cram.bam";
+        let ref_path = "./test/test_cram.fa";
+        let mut bam_reader = Reader::from_path(bam_path).unwrap();
+        let bam_records: Vec<Record> = bam_reader.records().map(|v| v.unwrap()).collect();
+
+        // New CRAM file
+        let tmp = tempdir::TempDir::new("rust-htslib")
+            .ok()
+            .expect("Cannot create temp dir");
+        let cram_path = tmp.path().join("test.cram");
+
+        // Write BAM records to new CRAM file
+        {
+            let mut header = Header::new();
+            header.push_record(
+                HeaderRecord::new(b"HD")
+                    .push_tag(b"VN", &"1.5")
+                    .push_tag(b"SO", &"coordinate"),
+            );
+            header.push_record(
+                HeaderRecord::new(b"SQ")
+                    .push_tag(b"SN", &"chr1")
+                    .push_tag(b"LN", &120)
+                    .push_tag(b"M5", &"20a9a0fb770814e6c5e49946750f9724")
+                    .push_tag(b"UR", &"test/test_cram.fa"),
+            );
+            header.push_record(
+                HeaderRecord::new(b"SQ")
+                    .push_tag(b"SN", &"chr2")
+                    .push_tag(b"LN", &120)
+                    .push_tag(b"M5", &"7a2006ccca94ea92b6dae5997e1b0d70")
+                    .push_tag(b"UR", &"test/test_cram.fa"),
+            );
+            header.push_record(
+                HeaderRecord::new(b"SQ")
+                    .push_tag(b"SN", &"chr3")
+                    .push_tag(b"LN", &120)
+                    .push_tag(b"M5", &"a66b336bfe3ee8801c744c9545c87e24")
+                    .push_tag(b"UR", &"test/test_cram.fa"),
+            );
+
+            let mut cram_writer = Writer::from_cram_path(&cram_path, &header)
+                .ok()
+                .expect("Error opening CRAM file.");
+            cram_writer.set_reference(ref_path);
+
+            // Write BAM records to CRAM file
+            for rec in bam_records.iter() {
+                cram_writer
+                    .write(&rec)
+                    .ok()
+                    .expect("Faied to write record to CRAM.");
+            }
+        }
+
+        // Compare written CRAM records with BAM records
+        {
+            // Load written CRAM file
+            let mut cram_reader = Reader::from_path(cram_path).unwrap();
+            cram_reader.set_reference(ref_path);
+            let cram_records: Vec<Record> = cram_reader.records().map(|v| v.unwrap()).collect();
+
+            // Compare CRAM records to BAM records
+            for (c1, b1) in cram_records.iter().zip(bam_records.iter()) {
+                assert!(c1 == b1);
+            }
+        }
+
+        tmp.close().ok().expect("Failed to delete temp dir");
     }
 }
