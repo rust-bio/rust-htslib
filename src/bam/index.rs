@@ -46,7 +46,7 @@ pub fn build<P: AsRef<Path>>(
         -2 => Err(IndexBuildError::Opening),
         -3 => Err(IndexBuildError::InvalidFormat),
         -4 => Err(IndexBuildError::Saving),
-        e  => panic!("unexpected error code from sam_index_build3: {}", e),
+        e => panic!("unexpected error code from sam_index_build3: {}", e),
     }
 }
 
@@ -78,6 +78,12 @@ mod tests {
         build("test/test.bam", Some(idx), Type::BAI, 1).unwrap();
         assert!(Path::new(idx).exists());
         build("test/test.bam", Some(idx), Type::BAI, 2).unwrap();
-        build("test/test.bam", Some("test/results/test.bam.csi"), Type::CSI(2), 1).unwrap();
+        build(
+            "test/test.bam",
+            Some("test/results/test.bam.csi"),
+            Type::CSI(2),
+            1,
+        )
+        .unwrap();
     }
 }
