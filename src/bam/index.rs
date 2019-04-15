@@ -31,18 +31,14 @@ pub fn build<P: AsRef<Path>>(
         Type::BAI => 0,
         Type::CSI(min_shift) => min_shift as i32,
     };
-    let idx_path_ptr;
     let idx_path_cstr;
-    if idx_path.is_none() {
-        idx_path_ptr = ptr::null();
+    let idx_path_ptr = if let Some(p) = idx_path {
+        idx_path_cstr =
+            utils::path_to_cstring(&p).expect("path_to_cstring unexpectedly returned with Err");
+        idx_path_cstr.as_ptr()
     } else {
-        idx_path_cstr = idx_path
-            .map(|p| {
-                utils::path_to_cstring(&p).expect("path_to_cstring unexpectedly returned with Err")
-            })
-            .unwrap();
-        idx_path_ptr = idx_path_cstr.as_ptr();
-    }
+        ptr::null()
+    };
     let ret = unsafe {
         htslib::sam_index_build3(
             utils::path_to_cstring(&bam_path).unwrap().as_ptr(),
