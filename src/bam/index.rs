@@ -31,11 +31,18 @@ pub fn build<P: AsRef<Path>>(
         Type::BAI => 0,
         Type::CSI(min_shift) => min_shift as i32,
     };
-    let idx_path = idx_path.map(|p| utils::path_to_cstring(&p).unwrap());
+    let idx_path_ptr;
+    let idx_path_cstr;
+    if idx_path.is_none() {
+        idx_path_ptr = ptr::null();
+    } else {
+        idx_path_cstr = idx_path.map(|p| utils::path_to_cstring(&p).expect("path_to_cstring unexpectedly returned with Err")).unwrap();
+        idx_path_ptr = idx_path_cstr.as_ptr();
+    }
     let ret = unsafe {
         htslib::sam_index_build3(
             utils::path_to_cstring(&bam_path).unwrap().as_ptr(),
-            idx_path.map(|p| p.as_ptr()).unwrap_or(ptr::null()),
+            idx_path_ptr,
             min_shift,
             n_threads as i32,
         )
@@ -74,16 +81,47 @@ mod tests {
 
     #[test]
     fn test_index_build() {
-        let idx = "test/results/test.bam.bai";
-        build("test/test.bam", Some(idx), Type::BAI, 1).unwrap();
-        assert!(Path::new(idx).exists());
-        build("test/test.bam", Some(idx), Type::BAI, 2).unwrap();
+        let test_bam = "test/test_index_build.bam";
+
+        // test BAI index creation with 1 thread
+        let idx1 = "test/results/test1.bam.bai";
         build(
-            "test/test.bam",
-            Some("test/results/test.bam.csi"),
+            test_bam,
+            Some(idx1),
+            Type::BAI,
+            1
+        ).unwrap();
+        assert!(Path::new(idx1).exists());
+
+        // test BAI index creation with 2 threads
+        let idx2 = "test/results/test2.bam.bai";
+        build(
+            test_bam,
+            Some(idx2),
+            Type::BAI,
+            2
+        ).unwrap();
+        assert!(Path::new(idx2).exists());
+
+        // test CSI index creation with 2 threads
+        let idx3 = "test/results/test3.bam.csi";
+        build(
+            test_bam,
+            Some(idx3),
             Type::CSI(2),
-            1,
+            2,
         )
         .unwrap();
+        assert!(Path::new(idx3).exists());
+
+        // test CSI index creation with 2 threads and default file name
+        build(
+            test_bam,
+            None,
+            Type::CSI(5),
+            2,
+        )
+        .unwrap();
+        assert!(Path::new("test/test_index_build.bam.csi").exists());
     }
 }
