@@ -1163,7 +1163,8 @@ CCCCCCCCCCCCCCCCCCC"[..],
         );
         let header = HeaderView::from_header(&_header);
 
-        let line = b"blah1	0	1	1	255	1M	*	0	0	A	F	CB:Z:AAAA-1	UR:Z:AAAA	UB:Z:AAAA	GX:Z:G1	xf:i:1	fx:Z:G1\tli:i:0\ttf:Z:cC";
+        let line =
+            b"blah1	0	1	1	255	1M	*	0	0	A	F	CB:Z:AAAA-1	UR:Z:AAAA	UB:Z:AAAA	GX:Z:G1	xf:i:1	fx:Z:G1\tli:i:0\ttf:Z:cC";
 
         let mut rec = Record::from_sam(&header, line).unwrap();
         assert_eq!(rec.qname(), b"blah1");
