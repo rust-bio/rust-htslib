@@ -4,6 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [unreleased]
 ### Added
+- Support for BAM indices that are not placed beside a file.bam as file.bam.bai
 ### Changes
 
 ## [0.22.0] - 2018-11-02
