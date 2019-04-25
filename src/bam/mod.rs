@@ -1163,7 +1163,8 @@ CCCCCCCCCCCCCCCCCCC"[..],
         );
         let header = HeaderView::from_header(&_header);
 
-        let line = b"blah1	0	1	1	255	1M	*	0	0	A	F	CB:Z:AAAA-1	UR:Z:AAAA	UB:Z:AAAA	GX:Z:G1	xf:i:1	fx:Z:G1\tli:i:0\ttf:Z:cC";
+        let line =
+            b"blah1	0	1	1	255	1M	*	0	0	A	F	CB:Z:AAAA-1	UR:Z:AAAA	UB:Z:AAAA	GX:Z:G1	xf:i:1	fx:Z:G1\tli:i:0\ttf:Z:cC";
 
         let mut rec = Record::from_sam(&header, line).unwrap();
         assert_eq!(rec.qname(), b"blah1");
@@ -1441,7 +1442,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
         // Load CRAM file, records
         let mut cram_reader = Reader::from_path(cram_path).unwrap();
-        cram_reader.set_reference(ref_path);
+        cram_reader.set_reference(ref_path).unwrap();
         let cram_records: Vec<Record> = cram_reader.records().map(|v| v.unwrap()).collect();
 
         // Load BAM file, records
@@ -1501,7 +1502,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             let mut cram_writer = Writer::from_cram_path(&cram_path, &header)
                 .ok()
                 .expect("Error opening CRAM file.");
-            cram_writer.set_reference(ref_path);
+            cram_writer.set_reference(ref_path).unwrap();
 
             // Write BAM records to CRAM file
             for rec in bam_records.iter() {
@@ -1516,7 +1517,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         {
             // Load written CRAM file
             let mut cram_reader = Reader::from_path(cram_path).unwrap();
-            cram_reader.set_reference(ref_path);
+            cram_reader.set_reference(ref_path).unwrap();
             let cram_records: Vec<Record> = cram_reader.records().map(|v| v.unwrap()).collect();
 
             // Compare CRAM records to BAM records

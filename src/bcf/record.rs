@@ -8,7 +8,6 @@ use std::f32;
 use std::ffi;
 use std::fmt;
 use std::i32;
-use std::iter::repeat;
 use std::ptr;
 use std::rc::Rc;
 use std::slice;

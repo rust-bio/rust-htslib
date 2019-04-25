@@ -5,7 +5,6 @@
 
 //! Module for working with BAM or CRAM indices.
 
-use std::ffi;
 use std::path::Path;
 use std::ptr;
 

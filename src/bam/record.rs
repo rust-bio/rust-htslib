@@ -12,7 +12,6 @@ use std::str;
 use std::str::FromStr;
 use std::u32;
 
-use itertools::Itertools;
 use regex::Regex;
 
 use bam::{AuxWriteError, HeaderView, ReadError};
@@ -618,7 +617,7 @@ impl SequenceRead for Record {
     }
 
     fn base(&self, i: usize) -> u8 {
-        encoded_base(self.seq_data(), i)
+        decode_base(encoded_base(self.seq_data(), i))
     }
 
     fn base_qual(&self, i: usize) -> u8 {
@@ -707,7 +706,7 @@ impl<'a> Seq<'a> {
     /// Return encoded base. Complexity: O(1).
     #[inline]
     pub fn encoded_base(&self, i: usize) -> u8 {
-        encoded_base(self.encoded)
+        encoded_base(self.encoded, i)
     }
 
     /// Return decoded sequence. Complexity: O(m) with m being the read length.
@@ -726,7 +725,7 @@ impl<'a> ops::Index<usize> for Seq<'a> {
 
     /// Return decoded base at given position within read. Complexity: O(1).
     fn index(&self, index: usize) -> &u8 {
-        &decode_base(self.encoded_base(index))
+        &DECODE_BASE[self.encoded_base(index) as usize]
     }
 }
 
