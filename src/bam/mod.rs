@@ -276,6 +276,26 @@ impl IndexedReader {
             _ => Err(IndexedReaderPathError::InvalidPath),
         }
     }
+    pub fn from_path_and_index<P: AsRef<Path>>(
+        path: P,
+        index_path: P,
+    ) -> Result<Self, IndexedReaderPathError> {
+        if !path.as_ref().exists() || !index_path.as_ref().exists() {
+            return Err(IndexedReaderPathError::InvalidPath);
+        }
+        let p = path
+            .as_ref()
+            .to_str()
+            .ok_or(IndexedReaderPathError::InvalidPath)?;
+        let idx_p = index_path
+            .as_ref()
+            .to_str()
+            .ok_or(IndexedReaderPathError::InvalidPath)?;
+        Ok(try!(Self::new_with_index_path(
+            &ffi::CString::new(p).unwrap(),
+            &ffi::CString::new(idx_p).unwrap(),
+        )))
+    }
 
     pub fn from_url(url: &Url) -> Result<Self, IndexedReaderError> {
         Self::new(&ffi::CString::new(url.as_str()).unwrap())
@@ -290,6 +310,30 @@ impl IndexedReader {
         let htsfile = try!(hts_open(path, b"r"));
         let header = unsafe { htslib::sam_hdr_read(htsfile) };
         let idx = unsafe { htslib::sam_index_load(htsfile, path.as_ptr()) };
+        if idx.is_null() {
+            Err(IndexedReaderError::InvalidIndex)
+        } else {
+            Ok(IndexedReader {
+                htsfile: htsfile,
+                header: HeaderView::new(header),
+                idx: idx,
+                itr: None,
+            })
+        }
+    }
+    /// Create a new Reader.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - the path. Use "-" for stdin.
+    /// * `index_path` - the index path to use
+    fn new_with_index_path(
+        path: &ffi::CStr,
+        index_path: &ffi::CStr,
+    ) -> Result<Self, IndexedReaderError> {
+        let htsfile = try!(hts_open(path, b"r"));
+        let header = unsafe { htslib::sam_hdr_read(htsfile) };
+        let idx = unsafe { htslib::sam_index_load2(htsfile, path.as_ptr(), index_path.as_ptr()) };
         if idx.is_null() {
             Err(IndexedReaderError::InvalidIndex)
         } else {
@@ -1040,13 +1084,8 @@ CCCCCCCCCCCCCCCCCCC"[..],
         assert_eq!(header_text, true_header);
     }
 
-    #[test]
-    fn test_read_indexed() {
+    fn _test_read_indexed_common(mut bam: IndexedReader) {
         let (names, flags, seqs, quals, cigars) = gold();
-        let mut bam = IndexedReader::from_path(&"test/test.bam")
-            .ok()
-            .expect("Expected valid index.");
-
         let tid = bam.header.tid(b"CHROMOSOME_I").expect("Expected tid.");
         assert!(bam.header.target_len(tid).expect("Expected target len.") == 15072423);
 
@@ -1077,6 +1116,24 @@ CCCCCCCCCCCCCCCCCCC"[..],
         // fetch to empty position
         bam.fetch(2, 1, 1).ok().expect("Expected successful fetch.");
         assert!(bam.records().count() == 0);
+    }
+
+    #[test]
+    fn test_read_indexed() {
+        let mut bam = IndexedReader::from_path(&"test/test.bam")
+            .ok()
+            .expect("Expected valid index.");
+        _test_read_indexed_common(bam);
+    }
+    #[test]
+    fn test_read_indexed_different_index_name() {
+        let mut bam = IndexedReader::from_path_and_index(
+            &"test/test_different_index_name.bam",
+            &"test/test.bam.bai",
+        )
+        .ok()
+        .expect("Expected valid index.");
+        _test_read_indexed_common(bam);
     }
 
     #[test]
