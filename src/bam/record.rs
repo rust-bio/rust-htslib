@@ -12,7 +12,6 @@ use std::str;
 use std::str::FromStr;
 use std::u32;
 
-use itertools::Itertools;
 use regex::Regex;
 
 use bam::{AuxWriteError, HeaderView, ReadError};
@@ -20,6 +19,7 @@ use htslib;
 use utils;
 
 use bio_types::alignment::{Alignment, AlignmentMode, AlignmentOperation};
+use bio_types::sequence::SequenceRead;
 
 /// A macro creating methods for flag access.
 macro_rules! flag {
@@ -452,11 +452,15 @@ impl Record {
         self.inner().core.l_qseq as usize
     }
 
+    fn seq_data(&self) -> &[u8] {
+        let offset = self.qname_capacity() + self.cigar_len() * 4;
+        &self.data()[offset..][..(self.seq_len() + 1) / 2]
+    }
+
     /// Get read sequence. Complexity: O(1).
     pub fn seq(&self) -> Seq {
         Seq {
-            encoded: &self.data()[self.qname_capacity() + self.cigar_len() * 4..]
-                [..(self.seq_len() + 1) / 2],
+            encoded: self.seq_data(),
             len: self.seq_len(),
         }
     }
@@ -607,6 +611,24 @@ impl Drop for Record {
     }
 }
 
+impl SequenceRead for Record {
+    fn name(&self) -> &[u8] {
+        self.qname()
+    }
+
+    fn base(&self, i: usize) -> u8 {
+        decode_base(encoded_base(self.seq_data(), i))
+    }
+
+    fn base_qual(&self, i: usize) -> u8 {
+        self.qual()[i]
+    }
+
+    fn len(&self) -> usize {
+        self.seq_len()
+    }
+}
+
 /// Auxiliary record data.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Aux<'a> {
@@ -665,6 +687,14 @@ static ENCODE_BASE: [u8; 256] = [
     15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
 ];
 
+fn encoded_base(encoded_seq: &[u8], i: usize) -> u8 {
+    (encoded_seq[i / 2] >> ((!i & 1) << 2)) & 0b1111
+}
+
+fn decode_base(base: u8) -> u8 {
+    DECODE_BASE[base as usize]
+}
+
 /// The sequence of a record.
 #[derive(Debug, Copy, Clone)]
 pub struct Seq<'a> {
@@ -676,7 +706,7 @@ impl<'a> Seq<'a> {
     /// Return encoded base. Complexity: O(1).
     #[inline]
     pub fn encoded_base(&self, i: usize) -> u8 {
-        (self.encoded[i / 2] >> ((!i & 1) << 2)) & 0b1111
+        encoded_base(self.encoded, i)
     }
 
     /// Return decoded sequence. Complexity: O(m) with m being the read length.
