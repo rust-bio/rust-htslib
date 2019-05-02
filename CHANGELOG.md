@@ -2,10 +2,15 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [unreleased]
+## [0.23.0] - 2019-05-02
 ### Added
 - Support for BAM indices that are not placed beside a file.bam as file.bam.bai
+- Implement SequenceRead trait for BAM records.
+- Add function to build an index for a BAM file.
+- CRAM support for BAM reader and writer.
 ### Changes
+- Allow to specify particular index filename when instantiating a BAM reader.
+- Various bug and API fixes.
 
 ## [0.22.0] - 2018-11-02
 ### Changes
