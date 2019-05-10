@@ -10,6 +10,7 @@ pub mod header;
 pub mod index;
 pub mod pileup;
 pub mod record;
+pub mod ext;
 
 #[cfg(feature = "serde")]
 pub mod record_serde;
