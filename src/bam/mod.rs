@@ -155,6 +155,7 @@ impl Reader {
     /// * `path` - the path to open. Use "-" for stdin.
     fn new(path: &[u8]) -> Result<Self, BGZFError> {
         let htsfile = try!(hts_open(&ffi::CString::new(path).unwrap(), b"r"));
+
         let header = unsafe { htslib::sam_hdr_read(htsfile) };
         Ok(Reader {
             htsfile: htsfile,
@@ -778,6 +779,13 @@ fn hts_open(path: &ffi::CStr, mode: &[u8]) -> Result<*mut htslib::htsFile, BGZFE
     if ret.is_null() {
         Err(BGZFError::Some)
     } else {
+        if !mode.contains(&b'w') {
+            unsafe {
+                if (*ret).format.category != htslib::htsFormatCategory_sequence_data {
+                    return Err(BGZFError::Some);
+                }
+            }
+        }
         Ok(ret)
     }
 }
@@ -1120,14 +1128,14 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     #[test]
     fn test_read_indexed() {
-        let mut bam = IndexedReader::from_path(&"test/test.bam")
+        let bam = IndexedReader::from_path(&"test/test.bam")
             .ok()
             .expect("Expected valid index.");
         _test_read_indexed_common(bam);
     }
     #[test]
     fn test_read_indexed_different_index_name() {
-        let mut bam = IndexedReader::from_path_and_index(
+        let bam = IndexedReader::from_path_and_index(
             &"test/test_different_index_name.bam",
             &"test/test.bam.bai",
         )
@@ -1584,5 +1592,26 @@ CCCCCCCCCCCCCCCCCCC"[..],
         }
 
         tmp.close().ok().expect("Failed to delete temp dir");
+    }
+
+    #[test]
+    fn test_bam_fails_on_vcf() {
+        let bam_path = "./test/test_left.vcf";
+        let bam_reader = Reader::from_path(bam_path);
+        assert!(bam_reader.is_err());
+    }
+
+    #[test]
+    fn test_indexde_bam_fails_on_vcf() {
+        let bam_path = "./test/test_left.vcf";
+        let bam_reader = IndexedReader::from_path(bam_path);
+        assert!(bam_reader.is_err());
+    }
+
+    #[test]
+    fn test_bam_fails_on_toml() {
+        let bam_path = "./cargo.toml";
+        let bam_reader = Reader::from_path(bam_path);
+        assert!(bam_reader.is_err());
     }
 }
