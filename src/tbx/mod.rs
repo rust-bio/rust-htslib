@@ -116,10 +116,9 @@ impl Reader {
     ///
     /// * `path` - the path to open.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, TabixReaderPathError> {
-        if let Some(p) = path.as_ref().to_str() {
-            Ok(try!(Self::new(p.as_bytes())))
-        } else {
-            Err(TabixReaderPathError::InvalidPath)
+        match path.as_ref().to_str() {
+            Some(p) if path.as_ref().exists() => Ok(try!(Self::new(p.as_bytes()))),
+            _ => Err(TabixReaderPathError::InvalidPath),
         }
     }
 
@@ -136,6 +135,14 @@ impl Reader {
         let path = ffi::CString::new(path).unwrap();
         let hts_file =
             unsafe { htslib::hts_open(path.as_ptr(), ffi::CString::new("r").unwrap().as_ptr()) };
+        unsafe {
+            if (*hts_file).format.category != htslib::htsFormatCategory_region_list
+                && (*hts_file).format.format != htslib::htsExactFormat_sam
+            {
+                return Err(TabixReaderError::InvalidIndex);
+            }
+        }
+
         let hts_format = unsafe { (*htslib::hts_get_format(hts_file)).format };
         let tbx = unsafe { htslib::tbx_index_load(path.as_ptr()) };
         let mut header = Vec::new();
@@ -481,4 +488,23 @@ mod tests {
         let records: Vec<Vec<u8>> = reader.records().map(|r| r.unwrap()).collect();
         assert_eq!(records, vec![Vec::from("chr1\t1001\t1002")]);
     }
+
+    #[test]
+    fn test_fails_on_bam() {
+        let reader = Reader::from_path("test/test.bam");
+        assert!(reader.is_err());
+    }
+
+    #[test]
+    fn test_fails_on_non_existiant() {
+        let reader = Reader::from_path("test/no_such_file");
+        assert!(reader.is_err());
+    }
+
+    #[test]
+    fn test_fails_on_vcf() {
+        let reader = Reader::from_path("test/test_left.vcf");
+        assert!(reader.is_err());
+    }
+
 }

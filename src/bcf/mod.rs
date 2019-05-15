@@ -734,7 +734,15 @@ fn bcf_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile, BCFError> 
     if ret.is_null() {
         Err(BCFError::Some)
     } else {
-        Ok(ret)
+        unsafe {
+            if !mode.contains(&b'w')
+                && (*ret).format.category != htslib::htsFormatCategory_variant_data
+            {
+                Err(BCFError::Some)
+            } else {
+                Ok(ret)
+            }
+        }
     }
 }
 
@@ -1288,4 +1296,17 @@ mod tests {
 
         assert_eq!(record.info(b"SVLEN").integer().unwrap(), Some(&[-127][..]));
     }
+
+    #[test]
+    fn test_fails_on_bam() {
+        let reader = Reader::from_path("test/test.bam");
+        assert!(reader.is_err());
+    }
+
+    #[test]
+    fn test_fails_on_non_existiant() {
+        let reader = Reader::from_path("test/no_such_file");
+        assert!(reader.is_err());
+    }
+
 }
