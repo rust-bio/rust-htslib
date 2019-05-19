@@ -1072,6 +1072,24 @@ mod tests {
     }
 
     #[test]
+    fn test_header_contigs() {
+        let vcf = Reader::from_path(&"test/test_multi.bcf")
+            .ok()
+            .expect("Error opening file.");
+        let header = &vcf.header();
+
+        assert_eq!(header.rid2name(0), b"1");
+        assert_eq!(header.name2rid(b"1").unwrap(), 0);
+
+        assert_eq!(header.rid2name(85), b"hs37d5");
+        assert_eq!(header.name2rid(b"hs37d5").unwrap(), 85);
+
+        // test nonexistent contig names and IDs
+        assert!(header.name2rid(b"nonexistent_contig").is_err());
+        header.rid2name(100); // segfault
+    }
+
+    #[test]
     fn test_header_records() {
         let vcf = Reader::from_path(&"test/test_string.vcf")
             .ok()
