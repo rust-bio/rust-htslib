@@ -6,6 +6,7 @@
 //! Module for working with BAM and CRAM files.
 
 pub mod buffer;
+pub mod ext;
 pub mod header;
 pub mod index;
 pub mod pileup;
