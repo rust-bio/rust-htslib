@@ -20,8 +20,8 @@ pub trait BamRecordExtensions {
     /// There is not necessarily a gap between blocks on the genome,
     /// this happens on insertions.
     ///
-    /// pysam: get_blocks
-    fn get_blocks(&self) -> Vec<[i32; 2]>;
+    /// pysam: blocks
+    fn aligned_blocks(&self) -> Vec<[i32; 2]>;
 
     /// find intron positions (start, stop)
     ///
@@ -29,37 +29,37 @@ pub trait BamRecordExtensions {
     /// and reports their positions.
     ///
     /// pysam: get_introns
-    fn get_introns(&self) -> Vec<[i32; 2]>;
+    fn introns(&self) -> Vec<[i32; 2]>;
 
     /// a list of aligned read and reference positions
     ///
     /// No entry for insertions, deletions or skipped pairs
     ///
     /// pysam: get_aligned_pairs(matches_only = True)
-    fn get_aligned_pairs(&self) -> Vec<[i32; 2]>;
+    fn aligned_pairs(&self) -> Vec<[i32; 2]>;
 
     /// a list of aligned read and reference positions
     ///
     /// None in either the read positions or the reference position
     /// for insertions, deletions or skipped pairs
     ///
-    /// pysam: get_aligned_pairs(matches_only = False)
-    fn get_aligned_pairs_full(&self) -> Vec<[Option<i32>; 2]>;
+    /// pysam: aligned_pairs(matches_only = False)
+    fn aligned_pairs_full(&self) -> Vec<[Option<i32>; 2]>;
 
-    /// the number of nucleotides covered by each Cigar:: posibility
+    /// the number of nucleotides covered by each Cigar:: possibility
     ///
     /// Result is a Hashmap Cigar::xyz(0) => covered nucleotides
     ///
     /// pysam: first result from get_cigar_stats
-    fn get_cigar_stats_nucleotides(&self) -> HashMap<Cigar, i32>;
+    fn cigar_stats_nucleotides(&self) -> HashMap<Cigar, i32>;
 
-    /// the number of nucleotides covered by each Cigar:: posibility
+    /// the number of occurances of each each Cigar:: possibility
     ///
     /// Result is a Hashmap Cigar::xyz(0) => number of times this Cigar::
     /// appeared
     ///
     /// pysam: second result from get_cigar_stats
-    fn get_cigar_stats_blocks(&self) -> HashMap<Cigar, i32>;
+    fn cigar_stats_blocks(&self) -> HashMap<Cigar, i32>;
 
     /// a Vec of reference positions that this read aligns to
     ///
@@ -67,14 +67,14 @@ pub trait BamRecordExtensions {
     /// or unaligned positions within the read
     ///
     /// pysam: get_reference_positions(full_length=False)
-    fn get_reference_positions(&self) -> Vec<i32>;
+    fn reference_positions(&self) -> Vec<i32>;
     ///
     /// a Vec of reference positions that this read aligns to
     ///
     /// include soft-clipped or skipped positions as None
     ///
     /// pysam: get_reference_positions(full_length=True)
-    fn get_reference_positions_full(&self) -> Vec<Option<i32>>;
+    fn reference_positions_full(&self) -> Vec<Option<i32>>;
 
     /// left most aligned reference position of the read on the reference genome.
     fn reference_start(&self) -> i32;
@@ -91,7 +91,7 @@ pub trait BamRecordExtensions {
 }
 
 impl BamRecordExtensions for bam::Record {
-    fn get_blocks(&self) -> Vec<[i32; 2]> {
+    fn aligned_blocks(&self) -> Vec<[i32; 2]> {
         let mut result = Vec::new();
         let mut pos = self.pos();
         for entry in self.cigar().iter() {
@@ -108,7 +108,7 @@ impl BamRecordExtensions for bam::Record {
         result
     }
 
-    fn get_introns(&self) -> Vec<[i32; 2]> {
+    fn introns(&self) -> Vec<[i32; 2]> {
         let mut base_position = self.pos();
         let mut result = Vec::new();
         for entry in self.cigar().iter() {
@@ -127,7 +127,7 @@ impl BamRecordExtensions for bam::Record {
         result
     }
 
-    fn get_aligned_pairs(&self) -> Vec<[i32; 2]> {
+    fn aligned_pairs(&self) -> Vec<[i32; 2]> {
         let mut result = Vec::new();
 
         let mut pos: i32 = self.pos();
@@ -154,7 +154,7 @@ impl BamRecordExtensions for bam::Record {
         result
     }
 
-    fn get_aligned_pairs_full(&self) -> Vec<[Option<i32>; 2]> {
+    fn aligned_pairs_full(&self) -> Vec<[Option<i32>; 2]> {
         let mut result = Vec::new();
 
         let mut pos: i32 = self.pos();
@@ -186,7 +186,7 @@ impl BamRecordExtensions for bam::Record {
         }
         result
     }
-    fn get_cigar_stats_nucleotides(&self) -> HashMap<Cigar, i32> {
+    fn cigar_stats_nucleotides(&self) -> HashMap<Cigar, i32> {
         let mut result = HashMap::new();
         result.insert(Cigar::Match(0), 0); // M
         result.insert(Cigar::Ins(0), 0); // I
@@ -217,7 +217,7 @@ impl BamRecordExtensions for bam::Record {
         result
     }
 
-    fn get_cigar_stats_blocks(&self) -> HashMap<Cigar, i32> {
+    fn cigar_stats_blocks(&self) -> HashMap<Cigar, i32> {
         let mut result = HashMap::new();
         result.insert(Cigar::Match(0), 0); // M
         result.insert(Cigar::Ins(0), 0); // I
@@ -244,12 +244,12 @@ impl BamRecordExtensions for bam::Record {
         result
     }
 
-    fn get_reference_positions(&self) -> Vec<i32> {
-        self.get_aligned_pairs().iter().map(|x| x[1]).collect()
+    fn reference_positions(&self) -> Vec<i32> {
+        self.aligned_pairs().iter().map(|x| x[1]).collect()
     }
 
-    fn get_reference_positions_full(&self) -> Vec<Option<i32>> {
-        self.get_aligned_pairs_full()
+    fn reference_positions_full(&self) -> Vec<Option<i32>> {
+        self.aligned_pairs_full()
             .iter()
             .filter(|x| x[0].is_some())
             .map(|x| x[1])
@@ -297,155 +297,155 @@ mod tests {
     fn spliced_reads() {
         let mut bam = bam::Reader::from_path("./test/test_spliced_reads.bam").unwrap();
         let mut it = bam.records();
-        let blocks = it.next().expect("iter").unwrap().get_blocks();
+        let blocks = it.next().expect("iter").unwrap().aligned_blocks();
         //6S45M - 0
         assert!(blocks[0] == [16050676, 16050721]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //7M2D44M - 1
         assert!(blocks[0] == [16096878, 16096885]);
         //7M2D44M - 1
         assert!(blocks[1] == [16096887, 16096931]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //29M2D22M - 2
         assert!(blocks[0] == [16097145, 16097174]);
         //29M2D22M - 2
         assert!(blocks[1] == [16097176, 16097198]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //51M - 3
         assert!(blocks[0] == [16117350, 16117401]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //51M - 4
         assert!(blocks[0] == [16118483, 16118534]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //51M - 5
         assert!(blocks[0] == [16118499, 16118550]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //51M - 6
         assert!(blocks[0] == [16118499, 16118550]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //51M - 7
         assert!(blocks[0] == [16118499, 16118550]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //51M - 8
         assert!(blocks[0] == [16123411, 16123462]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //6S45M - 9
         assert!(blocks[0] == [16123417, 16123462]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //41M10S - 10
         assert!(blocks[0] == [16165860, 16165901]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //51M - 11
         assert!(blocks[0] == [16180871, 16180922]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //51M - 12
         assert!(blocks[0] == [16189705, 16189756]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //51M - 13
         assert!(blocks[0] == [16231271, 16231322]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //51M - 14
         assert!(blocks[0] == [16237657, 16237708]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //9S42M - 15
         assert!(blocks[0] == [16255012, 16255054]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //51M - 16
         assert!(blocks[0] == [16255391, 16255442]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //50M1S - 17
         assert!(blocks[0] == [16255392, 16255442]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //45M6S - 18
         assert!(blocks[0] == [16256084, 16256129]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //3S48M - 19
         assert!(blocks[0] == [16256224, 16256272]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //42M9S - 20
         assert!(blocks[0] == [16325199, 16325241]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //13S38M - 21
         assert!(blocks[0] == [16352865, 16352903]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //44M7S - 22
         assert!(blocks[0] == [16352968, 16353012]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //5S46M - 23
         assert!(blocks[0] == [16414998, 16415044]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //23M4I24M - 24
         assert!(blocks[0] == [17031591, 17031614]);
         //23M4I24M - 24
         assert!(blocks[1] == [17031614, 17031638]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //18M1I32M - 25
         assert!(blocks[0] == [17057382, 17057400]);
         //18M1I32M - 25
         assert!(blocks[1] == [17057400, 17057432]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //17M2183N34M - 26
         assert!(blocks[0] == [17092766, 17092783]);
         //17M2183N34M - 26
         assert!(blocks[1] == [17094966, 17095000]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //1M2183N50M - 27
         assert!(blocks[0] == [17092782, 17092783]);
         //1M2183N50M - 27
         assert!(blocks[1] == [17094966, 17095016]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //1M2183N50M - 28
         assert!(blocks[0] == [17092782, 17092783]);
         //1M2183N50M - 28
         assert!(blocks[1] == [17094966, 17095016]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //9S33M9S - 29
         assert!(blocks[0] == [17137287, 17137320]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //2S48M1S - 30
         assert!(blocks[0] == [17306238, 17306286]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //4S45M2S - 31
         assert!(blocks[0] == [17561868, 17561913]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //41M11832N10M - 32
         assert!(blocks[0] == [17566078, 17566119]);
         //41M11832N10M - 32
         assert!(blocks[1] == [17577951, 17577961]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //11M11832N25M710N15M - 33
         assert!(blocks[0] == [17566108, 17566119]);
         //11M11832N25M710N15M - 33
@@ -453,7 +453,7 @@ mod tests {
         //11M11832N25M710N15M - 33
         assert!(blocks[2] == [17578686, 17578701]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //8M11832N25M710N18M - 34
         assert!(blocks[0] == [17566111, 17566119]);
         //8M11832N25M710N18M - 34
@@ -461,7 +461,7 @@ mod tests {
         //8M11832N25M710N18M - 34
         assert!(blocks[2] == [17578686, 17578704]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //8M11832N25M710N18M - 35
         assert!(blocks[0] == [17566111, 17566119]);
         //8M11832N25M710N18M - 35
@@ -469,7 +469,7 @@ mod tests {
         //8M11832N25M710N18M - 35
         assert!(blocks[2] == [17578686, 17578704]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //8M11832N25M710N18M - 36
         assert!(blocks[0] == [17566111, 17566119]);
         //8M11832N25M710N18M - 36
@@ -477,7 +477,7 @@ mod tests {
         //8M11832N25M710N18M - 36
         assert!(blocks[2] == [17578686, 17578704]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //8M11832N25M710N18M - 37
         assert!(blocks[0] == [17566111, 17566119]);
         //8M11832N25M710N18M - 37
@@ -485,7 +485,7 @@ mod tests {
         //8M11832N25M710N18M - 37
         assert!(blocks[2] == [17578686, 17578704]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //7M11832N25M710N19M - 38
         assert!(blocks[0] == [17566112, 17566119]);
         //7M11832N25M710N19M - 38
@@ -493,7 +493,7 @@ mod tests {
         //7M11832N25M710N19M - 38
         assert!(blocks[2] == [17578686, 17578705]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //6M11832N25M710N20M - 39
         assert!(blocks[0] == [17566113, 17566119]);
         //6M11832N25M710N20M - 39
@@ -501,7 +501,7 @@ mod tests {
         //6M11832N25M710N20M - 39
         assert!(blocks[2] == [17578686, 17578706]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //6M11832N25M710N20M - 40
         assert!(blocks[0] == [17566113, 17566119]);
         //6M11832N25M710N20M - 40
@@ -509,13 +509,13 @@ mod tests {
         //6M11832N25M710N20M - 40
         assert!(blocks[2] == [17578686, 17578706]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //1S44M1467N6M - 41
         assert!(blocks[0] == [17579733, 17579777]);
         //1S44M1467N6M - 41
         assert!(blocks[1] == [17581244, 17581250]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //2M1514N48M95N1M - 42
         assert!(blocks[0] == [17581369, 17581371]);
         //2M1514N48M95N1M - 42
@@ -523,7 +523,7 @@ mod tests {
         //2M1514N48M95N1M - 42
         assert!(blocks[2] == [17583028, 17583029]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //1M1514N48M95N2M - 43
         assert!(blocks[0] == [17581370, 17581371]);
         //1M1514N48M95N2M - 43
@@ -531,7 +531,7 @@ mod tests {
         //1M1514N48M95N2M - 43
         assert!(blocks[2] == [17583028, 17583030]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //1M1514N48M95N2M - 44
         assert!(blocks[0] == [17581370, 17581371]);
         //1M1514N48M95N2M - 44
@@ -539,67 +539,67 @@ mod tests {
         //1M1514N48M95N2M - 44
         assert!(blocks[2] == [17583028, 17583030]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //1S22M95N28M - 45
         assert!(blocks[0] == [17582911, 17582933]);
         //1S22M95N28M - 45
         assert!(blocks[1] == [17583028, 17583056]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //37M538N13M1S - 46
         assert!(blocks[0] == [17588621, 17588658]);
         //37M538N13M1S - 46
         assert!(blocks[1] == [17589196, 17589209]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //37M538N13M1S - 47
         assert!(blocks[0] == [17588621, 17588658]);
         //37M538N13M1S - 47
         assert!(blocks[1] == [17589196, 17589209]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //37M538N13M1S - 48
         assert!(blocks[0] == [17588621, 17588658]);
         //37M538N13M1S - 48
         assert!(blocks[1] == [17589196, 17589209]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //1S25M1D25M - 49
         assert!(blocks[0] == [17591770, 17591795]);
         //1S25M1D25M - 49
         assert!(blocks[1] == [17591796, 17591821]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //24M1D24M3S - 50
         assert!(blocks[0] == [17593855, 17593879]);
         //24M1D24M3S - 50
         assert!(blocks[1] == [17593880, 17593904]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //16M1D28M7S - 51
         assert!(blocks[0] == [17593863, 17593879]);
         //16M1D28M7S - 51
         assert!(blocks[1] == [17593880, 17593908]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //11S7M1I32M - 52
         assert!(blocks[0] == [17596476, 17596483]);
         //11S7M1I32M - 52
         assert!(blocks[1] == [17596483, 17596515]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //5S9M1892N37M - 53
         assert!(blocks[0] == [17624012, 17624021]);
         //5S9M1892N37M - 53
         assert!(blocks[1] == [17625913, 17625950]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //2S9M1892N40M - 54
         assert!(blocks[0] == [17624012, 17624021]);
         //2S9M1892N40M - 54
         assert!(blocks[1] == [17625913, 17625953]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //1S7M3D19M2285N24M - 55
         assert!(blocks[0] == [31796700, 31796707]);
         //1S7M3D19M2285N24M - 55
@@ -607,7 +607,7 @@ mod tests {
         //1S7M3D19M2285N24M - 55
         assert!(blocks[2] == [31799014, 31799038]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //14M799N28M13881N7M2S - 56
         assert!(blocks[0] == [36722692, 36722706]);
         //14M799N28M13881N7M2S - 56
@@ -615,7 +615,7 @@ mod tests {
         //14M799N28M13881N7M2S - 56
         assert!(blocks[2] == [36737414, 36737421]);
 
-        let blocks = it.next().unwrap().unwrap().get_blocks();
+        let blocks = it.next().unwrap().unwrap().aligned_blocks();
         //4S21M1696N23M2331N3M - 57
         assert!(blocks[0] == [44587963, 44587984]);
         //4S21M1696N23M2331N3M - 57
@@ -630,225 +630,225 @@ mod tests {
         let mut it = bam.records();
 
         //6S45M - 0
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //7M2D44M - 1
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //29M2D22M - 2
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //51M - 3
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //51M - 4
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //51M - 5
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //51M - 6
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //51M - 7
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //51M - 8
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //6S45M - 9
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //41M10S - 10
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //51M - 11
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //51M - 12
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //51M - 13
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //51M - 14
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //9S42M - 15
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //51M - 16
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //50M1S - 17
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //45M6S - 18
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //3S48M - 19
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //42M9S - 20
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //13S38M - 21
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //44M7S - 22
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //5S46M - 23
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //23M4I24M - 24
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //18M1I32M - 25
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //17M2183N34M - 26
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 1);
         assert_eq!(introns[0], [17092783, 17094966]);
         //1M2183N50M - 27
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 1);
         assert_eq!(introns[0], [17092783, 17094966]);
         //1M2183N50M - 28
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 1);
         assert_eq!(introns[0], [17092783, 17094966]);
         //9S33M9S - 29
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //2S48M1S - 30
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //4S45M2S - 31
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //41M11832N10M - 32
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 1);
         assert_eq!(introns[0], [17566119, 17577951]);
         //11M11832N25M710N15M - 33
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 2);
         assert_eq!(introns[0], [17566119, 17577951]);
         assert_eq!(introns[1], [17577976, 17578686]);
         //8M11832N25M710N18M - 34
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 2);
         assert_eq!(introns[0], [17566119, 17577951]);
         assert_eq!(introns[1], [17577976, 17578686]);
         //8M11832N25M710N18M - 35
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 2);
         assert_eq!(introns[0], [17566119, 17577951]);
         assert_eq!(introns[1], [17577976, 17578686]);
         //8M11832N25M710N18M - 36
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 2);
         assert_eq!(introns[0], [17566119, 17577951]);
         assert_eq!(introns[1], [17577976, 17578686]);
         //8M11832N25M710N18M - 37
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 2);
         assert_eq!(introns[0], [17566119, 17577951]);
         assert_eq!(introns[1], [17577976, 17578686]);
         //7M11832N25M710N19M - 38
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 2);
         assert_eq!(introns[0], [17566119, 17577951]);
         assert_eq!(introns[1], [17577976, 17578686]);
         //6M11832N25M710N20M - 39
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 2);
         assert_eq!(introns[0], [17566119, 17577951]);
         assert_eq!(introns[1], [17577976, 17578686]);
         //6M11832N25M710N20M - 40
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 2);
         assert_eq!(introns[0], [17566119, 17577951]);
         assert_eq!(introns[1], [17577976, 17578686]);
         //1S44M1467N6M - 41
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 1);
         assert_eq!(introns[0], [17579777, 17581244]);
         //2M1514N48M95N1M - 42
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 2);
         assert_eq!(introns[0], [17581371, 17582885]);
         assert_eq!(introns[1], [17582933, 17583028]);
         //1M1514N48M95N2M - 43
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 2);
         assert_eq!(introns[0], [17581371, 17582885]);
         assert_eq!(introns[1], [17582933, 17583028]);
         //1M1514N48M95N2M - 44
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 2);
         assert_eq!(introns[0], [17581371, 17582885]);
         assert_eq!(introns[1], [17582933, 17583028]);
         //1S22M95N28M - 45
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 1);
         assert_eq!(introns[0], [17582933, 17583028]);
         //37M538N13M1S - 46
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 1);
         assert_eq!(introns[0], [17588658, 17589196]);
         //37M538N13M1S - 47
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 1);
         assert_eq!(introns[0], [17588658, 17589196]);
         //37M538N13M1S - 48
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 1);
         assert_eq!(introns[0], [17588658, 17589196]);
         //1S25M1D25M - 49
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //24M1D24M3S - 50
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //16M1D28M7S - 51
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //11S7M1I32M - 52
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 0);
         //5S9M1892N37M - 53
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 1);
         assert_eq!(introns[0], [17624021, 17625913]);
         //2S9M1892N40M - 54
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 1);
         assert_eq!(introns[0], [17624021, 17625913]);
         //1S7M3D19M2285N24M - 55
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 1);
         assert_eq!(introns[0], [31796729, 31799014]);
         //14M799N28M13881N7M2S - 56
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 2);
         assert_eq!(introns[0], [36722706, 36723505]);
         assert_eq!(introns[1], [36723533, 36737414]);
         //4S21M1696N23M2331N3M - 57
-        let introns = it.next().unwrap().unwrap().get_introns();
+        let introns = it.next().unwrap().unwrap().introns();
         assert_eq!(introns.len(), 2);
         assert_eq!(introns[0], [44587984, 44589680]);
         assert_eq!(introns[1], [44589703, 44592034]);
     }
 
     #[test]
-    fn test_get_aligned_pairs() {
+    fn test_aligned_pairs() {
         let mut bam = bam::Reader::from_path("./test/test_spliced_reads.bam").unwrap();
         let mut it = bam.records();
 
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -899,7 +899,7 @@ mod tests {
                 [50, 16050720]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -956,7 +956,7 @@ mod tests {
                 [50, 16096930]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -1013,7 +1013,7 @@ mod tests {
                 [50, 16097197]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -1070,7 +1070,7 @@ mod tests {
                 [50, 16117400]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -1127,7 +1127,7 @@ mod tests {
                 [50, 16118533]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -1184,7 +1184,7 @@ mod tests {
                 [50, 16118549]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -1241,7 +1241,7 @@ mod tests {
                 [50, 16118549]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -1298,7 +1298,7 @@ mod tests {
                 [50, 16118549]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -1355,7 +1355,7 @@ mod tests {
                 [50, 16123461]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -1406,7 +1406,7 @@ mod tests {
                 [50, 16123461]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -1453,7 +1453,7 @@ mod tests {
                 [40, 16165900]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -1510,7 +1510,7 @@ mod tests {
                 [50, 16180921]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -1567,7 +1567,7 @@ mod tests {
                 [50, 16189755]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -1624,7 +1624,7 @@ mod tests {
                 [50, 16231321]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -1681,7 +1681,7 @@ mod tests {
                 [50, 16237707]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -1729,7 +1729,7 @@ mod tests {
                 [50, 16255053]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -1786,7 +1786,7 @@ mod tests {
                 [50, 16255441]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -1842,7 +1842,7 @@ mod tests {
                 [49, 16255441]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -1893,7 +1893,7 @@ mod tests {
                 [44, 16256128]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -1947,7 +1947,7 @@ mod tests {
                 [50, 16256271]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -1995,7 +1995,7 @@ mod tests {
                 [41, 16325240]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -2039,7 +2039,7 @@ mod tests {
                 [50, 16352902]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -2089,7 +2089,7 @@ mod tests {
                 [43, 16353011]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -2141,7 +2141,7 @@ mod tests {
                 [50, 16415043]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -2194,7 +2194,7 @@ mod tests {
                 [50, 17031637]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -2250,7 +2250,7 @@ mod tests {
                 [50, 17057431]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -2307,7 +2307,7 @@ mod tests {
                 [50, 17094999]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -2364,7 +2364,7 @@ mod tests {
                 [50, 17095015]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -2421,7 +2421,7 @@ mod tests {
                 [50, 17095015]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -2460,7 +2460,7 @@ mod tests {
                 [41, 17137319]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -2514,7 +2514,7 @@ mod tests {
                 [49, 17306285]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -2565,7 +2565,7 @@ mod tests {
                 [48, 17561912]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -2622,7 +2622,7 @@ mod tests {
                 [50, 17577960]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -2679,7 +2679,7 @@ mod tests {
                 [50, 17578700]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -2736,7 +2736,7 @@ mod tests {
                 [50, 17578703]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -2793,7 +2793,7 @@ mod tests {
                 [50, 17578703]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -2850,7 +2850,7 @@ mod tests {
                 [50, 17578703]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -2907,7 +2907,7 @@ mod tests {
                 [50, 17578703]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -2964,7 +2964,7 @@ mod tests {
                 [50, 17578704]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -3021,7 +3021,7 @@ mod tests {
                 [50, 17578705]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -3078,7 +3078,7 @@ mod tests {
                 [50, 17578705]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -3134,7 +3134,7 @@ mod tests {
                 [50, 17581249]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -3191,7 +3191,7 @@ mod tests {
                 [50, 17583028]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -3248,7 +3248,7 @@ mod tests {
                 [50, 17583029]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -3305,7 +3305,7 @@ mod tests {
                 [50, 17583029]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -3361,7 +3361,7 @@ mod tests {
                 [50, 17583055]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -3417,7 +3417,7 @@ mod tests {
                 [49, 17589208]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -3473,7 +3473,7 @@ mod tests {
                 [49, 17589208]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -3529,7 +3529,7 @@ mod tests {
                 [49, 17589208]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -3585,7 +3585,7 @@ mod tests {
                 [50, 17591820]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -3639,7 +3639,7 @@ mod tests {
                 [47, 17593903]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -3689,7 +3689,7 @@ mod tests {
                 [43, 17593907]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -3734,7 +3734,7 @@ mod tests {
                 [50, 17596514]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -3786,7 +3786,7 @@ mod tests {
                 [50, 17625949]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -3841,7 +3841,7 @@ mod tests {
                 [50, 17625952]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -3897,7 +3897,7 @@ mod tests {
                 [50, 31799037]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -3952,7 +3952,7 @@ mod tests {
                 [48, 36737420]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs();
         assert_eq!(
             pairs,
             vec![
@@ -4008,11 +4008,11 @@ mod tests {
     }
 
     #[test]
-    fn test_get_aligned_pairs_full() {
+    fn test_aligned_pairs_full() {
         let mut bam = bam::Reader::from_path("./test/test_spliced_reads.bam").unwrap();
         let mut it = bam.records();
 
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(
             pairs,
             vec![
@@ -4069,7 +4069,7 @@ mod tests {
                 [Some(50), Some(16050720)]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(
             pairs,
             vec![
@@ -4128,7 +4128,7 @@ mod tests {
                 [Some(50), Some(16096930)]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(
             pairs,
             vec![
@@ -4187,7 +4187,7 @@ mod tests {
                 [Some(50), Some(16097197)]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(
             pairs,
             vec![
@@ -4244,7 +4244,7 @@ mod tests {
                 [Some(50), Some(16117400)]
             ]
         );
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(
             pairs,
             vec![
@@ -4311,267 +4311,267 @@ mod tests {
             pairs.iter().filter(|x| x[pos].is_none()).count() as i32
         }
 
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 51);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 51);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 51);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 51);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 45);
         assert_eq!(none_count(&pairs, 1), 6);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 41);
         assert_eq!(none_count(&pairs, 1), 10);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 51);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 51);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 51);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 51);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 42);
         assert_eq!(none_count(&pairs, 1), 9);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 51);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 50);
         assert_eq!(none_count(&pairs, 1), 1);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 45);
         assert_eq!(none_count(&pairs, 1), 6);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 48);
         assert_eq!(none_count(&pairs, 1), 3);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 42);
         assert_eq!(none_count(&pairs, 1), 9);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 38);
         assert_eq!(none_count(&pairs, 1), 13);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 44);
         assert_eq!(none_count(&pairs, 1), 7);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 46);
         assert_eq!(none_count(&pairs, 1), 5);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 47);
         assert_eq!(none_count(&pairs, 1), 4);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 50);
         assert_eq!(none_count(&pairs, 1), 1);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 2183);
         assert_eq!(some_count(&pairs, 1), 2234);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 2183);
         assert_eq!(some_count(&pairs, 1), 2234);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 2183);
         assert_eq!(some_count(&pairs, 1), 2234);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 33);
         assert_eq!(none_count(&pairs, 1), 18);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 48);
         assert_eq!(none_count(&pairs, 1), 3);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 45);
         assert_eq!(none_count(&pairs, 1), 6);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 11832);
         assert_eq!(some_count(&pairs, 1), 11883);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 12542);
         assert_eq!(some_count(&pairs, 1), 12593);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 12542);
         assert_eq!(some_count(&pairs, 1), 12593);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 12542);
         assert_eq!(some_count(&pairs, 1), 12593);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 12542);
         assert_eq!(some_count(&pairs, 1), 12593);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 12542);
         assert_eq!(some_count(&pairs, 1), 12593);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 12542);
         assert_eq!(some_count(&pairs, 1), 12593);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 12542);
         assert_eq!(some_count(&pairs, 1), 12593);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 12542);
         assert_eq!(some_count(&pairs, 1), 12593);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 1467);
         assert_eq!(some_count(&pairs, 1), 1517);
         assert_eq!(none_count(&pairs, 1), 1);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 1609);
         assert_eq!(some_count(&pairs, 1), 1660);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 1609);
         assert_eq!(some_count(&pairs, 1), 1660);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 1609);
         assert_eq!(some_count(&pairs, 1), 1660);
         assert_eq!(none_count(&pairs, 1), 0);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 95);
         assert_eq!(some_count(&pairs, 1), 145);
         assert_eq!(none_count(&pairs, 1), 1);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 538);
         assert_eq!(some_count(&pairs, 1), 588);
         assert_eq!(none_count(&pairs, 1), 1);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 538);
         assert_eq!(some_count(&pairs, 1), 588);
         assert_eq!(none_count(&pairs, 1), 1);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 538);
         assert_eq!(some_count(&pairs, 1), 588);
         assert_eq!(none_count(&pairs, 1), 1);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 1);
         assert_eq!(some_count(&pairs, 1), 51);
         assert_eq!(none_count(&pairs, 1), 1);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 1);
         assert_eq!(some_count(&pairs, 1), 49);
         assert_eq!(none_count(&pairs, 1), 3);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 1);
         assert_eq!(some_count(&pairs, 1), 45);
         assert_eq!(none_count(&pairs, 1), 7);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 0);
         assert_eq!(some_count(&pairs, 1), 39);
         assert_eq!(none_count(&pairs, 1), 12);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 1892);
         assert_eq!(some_count(&pairs, 1), 1938);
         assert_eq!(none_count(&pairs, 1), 5);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 1892);
         assert_eq!(some_count(&pairs, 1), 1941);
         assert_eq!(none_count(&pairs, 1), 2);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 2288);
         assert_eq!(some_count(&pairs, 1), 2338);
         assert_eq!(none_count(&pairs, 1), 1);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 14680);
         assert_eq!(some_count(&pairs, 1), 14729);
         assert_eq!(none_count(&pairs, 1), 2);
-        let pairs = it.next().unwrap().unwrap().get_aligned_pairs_full();
+        let pairs = it.next().unwrap().unwrap().aligned_pairs_full();
         assert_eq!(some_count(&pairs, 0), 51);
         assert_eq!(none_count(&pairs, 0), 4027);
         assert_eq!(some_count(&pairs, 1), 4074);
@@ -4598,303 +4598,303 @@ mod tests {
         }
 
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [45, 0, 0, 0, 6, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 2, 0, 0, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [2, 0, 1, 0, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 2, 0, 0, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [2, 0, 1, 0, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 0, 0, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 0, 0, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 0, 0, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 0, 0, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 0, 0, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 0, 0, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [45, 0, 0, 0, 6, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [41, 0, 0, 0, 10, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 0, 0, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 0, 0, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 0, 0, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 0, 0, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [42, 0, 0, 0, 9, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 0, 0, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [50, 0, 0, 0, 1, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [45, 0, 0, 0, 6, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [48, 0, 0, 0, 3, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [42, 0, 0, 0, 9, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [38, 0, 0, 0, 13, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [44, 0, 0, 0, 7, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [46, 0, 0, 0, 5, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [47, 4, 0, 0, 0, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [2, 1, 0, 0, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [50, 1, 0, 0, 0, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [2, 1, 0, 0, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 2183, 0, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [2, 0, 0, 1, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 2183, 0, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [2, 0, 0, 1, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 2183, 0, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [2, 0, 0, 1, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [33, 0, 0, 0, 18, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 2, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [48, 0, 0, 0, 3, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 2, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [45, 0, 0, 0, 6, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [1, 0, 0, 0, 2, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 11832, 0, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [2, 0, 0, 1, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 12542, 0, 0, 0, 0, 0],);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [3, 0, 0, 2, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 12542, 0, 0, 0, 0, 0],);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [3, 0, 0, 2, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 12542, 0, 0, 0, 0, 0],);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [3, 0, 0, 2, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 12542, 0, 0, 0, 0, 0],);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [3, 0, 0, 2, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 12542, 0, 0, 0, 0, 0],);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [3, 0, 0, 2, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 12542, 0, 0, 0, 0, 0],);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [3, 0, 0, 2, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 12542, 0, 0, 0, 0, 0],);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [3, 0, 0, 2, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 12542, 0, 0, 0, 0, 0],);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [3, 0, 0, 2, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [50, 0, 0, 1467, 1, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [2, 0, 0, 1, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 1609, 0, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [3, 0, 0, 2, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 1609, 0, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [3, 0, 0, 2, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [51, 0, 0, 1609, 0, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [3, 0, 0, 2, 0, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [50, 0, 0, 95, 1, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [2, 0, 0, 1, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [50, 0, 0, 538, 1, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [2, 0, 0, 1, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [50, 0, 0, 538, 1, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [2, 0, 0, 1, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [50, 0, 0, 538, 1, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [2, 0, 0, 1, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [50, 0, 1, 0, 1, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [2, 0, 1, 0, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [48, 0, 1, 0, 3, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [2, 0, 1, 0, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [44, 0, 1, 0, 7, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [2, 0, 1, 0, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [39, 1, 0, 0, 11, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [2, 1, 0, 0, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [46, 0, 0, 1892, 5, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [2, 0, 0, 1, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [49, 0, 0, 1892, 2, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [2, 0, 0, 1, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [50, 0, 3, 2285, 1, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [3, 0, 1, 1, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [49, 0, 0, 14680, 2, 0, 0, 0, 0],);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [3, 0, 0, 2, 1, 0, 0, 0, 0]);
         let read = it.next().unwrap().unwrap();
-        let cigar_nucleotides = read.get_cigar_stats_nucleotides();
+        let cigar_nucleotides = read.cigar_stats_nucleotides();
         assert_eq!(to_arr(cigar_nucleotides), [47, 0, 0, 4027, 4, 0, 0, 0, 0]);
-        let cigar_blocks = read.get_cigar_stats_blocks();
+        let cigar_blocks = read.cigar_stats_blocks();
         assert_eq!(to_arr(cigar_blocks), [3, 0, 0, 2, 1, 0, 0, 0, 0]);
     }
 
     #[test]
-    fn test_get_reference_positions() {
+    fn test_reference_positions() {
         let mut bam = bam::Reader::from_path("./test/test_spliced_reads.bam").unwrap();
         let mut it = bam.records();
 
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -4906,7 +4906,7 @@ mod tests {
                 16050716, 16050717, 16050718, 16050719, 16050720
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -4919,7 +4919,7 @@ mod tests {
                 16096928, 16096929, 16096930
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -4932,7 +4932,7 @@ mod tests {
                 16097195, 16097196, 16097197
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -4945,7 +4945,7 @@ mod tests {
                 16117398, 16117399, 16117400
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -4958,7 +4958,7 @@ mod tests {
                 16118531, 16118532, 16118533
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -4971,7 +4971,7 @@ mod tests {
                 16118547, 16118548, 16118549
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -4984,7 +4984,7 @@ mod tests {
                 16118547, 16118548, 16118549
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -4997,7 +4997,7 @@ mod tests {
                 16118547, 16118548, 16118549
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5010,7 +5010,7 @@ mod tests {
                 16123459, 16123460, 16123461
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5022,7 +5022,7 @@ mod tests {
                 16123457, 16123458, 16123459, 16123460, 16123461
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5034,7 +5034,7 @@ mod tests {
                 16165900
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5047,7 +5047,7 @@ mod tests {
                 16180919, 16180920, 16180921
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5060,7 +5060,7 @@ mod tests {
                 16189753, 16189754, 16189755
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5073,7 +5073,7 @@ mod tests {
                 16231319, 16231320, 16231321
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5086,7 +5086,7 @@ mod tests {
                 16237705, 16237706, 16237707
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5098,7 +5098,7 @@ mod tests {
                 16255052, 16255053
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5111,7 +5111,7 @@ mod tests {
                 16255439, 16255440, 16255441
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5124,7 +5124,7 @@ mod tests {
                 16255440, 16255441
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5136,7 +5136,7 @@ mod tests {
                 16256124, 16256125, 16256126, 16256127, 16256128
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5148,7 +5148,7 @@ mod tests {
                 16256264, 16256265, 16256266, 16256267, 16256268, 16256269, 16256270, 16256271
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5160,7 +5160,7 @@ mod tests {
                 16325239, 16325240
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5171,7 +5171,7 @@ mod tests {
                 16352897, 16352898, 16352899, 16352900, 16352901, 16352902
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5183,7 +5183,7 @@ mod tests {
                 16353008, 16353009, 16353010, 16353011
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5195,7 +5195,7 @@ mod tests {
                 16415038, 16415039, 16415040, 16415041, 16415042, 16415043
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5207,7 +5207,7 @@ mod tests {
                 17031631, 17031632, 17031633, 17031634, 17031635, 17031636, 17031637
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5220,7 +5220,7 @@ mod tests {
                 17057430, 17057431
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5233,7 +5233,7 @@ mod tests {
                 17094997, 17094998, 17094999
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5246,7 +5246,7 @@ mod tests {
                 17095013, 17095014, 17095015
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5259,7 +5259,7 @@ mod tests {
                 17095013, 17095014, 17095015
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5270,7 +5270,7 @@ mod tests {
                 17137319
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5282,7 +5282,7 @@ mod tests {
                 17306278, 17306279, 17306280, 17306281, 17306282, 17306283, 17306284, 17306285
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5294,7 +5294,7 @@ mod tests {
                 17561908, 17561909, 17561910, 17561911, 17561912
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5307,7 +5307,7 @@ mod tests {
                 17577958, 17577959, 17577960
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5320,7 +5320,7 @@ mod tests {
                 17578698, 17578699, 17578700
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5333,7 +5333,7 @@ mod tests {
                 17578701, 17578702, 17578703
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5346,7 +5346,7 @@ mod tests {
                 17578701, 17578702, 17578703
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5359,7 +5359,7 @@ mod tests {
                 17578701, 17578702, 17578703
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5372,7 +5372,7 @@ mod tests {
                 17578701, 17578702, 17578703
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5385,7 +5385,7 @@ mod tests {
                 17578702, 17578703, 17578704
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5398,7 +5398,7 @@ mod tests {
                 17578703, 17578704, 17578705
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5411,7 +5411,7 @@ mod tests {
                 17578703, 17578704, 17578705
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5424,7 +5424,7 @@ mod tests {
                 17581248, 17581249
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5437,7 +5437,7 @@ mod tests {
                 17582931, 17582932, 17583028
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5450,7 +5450,7 @@ mod tests {
                 17582932, 17583028, 17583029
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5463,7 +5463,7 @@ mod tests {
                 17582932, 17583028, 17583029
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5476,7 +5476,7 @@ mod tests {
                 17583054, 17583055
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5489,7 +5489,7 @@ mod tests {
                 17589207, 17589208
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5502,7 +5502,7 @@ mod tests {
                 17589207, 17589208
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5515,7 +5515,7 @@ mod tests {
                 17589207, 17589208
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5528,7 +5528,7 @@ mod tests {
                 17591819, 17591820
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5540,7 +5540,7 @@ mod tests {
                 17593896, 17593897, 17593898, 17593899, 17593900, 17593901, 17593902, 17593903
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5552,7 +5552,7 @@ mod tests {
                 17593904, 17593905, 17593906, 17593907
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5563,7 +5563,7 @@ mod tests {
                 17596508, 17596509, 17596510, 17596511, 17596512, 17596513, 17596514
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5575,7 +5575,7 @@ mod tests {
                 17625944, 17625945, 17625946, 17625947, 17625948, 17625949
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5588,7 +5588,7 @@ mod tests {
                 17625952
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5601,7 +5601,7 @@ mod tests {
                 31799036, 31799037
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5614,7 +5614,7 @@ mod tests {
                 36737420
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions();
+        let rp = it.next().unwrap().unwrap().reference_positions();
         assert_eq!(
             rp,
             vec![
@@ -5629,11 +5629,11 @@ mod tests {
     }
 
     #[test]
-    fn test_get_reference_positions_full() {
+    fn test_reference_positions_full() {
         let mut bam = bam::Reader::from_path("./test/test_spliced_reads.bam").unwrap();
         let mut it = bam.records();
 
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -5690,7 +5690,7 @@ mod tests {
                 Some(16050720)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -5747,7 +5747,7 @@ mod tests {
                 Some(16096930)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -5804,7 +5804,7 @@ mod tests {
                 Some(16097197)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -5861,7 +5861,7 @@ mod tests {
                 Some(16117400)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -5918,7 +5918,7 @@ mod tests {
                 Some(16118533)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -5975,7 +5975,7 @@ mod tests {
                 Some(16118549)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -6032,7 +6032,7 @@ mod tests {
                 Some(16118549)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -6089,7 +6089,7 @@ mod tests {
                 Some(16118549)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -6146,7 +6146,7 @@ mod tests {
                 Some(16123461)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -6203,7 +6203,7 @@ mod tests {
                 Some(16123461)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -6260,7 +6260,7 @@ mod tests {
                 None
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -6317,7 +6317,7 @@ mod tests {
                 Some(16180921)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -6374,7 +6374,7 @@ mod tests {
                 Some(16189755)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -6431,7 +6431,7 @@ mod tests {
                 Some(16231321)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -6488,7 +6488,7 @@ mod tests {
                 Some(16237707)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -6545,7 +6545,7 @@ mod tests {
                 Some(16255053)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -6602,7 +6602,7 @@ mod tests {
                 Some(16255441)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -6659,7 +6659,7 @@ mod tests {
                 None
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -6716,7 +6716,7 @@ mod tests {
                 None
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -6773,7 +6773,7 @@ mod tests {
                 Some(16256271)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -6830,7 +6830,7 @@ mod tests {
                 None
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -6887,7 +6887,7 @@ mod tests {
                 Some(16352902)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -6944,7 +6944,7 @@ mod tests {
                 None
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -7001,7 +7001,7 @@ mod tests {
                 Some(16415043)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -7058,7 +7058,7 @@ mod tests {
                 Some(17031637)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -7115,7 +7115,7 @@ mod tests {
                 Some(17057431)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -7172,7 +7172,7 @@ mod tests {
                 Some(17094999)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -7229,7 +7229,7 @@ mod tests {
                 Some(17095015)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -7286,7 +7286,7 @@ mod tests {
                 Some(17095015)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -7343,7 +7343,7 @@ mod tests {
                 None
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -7400,7 +7400,7 @@ mod tests {
                 None
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -7457,7 +7457,7 @@ mod tests {
                 None
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -7514,7 +7514,7 @@ mod tests {
                 Some(17577960)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -7571,7 +7571,7 @@ mod tests {
                 Some(17578700)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -7628,7 +7628,7 @@ mod tests {
                 Some(17578703)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -7685,7 +7685,7 @@ mod tests {
                 Some(17578703)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -7742,7 +7742,7 @@ mod tests {
                 Some(17578703)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -7799,7 +7799,7 @@ mod tests {
                 Some(17578703)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -7856,7 +7856,7 @@ mod tests {
                 Some(17578704)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -7913,7 +7913,7 @@ mod tests {
                 Some(17578705)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -7970,7 +7970,7 @@ mod tests {
                 Some(17578705)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -8027,7 +8027,7 @@ mod tests {
                 Some(17581249)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -8084,7 +8084,7 @@ mod tests {
                 Some(17583028)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -8141,7 +8141,7 @@ mod tests {
                 Some(17583029)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -8198,7 +8198,7 @@ mod tests {
                 Some(17583029)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -8255,7 +8255,7 @@ mod tests {
                 Some(17583055)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -8312,7 +8312,7 @@ mod tests {
                 None
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -8369,7 +8369,7 @@ mod tests {
                 None
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -8426,7 +8426,7 @@ mod tests {
                 None
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -8483,7 +8483,7 @@ mod tests {
                 Some(17591820)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -8540,7 +8540,7 @@ mod tests {
                 None
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -8597,7 +8597,7 @@ mod tests {
                 None
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -8654,7 +8654,7 @@ mod tests {
                 Some(17596514)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -8711,7 +8711,7 @@ mod tests {
                 Some(17625949)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -8768,7 +8768,7 @@ mod tests {
                 Some(17625952)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -8825,7 +8825,7 @@ mod tests {
                 Some(31799037)
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
@@ -8882,7 +8882,7 @@ mod tests {
                 None
             ]
         );
-        let rp = it.next().unwrap().unwrap().get_reference_positions_full();
+        let rp = it.next().unwrap().unwrap().reference_positions_full();
         assert_eq!(
             rp,
             vec![
