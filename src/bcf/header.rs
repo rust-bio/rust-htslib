@@ -266,7 +266,7 @@ impl HeaderView {
         self.inner().n[htslib::BCF_DT_CTG as usize] as u32
     }
 
-    pub fn rid2name(&self, rid: u32) -> Result<&[u8], RidError> {
+    pub fn rid2name(&self, rid: u32) -> Result<&[u8], RidIndexError> {
         if rid <= self.contig_count() {
             unsafe {
                 let dict = self.inner().id[htslib::BCF_DT_CTG as usize];
@@ -274,7 +274,7 @@ impl HeaderView {
                 Ok(ffi::CStr::from_ptr(ptr).to_bytes())
             }
         } else {
-            Err(RidError::UnknownRID(rid))
+            Err(RidIndexError::UnknownIndex(rid))
         }
     }
 
@@ -491,9 +491,15 @@ quick_error! {
             description("unknown sequence")
             display("sequence {} not found in header", name)
         }
-        UnknownRID(rid: u32) {
-            description("unknown RID")
-            display("RID {} not found in header", rid)
+    }
+}
+
+quick_error! {
+    #[derive(Debug, Clone)]
+    pub enum RidIndexError {
+        UnknownIndex(rid: u32) {
+            description("unknown index")
+            display("index {} not found in header", rid)
         }
     }
 }
