@@ -1102,13 +1102,13 @@ mod tests {
                 // INFO=<ID=INDEL,Number=0,Type=Flag>
                 "INDEL",
                 header::TagType::Flag,
-                header::TagLength::Fixed,
+                header::TagLength::Fixed(0),
             ),
             (
                 // INFO=<ID=DP,Number=1,Type=Integer>
                 "DP",
                 header::TagType::Integer,
-                header::TagLength::Fixed,
+                header::TagLength::Fixed(1),
             ),
             (
                 // INFO=<ID=QS,Number=R,Type=Float>
@@ -1120,7 +1120,7 @@ mod tests {
                 // INFO=<ID=I16,Number=16,Type=Float>
                 "I16",
                 header::TagType::Float,
-                header::TagLength::Fixed,
+                header::TagLength::Fixed(16),
             ),
         ];
         for (ref_name, ref_type, ref_length) in truth {
@@ -1136,13 +1136,13 @@ mod tests {
                 // INFO=<ID=IMPRECISE,Number=0,Type=Flag>
                 "IMPRECISE",
                 header::TagType::Flag,
-                header::TagLength::Fixed,
+                header::TagLength::Fixed(0),
             ),
             (
                 // INFO=<ID=SVTYPE,Number=1,Type=String>
                 "SVTYPE",
                 header::TagType::String,
-                header::TagLength::Fixed,
+                header::TagLength::Fixed(1),
             ),
             (
                 // INFO=<ID=SVLEN,Number=.,Type=Integer>

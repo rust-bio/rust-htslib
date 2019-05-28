@@ -296,7 +296,7 @@ impl HeaderView {
         tag: &[u8],
         hdr_type: ::libc::c_uint,
     ) -> Result<(TagType, TagLength), TagTypeError> {
-        let (_type, length) = unsafe {
+        let (_type, length, num_values) = unsafe {
             let id = htslib::bcf_hdr_id2int(
                 self.inner,
                 htslib::BCF_DT_ID as i32,
@@ -310,7 +310,7 @@ impl HeaderView {
             let n = (*self.inner).n[htslib::BCF_DT_ID as usize] as usize;
             let entry = slice::from_raw_parts((*self.inner).id[htslib::BCF_DT_ID as usize], n);
             let d = (*entry[id as usize].val).info[hdr_type as usize];
-            (d >> 4 & 0xf, d >> 8 & 0xf)
+            (d >> 4 & 0xf, d >> 8 & 0xf, d >> 12)
         };
         let _type = match _type as ::libc::c_uint {
             htslib::BCF_HT_FLAG => TagType::Flag,
@@ -320,7 +320,7 @@ impl HeaderView {
             _ => return Err(TagTypeError::UnexpectedTagType),
         };
         let length = match length as ::libc::c_uint {
-            htslib::BCF_VL_FIXED => TagLength::Fixed,
+            htslib::BCF_VL_FIXED => TagLength::Fixed(num_values),
             htslib::BCF_VL_VAR => TagLength::Variable,
             htslib::BCF_VL_A => TagLength::AltAlleles,
             htslib::BCF_VL_R => TagLength::Alleles,
@@ -467,7 +467,7 @@ pub enum TagType {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TagLength {
-    Fixed,
+    Fixed(u32),
     AltAlleles,
     Alleles,
     Genotypes,
