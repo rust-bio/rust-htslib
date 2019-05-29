@@ -240,6 +240,7 @@ impl HeaderView {
         unsafe { (*self.inner) }
     }
 
+    /// Get the number of samples defined in the header.
     pub fn sample_count(&self) -> u32 {
         self.inner().n[htslib::BCF_DT_SAMPLE as usize] as u32
     }
@@ -260,11 +261,20 @@ impl HeaderView {
         self.samples().iter().position(|s| *s == sample)
     }
 
-    pub fn rid2name(&self, rid: u32) -> &[u8] {
-        unsafe {
-            let dict = self.inner().id[htslib::BCF_DT_CTG as usize];
-            let ptr = (*dict.offset(rid as isize)).key;
-            ffi::CStr::from_ptr(ptr).to_bytes()
+    /// Get the number of contigs defined in the header.
+    pub fn contig_count(&self) -> u32 {
+        self.inner().n[htslib::BCF_DT_CTG as usize] as u32
+    }
+
+    pub fn rid2name(&self, rid: u32) -> Result<&[u8], RidIndexError> {
+        if rid <= self.contig_count() {
+            unsafe {
+                let dict = self.inner().id[htslib::BCF_DT_CTG as usize];
+                let ptr = (*dict.offset(rid as isize)).key;
+                Ok(ffi::CStr::from_ptr(ptr).to_bytes())
+            }
+        } else {
+            Err(RidIndexError::UnknownIndex(rid))
         }
     }
 
@@ -480,6 +490,16 @@ quick_error! {
         UnknownSequence(name: String) {
             description("unknown sequence")
             display("sequence {} not found in header", name)
+        }
+    }
+}
+
+quick_error! {
+    #[derive(Debug, Clone)]
+    pub enum RidIndexError {
+        UnknownIndex(rid: u32) {
+            description("unknown index")
+            display("index {} not found in header", rid)
         }
     }
 }

@@ -220,7 +220,7 @@ impl IndexedReader {
     /// * `start` - `0`-based start coordinate of region on reference.
     /// * `end` - `0`-based end coordinate of region on reference.
     pub fn fetch(&mut self, rid: u32, start: u32, end: u32) -> Result<(), FetchError> {
-        let contig = self.header.rid2name(rid);
+        let contig = self.header.rid2name(rid).unwrap();
         let contig = ffi::CString::new(contig).unwrap();
         let contig = contig.as_ptr();
         if unsafe { htslib::bcf_sr_seek(self.inner, contig, start as i32) } != 0 {
@@ -495,7 +495,7 @@ pub mod synced {
         /// * `end` - `0`-based end coordinate of region on reference.
         pub fn fetch(&mut self, rid: u32, start: u32, end: u32) -> Result<(), FetchError> {
             let contig = {
-                let contig = self.header(0).rid2name(rid).clone();
+                let contig = self.header(0).rid2name(rid).unwrap().clone();
                 ffi::CString::new(contig).unwrap()
             };
             let contig = contig.as_ptr();
@@ -1069,6 +1069,27 @@ mod tests {
         assert_eq!(header.sample_to_id(b"one").unwrap(), Id(0));
         assert_eq!(header.sample_to_id(b"two").unwrap(), Id(1));
         assert!(header.sample_to_id(b"three").is_err());
+    }
+
+    #[test]
+    fn test_header_contigs() {
+        let vcf = Reader::from_path(&"test/test_multi.bcf")
+            .ok()
+            .expect("Error opening file.");
+        let header = &vcf.header();
+
+        assert_eq!(header.contig_count(), 86);
+
+        // test existing contig names and IDs
+        assert_eq!(header.rid2name(0).unwrap(), b"1");
+        assert_eq!(header.name2rid(b"1").unwrap(), 0);
+
+        assert_eq!(header.rid2name(85).unwrap(), b"hs37d5");
+        assert_eq!(header.name2rid(b"hs37d5").unwrap(), 85);
+
+        // test nonexistent contig names and IDs
+        assert!(header.name2rid(b"nonexistent_contig").is_err());
+        assert!(header.rid2name(100).is_err());
     }
 
     #[test]
