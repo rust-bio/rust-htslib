@@ -1611,7 +1611,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     #[test]
     fn test_bam_fails_on_toml() {
-        let bam_path = "./cargo.toml";
+        let bam_path = "./Cargo.toml";
         let bam_reader = Reader::from_path(bam_path);
         assert!(bam_reader.is_err());
     }
