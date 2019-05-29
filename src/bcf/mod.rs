@@ -1094,6 +1094,79 @@ mod tests {
     }
 
     #[test]
+    fn test_header_info_types() {
+        let vcf = Reader::from_path(&"test/test.bcf").unwrap();
+        let header = vcf.header();
+        let truth = vec![
+            (
+                // INFO=<ID=INDEL,Number=0,Type=Flag>
+                "INDEL",
+                header::TagType::Flag,
+                header::TagLength::Fixed(0),
+            ),
+            (
+                // INFO=<ID=DP,Number=1,Type=Integer>
+                "DP",
+                header::TagType::Integer,
+                header::TagLength::Fixed(1),
+            ),
+            (
+                // INFO=<ID=QS,Number=R,Type=Float>
+                "QS",
+                header::TagType::Float,
+                header::TagLength::Alleles,
+            ),
+            (
+                // INFO=<ID=I16,Number=16,Type=Float>
+                "I16",
+                header::TagType::Float,
+                header::TagLength::Fixed(16),
+            ),
+        ];
+        for (ref_name, ref_type, ref_length) in truth {
+            let (tag_type, tag_length) = header.info_type(ref_name.as_bytes()).unwrap();
+            assert_eq!(tag_type, ref_type);
+            assert_eq!(tag_length, ref_length);
+        }
+
+        let vcf = Reader::from_path(&"test/test_svlen.vcf").unwrap();
+        let header = vcf.header();
+        let truth = vec![
+            (
+                // INFO=<ID=IMPRECISE,Number=0,Type=Flag>
+                "IMPRECISE",
+                header::TagType::Flag,
+                header::TagLength::Fixed(0),
+            ),
+            (
+                // INFO=<ID=SVTYPE,Number=1,Type=String>
+                "SVTYPE",
+                header::TagType::String,
+                header::TagLength::Fixed(1),
+            ),
+            (
+                // INFO=<ID=SVLEN,Number=.,Type=Integer>
+                "SVLEN",
+                header::TagType::Integer,
+                header::TagLength::Variable,
+            ),
+            (
+                // INFO<ID=CIGAR,Number=A,Type=String>
+                "CIGAR",
+                header::TagType::String,
+                header::TagLength::AltAlleles,
+            ),
+        ];
+        for (ref_name, ref_type, ref_length) in truth {
+            let (tag_type, tag_length) = header.info_type(ref_name.as_bytes()).unwrap();
+            assert_eq!(tag_type, ref_type);
+            assert_eq!(tag_length, ref_length);
+        }
+
+        assert!(header.info_type(b"NOT_THERE").is_err());
+    }
+
+    #[test]
     fn test_remove_alleles() {
         let mut bcf = Reader::from_path(&"test/test_multi.bcf").unwrap();
         for res in bcf.records() {

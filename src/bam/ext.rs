@@ -289,7 +289,7 @@ impl BamRecordExtensions for bam::Record {
 mod tests {
     use crate::bam;
     use crate::bam::ext::BamRecordExtensions;
-    use crate::bam::record::{Cigar, CigarString, Record};
+    use crate::bam::record::{Cigar, CigarString};
     use crate::prelude::*;
     use std::collections::HashMap;
 
