@@ -278,13 +278,15 @@ impl Record {
     pub fn set(&mut self, qname: &[u8], cigar: Option<&CigarString>, seq: &[u8], qual: &[u8]) {
         self.cigar = None;
 
+        let cigar_width = if let Some(cigar_string) = cigar {
+            cigar_string.len()
+        } else {
+            0
+        } * 4;
+
         self.inner_mut().l_data = (qname.len()
             + 1
-            + if let Some(cigar_string) = cigar {
-                cigar_string.len()
-            } else {
-                0
-            } * 4
+            + cigar_width
             + ((seq.len() as f32 / 2.0).ceil() as usize)
             + qual.len()) as i32;
 
@@ -316,7 +318,7 @@ impl Record {
             i += cigar_string.len() * 4;
         } else {
             self.inner_mut().core.n_cigar = 0;
-        }
+        };
 
         // seq
         {
