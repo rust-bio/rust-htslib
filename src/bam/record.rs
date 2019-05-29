@@ -275,12 +275,18 @@ impl Record {
     /// Note: Pre-existing aux data will be invalidated
     /// if called on an existing record. For this
     /// reason, never call push_aux() before set().
-    pub fn set(&mut self, qname: &[u8], cigar: &CigarString, seq: &[u8], qual: &[u8]) {
+    pub fn set(&mut self, qname: &[u8], cigar: Option<&CigarString>, seq: &[u8], qual: &[u8]) {
         self.cigar = None;
+
+        let cigar_width = if let Some(cigar_string) = cigar {
+            cigar_string.len()
+        } else {
+            0
+        } * 4;
 
         self.inner_mut().l_data = (qname.len()
             + 1
-            + cigar.len() * 4
+            + cigar_width
             + ((seq.len() as f32 / 2.0).ceil() as usize)
             + qual.len()) as i32;
 
@@ -301,15 +307,18 @@ impl Record {
         self.inner_mut().core.l_qname = i as u8;
 
         // cigar
-        {
-            let cigar_data =
-                unsafe { slice::from_raw_parts_mut(data[i..].as_ptr() as *mut u32, cigar.len()) };
-            for (i, c) in cigar.iter().enumerate() {
+        if let Some(cigar_string) = cigar {
+            let cigar_data = unsafe {
+                slice::from_raw_parts_mut(data[i..].as_ptr() as *mut u32, cigar_string.len())
+            };
+            for (i, c) in cigar_string.iter().enumerate() {
                 cigar_data[i] = c.encode();
             }
-            self.inner_mut().core.n_cigar = cigar.len() as u32;
-            i += cigar.len() * 4;
-        }
+            self.inner_mut().core.n_cigar = cigar_string.len() as u32;
+            i += cigar_string.len() * 4;
+        } else {
+            self.inner_mut().core.n_cigar = 0;
+        };
 
         // seq
         {

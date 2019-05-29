@@ -9145,7 +9145,7 @@ mod tests {
         ] {
             read.set(
                 b"test",
-                &CigarString::from_str(input_cigar).unwrap(),
+                Some(&CigarString::from_str(input_cigar).unwrap()),
                 b"agtc",
                 b"BBBB",
             );
