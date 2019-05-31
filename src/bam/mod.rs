@@ -782,7 +782,11 @@ fn hts_open(path: &ffi::CStr, mode: &[u8]) -> Result<*mut htslib::htsFile, BGZFE
     } else {
         if !mode.contains(&b'w') {
             unsafe {
-                if (*ret).format.category != htslib::htsFormatCategory_sequence_data {
+                // Comparison against 'htsFormatCategory_sequence_data' doesn't handle text files correctly
+                // hence the explicit checks against all supported exact formats
+                if (*ret).format.format != htslib::htsExactFormat_bam
+                    && (*ret).format.format != htslib::htsExactFormat_cram
+                {
                     return Err(BGZFError::Some);
                 }
             }
@@ -1611,7 +1615,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     #[test]
     fn test_bam_fails_on_toml() {
-        let bam_path = "./cargo.toml";
+        let bam_path = "./Cargo.toml";
         let bam_reader = Reader::from_path(bam_path);
         assert!(bam_reader.is_err());
     }
