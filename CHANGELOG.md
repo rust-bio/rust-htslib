@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.24.0] - 2019-05-31
+### Added
+- Allow setting unmapped BAM record (without Cigar string).
+- Various bug fixes and error handling improvements.
+- Various Pysam-derived methods for interpreting Cigar strings.
+
 ## [0.23.0] - 2019-05-02
 ### Added
 - Support for BAM indices that are not placed beside a file.bam as file.bam.bai
