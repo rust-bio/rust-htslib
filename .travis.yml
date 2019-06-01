@@ -3,9 +3,12 @@ language: rust
 rust:
   - stable
 
-sudo: false
+cache:
+  directories:
+    - /home/travis/.cargo
+before_cache:
+  - rm -rf /home/travis/.cargo/registry
 
-# Dependencies of kcov, used for cargo-travis
 addons:
   apt:
     packages:
@@ -23,9 +26,11 @@ addons:
       - kalakris-cmake
 
 before_script:
-  - cargo install cargo-travis || true
   - export PATH=$HOME/.cargo/bin:$PATH
-  - rustup component add rustfmt-preview
+  - cargo install cargo-update || echo "cargo-update already installed"
+  - cargo install cargo-travis || echo "cargo-travis already installed"
+  - cargo install-update -a
+  - rustup component add rustfmt
   - rustup target add x86_64-unknown-linux-musl
 
 script:
@@ -42,7 +47,6 @@ script:
 
 after_success:
   - cargo coveralls
-
 
 env:
   global:
