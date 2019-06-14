@@ -68,11 +68,8 @@
 //! // afterwards, read or pileup in this region
 //! ```
 
-extern crate bitflags;
 #[macro_use]
 extern crate custom_derive;
-extern crate ieee754;
-extern crate itertools;
 #[macro_use]
 extern crate lazy_static;
 extern crate libc;
@@ -80,10 +77,6 @@ extern crate libc;
 extern crate newtype_derive;
 #[macro_use]
 extern crate quick_error;
-extern crate regex;
-extern crate url;
-
-extern crate linear_map;
 
 #[cfg(feature = "serde")]
 extern crate serde;
@@ -96,8 +89,6 @@ extern crate bincode;
 extern crate pretty_assertions;
 #[cfg(all(test, feature = "serde"))]
 extern crate serde_json;
-
-extern crate bio_types;
 
 extern crate libz_sys;
 

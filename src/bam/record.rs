@@ -14,9 +14,9 @@ use std::u32;
 
 use regex::Regex;
 
-use bam::{AuxWriteError, HeaderView, ReadError};
-use htslib;
-use utils;
+use crate::bam::{AuxWriteError, HeaderView, ReadError};
+use crate::htslib;
+use crate::utils;
 
 use bio_types::alignment::{Alignment, AlignmentMode, AlignmentOperation};
 use bio_types::sequence::SequenceRead;
@@ -88,7 +88,7 @@ impl PartialEq for Record {
 impl Eq for Record {}
 
 impl fmt::Debug for Record {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         fmt.write_fmt(format_args!(
             "Record(tid: {}, pos: {})",
             self.tid(),
@@ -467,7 +467,7 @@ impl Record {
     }
 
     /// Get read sequence. Complexity: O(1).
-    pub fn seq(&self) -> Seq {
+    pub fn seq(&self) -> Seq<'_> {
         Seq {
             encoded: self.seq_data(),
             len: self.seq_len(),
@@ -483,7 +483,7 @@ impl Record {
     }
 
     /// Get auxiliary data (tags).
-    pub fn aux(&self, tag: &[u8]) -> Option<Aux> {
+    pub fn aux(&self, tag: &[u8]) -> Option<Aux<'_>> {
         let aux = unsafe {
             htslib::bam_aux_get(
                 self.inner,
@@ -513,7 +513,7 @@ impl Record {
 
     /// Add auxiliary data.
     /// push_aux() should never be called before set().
-    pub fn push_aux(&mut self, tag: &[u8], value: &Aux) -> Result<(), AuxWriteError> {
+    pub fn push_aux(&mut self, tag: &[u8], value: &Aux<'_>) -> Result<(), AuxWriteError> {
         let ctag = tag.as_ptr() as *mut i8;
         let ret = unsafe {
             match *value {
@@ -801,7 +801,7 @@ impl Cigar {
 }
 
 impl fmt::Display for Cigar {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         fmt.write_fmt(format_args!("{}{}", self.len(), self.char()))
     }
 }
@@ -976,7 +976,7 @@ impl<'a> IntoIterator for &'a CigarString {
 }
 
 impl fmt::Display for CigarString {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         for op in self {
             fmt.write_fmt(format_args!("{}{}", op.len(), op.char()))?;
         }
@@ -1175,7 +1175,7 @@ impl<'a> IntoIterator for &'a CigarStringView {
 }
 
 impl fmt::Display for CigarStringView {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         self.inner.fmt(fmt)
     }
 }

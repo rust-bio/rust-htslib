@@ -21,11 +21,11 @@ use std::path::Path;
 use std::slice;
 use url::Url;
 
-use htslib;
+use crate::htslib;
 
-pub use bam::buffer::RecordBuffer;
-pub use bam::header::Header;
-pub use bam::record::Record;
+pub use crate::bam::buffer::RecordBuffer;
+pub use crate::bam::header::Header;
+pub use crate::bam::record::Record;
 
 /// Implementation for `Read::set_threads` and `Writer::set_threads`.
 pub fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Result<(), ThreadingError> {
@@ -67,10 +67,10 @@ pub trait Read: Sized {
     /// Note that, while being convenient, this is less efficient than pre-allocating a
     /// `Record` and reading into it with the `read` method, since every iteration involves
     /// the allocation of a new `Record`.
-    fn records(&mut self) -> Records<Self>;
+    fn records(&mut self) -> Records<'_, Self>;
 
     /// Iterator over pileups.
-    fn pileup(&mut self) -> pileup::Pileups<Self>;
+    fn pileup(&mut self) -> pileup::Pileups<'_, Self>;
 
     /// Return the htsFile struct
     fn htsfile(&self) -> *mut htslib::htsFile;
@@ -134,7 +134,7 @@ impl Reader {
     /// * `path` - the path to open.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, ReaderPathError> {
         match path.as_ref().to_str() {
-            Some(p) if path.as_ref().exists() => Ok(try!(Self::new(p.as_bytes()))),
+            Some(p) if path.as_ref().exists() => Ok(r#try!(Self::new(p.as_bytes()))),
             _ => Err(ReaderPathError::InvalidPath),
         }
     }
@@ -155,7 +155,7 @@ impl Reader {
     ///
     /// * `path` - the path to open. Use "-" for stdin.
     fn new(path: &[u8]) -> Result<Self, BGZFError> {
-        let htsfile = try!(hts_open(&ffi::CString::new(path).unwrap(), b"r"));
+        let htsfile = r#try!(hts_open(&ffi::CString::new(path).unwrap(), b"r"));
 
         let header = unsafe { htslib::sam_hdr_read(htsfile) };
         Ok(Reader {
@@ -180,7 +180,7 @@ impl Reader {
     /// a valid virtual offset.
     ///
     /// * `end` - Read until the virtual offset is less than `end`
-    pub fn iter_chunk(&mut self, start: Option<i64>, end: Option<i64>) -> ChunkIterator<Self> {
+    pub fn iter_chunk(&mut self, start: Option<i64>, end: Option<i64>) -> ChunkIterator<'_, Self> {
         if let Some(pos) = start {
             self.seek(pos)
                 .expect("Failed to seek to the starting position");
@@ -222,11 +222,11 @@ impl Read for Reader {
     /// Note that, while being convenient, this is less efficient than pre-allocating a
     /// `Record` and reading into it with the `read` method, since every iteration involves
     /// the allocation of a new `Record`.
-    fn records(&mut self) -> Records<Self> {
+    fn records(&mut self) -> Records<'_, Self> {
         Records { reader: self }
     }
 
-    fn pileup(&mut self) -> pileup::Pileups<Self> {
+    fn pileup(&mut self) -> pileup::Pileups<'_, Self> {
         let _self = self as *const Self;
         let itr = unsafe {
             htslib::bam_plp_init(
@@ -273,7 +273,7 @@ impl IndexedReader {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, IndexedReaderPathError> {
         match path.as_ref().to_str() {
             Some(p) if path.as_ref().exists() => {
-                Ok(try!(Self::new(&ffi::CString::new(p).unwrap())))
+                Ok(r#try!(Self::new(&ffi::CString::new(p).unwrap())))
             }
             _ => Err(IndexedReaderPathError::InvalidPath),
         }
@@ -293,7 +293,7 @@ impl IndexedReader {
             .as_ref()
             .to_str()
             .ok_or(IndexedReaderPathError::InvalidPath)?;
-        Ok(try!(Self::new_with_index_path(
+        Ok(r#try!(Self::new_with_index_path(
             &ffi::CString::new(p).unwrap(),
             &ffi::CString::new(idx_p).unwrap(),
         )))
@@ -309,7 +309,7 @@ impl IndexedReader {
     ///
     /// * `path` - the path. Use "-" for stdin.
     fn new(path: &ffi::CStr) -> Result<Self, IndexedReaderError> {
-        let htsfile = try!(hts_open(path, b"r"));
+        let htsfile = r#try!(hts_open(path, b"r"));
         let header = unsafe { htslib::sam_hdr_read(htsfile) };
         let idx = unsafe { htslib::sam_index_load(htsfile, path.as_ptr()) };
         if idx.is_null() {
@@ -333,7 +333,7 @@ impl IndexedReader {
         path: &ffi::CStr,
         index_path: &ffi::CStr,
     ) -> Result<Self, IndexedReaderError> {
-        let htsfile = try!(hts_open(path, b"r"));
+        let htsfile = r#try!(hts_open(path, b"r"));
         let header = unsafe { htslib::sam_hdr_read(htsfile) };
         let idx = unsafe { htslib::sam_index_load2(htsfile, path.as_ptr(), index_path.as_ptr()) };
         if idx.is_null() {
@@ -406,11 +406,11 @@ impl Read for IndexedReader {
     /// Note that, while being convenient, this is less efficient than pre-allocating a
     /// `Record` and reading into it with the `read` method, since every iteration involves
     /// the allocation of a new `Record`.
-    fn records(&mut self) -> Records<Self> {
+    fn records(&mut self) -> Records<'_, Self> {
         Records { reader: self }
     }
 
-    fn pileup(&mut self) -> pileup::Pileups<Self> {
+    fn pileup(&mut self) -> pileup::Pileups<'_, Self> {
         let _self = self as *const Self;
         let itr = unsafe {
             htslib::bam_plp_init(
@@ -463,7 +463,7 @@ impl Writer {
         header: &header::Header,
     ) -> Result<Self, WriterPathError> {
         if let Some(p) = path.as_ref().to_str() {
-            Ok(try!(Self::new(p.as_bytes(), b"wb", header)))
+            Ok(r#try!(Self::new(p.as_bytes(), b"wb", header)))
         } else {
             Err(WriterPathError::InvalidPath)
         }
@@ -480,7 +480,7 @@ impl Writer {
         header: &header::Header,
     ) -> Result<Self, WriterPathError> {
         if let Some(p) = path.as_ref().to_str() {
-            Ok(try!(Self::new(p.as_bytes(), b"wc", header)))
+            Ok(r#try!(Self::new(p.as_bytes(), b"wc", header)))
         } else {
             Err(WriterPathError::InvalidPath)
         }
@@ -503,7 +503,7 @@ impl Writer {
     /// * `mode` - write mode, refer to htslib::hts_open()
     /// * `header` - header definition to use
     fn new(path: &[u8], mode: &[u8], header: &header::Header) -> Result<Self, BGZFError> {
-        let f = try!(hts_open(&ffi::CString::new(path).unwrap(), mode));
+        let f = r#try!(hts_open(&ffi::CString::new(path).unwrap(), mode));
 
         // sam_hdr_parse does not populate the text and l_text fields of the header_record.
         // This causes non-SQ headers to be dropped in the output BAM file.
@@ -595,7 +595,7 @@ impl Drop for Writer {
 
 /// Iterator over the records of a BAM.
 #[derive(Debug)]
-pub struct Records<'a, R: 'a + Read> {
+pub struct Records<'a, R: Read> {
     reader: &'a mut R,
 }
 
@@ -613,7 +613,7 @@ impl<'a, R: Read> Iterator for Records<'a, R> {
 }
 
 /// Iterator over the records of a BAM until the virtual offset is less than `end`
-pub struct ChunkIterator<'a, R: 'a + Read> {
+pub struct ChunkIterator<'a, R: Read> {
     reader: &'a mut R,
     end: Option<i64>,
 }
@@ -942,13 +942,13 @@ impl Drop for HeaderView {
 
 #[cfg(test)]
 mod tests {
-    extern crate tempdir;
     use super::header::HeaderRecord;
     use super::record::{Aux, Cigar, CigarString};
     use super::*;
     use std::collections::HashMap;
     use std::path::Path;
     use std::str;
+    use tempdir;
 
     fn gold() -> (
         [&'static [u8]; 6],
@@ -1014,7 +1014,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let del_len = [1, 1, 1, 1, 1, 100000];
 
         for (i, record) in bam.records().enumerate() {
-            let mut rec = record.ok().expect("Expected valid record");
+            let rec = record.ok().expect("Expected valid record");
             println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
             assert_eq!(rec.qname(), names[i]);
             assert_eq!(rec.flags(), flags[i]);
@@ -1113,7 +1113,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .ok()
             .expect("Expected successful fetch.");
         for (i, record) in bam.records().enumerate() {
-            let mut rec = record.ok().expect("Expected valid record");
+            let rec = record.ok().expect("Expected valid record");
 
             println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
             assert_eq!(rec.qname(), names[i]);
@@ -1357,7 +1357,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             for (i, _rec) in bam.records().enumerate() {
                 let idx = i % names.len();
 
-                let mut rec = _rec.expect("Failed to read record.");
+                let rec = _rec.expect("Failed to read record.");
 
                 assert_eq!(rec.pos(), i as i32);
                 assert_eq!(rec.qname(), names[idx]);
@@ -1486,7 +1486,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .expect("Error opening file.");
 
         for (i, record) in bam.records().enumerate() {
-            let mut rec = record.ok().expect("Expected valid record");
+            let rec = record.ok().expect("Expected valid record");
 
             let cigar = rec.cigar();
             assert_eq!(*cigar, cigars[i]);

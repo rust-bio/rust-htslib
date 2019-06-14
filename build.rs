@@ -3,10 +3,8 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate bindgen;
-extern crate cc;
-extern crate fs_utils;
-
+use bindgen;
+use cc;
 use fs_utils::copy::copy_directory;
 
 use std::env;

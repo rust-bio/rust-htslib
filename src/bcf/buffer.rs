@@ -7,7 +7,7 @@ use std::collections::{vec_deque, VecDeque};
 use std::error::Error;
 use std::mem;
 
-use bcf::{self, Read};
+use crate::bcf::{self, Read};
 
 /// A buffer for BCF records. This allows access regions in a sorted BCF file while iterating
 /// over it in a single pass.
@@ -74,10 +74,10 @@ impl RecordBuffer {
         chrom: &[u8],
         start: u32,
         end: u32,
-    ) -> Result<(usize, usize), Box<Error>> {
+    ) -> Result<(usize, usize), Box<dyn Error>> {
         // TODO panic if start is left of previous start or we have moved past the given chrom
         // before.
-        let rid = try!(self.reader.header.name2rid(chrom));
+        let rid = r#try!(self.reader.header.name2rid(chrom));
         let mut added = 0;
         let mut deleted = 0;
 
@@ -168,12 +168,12 @@ impl RecordBuffer {
     }
 
     /// Iterate over records that have been fetched with `fetch`.
-    pub fn iter(&self) -> vec_deque::Iter<bcf::Record> {
+    pub fn iter(&self) -> vec_deque::Iter<'_, bcf::Record> {
         self.ringbuffer.iter()
     }
 
     /// Iterate over mutable references to records that have been fetched with `fetch`.
-    pub fn iter_mut(&mut self) -> vec_deque::IterMut<bcf::Record> {
+    pub fn iter_mut(&mut self) -> vec_deque::IterMut<'_, bcf::Record> {
         self.ringbuffer.iter_mut()
     }
 
@@ -185,7 +185,7 @@ impl RecordBuffer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bcf;
+    use crate::bcf;
     use itertools::Itertools;
 
     #[test]

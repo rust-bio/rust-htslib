@@ -8,11 +8,11 @@
 use std::ffi;
 use std::path::Path;
 
-use htslib;
+use crate::htslib;
 
-use bam::header;
-use bam::record;
-use bam::HeaderView;
+use crate::bam::header;
+use crate::bam::record;
+use crate::bam::HeaderView;
 
 /// SAM writer.
 #[derive(Debug)]
@@ -43,7 +43,7 @@ impl Writer {
         header: &header::Header,
     ) -> Result<Self, WriterError> {
         if let Some(p) = path.as_ref().to_str() {
-            Ok(try!(Self::new(p.as_bytes(), header)))
+            Ok(r#try!(Self::new(p.as_bytes(), header)))
         } else {
             Err(WriterError::IOError)
         }
@@ -59,7 +59,7 @@ impl Writer {
     }
 
     fn new(path: &[u8], header: &header::Header) -> Result<Self, WriterError> {
-        let f = try!(hts_open(&ffi::CString::new(path).unwrap(), b"w"));
+        let f = r#try!(hts_open(&ffi::CString::new(path).unwrap(), b"w"));
         let header_view = HeaderView::from_header(header);
 
         unsafe {
@@ -111,11 +111,11 @@ quick_error! {
 
 #[cfg(test)]
 mod tests {
-    use bam::header;
-    use bam::record;
-    use bam::Read;
-    use bam::Reader;
-    use sam::Writer;
+    use crate::bam::header;
+    use crate::bam::record;
+    use crate::bam::Read;
+    use crate::bam::Reader;
+    use crate::sam::Writer;
 
     #[test]
     fn test_sam_writer_example() {

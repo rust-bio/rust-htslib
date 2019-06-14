@@ -8,8 +8,8 @@
 use std::path::Path;
 use std::ptr;
 
-use htslib;
-use utils;
+use crate::htslib;
+use crate::utils;
 
 /// Index type to build.
 pub enum Type {

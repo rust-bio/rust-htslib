@@ -4,7 +4,7 @@ use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 
-use bam::record::Record;
+use crate::bam::record::Record;
 
 fn fix_l_extranul(rec: &mut Record) {
     let l_extranul = rec.qname().iter().rev().take_while(|x| **x == 0u8).count() as u8;
@@ -64,7 +64,7 @@ impl<'de> Deserialize<'de> for Record {
                 impl<'de> Visitor<'de> for FieldVisitor {
                     type Value = Field;
 
-                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
                         formatter.write_str("expecting a bam field")
                     }
 
@@ -99,7 +99,7 @@ impl<'de> Deserialize<'de> for Record {
         impl<'de> Visitor<'de> for RecordVisitor {
             type Value = Record;
 
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
                 formatter.write_str("struct Record")
             }
 
@@ -306,9 +306,9 @@ impl<'de> Deserialize<'de> for Record {
 
 #[cfg(test)]
 mod tests {
-    use bam::record::Record;
-    use bam::Read;
-    use bam::Reader;
+    use crate::bam::record::Record;
+    use crate::bam::Read;
+    use crate::bam::Reader;
 
     use std::path::Path;
 

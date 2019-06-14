@@ -21,11 +21,11 @@ pub mod buffer;
 pub mod header;
 pub mod record;
 
-use bcf::header::{HeaderView, SampleSubset};
-use htslib;
+use crate::bcf::header::{HeaderView, SampleSubset};
+use crate::htslib;
 
-pub use bcf::header::{Header, HeaderRecord};
-pub use bcf::record::Record;
+pub use crate::bcf::header::{Header, HeaderRecord};
+pub use crate::bcf::record::Record;
 
 /// Redefinition of corresponding `#define` in `vcf.h.`.
 pub const GT_MISSING: i32 = 0;
@@ -39,7 +39,7 @@ pub trait Read: Sized {
     fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError>;
 
     /// Return an iterator over all records of the VCF/BCF file.
-    fn records(&mut self) -> Records<Self>;
+    fn records(&mut self) -> Records<'_, Self>;
 
     /// Return the header.
     fn header(&self) -> &HeaderView;
@@ -84,7 +84,7 @@ impl Reader {
     /// Create a new reader from a given path.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, BCFPathError> {
         match path.as_ref().to_str() {
-            Some(p) if path.as_ref().exists() => Ok(try!(Self::new(p.as_bytes()))),
+            Some(p) if path.as_ref().exists() => Ok(r#try!(Self::new(p.as_bytes()))),
             _ => Err(BCFPathError::InvalidPath),
         }
     }
@@ -100,7 +100,7 @@ impl Reader {
     }
 
     fn new(path: &[u8]) -> Result<Self, BCFError> {
-        let htsfile = try!(bcf_open(path, b"r"));
+        let htsfile = r#try!(bcf_open(path, b"r"));
         let header = unsafe { htslib::bcf_hdr_read(htsfile) };
         Ok(Reader {
             inner: htsfile,
@@ -125,7 +125,7 @@ impl Read for Reader {
         }
     }
 
-    fn records(&mut self) -> Records<Self> {
+    fn records(&mut self) -> Records<'_, Self> {
         Records { reader: self }
     }
 
@@ -174,7 +174,7 @@ impl IndexedReader {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, IndexedReaderPathError> {
         match path.as_ref().to_str() {
             Some(p) if path.as_ref().exists() => {
-                Ok(try!(Self::new(&ffi::CString::new(p).unwrap())))
+                Ok(r#try!(Self::new(&ffi::CString::new(p).unwrap())))
             }
             _ => Err(IndexedReaderPathError::InvalidPath),
         }
@@ -274,7 +274,7 @@ impl Read for IndexedReader {
         }
     }
 
-    fn records(&mut self) -> Records<Self> {
+    fn records(&mut self) -> Records<'_, Self> {
         Records { reader: self }
     }
 
@@ -312,30 +312,30 @@ pub mod synced {
     /// This module contains bitmask constants for `SyncedReader`.
     pub mod pairing {
         /// Allow different alleles, as long as they all are SNPs.
-        pub const SNPS: u32 = ::htslib::BCF_SR_PAIR_SNPS;
+        pub const SNPS: u32 = crate::htslib::BCF_SR_PAIR_SNPS;
         /// The same as above, but with indels.
-        pub const INDELS: u32 = ::htslib::BCF_SR_PAIR_INDELS;
+        pub const INDELS: u32 = crate::htslib::BCF_SR_PAIR_INDELS;
         /// Any combination of alleles can be returned by `bcf_sr_next_line()`.
-        pub const ANY: u32 = ::htslib::BCF_SR_PAIR_ANY;
+        pub const ANY: u32 = crate::htslib::BCF_SR_PAIR_ANY;
         /// At least some of multiallelic ALTs must match.  Implied by all the others with the exception of `EXACT`.
-        pub const SOME: u32 = ::htslib::BCF_SR_PAIR_SOME;
+        pub const SOME: u32 = crate::htslib::BCF_SR_PAIR_SOME;
         /// Allow REF-only records with SNPs.
-        pub const SNP_REF: u32 = ::htslib::BCF_SR_PAIR_SNP_REF;
+        pub const SNP_REF: u32 = crate::htslib::BCF_SR_PAIR_SNP_REF;
         /// Allow REF-only records with indels.
-        pub const INDEL_REF: u32 = ::htslib::BCF_SR_PAIR_INDEL_REF;
+        pub const INDEL_REF: u32 = crate::htslib::BCF_SR_PAIR_INDEL_REF;
         /// Require the exact same set of alleles in all files.
-        pub const EXACT: u32 = ::htslib::BCF_SR_PAIR_EXACT;
+        pub const EXACT: u32 = crate::htslib::BCF_SR_PAIR_EXACT;
         /// `SNPS | INDELS`.
-        pub const BOTH: u32 = ::htslib::BCF_SR_PAIR_BOTH;
+        pub const BOTH: u32 = crate::htslib::BCF_SR_PAIR_BOTH;
         /// `SNPS | INDELS | SNP_REF | INDEL_REF`.
-        pub const BOTH_REF: u32 = ::htslib::BCF_SR_PAIR_BOTH_REF;
+        pub const BOTH_REF: u32 = crate::htslib::BCF_SR_PAIR_BOTH_REF;
     }
 
     /// A wrapper for `bcf_srs_t`; allows joint traversal of multiple VCF and/or BCF files.
     #[derive(Debug)]
     pub struct SyncedReader {
         /// Internal handle for the synced reader.
-        inner: *mut ::htslib::bcf_srs_t,
+        inner: *mut crate::htslib::bcf_srs_t,
 
         /// RC's of `HeaderView`s of the readers.
         headers: Vec<Rc<HeaderView>>,
@@ -348,7 +348,7 @@ pub mod synced {
 
     impl SyncedReader {
         pub fn new() -> Result<Self, AllocationError> {
-            let inner = unsafe { ::htslib::bcf_sr_init() };
+            let inner = unsafe { crate::htslib::bcf_sr_init() };
             if inner.is_null() {
                 Err(AllocationError::Some)
             } else {
@@ -371,7 +371,7 @@ pub mod synced {
         pub fn set_pairing(&mut self, bitmask: u32) {
             unsafe {
                 // TODO: 1 actually is BCF_SR_PAIR_LOGIC but is not available here?
-                ::htslib::bcf_sr_set_opt(self.inner, 1, bitmask);
+                crate::htslib::bcf_sr_set_opt(self.inner, 1, bitmask);
             }
         }
 
@@ -381,11 +381,11 @@ pub mod synced {
                 Some(p) if path.as_ref().exists() => {
                     let p_cstring = ffi::CString::new(p).unwrap();
                     let res =
-                        unsafe { ::htslib::bcf_sr_add_reader(self.inner, p_cstring.as_ptr()) };
+                        unsafe { crate::htslib::bcf_sr_add_reader(self.inner, p_cstring.as_ptr()) };
                     if res != 0 {
                         let i = (self.reader_count() - 1) as isize;
                         let header = Rc::new(HeaderView::new(unsafe {
-                            ::htslib::bcf_hdr_dup((*(*self.inner).readers.offset(i)).header)
+                            crate::htslib::bcf_hdr_dup((*(*self.inner).readers.offset(i)).header)
                         }));
                         self.headers.push(header);
                         Ok(())
@@ -403,7 +403,7 @@ pub mod synced {
                 panic!("Invalid reader!");
             } else {
                 unsafe {
-                    ::htslib::bcf_sr_remove_reader(self.inner, idx as i32);
+                    crate::htslib::bcf_sr_remove_reader(self.inner, idx as i32);
                 }
                 self.headers.remove(idx as usize);
             }
@@ -416,7 +416,7 @@ pub mod synced {
 
         /// Read next line and return number of readers that have the given line.
         pub fn read_next(&mut self) -> Result<u32, ReadError> {
-            let num = unsafe { ::htslib::bcf_sr_next_line(self.inner) as u32 };
+            let num = unsafe { crate::htslib::bcf_sr_next_line(self.inner) as u32 };
 
             if num == 0 {
                 if unsafe { (*self.inner).errnum } != 0 {
@@ -462,7 +462,7 @@ pub mod synced {
             if self.has_line(idx) {
                 let record = Record::new(self.headers[idx as usize].clone());
                 unsafe {
-                    ::htslib::bcf_copy(
+                    crate::htslib::bcf_copy(
                         record.inner,
                         *(*(*self.inner).readers.offset(idx as isize))
                             .buffer
@@ -510,7 +510,7 @@ pub mod synced {
 
     impl Drop for SyncedReader {
         fn drop(&mut self) {
-            unsafe { ::htslib::bcf_sr_destroy(self.inner) };
+            unsafe { crate::htslib::bcf_sr_destroy(self.inner) };
         }
     }
 
@@ -542,7 +542,7 @@ impl Writer {
         vcf: bool,
     ) -> Result<Self, BCFPathError> {
         if let Some(p) = path.as_ref().to_str() {
-            Ok(try!(Self::new(p.as_bytes(), header, uncompressed, vcf)))
+            Ok(r#try!(Self::new(p.as_bytes(), header, uncompressed, vcf)))
         } else {
             Err(BCFPathError::InvalidPath)
         }
@@ -584,7 +584,7 @@ impl Writer {
             (false, false) => b"wb",
         };
 
-        let htsfile = try!(bcf_open(path, mode));
+        let htsfile = r#try!(bcf_open(path, mode));
         unsafe { htslib::bcf_hdr_write(htsfile, header.inner) };
         Ok(Writer {
             inner: htsfile,
@@ -671,7 +671,7 @@ impl Drop for Writer {
 }
 
 #[derive(Debug)]
-pub struct Records<'a, R: 'a + Read> {
+pub struct Records<'a, R: Read> {
     reader: &'a mut R,
 }
 
@@ -812,14 +812,14 @@ quick_error! {
 
 #[cfg(test)]
 mod tests {
-    extern crate tempdir;
     use super::*;
-    use bcf::header::Id;
-    use bcf::record::Numeric;
+    use crate::bcf::header::Id;
+    use crate::bcf::record::Numeric;
     use std::fs::File;
     use std::io::prelude::Read as IoRead;
     use std::path::Path;
     use std::str;
+    use tempdir;
 
     fn _test_read<P: AsRef<Path>>(path: &P) {
         let mut bcf = Reader::from_path(path).ok().expect("Error opening file.");
@@ -1050,7 +1050,7 @@ mod tests {
             .ok()
             .expect("Error opening file.");
         let header = &vcf.header();
-        use bcf::header::Id;
+        use crate::bcf::header::Id;
 
         assert_eq!(header.id_to_name(Id(4)), b"GT");
         assert_eq!(header.name_to_id(b"GT").unwrap(), Id(4));

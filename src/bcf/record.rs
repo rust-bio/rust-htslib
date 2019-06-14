@@ -15,8 +15,8 @@ use std::slice;
 use ieee754::Ieee754;
 use itertools::Itertools;
 
-use bcf::header::{HeaderView, Id};
-use htslib;
+use crate::bcf::header::{HeaderView, Id};
+use crate::htslib;
 
 const MISSING_INTEGER: i32 = i32::MIN;
 const VECTOR_END_INTEGER: i32 = i32::MIN + 1;
@@ -229,7 +229,7 @@ impl Record {
     /// Return `Filters` iterator for enumerating all filters that have been set.
     ///
     /// A record having the `PASS` filter will return an empty `Filter` here.
-    pub fn filters(&self) -> Filters {
+    pub fn filters(&self) -> Filters<'_> {
         Filters::new(self)
     }
 
@@ -349,7 +349,7 @@ impl Record {
     }
 
     /// Get the value of the given info tag.
-    pub fn info<'a>(&'a mut self, tag: &'a [u8]) -> Info {
+    pub fn info<'a>(&'a mut self, tag: &'a [u8]) -> Info<'_> {
         Info {
             record: self,
             tag: tag,
@@ -369,14 +369,14 @@ impl Record {
     // TODO fn push_genotypes(&mut self, Genotypes) {}?
 
     /// Get genotypes as vector of one `Genotype` per sample.
-    pub fn genotypes(&mut self) -> Result<Genotypes, FormatReadError> {
+    pub fn genotypes(&mut self) -> Result<Genotypes<'_>, FormatReadError> {
         Ok(Genotypes {
-            encoded: try!(self.format(b"GT").integer()),
+            encoded: r#try!(self.format(b"GT").integer()),
         })
     }
 
     /// Get the value of the given format tag for each sample.
-    pub fn format<'a>(&'a mut self, tag: &'a [u8]) -> Format {
+    pub fn format<'a>(&'a mut self, tag: &'a [u8]) -> Format<'_> {
         Format::new(self, tag)
     }
 
@@ -652,7 +652,7 @@ impl GenotypeAllele {
 }
 
 impl fmt::Display for GenotypeAllele {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.index() {
             Some(a) => write!(f, "{}", a),
             None => write!(f, "."),
@@ -667,9 +667,9 @@ custom_derive! {
 }
 
 impl fmt::Display for Genotype {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let &Genotype(ref alleles) = self;
-        try!(write!(f, "{}", alleles[0]));
+        r#try!(write!(f, "{}", alleles[0]));
         for a in &alleles[1..] {
             let sep = match a {
                 &GenotypeAllele::Phased(_) => '|',
@@ -677,7 +677,7 @@ impl fmt::Display for Genotype {
                 &GenotypeAllele::UnphasedMissing => '/',
                 &GenotypeAllele::PhasedMissing => '|',
             };
-            try!(write!(f, "{}{}", sep, a));
+            r#try!(write!(f, "{}{}", sep, a));
         }
         Ok(())
     }
