@@ -30,12 +30,6 @@ Add this to your `Cargo.toml`:
 rust-htslib = "*"
 ```
 
-and this to your crate root:
-
-```rust
-extern crate rust_htslib;
-```
-
 For more information, please see the [docs](https://docs.rs/rust-htslib).
 
 # Authors
@@ -45,7 +39,7 @@ For more information, please see the [docs](https://docs.rs/rust-htslib).
 * [Patrick Marks](https://github.com/pmarks)
 * [David Lähnemann](https://github.com/dlaehnemann)
 * [Manuel Holtgrewe](https://github.com/holtgrewe)
-
+* [Julian Gehring](https://github.com/juliangehring)
 
 For other contributors, see [here](https://github.com/rust-bio/rust-htslib/graphs/contributors).
 
