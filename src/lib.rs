@@ -11,8 +11,7 @@
 //! For example, reading and writing BAM files is as easy as
 //!
 //! ```
-//! use rust_htslib::bam;
-//! use rust_htslib::prelude::*;
+//! use rust_htslib::{bam, bam::Read};
 //!
 //! let mut bam = bam::Reader::from_path(&"test/test.bam").unwrap();
 //! let header = bam::Header::from_template(bam.header());
@@ -30,8 +29,7 @@
 //! Pileups can be performed with
 //!
 //! ```
-//! use rust_htslib::bam;
-//! use rust_htslib::prelude::*;
+//! use rust_htslib::{bam, bam::Read};
 //!
 //! let mut bam = bam::Reader::from_path(&"test/test.bam").unwrap();
 //!
@@ -57,8 +55,7 @@
 //! In both cases, indexed BAM files can be seeked for specific regions, constraining either the record iterator or the pileups:
 //!
 //! ```
-//! use rust_htslib::bam;
-//! use rust_htslib::prelude::*;
+//! use rust_htslib::{bam, bam::Read};
 //!
 //! let mut bam = bam::IndexedReader::from_path(&"test/test.bam").unwrap();
 //!
@@ -100,7 +97,6 @@ extern crate lzma_sys;
 pub mod bam;
 pub mod bcf;
 pub mod htslib;
-pub mod prelude;
 pub mod sam;
 pub mod tbx;
 pub mod utils;

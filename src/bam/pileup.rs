@@ -197,7 +197,7 @@ quick_error! {
 mod tests {
 
     use crate::bam;
-    use crate::prelude::*;
+    use crate::bam::Read;
 
     #[test]
     fn test_max_pileup() {
