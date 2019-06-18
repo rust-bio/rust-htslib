@@ -48,7 +48,7 @@ use std::path::Path;
 use std::ptr;
 use url::Url;
 
-use htslib;
+use crate::htslib;
 
 /// A trait for a Tabix reader with a read method.
 pub trait Read: Sized {
@@ -67,7 +67,7 @@ pub trait Read: Sized {
     /// Note that, while being convenient, this is less efficient than pre-allocating a
     /// `Vec<u8>` and reading into it with the `read()` method, since every iteration involves
     /// the allocation of a new `Vec<u8>`.
-    fn records(&mut self) -> Records<Self>;
+    fn records(&mut self) -> Records<'_, Self>;
 
     /// Return the text headers, split by line.
     fn header(&self) -> &Vec<String>;
@@ -117,7 +117,7 @@ impl Reader {
     /// * `path` - the path to open.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, TabixReaderPathError> {
         match path.as_ref().to_str() {
-            Some(p) if path.as_ref().exists() => Ok(try!(Self::new(p.as_bytes()))),
+            Some(p) if path.as_ref().exists() => Ok(r#try!(Self::new(p.as_bytes()))),
             _ => Err(TabixReaderPathError::InvalidPath),
         }
     }
@@ -305,7 +305,7 @@ impl Read for Reader {
         }
     }
 
-    fn records(&mut self) -> Records<Self> {
+    fn records(&mut self) -> Records<'_, Self> {
         Records { reader: self }
     }
 
@@ -328,7 +328,7 @@ impl Drop for Reader {
 
 /// Iterator over the lines of a tabix file.
 #[derive(Debug)]
-pub struct Records<'a, R: 'a + Read> {
+pub struct Records<'a, R: Read> {
     reader: &'a mut R,
 }
 

@@ -7,10 +7,10 @@ use std::fmt;
 use std::iter;
 use std::slice;
 
-use htslib;
+use crate::htslib;
 
-use bam;
-use bam::record;
+use crate::bam;
+use crate::bam::record;
 
 /// Iterator over alignments of a pileup.
 pub type Alignments<'a> = iter::Map<
@@ -40,7 +40,7 @@ impl Pileup {
         self.depth
     }
 
-    pub fn alignments(&self) -> Alignments {
+    pub fn alignments(&self) -> Alignments<'_> {
         self.inner().iter().map(Alignment::new)
     }
 
@@ -60,7 +60,7 @@ pub struct Alignment<'a> {
 }
 
 impl<'a> fmt::Debug for Alignment<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Alignment")
     }
 }
@@ -124,7 +124,7 @@ pub enum Indel {
 
 /// Iterator over pileups.
 #[derive(Debug)]
-pub struct Pileups<'a, R: 'a + bam::Read> {
+pub struct Pileups<'a, R: bam::Read> {
     #[allow(dead_code)]
     reader: &'a mut R,
     itr: htslib::bam_plp_t,
@@ -196,8 +196,8 @@ quick_error! {
 #[cfg(test)]
 mod tests {
 
-    use bam;
-    use prelude::*;
+    use crate::bam;
+    use crate::prelude::*;
 
     #[test]
     fn test_max_pileup() {

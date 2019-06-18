@@ -7,7 +7,7 @@
 
 use crate::bam;
 use crate::bam::record::Cigar;
-use htslib;
+use crate::htslib;
 use std::collections::HashMap;
 
 /// Extra functionality for BAM records
