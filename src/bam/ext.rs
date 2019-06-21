@@ -290,7 +290,7 @@ mod tests {
     use crate::bam;
     use crate::bam::ext::BamRecordExtensions;
     use crate::bam::record::{Cigar, CigarString};
-    use crate::prelude::*;
+    use crate::bam::Read;
     use std::collections::HashMap;
 
     #[test]
