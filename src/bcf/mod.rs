@@ -134,12 +134,12 @@ impl Read for Reader {
     }
 
     fn header(&self) -> &HeaderView {
-        return &self.header;
+        &self.header
     }
 
     /// Return empty record.  Can be reused multiple times.
     fn empty_record(&self) -> Record {
-        return Record::new(self.header.clone());
+        Record::new(self.header.clone())
     }
 }
 
@@ -203,7 +203,7 @@ impl IndexedReader {
             }));
             Ok(IndexedReader {
                 inner: ser_reader,
-                header: header,
+                header,
                 current_region: None,
             })
         } else {
@@ -290,11 +290,11 @@ impl Read for IndexedReader {
     }
 
     fn header(&self) -> &HeaderView {
-        return &self.header;
+        &self.header
     }
 
     fn empty_record(&self) -> Record {
-        return Record::new(self.header.clone());
+        Record::new(self.header.clone())
     }
 }
 
@@ -353,7 +353,7 @@ pub mod synced {
                 Err(AllocationError::Some)
             } else {
                 Ok(SyncedReader {
-                    inner: inner,
+                    inner,
                     headers: Vec::new(),
                     current_region: None,
                 })
@@ -625,16 +625,15 @@ impl Writer {
     ///
     /// - `record` - The `Record` to modify.
     pub fn subset(&mut self, record: &mut record::Record) {
-        match self.subset {
-            Some(ref mut subset) => unsafe {
+        if let Some(ref mut subset) = self.subset {
+            unsafe {
                 htslib::bcf_subset(
                     self.header.inner,
                     record.inner,
                     subset.len() as i32,
                     subset.as_mut_ptr(),
                 );
-            },
-            None => (),
+            }
         }
     }
 
@@ -765,7 +764,7 @@ impl ReadError {
     /// Returns true if no record has been read because the end of the file was reached.
     pub fn is_eof(&self) -> bool {
         match self {
-            &ReadError::NoMoreRecord => true,
+            ReadError::NoMoreRecord => true,
             _ => false,
         }
     }
@@ -822,11 +821,11 @@ mod tests {
     use tempdir;
 
     fn _test_read<P: AsRef<Path>>(path: &P) {
-        let mut bcf = Reader::from_path(path).ok().expect("Error opening file.");
+        let mut bcf = Reader::from_path(path).expect("Error opening file.");
         assert_eq!(bcf.header.samples(), [b"NA12878.subsample-0.25-0"]);
 
         for (i, rec) in bcf.records().enumerate() {
-            let mut record = rec.ok().expect("Error reading record.");
+            let mut record = rec.expect("Error reading record.");
             assert_eq!(record.sample_count(), 1);
 
             assert_eq!(record.rid().expect("Error reading rid."), 0);
@@ -856,7 +855,7 @@ mod tests {
             assert_eq!(record.alleles().iter().last().unwrap(), b"<X>");
 
             let mut fmt = record.format(b"PL");
-            let pl = fmt.integer().ok().expect("Error reading format.");
+            let pl = fmt.integer().expect("Error reading format.");
             assert_eq!(pl.len(), 1);
             if i == 59 {
                 assert_eq!(pl[0].len(), 6);
@@ -874,7 +873,7 @@ mod tests {
     #[test]
     fn test_reader_set_threads() {
         let path = &"test/test.bcf";
-        let mut bcf = Reader::from_path(path).ok().expect("Error opening file.");
+        let mut bcf = Reader::from_path(path).expect("Error opening file.");
         bcf.set_threads(2).unwrap();
     }
 
@@ -885,7 +884,7 @@ mod tests {
             .ok()
             .expect("Cannot create temp dir");
         let bcfpath = tmp.path().join("test.bcf");
-        let bcf = Reader::from_path(path).ok().expect("Error opening file.");
+        let bcf = Reader::from_path(path).expect("Error opening file.");
         let header = Header::from_template_subset(&bcf.header, &[b"NA12878.subsample-0.25-0"])
             .ok()
             .expect("Error subsetting samples.");
@@ -927,17 +926,17 @@ mod tests {
                 .ok()
                 .expect("Error opening file.");
             for rec in bcf.records() {
-                let mut record = rec.ok().expect("Error reading record.");
+                let mut record = rec.expect("Error reading record.");
                 writer.translate(&mut record);
                 writer.subset(&mut record);
-                record.trim_alleles().ok().expect("Error trimming alleles.");
-                writer.write(&record).ok().expect("Error writing record");
+                record.trim_alleles().expect("Error trimming alleles.");
+                writer.write(&record).expect("Error writing record");
             }
         }
         {
             _test_read(&bcfpath);
         }
-        tmp.close().ok().expect("Failed to delete temp dir");
+        tmp.close().expect("Failed to delete temp dir");
     }
 
     #[test]
@@ -955,7 +954,7 @@ mod tests {
         ];
         for (i, rec) in vcf.records().enumerate() {
             println!("record {}", i);
-            let mut record = rec.ok().expect("Error reading record.");
+            let mut record = rec.expect("Error reading record.");
             assert_eq!(
                 record
                     .info(b"S1")
@@ -1002,7 +1001,7 @@ mod tests {
         ];
         let f1 = [false, true];
         for (i, rec) in vcf.records().enumerate() {
-            let mut record = rec.ok().expect("Error reading record.");
+            let mut record = rec.expect("Error reading record.");
             assert_eq!(
                 record
                     .info(b"F1")
@@ -1038,7 +1037,7 @@ mod tests {
             .expect("Error opening file.");
         let expected = ["./1", "1|1", "0/1", "0|1", "1|.", "1/1"];
         for (rec, exp_gt) in vcf.records().zip(expected.into_iter()) {
-            let mut rec = rec.ok().expect("Error reading record.");
+            let mut rec = rec.expect("Error reading record.");
             let genotypes = rec.genotypes().expect("Error reading genotypes");
             assert_eq!(&format!("{}", genotypes.get(0)), exp_gt);
         }

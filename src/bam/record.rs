@@ -97,12 +97,18 @@ impl fmt::Debug for Record {
     }
 }
 
+impl Default for Record {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Record {
     /// Create an empty BAM record.
     pub fn new() -> Self {
         let inner = unsafe { htslib::bam_init1() };
         let mut record = Record {
-            inner: inner,
+            inner,
             own: true,
             cigar: None,
         };
@@ -112,7 +118,7 @@ impl Record {
 
     pub fn from_inner(inner: *mut htslib::bam1_t) -> Self {
         Record {
-            inner: inner,
+            inner,
             own: false,
             cigar: None,
         }
@@ -371,8 +377,8 @@ impl Record {
                     slice::from_raw_parts_mut((*self.inner).data, self.inner().l_data as usize);
 
                 ::libc::memmove(
-                    data.as_mut_ptr().offset(new_q_len as isize) as *mut ::libc::c_void,
-                    data.as_mut_ptr().offset(old_q_len as isize) as *mut ::libc::c_void,
+                    data.as_mut_ptr().add(new_q_len) as *mut ::libc::c_void,
+                    data.as_mut_ptr().add(old_q_len) as *mut ::libc::c_void,
                     other_len as usize,
                 );
             }
@@ -971,7 +977,7 @@ impl<'a> IntoIterator for &'a CigarString {
     type IntoIter = ::std::slice::Iter<'a, Cigar>;
 
     fn into_iter(self) -> Self::IntoIter {
-        (&(self.0)).into_iter()
+        (&(self.0)).iter()
     }
 }
 
@@ -993,7 +999,7 @@ pub struct CigarStringView {
 impl CigarStringView {
     /// Construct a new CigarStringView from a CigarString at a position
     pub fn new(c: CigarString, pos: i32) -> CigarStringView {
-        CigarStringView { inner: c, pos: pos }
+        CigarStringView { inner: c, pos }
     }
 
     /// Get (exclusive) end position of alignment.
@@ -1001,13 +1007,13 @@ impl CigarStringView {
         let mut pos = self.pos;
         for c in self {
             match c {
-                &Cigar::Match(l)
-                | &Cigar::RefSkip(l)
-                | &Cigar::Del(l)
-                | &Cigar::Equal(l)
-                | &Cigar::Diff(l) => pos += l as i32,
+                Cigar::Match(l)
+                | Cigar::RefSkip(l)
+                | Cigar::Del(l)
+                | Cigar::Equal(l)
+                | Cigar::Diff(l) => pos += *l as i32,
                 // these don't add to end_pos on reference
-                &Cigar::Ins(_) | &Cigar::SoftClip(_) | &Cigar::HardClip(_) | &Cigar::Pad(_) => (),
+                Cigar::Ins(_) | Cigar::SoftClip(_) | Cigar::HardClip(_) | Cigar::Pad(_) => (),
             }
         }
         Ok(pos)
@@ -1036,44 +1042,44 @@ impl CigarStringView {
         // because all augmentations of qpos and rpos before that are invalid
         for (i, c) in self.iter().enumerate() {
             match c {
-                &Cigar::Match(_) |
-                &Cigar::Diff(_)  |
-                &Cigar::Equal(_) |
+                Cigar::Match(_) |
+                Cigar::Diff(_)  |
+                Cigar::Equal(_) |
                 // this is unexpected, but bwa + GATK indel realignment can produce insertions
                 // before matching positions
-                &Cigar::Ins(_) => {
+                Cigar::Ins(_) => {
                     j = i;
                     break;
                 },
-                &Cigar::SoftClip(l) => {
+                Cigar::SoftClip(l) => {
                     j = i;
                     if include_softclips {
                         // Alignment starts with softclip and we want to include it in the
                         // projection of the reference position. However, the POS field does not
                         // include the softclip. Hence we have to subtract its length.
-                        rpos = rpos.saturating_sub(l);
+                        rpos = rpos.saturating_sub(*l);
                     }
                     break;
                 },
-                &Cigar::Del(_) => {
+                Cigar::Del(_) => {
                     return Err(CigarError::UnexpectedOperation(
                         "'deletion' (D) found before any operation describing read sequence".to_owned()
                     ));
                 },
-                &Cigar::RefSkip(_) => {
+                Cigar::RefSkip(_) => {
                     return Err(CigarError::UnexpectedOperation(
                         "'reference skip' (N) found before any operation describing read sequence".to_owned()
                     ));
                 },
-                &Cigar::HardClip(_) if i > 0 && i < self.len()-1 => {
+                Cigar::HardClip(_) if i > 0 && i < self.len()-1 => {
                     return Err(CigarError::UnexpectedOperation(
                         "'hard clip' (H) found in between operations, contradicting SAMv1 spec that hard clips can only be at the ends of reads".to_owned()
                     ));
                 },
                 // if we have reached the end of the CigarString with only pads and hard clips, we have no read position matching the variant
-                &Cigar::Pad(_) | &Cigar::HardClip(_) if i == self.len()-1 => return Ok(None),
+                Cigar::Pad(_) | Cigar::HardClip(_) if i == self.len()-1 => return Ok(None),
                 // skip leading HardClips and Pads, as they consume neither read sequence nor reference sequence
-                &Cigar::Pad(_) | &Cigar::HardClip(_) => ()
+                Cigar::Pad(_) | Cigar::HardClip(_) => ()
             }
         }
 
@@ -1082,54 +1088,52 @@ impl CigarStringView {
         };
 
         while rpos <= ref_pos && j < self.len() {
-            match &self[j] {
+            match self[j] {
                 // potential SNV evidence
-                &Cigar::Match(l) | &Cigar::Diff(l) | &Cigar::Equal(l)
-                    if contains_ref_pos(rpos, l) =>
-                {
+                Cigar::Match(l) | Cigar::Diff(l) | Cigar::Equal(l) if contains_ref_pos(rpos, l) => {
                     // difference between desired position and first position of current cigar
                     // operation
                     qpos += ref_pos - rpos;
                     return Ok(Some(qpos));
                 }
-                &Cigar::SoftClip(l) if include_softclips && contains_ref_pos(rpos, l) => {
+                Cigar::SoftClip(l) if include_softclips && contains_ref_pos(rpos, l) => {
                     qpos += ref_pos - rpos;
                     return Ok(Some(qpos));
                 }
-                &Cigar::Del(l) if include_dels && contains_ref_pos(rpos, l) => {
+                Cigar::Del(l) if include_dels && contains_ref_pos(rpos, l) => {
                     // qpos shall resemble the start of the deletion
                     return Ok(Some(qpos));
                 }
                 // for others, just increase pos and qpos as needed
-                &Cigar::Match(l) | &Cigar::Diff(l) | &Cigar::Equal(l) => {
+                Cigar::Match(l) | Cigar::Diff(l) | Cigar::Equal(l) => {
                     rpos += l;
                     qpos += l;
                     j += 1;
                 }
-                &Cigar::SoftClip(l) => {
+                Cigar::SoftClip(l) => {
                     qpos += l;
                     j += 1;
                     if include_softclips {
                         rpos += l;
                     }
                 }
-                &Cigar::Ins(l) => {
+                Cigar::Ins(l) => {
                     qpos += l;
                     j += 1;
                 }
-                &Cigar::RefSkip(l) | &Cigar::Del(l) => {
+                Cigar::RefSkip(l) | Cigar::Del(l) => {
                     rpos += l;
                     j += 1;
                 }
-                &Cigar::Pad(_) => {
+                Cigar::Pad(_) => {
                     j += 1;
                 }
-                &Cigar::HardClip(_) if j < self.len() - 1 => {
+                Cigar::HardClip(_) if j < self.len() - 1 => {
                     return Err(CigarError::UnexpectedOperation(
                         "'hard clip' (H) found in between operations, contradicting SAMv1 spec that hard clips can only be at the ends of reads".to_owned()
                     ));
                 }
-                &Cigar::HardClip(_) => return Ok(None),
+                Cigar::HardClip(_) => return Ok(None),
             }
         }
 

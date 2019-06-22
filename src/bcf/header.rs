@@ -36,6 +36,12 @@ pub struct Header {
     pub subset: Option<SampleSubset>,
 }
 
+impl Default for Header {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Header {
     /// Create a new (empty) `Header`.
     pub fn new() -> Self {
@@ -88,7 +94,7 @@ impl Header {
             Err(SubsetError::DuplicateSampleName)
         } else {
             Ok(Header {
-                inner: inner,
+                inner,
                 subset: Some(imap),
             })
         }
@@ -232,7 +238,7 @@ pub struct HeaderView {
 
 impl HeaderView {
     pub fn new(inner: *mut htslib::bcf_hdr_t) -> Self {
-        HeaderView { inner: inner }
+        HeaderView { inner }
     }
 
     #[inline]

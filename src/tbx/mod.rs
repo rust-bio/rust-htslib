@@ -153,7 +153,7 @@ impl Reader {
         };
         unsafe {
             while htslib::hts_getline(hts_file, KS_SEP_LINE, &mut buf) >= 0 {
-                if buf.l > 0 && (*buf.s) as i32 == (*tbx).conf.meta_char {
+                if buf.l > 0 && i32::from(*buf.s) == (*tbx).conf.meta_char {
                     header.push(String::from(ffi::CStr::from_ptr(buf.s).to_str().unwrap()));
                 } else {
                     break;
@@ -367,7 +367,7 @@ impl ReadError {
     /// Returns true if no record has been read because the end of the file was reached.
     pub fn is_eof(&self) -> bool {
         match self {
-            &ReadError::NoMoreRecord => true,
+            ReadError::NoMoreRecord => true,
             _ => false,
         }
     }

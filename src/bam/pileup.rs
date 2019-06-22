@@ -67,7 +67,7 @@ impl<'a> fmt::Debug for Alignment<'a> {
 
 impl<'a> Alignment<'a> {
     pub fn new(inner: &'a htslib::bam_pileup1_t) -> Self {
-        Alignment { inner: inner }
+        Alignment { inner }
     }
 
     /// Position within the read. None if either `is_del` or `is_refskip`.
@@ -132,10 +132,7 @@ pub struct Pileups<'a, R: bam::Read> {
 
 impl<'a, R: bam::Read> Pileups<'a, R> {
     pub fn new(reader: &'a mut R, itr: htslib::bam_plp_t) -> Self {
-        Pileups {
-            reader: reader,
-            itr: itr,
-        }
+        Pileups { reader, itr }
     }
 
     /// Warning: because htslib internally uses signed integer for depth this method
@@ -166,7 +163,7 @@ impl<'a, R: bam::Read> Iterator for Pileups<'a, R> {
             true if depth == -1 => Some(Err(PileupError::Some)),
             true => None,
             false => Some(Ok(Pileup {
-                inner: inner,
+                inner,
                 depth: depth as u32,
                 tid: tid as u32,
                 pos: pos as u32,

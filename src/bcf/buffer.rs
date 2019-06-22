@@ -30,7 +30,7 @@ impl RecordBuffer {
     /// Create new buffer.
     pub fn new(reader: bcf::Reader) -> Self {
         RecordBuffer {
-            reader: reader,
+            reader,
             ringbuffer: VecDeque::new(),
             ringbuffer2: VecDeque::new(),
             overflow: None,
