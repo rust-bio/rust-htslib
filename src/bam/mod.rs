@@ -583,6 +583,57 @@ impl Writer {
             _ => Err(ReferencePathError::InvalidPath),
         }
     }
+
+    /// Set the compression level for writing BAM/CRAM files.
+    ///
+    /// # Arguments
+    ///
+    /// * `compression_level` - `CompressionLevel` enum variant
+    pub fn set_compression_level(
+        &mut self,
+        compression_level: CompressionLevel,
+    ) -> Result<(), CompressionLevelError> {
+        let level = compression_level.convert()?;
+        match unsafe {
+            htslib::hts_set_opt(
+                self.f,
+                htslib::hts_fmt_option_HTS_OPT_COMPRESSION_LEVEL,
+                level,
+            )
+        } {
+            0 => Ok(()),
+            _ => Err(CompressionLevelError::InvalidLevel),
+        }
+    }
+}
+
+/// Compression levels in BAM/CRAM files
+///
+/// * Uncompressed: No compression, zlib level 0
+/// * Fastest: Lowest compression level, zlib level 1
+/// * Maxium: Highest compression level, zlib level 9
+/// * Level(i): Custom compression level in the range [0, 9]
+#[derive(Debug, Clone, Copy)]
+pub enum CompressionLevel {
+    Uncompressed,
+    Fastest,
+    Maximum,
+    Level(u32),
+}
+
+impl CompressionLevel {
+    // Convert and check the variants of the `CompressionLevel` enum to a numeric level
+    fn convert(self) -> Result<u32, CompressionLevelError> {
+        match self {
+            CompressionLevel::Uncompressed => Ok(htslib::Z_NO_COMPRESSION),
+            CompressionLevel::Fastest => Ok(htslib::Z_BEST_SPEED),
+            CompressionLevel::Maximum => Ok(htslib::Z_BEST_COMPRESSION),
+            CompressionLevel::Level(i @ htslib::Z_NO_COMPRESSION...htslib::Z_BEST_COMPRESSION) => {
+                Ok(i)
+            }
+            CompressionLevel::Level(_) => Err(CompressionLevelError::InvalidLevel),
+        }
+    }
 }
 
 impl Drop for Writer {
@@ -725,6 +776,18 @@ quick_error! {
         }
         BGZFError(err: BGZFError) {
             from()
+        }
+    }
+}
+
+quick_error! {
+    #[derive(Debug, Clone)]
+    pub enum CompressionLevelError {
+        InvalidLevel {
+            description("invalid compression level")
+        }
+        Some {
+            description("compression level not able to set")
         }
     }
 }
@@ -946,6 +1009,7 @@ mod tests {
     use super::record::{Aux, Cigar, CigarString};
     use super::*;
     use std::collections::HashMap;
+    use std::fs;
     use std::path::Path;
     use std::str;
     use tempdir;
@@ -1597,6 +1661,56 @@ CCCCCCCCCCCCCCCCCCC"[..],
         }
 
         tmp.close().ok().expect("Failed to delete temp dir");
+    }
+
+    #[test]
+    fn test_compression_level_conversion() {
+        // predefined compression levels
+        assert_eq!(CompressionLevel::Uncompressed.convert().unwrap(), 0);
+        assert_eq!(CompressionLevel::Fastest.convert().unwrap(), 1);
+        assert_eq!(CompressionLevel::Maximum.convert().unwrap(), 9);
+
+        // numeric compression levels
+        for level in 0..=9 {
+            assert_eq!(CompressionLevel::Level(level).convert().unwrap(), level);
+        }
+        // invalid levels
+        assert!(CompressionLevel::Level(10).convert().is_err());
+    }
+
+    #[test]
+    fn test_write_compression() {
+        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
+        let input_bam_path = "test/test.bam";
+
+        // test levels with decreasing compression factor
+        let levels_to_test = vec![
+            CompressionLevel::Maximum,
+            CompressionLevel::Level(6),
+            CompressionLevel::Fastest,
+            CompressionLevel::Uncompressed,
+        ];
+        let file_sizes: Vec<_> = levels_to_test
+            .iter()
+            .map(|level| {
+                let output_bam_path = tmp.path().join("test.bam");
+                {
+                    let mut reader = Reader::from_path(&input_bam_path).unwrap();
+                    let header = Header::from_template(reader.header());
+                    let mut writer = Writer::from_path(&output_bam_path, &header).unwrap();
+                    writer.set_compression_level(*level).unwrap();
+                    for record in reader.records() {
+                        writer.write(&record.unwrap()).unwrap();
+                    }
+                }
+                fs::metadata(output_bam_path).unwrap().len()
+            })
+            .collect();
+
+        // check that out BAM file sizes are in decreasing order, in line with the expected compression factor
+        assert!(file_sizes.windows(2).all(|size| size[0] <= size[1]));
+
+        tmp.close().expect("Failed to delete temp dir");
     }
 
     #[test]
