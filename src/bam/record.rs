@@ -388,15 +388,26 @@ impl Record {
     }
 
     fn realloc_var_data(&mut self, new_len: usize) {
-        self.inner_mut().m_data = new_len as u32;
-        // Pad
-        self.inner_mut().m_data += 32 - self.inner().m_data % 32;
-        unsafe {
-            self.inner_mut().data = ::libc::realloc(
+
+        // pad request
+        let new_len = new_len as u32;
+        let new_request = new_len + 32 - (new_len % 32);
+
+        let ptr = unsafe {
+            ::libc::realloc(
                 self.inner().data as *mut ::libc::c_void,
-                self.inner().m_data as usize,
-            ) as *mut u8;
+                new_request as usize,
+            ) as *mut u8
+        };
+
+        if ptr.is_null() {
+            panic!("ran out of memory in rust_htslib trying to realloc");
         }
+
+        // don't update m_data until we know we have 
+        // a successful allocation.
+        self.inner_mut().m_data = new_request;
+        self.inner_mut().data = ptr;
     }
 
     pub fn cigar_len(&self) -> usize {
