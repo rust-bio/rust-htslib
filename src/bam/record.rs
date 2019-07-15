@@ -523,7 +523,7 @@ impl Record {
 
     /// Add auxiliary data.
     /// push_aux() should never be called before set().
-    pub fn push_aux(&mut self, tag: &[u8], value: &Aux<'_>) -> Result<(), AuxWriteError> {
+    pub fn push_aux(&mut self, tag: &[u8], value: &Aux<'_>) {
         let ctag = tag.as_ptr() as *mut i8;
         let ret = unsafe {
             match *value {
@@ -559,9 +559,7 @@ impl Record {
         };
 
         if ret < 0 {
-            Err(AuxWriteError::Some)
-        } else {
-            Ok(())
+            panic!("htslib ran out of memory in push_aux");
         }
     }
 
