@@ -21,8 +21,8 @@ use crate::htslib;
 const MISSING_INTEGER: i32 = i32::MIN;
 const VECTOR_END_INTEGER: i32 = i32::MIN + 1;
 lazy_static! {
-    static ref MISSING_FLOAT: f32 = Ieee754::from_bits(0x7F800001);
-    static ref VECTOR_END_FLOAT: f32 = Ieee754::from_bits(0x7F800002);
+    static ref MISSING_FLOAT: f32 = Ieee754::from_bits(0x7F80_0001);
+    static ref VECTOR_END_FLOAT: f32 = Ieee754::from_bits(0x7F80_0002);
 }
 
 /// Common methods for numeric INFO and FORMAT entries
@@ -91,8 +91,8 @@ impl Record {
             inner
         };
         Record {
-            inner: inner,
-            header: header,
+            inner,
+            header,
             buffer: ptr::null_mut(),
             buffer_len: 0,
         }
@@ -151,8 +151,8 @@ impl Record {
     // Update the internal reference ID number.
     pub fn set_rid(&mut self, rid: &Option<u32>) {
         match rid {
-            &Some(rid) => self.inner_mut().rid = rid as i32,
-            &None => self.inner_mut().rid = -1,
+            Some(rid) => self.inner_mut().rid = *rid as i32,
+            None => self.inner_mut().rid = -1,
         }
     }
 
@@ -350,10 +350,7 @@ impl Record {
 
     /// Get the value of the given info tag.
     pub fn info<'a>(&'a mut self, tag: &'a [u8]) -> Info<'_> {
-        Info {
-            record: self,
-            tag: tag,
-        }
+        Info { record: self, tag }
     }
 
     /// Get the number of samples.
@@ -464,7 +461,7 @@ impl Record {
         data: &[D],
     ) -> Result<(), TagWriteError> {
         assert!(
-            data.len() > 0,
+            !data.is_empty(),
             "given string data must have at least 1 element"
         );
         let c_data = data
@@ -643,10 +640,8 @@ impl GenotypeAllele {
     /// Get the index into the list of alleles.
     pub fn index(&self) -> Option<u32> {
         match self {
-            &GenotypeAllele::Unphased(i) => Some(i as u32),
-            &GenotypeAllele::Phased(i) => Some(i as u32),
-            &GenotypeAllele::UnphasedMissing => None,
-            &GenotypeAllele::PhasedMissing => None,
+            GenotypeAllele::Unphased(i) | GenotypeAllele::Phased(i) => Some(*i as u32),
+            GenotypeAllele::UnphasedMissing | GenotypeAllele::PhasedMissing => None,
         }
     }
 }
@@ -672,10 +667,8 @@ impl fmt::Display for Genotype {
         r#try!(write!(f, "{}", alleles[0]));
         for a in &alleles[1..] {
             let sep = match a {
-                &GenotypeAllele::Phased(_) => '|',
-                &GenotypeAllele::Unphased(_) => '/',
-                &GenotypeAllele::UnphasedMissing => '/',
-                &GenotypeAllele::PhasedMissing => '|',
+                GenotypeAllele::Phased(_) | GenotypeAllele::PhasedMissing => '|',
+                GenotypeAllele::Unphased(_) | GenotypeAllele::UnphasedMissing => '/',
             };
             r#try!(write!(f, "{}{}", sep, a));
         }
@@ -697,12 +690,11 @@ impl<'a> Genotypes<'a> {
     /// this method will return `[Unphased(1), Phased(1)]`.
     pub fn get(&self, i: usize) -> Genotype {
         let igt = self.encoded[i];
-        let gt = Genotype(
-            igt.into_iter()
+        Genotype(
+            igt.iter()
                 .map(|&e| GenotypeAllele::from_encoded(e))
                 .collect_vec(),
-        );
-        gt
+        )
     }
 }
 
@@ -823,11 +815,7 @@ impl<'a> Format<'a> {
                 ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
             )
         };
-        Format {
-            record: record,
-            tag: tag,
-            inner: inner,
-        }
+        Format { record, tag, inner }
     }
 
     pub fn inner(&self) -> &htslib::bcf_fmt_t {

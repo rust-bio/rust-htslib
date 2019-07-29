@@ -83,7 +83,11 @@ pub trait Read: Sized {
         let htsfile = unsafe { self.htsfile().as_ref() }.expect("bug: null pointer to htsFile");
         let ret = match htsfile.format.format {
             htslib::htsExactFormat_cram => unsafe {
-                htslib::cram_seek(htsfile.fp.cram, offset as libc::off_t, libc::SEEK_SET) as i64
+                i64::from(htslib::cram_seek(
+                    htsfile.fp.cram,
+                    offset as libc::off_t,
+                    libc::SEEK_SET,
+                ))
             },
             _ => unsafe { htslib::bgzf_seek(htsfile.fp.bgzf, offset, libc::SEEK_SET) },
         };
@@ -100,7 +104,7 @@ pub trait Read: Sized {
         // this reimplements the bgzf_tell macro
         let htsfile = unsafe { self.htsfile().as_ref() }.expect("bug: null pointer to htsFile");
         let bgzf = unsafe { *htsfile.fp.bgzf };
-        (bgzf.block_address << 16) | (bgzf.block_offset as i64 & 0xFFFF)
+        (bgzf.block_address << 16) | (i64::from(bgzf.block_offset) & 0xFFFF)
     }
 
     /// Activate multi-threaded BAM read support in htslib. This should permit faster
@@ -159,7 +163,7 @@ impl Reader {
 
         let header = unsafe { htslib::sam_hdr_read(htsfile) };
         Ok(Reader {
-            htsfile: htsfile,
+            htsfile,
             header: HeaderView::new(header),
         })
     }
@@ -186,10 +190,7 @@ impl Reader {
                 .expect("Failed to seek to the starting position");
         };
 
-        ChunkIterator {
-            reader: self,
-            end: end,
-        }
+        ChunkIterator { reader: self, end }
     }
 
     /// Set the reference path for reading CRAM files.
@@ -316,9 +317,9 @@ impl IndexedReader {
             Err(IndexedReaderError::InvalidIndex)
         } else {
             Ok(IndexedReader {
-                htsfile: htsfile,
+                htsfile,
                 header: HeaderView::new(header),
-                idx: idx,
+                idx,
                 itr: None,
             })
         }
@@ -340,9 +341,9 @@ impl IndexedReader {
             Err(IndexedReaderError::InvalidIndex)
         } else {
             Ok(IndexedReader {
-                htsfile: htsfile,
+                htsfile,
                 header: HeaderView::new(header),
-                idx: idx,
+                idx,
                 itr: None,
             })
         }
@@ -536,7 +537,7 @@ impl Writer {
         }
 
         Ok(Writer {
-            f: f,
+            f,
             header: HeaderView::new(header_record),
         })
     }
@@ -557,7 +558,7 @@ impl Writer {
     ///
     /// * `record` - the record to write
     pub fn write(&mut self, record: &record::Record) -> Result<(), WriteError> {
-        if unsafe { htslib::sam_write1(self.f, &mut self.header.inner(), record.inner) } == -1 {
+        if unsafe { htslib::sam_write1(self.f, &self.header.inner(), record.inner) } == -1 {
             Err(WriteError::Some)
         } else {
             Ok(())
@@ -705,7 +706,7 @@ impl ReadError {
     /// Returns true if no record has been read because the end of the file was reached.
     pub fn is_eof(&self) -> bool {
         match self {
-            &ReadError::NoMoreRecord => true,
+            ReadError::NoMoreRecord => true,
             _ => false,
         }
     }
@@ -913,10 +914,7 @@ impl HeaderView {
 
     /// Create a new HeaderView from the underlying Htslib type, and own it.
     pub fn new(inner: *mut htslib::bam_hdr_t) -> Self {
-        HeaderView {
-            inner: inner,
-            owned: true,
-        }
+        HeaderView { inner, owned: true }
     }
 
     #[inline]
@@ -941,7 +939,6 @@ impl HeaderView {
             htslib::bam_name2id(
                 self.inner,
                 ffi::CString::new(name)
-                    .ok()
                     .expect("Expected valid name.")
                     .as_ptr(),
             )
@@ -979,7 +976,7 @@ impl HeaderView {
     }
 
     /// Retrieve the textual SAM header as bytes
-    pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
+    pub fn as_bytes(&self) -> &[u8] {
         unsafe { ffi::CStr::from_ptr((*self.inner).text).to_bytes() }
     }
 }
@@ -1072,13 +1069,11 @@ CCCCCCCCCCCCCCCCCCC"[..],
     #[test]
     fn test_read() {
         let (names, flags, seqs, quals, cigars) = gold();
-        let mut bam = Reader::from_path(&Path::new("test/test.bam"))
-            .ok()
-            .expect("Error opening file.");
+        let mut bam = Reader::from_path(&Path::new("test/test.bam")).expect("Error opening file.");
         let del_len = [1, 1, 1, 1, 1, 100000];
 
         for (i, record) in bam.records().enumerate() {
-            let rec = record.ok().expect("Expected valid record");
+            let rec = record.expect("Expected valid record");
             println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
             assert_eq!(rec.qname(), names[i]);
             assert_eq!(rec.flags(), flags[i]);
@@ -1177,7 +1172,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .ok()
             .expect("Expected successful fetch.");
         for (i, record) in bam.records().enumerate() {
-            let rec = record.ok().expect("Expected valid record");
+            let rec = record.expect("Expected valid record");
 
             println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
             assert_eq!(rec.qname(), names[i]);
@@ -1191,7 +1186,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         }
 
         // fetch to empty position
-        bam.fetch(2, 1, 1).ok().expect("Expected successful fetch.");
+        bam.fetch(2, 1, 1).expect("Expected successful fetch.");
         assert!(bam.records().count() == 0);
     }
 
@@ -1313,7 +1308,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .expect("Error opening file.");
 
         for record in bam.records() {
-            let rec = record.ok().expect("Expected valid record");
+            let rec = record.expect("Expected valid record");
 
             if rec.aux(b"XS").is_some() {
                 rec.remove_aux(b"XS");
@@ -1356,7 +1351,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 rec.set(names[i], Some(&cigars[i]), seqs[i], quals[i]);
                 rec.push_aux(b"NM", &Aux::Integer(15));
 
-                bam.write(&mut rec).ok().expect("Failed to write record.");
+                bam.write(&mut rec).expect("Failed to write record.");
             }
         }
 
@@ -1367,7 +1362,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
             for i in 0..names.len() {
                 let mut rec = record::Record::new();
-                bam.read(&mut rec).ok().expect("Failed to read record.");
+                bam.read(&mut rec).expect("Failed to read record.");
 
                 assert_eq!(rec.qname(), names[i]);
                 assert_eq!(*rec.cigar(), cigars[i]);
@@ -1377,7 +1372,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             }
         }
 
-        tmp.close().ok().expect("Failed to delete temp dir");
+        tmp.close().expect("Failed to delete temp dir");
     }
 
     #[test]
@@ -1409,7 +1404,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 rec.push_aux(b"NM", &Aux::Integer(15));
                 rec.set_pos(i as i32);
 
-                bam.write(&mut rec).ok().expect("Failed to write record.");
+                bam.write(&mut rec).expect("Failed to write record.");
             }
         }
 
@@ -1432,7 +1427,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             }
         }
 
-        tmp.close().ok().expect("Failed to delete temp dir");
+        tmp.close().expect("Failed to delete temp dir");
     }
 
     #[test]
@@ -1471,7 +1466,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             assert_eq!(input_bam.header().as_bytes(), copy_bam.header().as_bytes());
         }
 
-        tmp.close().ok().expect("Failed to delete temp dir");
+        tmp.close().expect("Failed to delete temp dir");
     }
 
     #[test]
@@ -1483,7 +1478,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .expect("Error opening file.");
         let pileups = bam.pileup();
         for pileup in pileups.take(26) {
-            let _pileup = pileup.ok().expect("Expected successful pileup.");
+            let _pileup = pileup.expect("Expected successful pileup.");
             let pos = _pileup.pos() as usize;
             assert_eq!(_pileup.depth(), 6);
             assert!(_pileup.tid() == 0);
@@ -1550,14 +1545,14 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .expect("Error opening file.");
 
         for (i, record) in bam.records().enumerate() {
-            let rec = record.ok().expect("Expected valid record");
+            let rec = record.expect("Expected valid record");
 
             let cigar = rec.cigar();
             assert_eq!(*cigar, cigars[i]);
         }
 
         for (i, record) in bam.records().enumerate() {
-            let mut rec = record.ok().expect("Expected valid record");
+            let mut rec = record.expect("Expected valid record");
             rec.cache_cigar();
 
             let cigar = rec.cigar_cached().unwrap();
@@ -1660,7 +1655,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             }
         }
 
-        tmp.close().ok().expect("Failed to delete temp dir");
+        tmp.close().expect("Failed to delete temp dir");
     }
 
     #[test]

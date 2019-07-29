@@ -66,7 +66,7 @@ impl Writer {
             htslib::sam_hdr_write(f, &header_view.inner());
         }
         Ok(Writer {
-            f: f,
+            f,
             header: header_view,
         })
     }

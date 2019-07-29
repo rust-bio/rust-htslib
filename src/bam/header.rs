@@ -14,6 +14,12 @@ pub struct Header {
     records: Vec<Vec<u8>>,
 }
 
+impl Default for Header {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Header {
     /// Create a new header.
     pub fn new() -> Self {
@@ -64,8 +70,8 @@ impl Header {
 
         let header_string = String::from_utf8(self.to_bytes()).unwrap();
 
-        for line in header_string.split("\n").filter(|x| x.len() > 0) {
-            let parts: Vec<_> = line.split("\t").filter(|x| x.len() > 0).collect();
+        for line in header_string.split('\n').filter(|x| !x.is_empty()) {
+            let parts: Vec<_> = line.split('\t').filter(|x| !x.is_empty()).collect();
             // assert!(rec_type_re.is_match(parts[0]));
             let record_type = rec_type_re
                 .captures(parts[0])
@@ -83,7 +89,7 @@ impl Header {
             }
             header_map
                 .entry(record_type)
-                .or_insert_with(|| Vec::new())
+                .or_insert_with(Vec::new)
                 .push(field);
         }
         header_map
