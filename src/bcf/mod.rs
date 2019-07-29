@@ -27,9 +27,6 @@ use crate::htslib;
 pub use crate::bcf::header::{Header, HeaderRecord};
 pub use crate::bcf::record::Record;
 
-/// Redefinition of corresponding `#define` in `vcf.h.`.
-pub const GT_MISSING: i32 = 0;
-
 /// A trait for a BCF reader with a read method.
 pub trait Read: Sized {
     /// Read the next record.
