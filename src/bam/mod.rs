@@ -367,7 +367,8 @@ impl IndexedReader {
         if let Some(itr) = self.itr {
             unsafe { htslib::hts_itr_destroy(itr) }
         }
-        let itr = unsafe { htslib::sam_itr_querys(self.idx, &mut self.header.inner(), region.as_ptr()) };
+        let itr = 
+            unsafe { htslib::sam_itr_querys(self.idx, &mut self.header.inner(), region.as_ptr()) };
         if itr.is_null() {
             self.itr = None;
             Err(FetchError::Some)
