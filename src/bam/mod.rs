@@ -363,6 +363,20 @@ impl IndexedReader {
         }
     }
 
+    pub fn fetch_str(&mut self, region: ffi::CString) -> Result<(), FetchError> {
+        if let Some(itr) = self.itr {
+            unsafe { htslib::hts_itr_destroy(itr) }
+        }
+        let itr = unsafe { htslib::sam_itr_querys(self.idx, &mut self.header.inner(), region.as_ptr()) };
+        if itr.is_null() {
+            self.itr = None;
+            Err(FetchError::Some)
+        } else {
+            self.itr = Some(itr);
+            Ok(())
+        }
+    }
+
     extern "C" fn pileup_read(
         data: *mut ::std::os::raw::c_void,
         record: *mut htslib::bam1_t,
