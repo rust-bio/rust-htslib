@@ -1179,17 +1179,20 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     fn _test_read_indexed_common(mut bam: IndexedReader) {
         let (names, flags, seqs, quals, cigars) = gold();
-        let tid = bam.header.tid(b"CHROMOSOME_I").expect("Expected tid.");
-        assert!(bam.header.target_len(tid).expect("Expected target len.") == 15072423);
+        let sq_1 = b"CHROMOSOME_I";
+        let sq_2 = b"CHROMOSOME_II";
+        let tid_1 = bam.header.tid(sq_1).expect("Expected tid.");
+        let tid_2 = bam.header.tid(sq_2).expect("Expected tid.");
+        assert!(bam.header.target_len(tid_1).expect("Expected target len.") == 15072423);
 
         // fetch to position containing reads
-        bam.fetch(tid, 0, 2)
+        bam.fetch(tid_1, 0, 2)
             .ok()
             .expect("Expected successful fetch.");
         assert!(bam.records().count() == 6);
 
         // compare reads
-        bam.fetch(tid, 0, 2)
+        bam.fetch(tid_1, 0, 2)
             .ok()
             .expect("Expected successful fetch.");
         for (i, record) in bam.records().enumerate() {
@@ -1207,7 +1210,38 @@ CCCCCCCCCCCCCCCCCCC"[..],
         }
 
         // fetch to empty position
-        bam.fetch(2, 1, 1).expect("Expected successful fetch.");
+        bam.fetch(tid_2, 1, 1).expect("Expected successful fetch.");
+        assert!(bam.records().count() == 0);
+
+        // repeat with byte-string based fetch
+
+        // fetch to position containing reads
+        bam.fetch_str(format!("{}:{}-{}", str::from_utf8(sq_1).unwrap(), 0, 2).as_bytes())
+            .ok()
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+
+        // compare reads
+        bam.fetch_str(format!("{}:{}-{}", str::from_utf8(sq_1).unwrap(), 0, 2).as_bytes())
+            .ok()
+            .expect("Expected successful fetch.");
+        for (i, record) in bam.records().enumerate() {
+            let rec = record.expect("Expected valid record");
+
+            println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
+            assert_eq!(rec.qname(), names[i]);
+            assert_eq!(rec.flags(), flags[i]);
+            assert_eq!(rec.seq().as_bytes(), seqs[i]);
+            assert_eq!(*rec.cigar(), cigars[i]);
+            // fix qual offset
+            let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
+            assert_eq!(rec.qual(), &qual[..]);
+            assert_eq!(rec.aux(b"NotAvailableAux"), None);
+        }
+
+        // fetch to empty position
+        bam.fetch_str(format!("{}:{}-{}", str::from_utf8(sq_2).unwrap(), 1, 1).as_bytes())
+            .expect("Expected successful fetch.");
         assert!(bam.records().count() == 0);
     }
 
