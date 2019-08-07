@@ -362,13 +362,19 @@ impl IndexedReader {
             Ok(())
         }
     }
-
-    pub fn fetch_str(&mut self, region: ffi::CString) -> Result<(), FetchError> {
+    /// Fetch reads from a region using a samtools region string.
+    /// Region strings are of the format b"chr1:1-1000".
+    ///
+    /// # Arguments
+    ///
+    /// * `region` - A binary string
+    pub fn fetch_str(&mut self, region: &[u8]) -> Result<(), FetchError> {
         if let Some(itr) = self.itr {
             unsafe { htslib::hts_itr_destroy(itr) }
         }
-        let itr = 
-            unsafe { htslib::sam_itr_querys(self.idx, &mut self.header.inner(), region.as_ptr()) };
+        let rstr = ffi::CString::new(region).unwrap();
+        let itr =
+            unsafe { htslib::sam_itr_querys(self.idx, &mut self.header.inner(), rstr.as_ptr()) };
         if itr.is_null() {
             self.itr = None;
             Err(FetchError::Some)
