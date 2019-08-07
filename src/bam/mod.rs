@@ -373,8 +373,8 @@ impl IndexedReader {
             unsafe { htslib::hts_itr_destroy(itr) }
         }
         let rstr = ffi::CString::new(region).unwrap();
-        let itr =
-            unsafe { htslib::sam_itr_querys(self.idx, &mut self.header.inner(), rstr.as_ptr()) };
+        let rptr = rstr.as_ptr();
+        let itr = unsafe { htslib::sam_itr_querys(self.idx, &mut self.header.inner(), rptr) };
         if itr.is_null() {
             self.itr = None;
             Err(FetchError::Some)
