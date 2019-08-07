@@ -14,7 +14,7 @@ use std::u32;
 
 use regex::Regex;
 
-use crate::bam::{AuxWriteError, HeaderView, ReadError};
+use crate::bam::{HeaderView, ReadError};
 use crate::htslib;
 use crate::utils;
 
@@ -769,8 +769,8 @@ pub enum Cigar {
 }
 
 impl Cigar {
-    fn encode(&self) -> u32 {
-        match *self {
+    fn encode(self) -> u32 {
+        match self {
             Cigar::Match(len) => len << 4 | 0,
             Cigar::Ins(len) => len << 4 | 1,
             Cigar::Del(len) => len << 4 | 2,
@@ -784,8 +784,8 @@ impl Cigar {
     }
 
     /// Return the length of the CIGAR.
-    pub fn len(&self) -> u32 {
-        match *self {
+    pub fn len(self) -> u32 {
+        match self {
             Cigar::Match(len) => len,
             Cigar::Ins(len) => len,
             Cigar::Del(len) => len,
@@ -799,8 +799,8 @@ impl Cigar {
     }
 
     /// Return the character representing the CIGAR.
-    pub fn char(&self) -> char {
-        match *self {
+    pub fn char(self) -> char {
+        match self {
             Cigar::Match(_) => 'M',
             Cigar::Ins(_) => 'I',
             Cigar::Del(_) => 'D',

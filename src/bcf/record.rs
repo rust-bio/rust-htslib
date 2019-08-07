@@ -149,9 +149,9 @@ impl Record {
     }
 
     // Update the internal reference ID number.
-    pub fn set_rid(&mut self, rid: &Option<u32>) {
+    pub fn set_rid(&mut self, rid: Option<u32>) {
         match rid {
-            Some(rid) => self.inner_mut().rid = *rid as i32,
+            Some(rid) => self.inner_mut().rid = rid as i32,
             None => self.inner_mut().rid = -1,
         }
     }
@@ -238,12 +238,12 @@ impl Record {
     /// # Arguments
     ///
     /// - `flt_id` - The filter ID to query for.
-    pub fn has_filter(&self, flt_id: &Id) -> bool {
-        if **flt_id == 0 && self.inner().d.n_flt == 0 {
+    pub fn has_filter(&self, flt_id: Id) -> bool {
+        if *flt_id == 0 && self.inner().d.n_flt == 0 {
             return true;
         }
         for i in 0..(self.inner().d.n_flt as isize) {
-            if unsafe { *self.inner().d.flt.offset(i) } == **flt_id as i32 {
+            if unsafe { *self.inner().d.flt.offset(i) } == *flt_id as i32 {
                 return true;
             }
         }
@@ -638,9 +638,9 @@ impl GenotypeAllele {
     }
 
     /// Get the index into the list of alleles.
-    pub fn index(&self) -> Option<u32> {
+    pub fn index(self) -> Option<u32> {
         match self {
-            GenotypeAllele::Unphased(i) | GenotypeAllele::Phased(i) => Some(*i as u32),
+            GenotypeAllele::Unphased(i) | GenotypeAllele::Phased(i) => Some(i as u32),
             GenotypeAllele::UnphasedMissing | GenotypeAllele::PhasedMissing => None,
         }
     }

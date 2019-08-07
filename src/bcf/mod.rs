@@ -1231,7 +1231,7 @@ mod tests {
             // Setup empty record, filled below.
             let mut record = writer.empty_record();
 
-            record.set_rid(&Some(0));
+            record.set_rid(Some(0));
             assert_eq!(record.rid().unwrap(), 0);
 
             record.set_pos(12);
@@ -1253,7 +1253,9 @@ mod tests {
             record.set_filters(&[header.name_to_id(b"q10").unwrap()]);
             record.push_filter(header.name_to_id(b"s50").unwrap());
             record.remove_filter(header.name_to_id(b"q10").unwrap(), true);
+            assert!(!record.has_filter(header.name_to_id(b"q10").unwrap()));
             record.push_filter(header.name_to_id(b"q10").unwrap());
+            assert!(record.has_filter(header.name_to_id(b"q10").unwrap()));
 
             record
                 .set_alleles(&["C".as_bytes(), "T".as_bytes(), "G".as_bytes()])
