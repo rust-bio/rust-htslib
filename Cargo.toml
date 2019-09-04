@@ -21,11 +21,11 @@ itertools = "0.8"
 quick-error = "1.2"
 newtype_derive = "0.1"
 custom_derive = "0.1"
-url = "1.4"
+url = "2.1.0"
 ieee754 = "0.2"
-lazy_static = "0.2"
-bitflags = "0.9"
-regex = "1.0"
+lazy_static = "1.4.0"
+bitflags = "1.1.0"
+regex = "1.2.1"
 linear-map = "1.2.0"
 serde = { version = "^1", optional = true }
 bio-types = ">=0.5.1"
@@ -37,11 +37,11 @@ lzma = ["lzma-sys"]
 
 [dev-dependencies]
 tempdir = "0.3"
-bincode = "1.0"
+bincode = "1.1.4"
 serde_json = "1.0"
-pretty_assertions = "0.5.1"
+pretty_assertions = "0.6.1"
 
 [build-dependencies]
-fs-utils = "1.0"
-bindgen = ">=0.37"
+fs-utils = "1.1.1"
+bindgen = {version = "0.51.0", default-features = false}
 cc = "1.0"
