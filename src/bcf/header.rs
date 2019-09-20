@@ -11,6 +11,8 @@ use crate::htslib;
 
 use linear_map::LinearMap;
 
+use crate::bcf::{Result, errors::Error};
+
 pub type SampleSubset = Vec<i32>;
 
 custom_derive! {
@@ -75,7 +77,7 @@ impl Header {
     pub fn from_template_subset(
         header: &HeaderView,
         samples: &[&[u8]],
-    ) -> Result<Self, SubsetError> {
+    ) -> Result<Self> {
         let mut imap = vec![0; samples.len()];
         let names: Vec<_> = samples
             .iter()
@@ -91,7 +93,7 @@ impl Header {
             )
         };
         if inner.is_null() {
-            Err(SubsetError::DuplicateSampleName)
+            Err(Error::DuplicateSampleNames)
         } else {
             Ok(Header {
                 inner,
@@ -272,7 +274,7 @@ impl HeaderView {
         self.inner().n[htslib::BCF_DT_CTG as usize] as u32
     }
 
-    pub fn rid2name(&self, rid: u32) -> Result<&[u8], RidIndexError> {
+    pub fn rid2name(&self, rid: u32) -> Result<&[u8]> {
         if rid <= self.contig_count() {
             unsafe {
                 let dict = self.inner().id[htslib::BCF_DT_CTG as usize];
@@ -280,30 +282,28 @@ impl HeaderView {
                 Ok(ffi::CStr::from_ptr(ptr).to_bytes())
             }
         } else {
-            Err(RidIndexError::UnknownIndex(rid))
+            Err(Error::UnknownRID { rid })
         }
     }
 
-    pub fn name2rid(&self, name: &[u8]) -> Result<u32, RidError> {
+    pub fn name2rid(&self, name: &[u8]) -> Result<u32> {
         unsafe {
             match htslib::bcf_hdr_id2int(
                 self.inner,
                 htslib::BCF_DT_CTG as i32,
                 ffi::CString::new(name).unwrap().as_ptr() as *mut i8,
             ) {
-                -1 => Err(RidError::UnknownSequence(
-                    str::from_utf8(name).unwrap().to_owned(),
-                )),
+                -1 => Err(Error::UnknownContig { contig: str::from_utf8(name).unwrap().to_owned() }),
                 i => Ok(i as u32),
             }
         }
     }
 
-    pub fn info_type(&self, tag: &[u8]) -> Result<(TagType, TagLength), TagTypeError> {
+    pub fn info_type(&self, tag: &[u8]) -> Result<(TagType, TagLength)> {
         self.tag_type(tag, htslib::BCF_HL_INFO)
     }
 
-    pub fn format_type(&self, tag: &[u8]) -> Result<(TagType, TagLength), TagTypeError> {
+    pub fn format_type(&self, tag: &[u8]) -> Result<(TagType, TagLength)> {
         self.tag_type(tag, htslib::BCF_HL_FMT)
     }
 
@@ -311,7 +311,8 @@ impl HeaderView {
         &self,
         tag: &[u8],
         hdr_type: ::libc::c_uint,
-    ) -> Result<(TagType, TagLength), TagTypeError> {
+    ) -> Result<(TagType, TagLength)> {
+        let tag_desc = || str::from_utf8(tag).unwrap().to_owned();
         let (_type, length, num_values) = unsafe {
             let id = htslib::bcf_hdr_id2int(
                 self.inner,
@@ -319,9 +320,7 @@ impl HeaderView {
                 ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
             );
             if id < 0 {
-                return Err(TagTypeError::UndefinedTag(
-                    str::from_utf8(tag).unwrap().to_owned(),
-                ));
+                return Err(Error::UndefinedTag { tag: tag_desc() });
             }
             let n = (*self.inner).n[htslib::BCF_DT_ID as usize] as usize;
             let entry = slice::from_raw_parts((*self.inner).id[htslib::BCF_DT_ID as usize], n);
@@ -333,7 +332,7 @@ impl HeaderView {
             htslib::BCF_HT_INT => TagType::Integer,
             htslib::BCF_HT_REAL => TagType::Float,
             htslib::BCF_HT_STR => TagType::String,
-            _ => return Err(TagTypeError::UnexpectedTagType),
+            _ => return Err(Error::UnexpectedType { tag: tag_desc() }),
         };
         let length = match length as ::libc::c_uint {
             htslib::BCF_VL_FIXED => TagLength::Fixed(num_values),
@@ -341,21 +340,21 @@ impl HeaderView {
             htslib::BCF_VL_A => TagLength::AltAlleles,
             htslib::BCF_VL_R => TagLength::Alleles,
             htslib::BCF_VL_G => TagLength::Genotypes,
-            _ => return Err(TagTypeError::UnexpectedTagType),
+            _ => return Err(Error::UnexpectedType { tag: tag_desc() }),
         };
 
         Ok((_type, length))
     }
 
     /// Convert string ID (e.g., for a `FILTER` value) to its numeric identifier.
-    pub fn name_to_id(&self, id: &[u8]) -> Result<Id, IdError> {
+    pub fn name_to_id(&self, id: &[u8]) -> Result<Id> {
         unsafe {
             match htslib::bcf_hdr_id2int(
                 self.inner,
                 htslib::BCF_DT_ID as i32,
                 ffi::CString::new(id).unwrap().as_ptr() as *const i8,
             ) {
-                -1 => Err(IdError::UnknownID(str::from_utf8(id).unwrap().to_owned())),
+                -1 => Err(Error::UnknownID { id: str::from_utf8(id).unwrap().to_owned() }),
                 i => Ok(Id(i as u32)),
             }
         }
@@ -373,16 +372,16 @@ impl HeaderView {
     }
 
     /// Convert string sample name to its numeric identifier.
-    pub fn sample_to_id(&self, id: &[u8]) -> Result<Id, SampleError> {
+    pub fn sample_to_id(&self, id: &[u8]) -> Result<Id> {
         unsafe {
             match htslib::bcf_hdr_id2int(
                 self.inner,
                 htslib::BCF_DT_SAMPLE as i32,
                 ffi::CString::new(id).unwrap().as_ptr() as *const i8,
             ) {
-                -1 => Err(SampleError::UnknownSample(
-                    str::from_utf8(id).unwrap().to_owned(),
-                )),
+                -1 => Err(Error::UnknownSample {
+                    name: str::from_utf8(id).unwrap().to_owned(),
+                }),
                 i => Ok(Id(i as u32)),
             }
         }
@@ -488,66 +487,4 @@ pub enum TagLength {
     Alleles,
     Genotypes,
     Variable,
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum RidError {
-        UnknownSequence(name: String) {
-            description("unknown sequence")
-            display("sequence {} not found in header", name)
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum RidIndexError {
-        UnknownIndex(rid: u32) {
-            description("unknown index")
-            display("index {} not found in header", rid)
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum IdError {
-        UnknownID(name: String) {
-            description("unknown ID")
-            display("ID {} not found in header", name)
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum SampleError {
-        UnknownSample(name: String) {
-            description("unknown sample")
-            display("sample {} not found in header", name)
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum SubsetError {
-        DuplicateSampleName {
-            description("duplicate sample name when subsetting header")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum TagTypeError {
-        UnexpectedTagType {
-            description("unexpected tag type in header")
-        }
-        UndefinedTag(name: String) {
-            description("undefined tag")
-            display("tag {} is undefined in header", name)
-        }
-    }
 }

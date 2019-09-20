@@ -94,6 +94,8 @@ extern crate bzip2_sys;
 #[cfg(feature = "lzma")]
 extern crate lzma_sys;
 
+extern crate snafu;
+
 pub mod bam;
 pub mod bcf;
 pub mod htslib;

@@ -11,12 +11,15 @@ use std::i32;
 use std::ptr;
 use std::rc::Rc;
 use std::slice;
+use std::str;
 
 use ieee754::Ieee754;
 use itertools::Itertools;
 
 use crate::bcf::header::{HeaderView, Id};
 use crate::htslib;
+use crate::bcf::Error;
+use crate::bcf::errors::Result;
 
 const MISSING_INTEGER: i32 = i32::MIN;
 const VECTOR_END_INTEGER: i32 = i32::MIN + 1;
@@ -179,7 +182,7 @@ impl Record {
     }
 
     /// Update the ID string to the given value.
-    pub fn set_id(&mut self, id: &[u8]) -> Result<(), IdWriteError> {
+    pub fn set_id(&mut self, id: &[u8]) -> Result<()> {
         if unsafe {
             htslib::bcf_update_id(
                 self.header().inner,
@@ -190,12 +193,12 @@ impl Record {
         {
             Ok(())
         } else {
-            Err(IdWriteError::Some)
+            Err(Error::WriteID)
         }
     }
 
     /// Clear the ID column (set it to `"."`).
-    pub fn clear_id(&mut self) -> Result<(), IdWriteError> {
+    pub fn clear_id(&mut self) -> Result<()> {
         if unsafe {
             htslib::bcf_update_id(
                 self.header().inner,
@@ -206,12 +209,12 @@ impl Record {
         {
             Ok(())
         } else {
-            Err(IdWriteError::Some)
+            Err(Error::WriteID)
         }
     }
 
     /// Add the ID string (the ID field is semicolon-separated), checking for duplicates.
-    pub fn push_id(&mut self, id: &[u8]) -> Result<(), IdWriteError> {
+    pub fn push_id(&mut self, id: &[u8]) -> Result<()> {
         if unsafe {
             htslib::bcf_add_id(
                 self.header().inner,
@@ -222,7 +225,7 @@ impl Record {
         {
             Ok(())
         } else {
-            Err(IdWriteError::Some)
+            Err(Error::WriteID)
         }
     }
 
@@ -366,9 +369,9 @@ impl Record {
     // TODO fn push_genotypes(&mut self, Genotypes) {}?
 
     /// Get genotypes as vector of one `Genotype` per sample.
-    pub fn genotypes(&mut self) -> Result<Genotypes<'_>, FormatReadError> {
+    pub fn genotypes(&mut self) -> Result<Genotypes<'_>> {
         Ok(Genotypes {
-            encoded: r#try!(self.format(b"GT").integer()),
+            encoded: self.format(b"GT").integer()?,
         })
     }
 
@@ -388,7 +391,7 @@ impl Record {
     /// # Errors
     ///
     /// Returns error if tag is not present in header.
-    pub fn push_format_integer(&mut self, tag: &[u8], data: &[i32]) -> Result<(), TagWriteError> {
+    pub fn push_format_integer(&mut self, tag: &[u8], data: &[i32]) -> Result<()> {
         self.push_format(tag, data, htslib::BCF_HT_INT)
     }
 
@@ -403,7 +406,7 @@ impl Record {
     /// # Errors
     ///
     /// Returns error if tag is not present in header.
-    pub fn push_format_float(&mut self, tag: &[u8], data: &[f32]) -> Result<(), TagWriteError> {
+    pub fn push_format_float(&mut self, tag: &[u8], data: &[f32]) -> Result<()> {
         self.push_format(tag, data, htslib::BCF_HT_REAL)
     }
 
@@ -418,13 +421,13 @@ impl Record {
     /// # Errors
     ///
     /// Returns error if tag is not present in header.
-    pub fn push_format_char(&mut self, tag: &[u8], data: &[u8]) -> Result<(), TagWriteError> {
+    pub fn push_format_char(&mut self, tag: &[u8], data: &[u8]) -> Result<()> {
         self.push_format(tag, data, htslib::BCF_HT_STR)
     }
 
     /// Add a format tag. Data is a flattened two-dimensional array.
     /// The first dimension contains one array for each sample.
-    fn push_format<T>(&mut self, tag: &[u8], data: &[T], ht: u32) -> Result<(), TagWriteError> {
+    fn push_format<T>(&mut self, tag: &[u8], data: &[T], ht: u32) -> Result<()> {
         unsafe {
             if htslib::bcf_update_format(
                 self.header().inner,
@@ -437,7 +440,7 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(TagWriteError::Some)
+                Err(Error::WriteTag { tag: str::from_utf8(tag).unwrap().to_owned() })
             }
         }
     }
@@ -459,7 +462,7 @@ impl Record {
         &mut self,
         tag: &[u8],
         data: &[D],
-    ) -> Result<(), TagWriteError> {
+    ) -> Result<()> {
         assert!(
             !data.is_empty(),
             "given string data must have at least 1 element"
@@ -483,33 +486,33 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(TagWriteError::Some)
+                Err(Error::WriteTag { tag: str::from_utf8(tag).unwrap().to_owned() })
             }
         }
     }
 
     /// Add/replace an integer-typed INFO entry.
-    pub fn push_info_integer(&mut self, tag: &[u8], data: &[i32]) -> Result<(), TagWriteError> {
+    pub fn push_info_integer(&mut self, tag: &[u8], data: &[i32]) -> Result<()> {
         self.push_info(tag, data, htslib::BCF_HT_INT)
     }
 
     /// Remove the integer-typed INFO entry.
-    pub fn clear_info_integer(&mut self, tag: &[u8]) -> Result<(), TagWriteError> {
+    pub fn clear_info_integer(&mut self, tag: &[u8]) -> Result<()> {
         self.push_info::<i32>(tag, &[], htslib::BCF_HT_INT)
     }
 
     /// Add/replace a float-typed INFO entry.
-    pub fn push_info_float(&mut self, tag: &[u8], data: &[f32]) -> Result<(), TagWriteError> {
+    pub fn push_info_float(&mut self, tag: &[u8], data: &[f32]) -> Result<()> {
         self.push_info(tag, data, htslib::BCF_HT_REAL)
     }
 
     /// Remove the float-typed INFO entry.
-    pub fn clear_info_float(&mut self, tag: &[u8]) -> Result<(), TagWriteError> {
+    pub fn clear_info_float(&mut self, tag: &[u8]) -> Result<()> {
         self.push_info::<u8>(tag, &[], htslib::BCF_HT_REAL)
     }
 
     /// Add/replace an INFO tag.
-    fn push_info<T>(&mut self, tag: &[u8], data: &[T], ht: u32) -> Result<(), TagWriteError> {
+    fn push_info<T>(&mut self, tag: &[u8], data: &[T], ht: u32) -> Result<()> {
         unsafe {
             if htslib::bcf_update_info(
                 self.header().inner,
@@ -522,28 +525,28 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(TagWriteError::Some)
+                Err(Error::WriteTag { tag: str::from_utf8(tag).unwrap().to_owned() })
             }
         }
     }
 
     /// Set flag into the INFO column.
-    pub fn push_info_flag(&mut self, tag: &[u8]) -> Result<(), TagWriteError> {
+    pub fn push_info_flag(&mut self, tag: &[u8]) -> Result<()> {
         self.push_info_string_impl(tag, &["".as_bytes()], htslib::BCF_HT_FLAG)
     }
 
     /// Remove the flag from the INFO column.
-    pub fn clear_info_flag(&mut self, tag: &[u8]) -> Result<(), TagWriteError> {
+    pub fn clear_info_flag(&mut self, tag: &[u8]) -> Result<()> {
         self.push_info_string_impl(tag, &[], htslib::BCF_HT_FLAG)
     }
 
     /// Add/replace a string-typed INFO entry.
-    pub fn push_info_string(&mut self, tag: &[u8], data: &[&[u8]]) -> Result<(), TagWriteError> {
+    pub fn push_info_string(&mut self, tag: &[u8], data: &[&[u8]]) -> Result<()> {
         self.push_info_string_impl(tag, data, htslib::BCF_HT_STR)
     }
 
     /// Remove the string field from the INFO column.
-    pub fn clear_info_string(&mut self, tag: &[u8]) -> Result<(), TagWriteError> {
+    pub fn clear_info_string(&mut self, tag: &[u8]) -> Result<()> {
         self.push_info_string_impl(tag, &[], htslib::BCF_HT_STR)
     }
 
@@ -553,7 +556,7 @@ impl Record {
         tag: &[u8],
         data: &[&[u8]],
         ht: u32,
-    ) -> Result<(), TagWriteError> {
+    ) -> Result<()> {
         let mut buf: Vec<u8> = Vec::new();
         for (i, &s) in data.iter().enumerate() {
             if i > 0 {
@@ -579,7 +582,7 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(TagWriteError::Some)
+                Err(Error::WriteTag { tag: str::from_utf8(tag).unwrap().to_owned() })
             }
         }
     }
@@ -613,6 +616,16 @@ impl Record {
             -1 => Err(RemoveAllelesError::Some),
             _ => Ok(()),
         }
+    }
+
+    /// Provide short description of record for locating it in the BCF/VCF file.
+    pub fn desc(&self) -> String {
+        if let Some(rid) = self.rid() {
+            if let Ok(contig) = self.header.rid2name(rid) {
+                return format!("{}:{}", str::from_utf8(contig).unwrap(), self.pos())
+            }
+        }
+        "".to_owned()
     }
 }
 
@@ -718,7 +731,13 @@ pub struct Info<'a> {
 }
 
 impl<'a> Info<'a> {
-    fn data(&mut self, data_type: u32) -> Result<Option<(usize, i32)>, InfoReadError> {
+
+    /// Short description of info tag.
+    pub fn desc(&self) -> String {
+        str::from_utf8(self.tag).unwrap().to_owned()
+    }
+
+    fn data(&mut self, data_type: u32) -> Result<Option<(usize, i32)>> {
         let mut n: i32 = self.record.buffer_len;
         let ret = unsafe {
             htslib::bcf_get_info_values(
@@ -733,8 +752,8 @@ impl<'a> Info<'a> {
         self.record.buffer_len = n;
 
         match ret {
-            -1 => Err(InfoReadError::UndefinedTag),
-            -2 => Err(InfoReadError::UnexpectedType),
+            -1 => Err(Error::UndefinedTag { tag: self.desc() }),
+            -2 => Err(Error::UnexpectedType { tag: self.desc() }),
             -3 => Ok(None),
             ret => Ok(Some((n as usize, ret))),
         }
@@ -743,7 +762,7 @@ impl<'a> Info<'a> {
     /// Get integers from tag. `None` if tag not present in record.
     ///
     /// Import `bcf::record::Numeric` for missing value handling.
-    pub fn integer(&mut self) -> Result<Option<&'a [i32]>, InfoReadError> {
+    pub fn integer(&mut self) -> Result<Option<&'a [i32]>> {
         self.data(htslib::BCF_HT_INT).map(|data| {
             data.map(|(n, _)| {
                 trim_slice(unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) })
@@ -754,7 +773,7 @@ impl<'a> Info<'a> {
     /// Get floats from tag. `None` if tag not present in record.
     ///
     /// Import `bcf::record::Numeric` for missing value handling.
-    pub fn float(&mut self) -> Result<Option<&'a [f32]>, InfoReadError> {
+    pub fn float(&mut self) -> Result<Option<&'a [f32]>> {
         self.data(htslib::BCF_HT_REAL).map(|data| {
             data.map(|(n, _)| {
                 trim_slice(unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) })
@@ -763,7 +782,7 @@ impl<'a> Info<'a> {
     }
 
     /// Get flags from tag. `false` if not set.
-    pub fn flag(&mut self) -> Result<bool, InfoReadError> {
+    pub fn flag(&mut self) -> Result<bool> {
         self.data(htslib::BCF_HT_FLAG).map(|data| match data {
             Some((_, ret)) => ret == 1,
             None => false,
@@ -771,7 +790,7 @@ impl<'a> Info<'a> {
     }
 
     /// Get strings from tag. `None` if tag not present in record.
-    pub fn string(&mut self) -> Result<Option<Vec<&'a [u8]>>, InfoReadError> {
+    pub fn string(&mut self) -> Result<Option<Vec<&'a [u8]>>> {
         self.data(htslib::BCF_HT_STR).map(|data| {
             data.map(|(n, ret)| {
                 unsafe { slice::from_raw_parts(self.record.buffer as *const u8, ret as usize) }
@@ -818,6 +837,11 @@ impl<'a> Format<'a> {
         Format { record, tag, inner }
     }
 
+    /// Provide short description of format entry (just the tag name).
+    pub fn desc(&self) -> String {
+        str::from_utf8(self.tag).unwrap().to_owned()
+    }
+
     pub fn inner(&self) -> &htslib::bcf_fmt_t {
         unsafe { &*self.inner }
     }
@@ -831,7 +855,7 @@ impl<'a> Format<'a> {
     }
 
     /// Read and decode format data into a given type.
-    fn data(&mut self, data_type: u32) -> Result<(usize, i32), FormatReadError> {
+    fn data(&mut self, data_type: u32) -> Result<(usize, i32)> {
         let mut n: i32 = self.record.buffer_len;
         let ret = unsafe {
             htslib::bcf_get_format_values(
@@ -845,15 +869,15 @@ impl<'a> Format<'a> {
         };
         self.record.buffer_len = n;
         match ret {
-            -1 => Err(FormatReadError::UndefinedTag),
-            -2 => Err(FormatReadError::UnexpectedType),
-            -3 => Err(FormatReadError::MissingTag),
+            -1 => Err(Error::UndefinedTag { tag: self.desc() }),
+            -2 => Err(Error::UnexpectedType { tag: self.desc() }),
+            -3 => Err(Error::MissingTag { tag: self.desc(), record: self.record.desc() }),
             ret => Ok((n as usize, ret)),
         }
     }
 
     /// Get format data as integers.
-    pub fn integer(&mut self) -> Result<Vec<&'a [i32]>, FormatReadError> {
+    pub fn integer(&mut self) -> Result<Vec<&'a [i32]>> {
         self.data(htslib::BCF_HT_INT).map(|(n, _)| {
             unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) }
                 .chunks(self.values_per_sample())
@@ -863,7 +887,7 @@ impl<'a> Format<'a> {
     }
 
     /// Get format data as floats.
-    pub fn float(&mut self) -> Result<Vec<&'a [f32]>, FormatReadError> {
+    pub fn float(&mut self) -> Result<Vec<&'a [f32]>> {
         self.data(htslib::BCF_HT_REAL).map(|(n, _)| {
             unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) }
                 .chunks(self.values_per_sample())
@@ -873,7 +897,7 @@ impl<'a> Format<'a> {
     }
 
     /// Get format data as byte slices. To obtain the values strings, use `std::str::from_utf8`.
-    pub fn string(&mut self) -> Result<Vec<&'a [u8]>, FormatReadError> {
+    pub fn string(&mut self) -> Result<Vec<&'a [u8]>> {
         self.data(htslib::BCF_HT_STR).map(|(n, _)| {
             unsafe { slice::from_raw_parts(self.record.buffer as *const u8, n) }
                 .chunks(self.values_per_sample())
@@ -915,65 +939,6 @@ impl<'a> Iterator for Filters<'a> {
             let i = self.idx as isize;
             self.idx += 1;
             Some(Id(unsafe { *self.record.inner().d.flt.offset(i) } as u32))
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum IterFilterError {
-        Some {
-            description("problem enumerating FILTER entries")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum InfoReadError {
-        UndefinedTag {
-            description("tag undefined in header")
-        }
-        UnexpectedType {
-            description("tag type differs from header definition")
-        }
-        ReadFailed {
-            description("discrepancy between allocated memory and written data for INFO tag \
-                         (this is likely a bug in htslib, see \
-                         https://github.com/samtools/htslib/issues/832)")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum FormatReadError {
-        UndefinedTag {
-            description("tag undefined in header")
-        }
-        UnexpectedType {
-            description("tag type differs from header definition")
-        }
-        MissingTag {
-            description("tag missing from record")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum TagWriteError {
-        Some {
-            description("error writing tag to record")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum IdWriteError {
-        Some {
-            description("error writing ID to record")
         }
     }
 }

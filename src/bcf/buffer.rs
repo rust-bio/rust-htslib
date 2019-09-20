@@ -129,11 +129,10 @@ impl RecordBuffer {
         // extend to the right
         loop {
             let mut rec = self.reader.empty_record();
-            if let Err(e) = self.reader.read(&mut rec) {
-                if e.is_eof() {
-                    break;
-                }
-                return Err(Box::new(e));
+
+            if !self.reader.read(&mut rec)? {
+                // EOF
+                break;
             }
             let pos = rec.pos();
             if let Some(rec_rid) = rec.rid() {
