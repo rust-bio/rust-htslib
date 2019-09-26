@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Module for working with BAM and CRAM files.
+//! Module for working with SAM, BAM, and CRAM files.
 
 pub mod buffer;
 pub mod errors;
