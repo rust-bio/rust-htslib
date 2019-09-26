@@ -48,7 +48,18 @@ use std::path::Path;
 use std::ptr;
 use url::Url;
 
+pub mod errors;
+
 use crate::htslib;
+use crate::tbx::errors::{Result, Error};
+
+fn path_as_bytes<'a, P: 'a + AsRef<Path>>(path: P, must_exist: bool) -> Result<Vec<u8>> {
+    if path.as_ref().exists() || !must_exist {
+        Ok(path.as_ref().to_str().ok_or(Error::NonUnicodePath)?.as_bytes().to_owned())
+    } else {
+        Err(Error::FileNotFound { path: path.as_ref().to_owned() })
+    }
+}
 
 /// A trait for a Tabix reader with a read method.
 pub trait Read: Sized {
@@ -60,7 +71,10 @@ pub trait Read: Sized {
     /// # Arguments
     ///
     /// * `record` - the `Vec<u8>` to be filled
-    fn read(&mut self, record: &mut Vec<u8>) -> Result<(), ReadError>;
+    /// 
+    /// # Returns
+    /// Ok(true) if record was read, Ok(false) if no more record in file
+    fn read(&mut self, record: &mut Vec<u8>) -> Result<bool>;
 
     /// Iterator over the lines/records of the seeked region.
     ///
@@ -115,14 +129,11 @@ impl Reader {
     /// # Arguments
     ///
     /// * `path` - the path to open.
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, TabixReaderPathError> {
-        match path.as_ref().to_str() {
-            Some(p) if path.as_ref().exists() => Ok(r#try!(Self::new(p.as_bytes()))),
-            _ => Err(TabixReaderPathError::InvalidPath),
-        }
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
+        Self::new(&path_as_bytes(path, true)?)
     }
 
-    pub fn from_url(url: &Url) -> Result<Self, TabixReaderError> {
+    pub fn from_url(url: &Url) -> Result<Self> {
         Self::new(url.as_str().as_bytes())
     }
 
@@ -131,7 +142,7 @@ impl Reader {
     /// # Arguments
     ///
     /// * `path` - the path.
-    fn new(path: &[u8]) -> Result<Self, TabixReaderError> {
+    fn new(path: &[u8]) -> Result<Self> {
         let path = ffi::CString::new(path).unwrap();
         let hts_file =
             unsafe { htslib::hts_open(path.as_ptr(), ffi::CString::new("r").unwrap().as_ptr()) };
@@ -139,7 +150,7 @@ impl Reader {
             if (*hts_file).format.category != htslib::htsFormatCategory_region_list
                 && (*hts_file).format.format != htslib::htsExactFormat_sam
             {
-                return Err(TabixReaderError::InvalidIndex);
+                return Err(Error::InvalidIndex);
             }
         }
 
@@ -162,7 +173,7 @@ impl Reader {
         }
 
         if tbx.is_null() {
-            Err(TabixReaderError::InvalidIndex)
+            Err(Error::InvalidIndex)
         } else {
             Ok(Reader {
                 header,
@@ -179,8 +190,7 @@ impl Reader {
     }
 
     /// Get sequence/target ID from sequence name.
-    pub fn tid(&self, name: &str) -> Result<u32, SequenceLookupError> {
-        // TODO: naming?
+    pub fn tid(&self, name: &str) -> Result<u32> {
         let res = unsafe {
             htslib::tbx_name2id(
                 self.tbx,
@@ -188,14 +198,14 @@ impl Reader {
             )
         };
         if res < 0 {
-            Err(SequenceLookupError::Some)
+            Err(Error::UnknownSequence { sequence: name.to_owned() })
         } else {
             Ok(res as u32)
         }
     }
 
     /// Fetch region given by numeric sequence number and 0-based begin and end position.
-    pub fn fetch(&mut self, tid: u32, start: u32, end: u32) -> Result<(), FetchError> {
+    pub fn fetch(&mut self, tid: u32, start: u32, end: u32) -> Result<()> {
         self.tid = tid as i32;
         self.start = start as i32;
         self.end = end as i32;
@@ -216,7 +226,7 @@ impl Reader {
         };
         if itr.is_null() {
             self.itr = None;
-            Err(FetchError::Some)
+            Err(Error::Fetch)
         } else {
             self.itr = Some(itr);
             Ok(())
@@ -251,12 +261,12 @@ impl Reader {
     /// # Arguments
     ///
     /// * `n_threads` - number of extra background reader threads to use
-    pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
+    pub fn set_threads(&mut self, n_threads: usize) -> Result<()> {
         assert!(n_threads > 0, "n_threads must be > 0");
 
         let r = unsafe { htslib::hts_set_threads(self.hts_file, n_threads as i32) };
         if r != 0 {
-            Err(ThreadingError::Some)
+            Err(Error::SetThreads)
         } else {
             Ok(())
         }
@@ -269,7 +279,7 @@ fn overlap(tid1: i32, begin1: i32, end1: i32, tid2: i32, begin2: i32, end2: i32)
 }
 
 impl Read for Reader {
-    fn read(&mut self, record: &mut Vec<u8>) -> Result<(), ReadError> {
+    fn read(&mut self, record: &mut Vec<u8>) -> Result<bool> {
         match self.itr {
             Some(itr) => {
                 loop {
@@ -284,9 +294,9 @@ impl Read for Reader {
                     };
                     // Handle errors first.
                     if ret == -1 {
-                        return Err(ReadError::NoMoreRecord);
+                        return Ok(false);
                     } else if ret == -2 {
-                        return Err(ReadError::Truncated);
+                        return Err(Error::TruncatedRecord);
                     } else if ret < 0 {
                         panic!("Return value should not be <0 but was: {}", ret);
                     }
@@ -297,11 +307,11 @@ impl Read for Reader {
                     if overlap(self.tid, self.start, self.end, tid, start, end) {
                         *record =
                             unsafe { Vec::from(ffi::CStr::from_ptr(self.buf.s).to_str().unwrap()) };
-                        return Ok(());
+                        return Ok(true);
                     }
                 }
             }
-            _ => Err(ReadError::NoIter),
+            _ => Err(Error::NoIter),
         }
     }
 
@@ -333,102 +343,14 @@ pub struct Records<'a, R: Read> {
 }
 
 impl<'a, R: Read> Iterator for Records<'a, R> {
-    type Item = Result<Vec<u8>, ReadError>;
+    type Item = Result<Vec<u8>>;
 
-    fn next(&mut self) -> Option<Result<Vec<u8>, ReadError>> {
+    fn next(&mut self) -> Option<Result<Vec<u8>>> {
         let mut record = Vec::new();
         match self.reader.read(&mut record) {
-            Err(ReadError::NoMoreRecord) => None,
-            Ok(()) => Some(Ok(record)),
+            Ok(false) => None,
+            Ok(true) => Some(Ok(record)),
             Err(err) => Some(Err(err)),
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum ReadError {
-        NoIter {
-            description("previous iterator generation failed")
-        }
-        Truncated {
-            description("truncated record")
-        }
-        Invalid {
-            description("invalid record")
-        }
-        NoMoreRecord {
-            description("no more record")
-        }
-    }
-}
-
-impl ReadError {
-    /// Returns true if no record has been read because the end of the file was reached.
-    pub fn is_eof(&self) -> bool {
-        match self {
-            ReadError::NoMoreRecord => true,
-            _ => false,
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum TabixReaderError {
-        InvalidIndex {
-            description("invalid index")
-        }
-        BGZFError(err: BGZFError) {
-            from()
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum TabixReaderPathError {
-        InvalidPath {
-            description("invalid path")
-        }
-        TabixReaderError(err: TabixReaderError) {
-            from()
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum BGZFError {
-        Some {
-            description("error reading BGZF file")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum ThreadingError {
-        Some {
-            description("error setting threads for multi-threaded I/O")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum FetchError {
-        Some {
-            description("error fetching a locus")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum SequenceLookupError {
-        Some {
-            description("error looking up a sequence name")
         }
     }
 }
@@ -473,7 +395,7 @@ mod tests {
         let mut record = Vec::new();
         assert!(reader.read(&mut record).is_ok());
         assert_eq!(record, Vec::from("chr1\t1001\t1002"));
-        assert!(reader.read(&mut record).is_err());
+        assert_eq!(reader.read(&mut record), Ok(false)); // EOF
     }
 
     #[test]

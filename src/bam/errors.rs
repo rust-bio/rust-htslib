@@ -3,22 +3,22 @@ use std::path::PathBuf;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Snafu, Debug)]
+#[derive(Snafu, Debug, PartialEq)]
 #[snafu(visibility = "pub")]
 pub enum Error {
-    #[snafu(display("Error parsing CIGAR string: {}.", msg))]
+    #[snafu(display("error parsing CIGAR string: {}", msg))]
     ParseCigar { msg: String },
-    #[snafu(display("Unexpected CIGAR operation: {}.", msg))]
+    #[snafu(display("unexpected CIGAR operation: {}", msg))]
     UnexpectedCigarOperation { msg: String },
-    #[snafu(display("Error parsing SAM record: {}.", rec))]
+    #[snafu(display("error parsing SAM record: {}", rec))]
     ParseSAM { rec: String },
-    #[snafu(display("Error setting threads for writing SAM/BAM/CRAM file(s)."))]
+    #[snafu(display("error setting threads for writing SAM/BAM/CRAM file(s)"))]
     SetThreads,
-    #[snafu(display("Invalid reference path {}.", path.display()))]
+    #[snafu(display("invalid reference path {}", path.display()))]
     InvalidReferencePath { path: PathBuf },
-    #[snafu(display("Invalid compression level {}.", level))]
+    #[snafu(display("invalid compression level {}", level))]
     InvalidCompressionLevel { level: u32 },
-    #[snafu(display("File not found: {}.", path.display()))]
+    #[snafu(display("file not found: {}", path.display()))]
     FileNotFound { path: PathBuf },
     #[snafu(display("invalid (non-unique) characters in path"))]
     NonUnicodePath,
