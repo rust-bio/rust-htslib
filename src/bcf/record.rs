@@ -16,10 +16,10 @@ use std::str;
 use ieee754::Ieee754;
 use itertools::Itertools;
 
-use crate::bcf::header::{HeaderView, Id};
-use crate::htslib;
-use crate::bcf::Error;
 use crate::bcf::errors::Result;
+use crate::bcf::header::{HeaderView, Id};
+use crate::bcf::Error;
+use crate::htslib;
 
 const MISSING_INTEGER: i32 = i32::MIN;
 const VECTOR_END_INTEGER: i32 = i32::MIN + 1;
@@ -193,7 +193,7 @@ impl Record {
         {
             Ok(())
         } else {
-            Err(Error::WriteID)
+            Err(Error::SetValues)
         }
     }
 
@@ -209,7 +209,7 @@ impl Record {
         {
             Ok(())
         } else {
-            Err(Error::WriteID)
+            Err(Error::SetValues)
         }
     }
 
@@ -225,7 +225,7 @@ impl Record {
         {
             Ok(())
         } else {
-            Err(Error::WriteID)
+            Err(Error::SetValues)
         }
     }
 
@@ -317,7 +317,7 @@ impl Record {
     }
 
     /// Set alleles.
-    pub fn set_alleles(&mut self, alleles: &[&[u8]]) -> Result<(), AlleleWriteError> {
+    pub fn set_alleles(&mut self, alleles: &[&[u8]]) -> Result<()> {
         let cstrings: Vec<ffi::CString> = alleles
             .iter()
             .map(|vec| ffi::CString::new(*vec).unwrap())
@@ -337,7 +337,7 @@ impl Record {
         {
             Ok(())
         } else {
-            Err(AlleleWriteError::Some)
+            Err(Error::SetValues)
         }
     }
 
@@ -440,7 +440,9 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(Error::WriteTag { tag: str::from_utf8(tag).unwrap().to_owned() })
+                Err(Error::SetTag {
+                    tag: str::from_utf8(tag).unwrap().to_owned(),
+                })
             }
         }
     }
@@ -458,11 +460,7 @@ impl Record {
     /// # Errors
     ///
     /// Returns error if tag is not present in header.
-    pub fn push_format_string<D: Borrow<[u8]>>(
-        &mut self,
-        tag: &[u8],
-        data: &[D],
-    ) -> Result<()> {
+    pub fn push_format_string<D: Borrow<[u8]>>(&mut self, tag: &[u8], data: &[D]) -> Result<()> {
         assert!(
             !data.is_empty(),
             "given string data must have at least 1 element"
@@ -486,7 +484,9 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(Error::WriteTag { tag: str::from_utf8(tag).unwrap().to_owned() })
+                Err(Error::SetTag {
+                    tag: str::from_utf8(tag).unwrap().to_owned(),
+                })
             }
         }
     }
@@ -525,7 +525,9 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(Error::WriteTag { tag: str::from_utf8(tag).unwrap().to_owned() })
+                Err(Error::SetTag {
+                    tag: str::from_utf8(tag).unwrap().to_owned(),
+                })
             }
         }
     }
@@ -551,12 +553,7 @@ impl Record {
     }
 
     /// Add an string-valued INFO tag.
-    fn push_info_string_impl(
-        &mut self,
-        tag: &[u8],
-        data: &[&[u8]],
-        ht: u32,
-    ) -> Result<()> {
+    fn push_info_string_impl(&mut self, tag: &[u8], data: &[&[u8]], ht: u32) -> Result<()> {
         let mut buf: Vec<u8> = Vec::new();
         for (i, &s) in data.iter().enumerate() {
             if i > 0 {
@@ -582,20 +579,22 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(Error::WriteTag { tag: str::from_utf8(tag).unwrap().to_owned() })
+                Err(Error::SetTag {
+                    tag: str::from_utf8(tag).unwrap().to_owned(),
+                })
             }
         }
     }
 
     /// Remove unused alleles.
-    pub fn trim_alleles(&mut self) -> Result<(), RemoveAllelesError> {
+    pub fn trim_alleles(&mut self) -> Result<()> {
         match unsafe { htslib::bcf_trim_alleles(self.header().inner, self.inner) } {
-            -1 => Err(RemoveAllelesError::Some),
+            -1 => Err(Error::RemoveAlleles),
             _ => Ok(()),
         }
     }
 
-    pub fn remove_alleles(&mut self, remove: &[bool]) -> Result<(), RemoveAllelesError> {
+    pub fn remove_alleles(&mut self, remove: &[bool]) -> Result<()> {
         let rm_set = unsafe { htslib::kbs_init(remove.len()) };
 
         for (i, &r) in remove.iter().enumerate() {
@@ -613,7 +612,7 @@ impl Record {
         }
 
         match ret {
-            -1 => Err(RemoveAllelesError::Some),
+            -1 => Err(Error::RemoveAlleles),
             _ => Ok(()),
         }
     }
@@ -622,7 +621,7 @@ impl Record {
     pub fn desc(&self) -> String {
         if let Some(rid) = self.rid() {
             if let Ok(contig) = self.header.rid2name(rid) {
-                return format!("{}:{}", str::from_utf8(contig).unwrap(), self.pos())
+                return format!("{}:{}", str::from_utf8(contig).unwrap(), self.pos());
             }
         }
         "".to_owned()
@@ -731,7 +730,6 @@ pub struct Info<'a> {
 }
 
 impl<'a> Info<'a> {
-
     /// Short description of info tag.
     pub fn desc(&self) -> String {
         str::from_utf8(self.tag).unwrap().to_owned()
@@ -871,7 +869,10 @@ impl<'a> Format<'a> {
         match ret {
             -1 => Err(Error::UndefinedTag { tag: self.desc() }),
             -2 => Err(Error::UnexpectedType { tag: self.desc() }),
-            -3 => Err(Error::MissingTag { tag: self.desc(), record: self.record.desc() }),
+            -3 => Err(Error::MissingTag {
+                tag: self.desc(),
+                record: self.record.desc(),
+            }),
             ret => Ok((n as usize, ret)),
         }
     }
@@ -939,33 +940,6 @@ impl<'a> Iterator for Filters<'a> {
             let i = self.idx as isize;
             self.idx += 1;
             Some(Id(unsafe { *self.record.inner().d.flt.offset(i) } as u32))
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum AlleleWriteError {
-        Some {
-            description("error writing alleles to record")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum FilterWriteError {
-        Some {
-            description("error writing filters to record")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum RemoveAllelesError {
-        Some {
-            description("error trimming alleles")
         }
     }
 }

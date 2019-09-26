@@ -16,21 +16,21 @@ use std::path::Path;
 use std::rc::Rc;
 use std::str;
 
+use snafu::ensure;
 use url::Url;
-use snafu::{ensure, Backtrace, ErrorCompat, ResultExt, Snafu};
 
 pub mod buffer;
+pub mod errors;
 pub mod header;
 pub mod record;
-pub mod errors;
 
 use crate::bcf::header::{HeaderView, SampleSubset};
 use crate::htslib;
 
+pub use crate::bcf::errors::Error;
+pub use crate::bcf::errors::Result;
 pub use crate::bcf::header::{Header, HeaderRecord};
 pub use crate::bcf::record::Record;
-pub use crate::bcf::errors::Result;
-pub use crate::bcf::errors::Error;
 
 /// A trait for a BCF reader with a read method.
 pub trait Read: Sized {
@@ -38,7 +38,7 @@ pub trait Read: Sized {
     ///
     /// # Arguments
     /// * record - an empty record, that can be created with `bcf::Reader::empty_record`.
-    /// 
+    ///
     /// # Returns
     /// A result with an error in case of failure. Otherwise, true if a record was read,
     /// false if no record was read because the end of the file was reached.
@@ -213,7 +213,9 @@ impl IndexedReader {
                 current_region: None,
             })
         } else {
-            Err(Error::Open { target: path.to_str().unwrap().to_owned() })
+            Err(Error::Open {
+                target: path.to_str().unwrap().to_owned(),
+            })
         }
     }
 
@@ -229,7 +231,10 @@ impl IndexedReader {
         let contig = self.header.rid2name(rid).unwrap();
         let contig = ffi::CString::new(contig).unwrap();
         if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i32) } != 0 {
-            Err(Error::Seek { contig: contig.to_str().unwrap().to_owned(), start } )
+            Err(Error::Seek {
+                contig: contig.to_str().unwrap().to_owned(),
+                start,
+            })
         } else {
             self.current_region = Some((rid, start, end));
             Ok(())
@@ -386,8 +391,13 @@ pub mod synced {
                     let res =
                         unsafe { crate::htslib::bcf_sr_add_reader(self.inner, p_cstring.as_ptr()) };
 
-                    ensure!(res != 0, errors::Open { target: p.to_owned() });
-                    
+                    ensure!(
+                        res != 0,
+                        errors::Open {
+                            target: p.to_owned()
+                        }
+                    );
+
                     let i = (self.reader_count() - 1) as isize;
                     let header = Rc::new(HeaderView::new(unsafe {
                         crate::htslib::bcf_hdr_dup((*(*self.inner).readers.offset(i)).header)
@@ -416,7 +426,7 @@ pub mod synced {
             unsafe { (*self.inner).nreaders as u32 }
         }
 
-        /// Read next line and return number of readers that have the given line.
+        /// Read next line and return number of readers that have the given line (0 if end of all files is reached).
         pub fn read_next(&mut self) -> Result<u32> {
             let num = unsafe { crate::htslib::bcf_sr_next_line(self.inner) as u32 };
 
@@ -436,7 +446,7 @@ pub mod synced {
                                     .buffer
                                     .offset(0);
                                 if (*record).rid != (rid as i32) || (*record).pos >= (end as i32) {
-                                    return Err(errors::Error::NoMoreRecord);
+                                    return Ok(0);
                                 }
                             }
                         }
@@ -498,7 +508,10 @@ pub mod synced {
                 ffi::CString::new(contig).unwrap()
             };
             if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i32) } != 0 {
-                Err(Error::Seek {contig: contig.to_str().unwrap().to_owned(), start})
+                Err(Error::Seek {
+                    contig: contig.to_str().unwrap().to_owned(),
+                    start,
+                })
             } else {
                 self.current_region = Some((rid, start, end));
                 Ok(())
@@ -554,12 +567,7 @@ impl Writer {
     /// * `header` - header definition to use
     /// * `uncompressed` - disable compression
     /// * `vcf` - write VCF instead of BCF
-    pub fn from_url(
-        url: &Url,
-        header: &Header,
-        uncompressed: bool,
-        vcf: bool,
-    ) -> Result<Self> {
+    pub fn from_url(url: &Url, header: &Header, uncompressed: bool, vcf: bool) -> Result<Self> {
         Self::new(url.as_str().as_bytes(), header, uncompressed, vcf)
     }
 
@@ -680,7 +688,7 @@ impl<'a, R: Read> Iterator for Records<'a, R> {
         match self.reader.read(&mut record) {
             Err(e) => Some(Err(e)),
             Ok(true) => Some(Ok(record)),
-            Ok(false) => None
+            Ok(false) => None,
         }
     }
 }
@@ -690,14 +698,20 @@ fn bcf_open(target: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
     let p = ffi::CString::new(target).unwrap();
     let ret = unsafe { htslib::hts_open(p.as_ptr(), ffi::CString::new(mode).unwrap().as_ptr()) };
 
-
-
-    ensure!(!ret.is_null(), errors::Open { target: str::from_utf8(target).unwrap().to_owned() });
+    ensure!(
+        !ret.is_null(),
+        errors::Open {
+            target: str::from_utf8(target).unwrap().to_owned()
+        }
+    );
 
     unsafe {
         ensure!(
-            mode.contains(&b'w') || (*ret).format.category == htslib::htsFormatCategory_variant_data,
-            errors::Open { target: str::from_utf8(target).unwrap().to_owned() }
+            mode.contains(&b'w')
+                || (*ret).format.category == htslib::htsFormatCategory_variant_data,
+            errors::Open {
+                target: str::from_utf8(target).unwrap().to_owned()
+            }
         );
     }
     Ok(ret)

@@ -3,7 +3,6 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::error::Error;
 use std::ffi;
 use std::fmt;
 use std::ops;
@@ -14,7 +13,9 @@ use std::u32;
 
 use regex::Regex;
 
-use crate::bam::{AuxWriteError, HeaderView, ReadError};
+use crate::bam::errors::Result;
+use crate::bam::Error;
+use crate::bam::HeaderView;
 use crate::htslib;
 use crate::utils;
 
@@ -36,20 +37,6 @@ macro_rules! flag {
             self.inner_mut().core.flag &= !$bit;
         }
     )
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum CigarError {
-        UnsupportedOperation(msg: String) {
-            description("Unsupported CIGAR operation")
-            display(x) -> ("{}: {}", x.description(), msg)
-        }
-        UnexpectedOperation(msg: String) {
-            description("CIGAR operation not allowed at this point")
-            display(x) -> ("{}: {}", x.description(), msg)
-        }
-    }
 }
 
 /// A BAM record.
@@ -125,7 +112,7 @@ impl Record {
     }
 
     // Create a BAM record from a line SAM text. SAM slice need not be 0-terminated.
-    pub fn from_sam(header_view: &HeaderView, sam: &[u8]) -> Result<Record, ReadError> {
+    pub fn from_sam(header_view: &HeaderView, sam: &[u8]) -> Result<Record> {
         let record = Self::new();
 
         let mut sam_copy = Vec::with_capacity(sam.len() + 1);
@@ -145,7 +132,9 @@ impl Record {
         if succ == 0 {
             Ok(record)
         } else {
-            Err(ReadError::Invalid)
+            Err(Error::ParseSAM {
+                rec: str::from_utf8(&sam_copy).unwrap().to_owned(),
+            })
         }
     }
 
@@ -919,16 +908,14 @@ impl CigarString {
     }
 
     /// Create a CigarString from given bytes.
-    pub fn from_bytes(text: &[u8]) -> Result<Self, CigarError> {
-        Self::from_str(
-            str::from_utf8(text).map_err(|_| {
-                CigarError::UnexpectedOperation("unable to parse as UTF8".to_owned())
-            })?,
-        )
+    pub fn from_bytes(text: &[u8]) -> Result<Self> {
+        Self::from_str(str::from_utf8(text).map_err(|_| Error::ParseCigar {
+            msg: "unable to parse as UTF8".to_owned(),
+        })?)
     }
 
     /// Create a CigarString from given str.
-    pub fn from_str(text: &str) -> Result<Self, CigarError> {
+    pub fn from_str(text: &str) -> Result<Self> {
         lazy_static! {
             // regex for a cigar string operation
             static ref OP_RE: Regex = Regex::new("^(?P<n>[0-9]+)(?P<op>[MIDNSHP=X])").unwrap();
@@ -940,8 +927,9 @@ impl CigarString {
                 let n = &caps["n"];
                 let op = &caps["op"];
                 i += n.len() + op.len();
-                let n = u32::from_str(n)
-                    .map_err(|_| CigarError::UnexpectedOperation("expected integer".to_owned()))?;
+                let n = u32::from_str(n).map_err(|_| Error::ParseCigar {
+                    msg: "expected integer".to_owned(),
+                })?;
                 inner.push(match op {
                     "M" => Cigar::Match(n),
                     "I" => Cigar::Ins(n),
@@ -953,16 +941,15 @@ impl CigarString {
                     "=" => Cigar::Equal(n),
                     "X" => Cigar::Diff(n),
                     op => {
-                        return Err(CigarError::UnexpectedOperation(format!(
-                            "operation {} not expected",
-                            op
-                        )));
+                        return Err(Error::ParseCigar {
+                            msg: format!("operation {} not expected", op),
+                        });
                     }
                 });
             } else {
-                return Err(CigarError::UnexpectedOperation(
-                    "expected cigar operation [0-9]+[MIDNSHP=X]".to_owned(),
-                ));
+                return Err(Error::ParseCigar {
+                    msg: "expected cigar operation [0-9]+[MIDNSHP=X]".to_owned(),
+                });
             }
         }
 
@@ -1011,7 +998,7 @@ impl CigarStringView {
     }
 
     /// Get (exclusive) end position of alignment.
-    pub fn end_pos(&self) -> Result<i32, CigarError> {
+    pub fn end_pos(&self) -> i32 {
         let mut pos = self.pos;
         for c in self {
             match c {
@@ -1024,7 +1011,7 @@ impl CigarStringView {
                 Cigar::Ins(_) | Cigar::SoftClip(_) | Cigar::HardClip(_) | Cigar::Pad(_) => (),
             }
         }
-        Ok(pos)
+        pos
     }
 
     /// For a given position in the reference, get corresponding position within read.
@@ -1041,7 +1028,7 @@ impl CigarStringView {
         ref_pos: u32,
         include_softclips: bool,
         include_dels: bool,
-    ) -> Result<Option<u32>, CigarError> {
+    ) -> Result<Option<u32>> {
         let mut rpos = self.pos as u32; // reference position
         let mut qpos = 0u32; // position within read
         let mut j = 0; // index into cigar operation vector
@@ -1070,19 +1057,19 @@ impl CigarStringView {
                     break;
                 },
                 Cigar::Del(_) => {
-                    return Err(CigarError::UnexpectedOperation(
-                        "'deletion' (D) found before any operation describing read sequence".to_owned()
-                    ));
+                    return Err(Error::UnexpectedCigarOperation {
+                        msg: "'deletion' (D) found before any operation describing read sequence".to_owned()
+                    });
                 },
                 Cigar::RefSkip(_) => {
-                    return Err(CigarError::UnexpectedOperation(
-                        "'reference skip' (N) found before any operation describing read sequence".to_owned()
-                    ));
+                    return Err(Error::UnexpectedCigarOperation {
+                        msg: "'reference skip' (N) found before any operation describing read sequence".to_owned()
+                    });
                 },
                 Cigar::HardClip(_) if i > 0 && i < self.len()-1 => {
-                    return Err(CigarError::UnexpectedOperation(
-                        "'hard clip' (H) found in between operations, contradicting SAMv1 spec that hard clips can only be at the ends of reads".to_owned()
-                    ));
+                    return Err(Error::UnexpectedCigarOperation{
+                        msg: "'hard clip' (H) found in between operations, contradicting SAMv1 spec that hard clips can only be at the ends of reads".to_owned()
+                    });
                 },
                 // if we have reached the end of the CigarString with only pads and hard clips, we have no read position matching the variant
                 Cigar::Pad(_) | Cigar::HardClip(_) if i == self.len()-1 => return Ok(None),
@@ -1137,9 +1124,9 @@ impl CigarStringView {
                     j += 1;
                 }
                 Cigar::HardClip(_) if j < self.len() - 1 => {
-                    return Err(CigarError::UnexpectedOperation(
-                        "'hard clip' (H) found in between operations, contradicting SAMv1 spec that hard clips can only be at the ends of reads".to_owned()
-                    ));
+                    return Err(Error::UnexpectedCigarOperation{
+                        msg: "'hard clip' (H) found in between operations, contradicting SAMv1 spec that hard clips can only be at the ends of reads".to_owned()
+                    });
                 }
                 Cigar::HardClip(_) => return Ok(None),
             }

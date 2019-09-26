@@ -11,7 +11,7 @@ use crate::htslib;
 
 use linear_map::LinearMap;
 
-use crate::bcf::{Result, errors::Error};
+use crate::bcf::{errors::Error, Result};
 
 pub type SampleSubset = Vec<i32>;
 
@@ -74,10 +74,7 @@ impl Header {
     ///
     /// - `header` - The `HeaderView` to use for the template.
     /// - `samples` - A slice of byte-encoded (`[u8]`) sample names.
-    pub fn from_template_subset(
-        header: &HeaderView,
-        samples: &[&[u8]],
-    ) -> Result<Self> {
+    pub fn from_template_subset(header: &HeaderView, samples: &[&[u8]]) -> Result<Self> {
         let mut imap = vec![0; samples.len()];
         let names: Vec<_> = samples
             .iter()
@@ -293,7 +290,9 @@ impl HeaderView {
                 htslib::BCF_DT_CTG as i32,
                 ffi::CString::new(name).unwrap().as_ptr() as *mut i8,
             ) {
-                -1 => Err(Error::UnknownContig { contig: str::from_utf8(name).unwrap().to_owned() }),
+                -1 => Err(Error::UnknownContig {
+                    contig: str::from_utf8(name).unwrap().to_owned(),
+                }),
                 i => Ok(i as u32),
             }
         }
@@ -307,11 +306,7 @@ impl HeaderView {
         self.tag_type(tag, htslib::BCF_HL_FMT)
     }
 
-    fn tag_type(
-        &self,
-        tag: &[u8],
-        hdr_type: ::libc::c_uint,
-    ) -> Result<(TagType, TagLength)> {
+    fn tag_type(&self, tag: &[u8], hdr_type: ::libc::c_uint) -> Result<(TagType, TagLength)> {
         let tag_desc = || str::from_utf8(tag).unwrap().to_owned();
         let (_type, length, num_values) = unsafe {
             let id = htslib::bcf_hdr_id2int(
@@ -354,7 +349,9 @@ impl HeaderView {
                 htslib::BCF_DT_ID as i32,
                 ffi::CString::new(id).unwrap().as_ptr() as *const i8,
             ) {
-                -1 => Err(Error::UnknownID { id: str::from_utf8(id).unwrap().to_owned() }),
+                -1 => Err(Error::UnknownID {
+                    id: str::from_utf8(id).unwrap().to_owned(),
+                }),
                 i => Ok(Id(i as u32)),
             }
         }

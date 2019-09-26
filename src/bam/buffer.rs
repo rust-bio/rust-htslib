@@ -4,11 +4,11 @@
 // except according to those terms.
 
 use std::collections::{vec_deque, VecDeque};
-use std::error::Error;
 use std::str;
 
 use crate::bam;
 use crate::bam::Read;
+use crate::bam::errors::{Result, Error};
 
 /// A buffer for BAM records. This allows access regions in a sorted BAM file while iterating
 /// over it in a single pass.
@@ -59,7 +59,7 @@ impl RecordBuffer {
         chrom: &[u8],
         start: u32,
         end: u32,
-    ) -> Result<(usize, usize), Box<dyn Error>> {
+    ) -> Result<(usize, usize)> {
         let mut added = 0;
         // move overflow from last fetch into ringbuffer
         if self.overflow.is_some() {
@@ -95,11 +95,8 @@ impl RecordBuffer {
             // extend to the right
             loop {
                 let mut record = bam::Record::new();
-                if let Err(e) = self.reader.read(&mut record) {
-                    if e.is_eof() {
-                        break;
-                    }
-                    return Err(Box::new(e));
+                if !self.reader.read(&mut record)? {
+                    break;
                 }
 
                 if record.is_unmapped() {
@@ -118,9 +115,7 @@ impl RecordBuffer {
 
             Ok((added, deleted))
         } else {
-            Err(Box::new(RecordBufferError::UnknownSequence(
-                str::from_utf8(chrom).unwrap().to_owned(),
-            )))
+            Err(Error::UnknownSequence { sequence: str::from_utf8(chrom).unwrap().to_owned() })
         }
     }
 
@@ -139,15 +134,6 @@ impl RecordBuffer {
     }
 }
 
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum RecordBufferError {
-        UnknownSequence(chrom: String) {
-            description("unknown sequence")
-            display("sequence {} cannot be found in BAM", chrom)
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {

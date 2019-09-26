@@ -10,25 +10,14 @@ use std::path::Path;
 
 use crate::htslib;
 
-use crate::bam::header;
-use crate::bam::record;
-use crate::bam::HeaderView;
+use crate::bam::{header, record, HeaderView, hts_open};
+use crate::bam::errors::{Result, Error};
 
 /// SAM writer.
 #[derive(Debug)]
 pub struct Writer {
     f: *mut htslib::htsFile,
     header: HeaderView,
-}
-
-/// Wrapper for opening a SAM file.
-fn hts_open(path: &ffi::CStr, mode: &[u8]) -> Result<*mut htslib::htsFile, WriterError> {
-    let ret = unsafe { htslib::hts_open(path.as_ptr(), ffi::CString::new(mode).unwrap().as_ptr()) };
-    if ret.is_null() {
-        Err(WriterError::IOError)
-    } else {
-        Ok(ret)
-    }
 }
 
 impl Writer {
@@ -43,7 +32,7 @@ impl Writer {
         header: &header::Header,
     ) -> Result<Self, WriterError> {
         if let Some(p) = path.as_ref().to_str() {
-            Ok(r#try!(Self::new(p.as_bytes(), header)))
+            Ok(Self::new(p.as_bytes(), header)?)
         } else {
             Err(WriterError::IOError)
         }
@@ -54,12 +43,12 @@ impl Writer {
     /// # Arguments
     ///
     /// * `header` - header definition to use
-    pub fn from_stdout(header: &header::Header) -> Result<Self, WriterError> {
+    pub fn from_stdout(header: &header::Header) -> Result<Self> {
         Self::new(b"-", header)
     }
 
-    fn new(path: &[u8], header: &header::Header) -> Result<Self, WriterError> {
-        let f = r#try!(hts_open(&ffi::CString::new(path).unwrap(), b"w"));
+    fn new(path: &[u8], header: &header::Header) -> Result<Self> {
+        let f = hts_open(&ffi::CString::new(path).unwrap(), b"w")?;
         let header_view = HeaderView::from_header(header);
 
         unsafe {
@@ -89,22 +78,6 @@ impl Drop for Writer {
     fn drop(&mut self) {
         unsafe {
             htslib::hts_close(self.f);
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum WriterError {
-        IOError {}
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum WriteError {
-        Some {
-            description("error writing record")
         }
     }
 }
