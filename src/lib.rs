@@ -72,8 +72,6 @@ extern crate lazy_static;
 extern crate libc;
 #[macro_use]
 extern crate newtype_derive;
-#[macro_use]
-extern crate quick_error;
 
 #[cfg(feature = "serde")]
 extern crate serde;
