@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## unreleased
+## Changes
+- Migrated error handling to the snafu crate: https://docs.rs/snafu.
+- Cleaned up API.
+- Allow writing SAM files from the bam::Writer.
+
 ## [0.24.0] - 2019-05-31
 ### Added
 - Allow setting unmapped BAM record (without Cigar string).

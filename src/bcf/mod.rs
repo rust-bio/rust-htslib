@@ -527,6 +527,12 @@ pub mod synced {
 
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum Format {
+    VCF,
+    BCF,
+}
+
 /// A VCF/BCF writer.
 #[derive(Debug)]
 pub struct Writer {
@@ -550,10 +556,10 @@ impl Writer {
         path: P,
         header: &Header,
         uncompressed: bool,
-        vcf: bool,
+        format: Format,
     ) -> Result<Self> {
         if let Some(p) = path.as_ref().to_str() {
-            Ok(Self::new(p.as_bytes(), header, uncompressed, vcf)?)
+            Ok(Self::new(p.as_bytes(), header, uncompressed, format)?)
         } else {
             Err(errors::Error::NonUnicodePath)
         }
@@ -567,8 +573,8 @@ impl Writer {
     /// * `header` - header definition to use
     /// * `uncompressed` - disable compression
     /// * `vcf` - write VCF instead of BCF
-    pub fn from_url(url: &Url, header: &Header, uncompressed: bool, vcf: bool) -> Result<Self> {
-        Self::new(url.as_str().as_bytes(), header, uncompressed, vcf)
+    pub fn from_url(url: &Url, header: &Header, uncompressed: bool, format: Format) -> Result<Self> {
+        Self::new(url.as_str().as_bytes(), header, uncompressed, format)
     }
 
     /// Create a new writer to stdout.
@@ -578,16 +584,16 @@ impl Writer {
     /// * `header` - header definition to use
     /// * `uncompressed` - disable compression
     /// * `vcf` - write VCF instead of BCF
-    pub fn from_stdout(header: &Header, uncompressed: bool, vcf: bool) -> Result<Self> {
-        Self::new(b"-", header, uncompressed, vcf)
+    pub fn from_stdout(header: &Header, uncompressed: bool, format: Format) -> Result<Self> {
+        Self::new(b"-", header, uncompressed, format)
     }
 
-    fn new(path: &[u8], header: &Header, uncompressed: bool, vcf: bool) -> Result<Self> {
-        let mode: &[u8] = match (uncompressed, vcf) {
-            (true, true) => b"w",
-            (false, true) => b"wz",
-            (true, false) => b"wu",
-            (false, false) => b"wb",
+    fn new(path: &[u8], header: &Header, uncompressed: bool, format: Format) -> Result<Self> {
+        let mode: &[u8] = match (uncompressed, format) {
+            (true, Format::VCF) => b"w",
+            (false, Format::VCF) => b"wz",
+            (true, Format::BCF) => b"wu",
+            (false, Format::BCF) => b"wb",
         };
 
         let htsfile = bcf_open(path, mode)?;
@@ -796,7 +802,7 @@ mod tests {
         let header = Header::from_template_subset(&bcf.header, &[b"NA12878.subsample-0.25-0"])
             .ok()
             .expect("Error subsetting samples.");
-        let mut writer = Writer::from_path(&bcfpath, &header, false, false)
+        let mut writer = Writer::from_path(&bcfpath, &header, false, Format::BCF)
             .ok()
             .expect("Error opening file.");
         writer.set_threads(2).unwrap();
@@ -830,7 +836,7 @@ mod tests {
             let header = Header::from_template_subset(&bcf.header, &[b"NA12878.subsample-0.25-0"])
                 .ok()
                 .expect("Error subsetting samples.");
-            let mut writer = Writer::from_path(&bcfpath, &header, false, false)
+            let mut writer = Writer::from_path(&bcfpath, &header, false, Format::BCF)
                 .ok()
                 .expect("Error opening file.");
             for rec in bcf.records() {
@@ -1134,7 +1140,7 @@ mod tests {
         // all data is written below.
         {
             let mut writer =
-                Writer::from_path(&out_path, &Header::from_template(&vcf.header()), true, true)
+                Writer::from_path(&out_path, &Header::from_template(&vcf.header()), true, Format::VCF)
                     .ok()
                     .expect("Error opening file.");
             let header = writer.header().clone();
@@ -1216,7 +1222,7 @@ mod tests {
             .remove_structured(b"Foo2")
             .remove_generic(b"Bar2");
         {
-            let mut _writer = Writer::from_path(&bcfpath, &header, true, true)
+            let mut _writer = Writer::from_path(&bcfpath, &header, true, Format::BCF)
                 .ok()
                 .expect("Error opening output file.");
             // Note that we don't need to write anything, we are just looking at the header.
