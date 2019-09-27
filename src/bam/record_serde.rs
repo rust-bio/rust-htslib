@@ -347,5 +347,4 @@ mod tests {
         let decoded: Vec<Record> = serde_json::from_str(&encoded).unwrap();
         assert_eq!(recs, decoded);
     }
-
 }

@@ -14,16 +14,21 @@
 use std::ffi;
 use std::path::Path;
 use std::rc::Rc;
+use std::str;
 
+use snafu::ensure;
 use url::Url;
 
 pub mod buffer;
+pub mod errors;
 pub mod header;
 pub mod record;
 
 use crate::bcf::header::{HeaderView, SampleSubset};
 use crate::htslib;
 
+pub use crate::bcf::errors::Error;
+pub use crate::bcf::errors::Result;
 pub use crate::bcf::header::{Header, HeaderRecord};
 pub use crate::bcf::record::Record;
 
@@ -33,7 +38,11 @@ pub trait Read: Sized {
     ///
     /// # Arguments
     /// * record - an empty record, that can be created with `bcf::Reader::empty_record`.
-    fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError>;
+    ///
+    /// # Returns
+    /// A result with an error in case of failure. Otherwise, true if a record was read,
+    /// false if no record was read because the end of the file was reached.
+    fn read(&mut self, record: &mut record::Record) -> Result<bool>;
 
     /// Return an iterator over all records of the VCF/BCF file.
     fn records(&mut self) -> Records<'_, Self>;
@@ -53,7 +62,7 @@ pub trait Read: Sized {
     /// # Arguments
     ///
     /// * `n_threads` - number of extra background writer threads to use, must be `> 0`.
-    fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError>;
+    fn set_threads(&mut self, n_threads: usize) -> Result<()>;
 }
 
 /// A VCF/BCF reader.
@@ -66,12 +75,12 @@ pub struct Reader {
 unsafe impl Send for Reader {}
 
 /// Implementation for `Reader::set_threads()` and `Writer::set_threads`.
-pub fn set_threads(hts_file: *mut htslib::htsFile, n_threads: usize) -> Result<(), ThreadingError> {
+pub fn set_threads(hts_file: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
     assert!(n_threads > 0, "n_threads must be > 0");
 
     let r = unsafe { htslib::hts_set_threads(hts_file, n_threads as i32) };
     if r != 0 {
-        Err(ThreadingError::Some)
+        Err(Error::SetThreads)
     } else {
         Ok(())
     }
@@ -79,25 +88,25 @@ pub fn set_threads(hts_file: *mut htslib::htsFile, n_threads: usize) -> Result<(
 
 impl Reader {
     /// Create a new reader from a given path.
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, BCFPathError> {
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         match path.as_ref().to_str() {
-            Some(p) if path.as_ref().exists() => Ok(r#try!(Self::new(p.as_bytes()))),
-            _ => Err(BCFPathError::InvalidPath),
+            Some(p) if path.as_ref().exists() => Ok(Self::new(p.as_bytes())?),
+            _ => Err(errors::Error::NonUnicodePath),
         }
     }
 
     /// Create a new reader from a given URL.
-    pub fn from_url(url: &Url) -> Result<Self, BCFError> {
+    pub fn from_url(url: &Url) -> Result<Self> {
         Self::new(url.as_str().as_bytes())
     }
 
     /// Create a new reader from standard input.
-    pub fn from_stdin() -> Result<Self, BCFError> {
+    pub fn from_stdin() -> Result<Self> {
         Self::new(b"-")
     }
 
-    fn new(path: &[u8]) -> Result<Self, BCFError> {
-        let htsfile = r#try!(bcf_open(path, b"r"));
+    fn new(path: &[u8]) -> Result<Self> {
+        let htsfile = bcf_open(path, b"r")?;
         let header = unsafe { htslib::bcf_hdr_read(htsfile) };
         Ok(Reader {
             inner: htsfile,
@@ -107,7 +116,7 @@ impl Reader {
 }
 
 impl Read for Reader {
-    fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError> {
+    fn read(&mut self, record: &mut record::Record) -> Result<bool> {
         match unsafe { htslib::bcf_read(self.inner, self.header.inner, record.inner) } {
             0 => {
                 unsafe {
@@ -115,10 +124,10 @@ impl Read for Reader {
                     htslib::bcf_unpack(record.inner_mut(), htslib::BCF_UN_ALL as i32);
                 }
                 record.set_header(self.header.clone());
-                Ok(())
+                Ok(true)
             }
-            -1 => Err(ReadError::NoMoreRecord),
-            _ => Err(ReadError::Invalid),
+            -1 => Ok(false),
+            _ => Err(Error::InvalidRecord),
         }
     }
 
@@ -126,7 +135,7 @@ impl Read for Reader {
         Records { reader: self }
     }
 
-    fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
+    fn set_threads(&mut self, n_threads: usize) -> Result<()> {
         set_threads(self.inner, n_threads)
     }
 
@@ -168,17 +177,17 @@ impl IndexedReader {
     /// # Arguments
     ///
     /// * `path` - the path to open.
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, IndexedReaderPathError> {
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         match path.as_ref().to_str() {
             Some(p) if path.as_ref().exists() => {
                 Ok(r#try!(Self::new(&ffi::CString::new(p).unwrap())))
             }
-            _ => Err(IndexedReaderPathError::InvalidPath),
+            _ => Err(Error::NonUnicodePath),
         }
     }
 
     /// Create a new `IndexedReader` from an URL.
-    pub fn from_url(url: &Url) -> Result<Self, IndexedReaderError> {
+    pub fn from_url(url: &Url) -> Result<Self> {
         Self::new(&ffi::CString::new(url.as_str()).unwrap())
     }
 
@@ -187,7 +196,7 @@ impl IndexedReader {
     /// # Arguments
     ///
     /// * `path` - the path. Use "-" for stdin.
-    fn new(path: &ffi::CStr) -> Result<Self, IndexedReaderError> {
+    fn new(path: &ffi::CStr) -> Result<Self> {
         // Create reader and require existence of index file.
         let ser_reader = unsafe { htslib::bcf_sr_init() };
         unsafe {
@@ -204,7 +213,9 @@ impl IndexedReader {
                 current_region: None,
             })
         } else {
-            Err(IndexedReaderError::InvalidPath)
+            Err(Error::Open {
+                target: path.to_str().unwrap().to_owned(),
+            })
         }
     }
 
@@ -216,12 +227,14 @@ impl IndexedReader {
     ///           contig name to ID.
     /// * `start` - `0`-based start coordinate of region on reference.
     /// * `end` - `0`-based end coordinate of region on reference.
-    pub fn fetch(&mut self, rid: u32, start: u32, end: u32) -> Result<(), FetchError> {
+    pub fn fetch(&mut self, rid: u32, start: u32, end: u32) -> Result<()> {
         let contig = self.header.rid2name(rid).unwrap();
         let contig = ffi::CString::new(contig).unwrap();
-        let contig = contig.as_ptr();
-        if unsafe { htslib::bcf_sr_seek(self.inner, contig, start as i32) } != 0 {
-            Err(FetchError::Some)
+        if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i32) } != 0 {
+            Err(Error::Seek {
+                contig: contig.to_str().unwrap().to_owned(),
+                start,
+            })
         } else {
             self.current_region = Some((rid, start, end));
             Ok(())
@@ -230,13 +243,13 @@ impl IndexedReader {
 }
 
 impl Read for IndexedReader {
-    fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError> {
+    fn read(&mut self, record: &mut record::Record) -> Result<bool> {
         match unsafe { htslib::bcf_sr_next_line(self.inner) } {
             0 => {
                 if unsafe { (*self.inner).errnum } != 0 {
-                    Err(ReadError::SyncedBcfReaderError)
+                    Err(Error::InvalidRecord)
                 } else {
-                    Err(ReadError::NoMoreRecord)
+                    Ok(false)
                 }
             }
             i => {
@@ -260,12 +273,12 @@ impl Read for IndexedReader {
                             && rid == record.rid().unwrap()
                             && record.pos() <= end
                         {
-                            Ok(())
+                            Ok(true)
                         } else {
-                            Err(ReadError::NoMoreRecord)
+                            Ok(false)
                         }
                     }
-                    None => Ok(()),
+                    None => Ok(true),
                 }
             }
         }
@@ -275,12 +288,12 @@ impl Read for IndexedReader {
         Records { reader: self }
     }
 
-    fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
+    fn set_threads(&mut self, n_threads: usize) -> Result<()> {
         assert!(n_threads > 0, "n_threads must be > 0");
 
         let r = unsafe { htslib::bcf_sr_set_threads(self.inner, n_threads as i32) };
         if r != 0 {
-            Err(ThreadingError::Some)
+            Err(Error::SetThreads)
         } else {
             Ok(())
         }
@@ -344,17 +357,15 @@ pub mod synced {
     // TODO: add interface for setting threads, ensure that the pool is freed properly
 
     impl SyncedReader {
-        pub fn new() -> Result<Self, AllocationError> {
+        pub fn new() -> Result<Self> {
             let inner = unsafe { crate::htslib::bcf_sr_init() };
-            if inner.is_null() {
-                Err(AllocationError::Some)
-            } else {
-                Ok(SyncedReader {
-                    inner,
-                    headers: Vec::new(),
-                    current_region: None,
-                })
-            }
+            ensure!(!inner.is_null(), errors::AllocationError);
+
+            Ok(SyncedReader {
+                inner,
+                headers: Vec::new(),
+                current_region: None,
+            })
         }
 
         /// Enable or disable requiring of index
@@ -373,24 +384,28 @@ pub mod synced {
         }
 
         /// Add new reader with the path to the file.
-        pub fn add_reader<P: AsRef<Path>>(&mut self, path: P) -> Result<(), BCFError> {
+        pub fn add_reader<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
             match path.as_ref().to_str() {
                 Some(p) if path.as_ref().exists() => {
                     let p_cstring = ffi::CString::new(p).unwrap();
                     let res =
                         unsafe { crate::htslib::bcf_sr_add_reader(self.inner, p_cstring.as_ptr()) };
-                    if res != 0 {
-                        let i = (self.reader_count() - 1) as isize;
-                        let header = Rc::new(HeaderView::new(unsafe {
-                            crate::htslib::bcf_hdr_dup((*(*self.inner).readers.offset(i)).header)
-                        }));
-                        self.headers.push(header);
-                        Ok(())
-                    } else {
-                        Err(BCFError::Some)
-                    }
+
+                    ensure!(
+                        res != 0,
+                        errors::Open {
+                            target: p.to_owned()
+                        }
+                    );
+
+                    let i = (self.reader_count() - 1) as isize;
+                    let header = Rc::new(HeaderView::new(unsafe {
+                        crate::htslib::bcf_hdr_dup((*(*self.inner).readers.offset(i)).header)
+                    }));
+                    self.headers.push(header);
+                    Ok(())
                 }
-                _ => Err(BCFError::Some),
+                _ => Err(errors::Error::NonUnicodePath),
             }
         }
 
@@ -411,18 +426,15 @@ pub mod synced {
             unsafe { (*self.inner).nreaders as u32 }
         }
 
-        /// Read next line and return number of readers that have the given line.
-        pub fn read_next(&mut self) -> Result<u32, ReadError> {
+        /// Read next line and return number of readers that have the given line (0 if end of all files is reached).
+        pub fn read_next(&mut self) -> Result<u32> {
             let num = unsafe { crate::htslib::bcf_sr_next_line(self.inner) as u32 };
 
             if num == 0 {
-                if unsafe { (*self.inner).errnum } != 0 {
-                    Err(ReadError::Invalid)
-                } else {
-                    Ok(0)
-                }
+                ensure!(unsafe { (*self.inner).errnum } == 0, errors::InvalidRecord);
+                Ok(0)
             } else {
-                assert!(num > 0, "Must not be negative");
+                assert!(num > 0, "num returned by htslib must not be negative");
                 match self.current_region {
                     Some((rid, _start, end)) => {
                         for idx in 0..self.reader_count() {
@@ -434,7 +446,7 @@ pub mod synced {
                                     .buffer
                                     .offset(0);
                                 if (*record).rid != (rid as i32) || (*record).pos >= (end as i32) {
-                                    return Err(ReadError::NoMoreRecord);
+                                    return Ok(0);
                                 }
                             }
                         }
@@ -490,14 +502,16 @@ pub mod synced {
         ///           contig name to ID.
         /// * `start` - `0`-based start coordinate of region on reference.
         /// * `end` - `0`-based end coordinate of region on reference.
-        pub fn fetch(&mut self, rid: u32, start: u32, end: u32) -> Result<(), FetchError> {
+        pub fn fetch(&mut self, rid: u32, start: u32, end: u32) -> Result<()> {
             let contig = {
                 let contig = self.header(0).rid2name(rid).unwrap().clone();
                 ffi::CString::new(contig).unwrap()
             };
-            let contig = contig.as_ptr();
-            if unsafe { htslib::bcf_sr_seek(self.inner, contig, start as i32) } != 0 {
-                Err(FetchError::Some)
+            if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i32) } != 0 {
+                Err(Error::Seek {
+                    contig: contig.to_str().unwrap().to_owned(),
+                    start,
+                })
             } else {
                 self.current_region = Some((rid, start, end));
                 Ok(())
@@ -510,7 +524,12 @@ pub mod synced {
             unsafe { crate::htslib::bcf_sr_destroy(self.inner) };
         }
     }
+}
 
+#[derive(Clone, Copy, Debug)]
+pub enum Format {
+    VCF,
+    BCF,
 }
 
 /// A VCF/BCF writer.
@@ -536,12 +555,12 @@ impl Writer {
         path: P,
         header: &Header,
         uncompressed: bool,
-        vcf: bool,
-    ) -> Result<Self, BCFPathError> {
+        format: Format,
+    ) -> Result<Self> {
         if let Some(p) = path.as_ref().to_str() {
-            Ok(r#try!(Self::new(p.as_bytes(), header, uncompressed, vcf)))
+            Ok(Self::new(p.as_bytes(), header, uncompressed, format)?)
         } else {
-            Err(BCFPathError::InvalidPath)
+            Err(errors::Error::NonUnicodePath)
         }
     }
 
@@ -557,9 +576,9 @@ impl Writer {
         url: &Url,
         header: &Header,
         uncompressed: bool,
-        vcf: bool,
-    ) -> Result<Self, BCFError> {
-        Self::new(url.as_str().as_bytes(), header, uncompressed, vcf)
+        format: Format,
+    ) -> Result<Self> {
+        Self::new(url.as_str().as_bytes(), header, uncompressed, format)
     }
 
     /// Create a new writer to stdout.
@@ -569,19 +588,19 @@ impl Writer {
     /// * `header` - header definition to use
     /// * `uncompressed` - disable compression
     /// * `vcf` - write VCF instead of BCF
-    pub fn from_stdout(header: &Header, uncompressed: bool, vcf: bool) -> Result<Self, BCFError> {
-        Self::new(b"-", header, uncompressed, vcf)
+    pub fn from_stdout(header: &Header, uncompressed: bool, format: Format) -> Result<Self> {
+        Self::new(b"-", header, uncompressed, format)
     }
 
-    fn new(path: &[u8], header: &Header, uncompressed: bool, vcf: bool) -> Result<Self, BCFError> {
-        let mode: &[u8] = match (uncompressed, vcf) {
-            (true, true) => b"w",
-            (false, true) => b"wz",
-            (true, false) => b"wu",
-            (false, false) => b"wb",
+    fn new(path: &[u8], header: &Header, uncompressed: bool, format: Format) -> Result<Self> {
+        let mode: &[u8] = match (uncompressed, format) {
+            (true, Format::VCF) => b"w",
+            (false, Format::VCF) => b"wz",
+            (true, Format::BCF) => b"wu",
+            (false, Format::BCF) => b"wb",
         };
 
-        let htsfile = r#try!(bcf_open(path, mode));
+        let htsfile = bcf_open(path, mode)?;
         unsafe { htslib::bcf_hdr_write(htsfile, header.inner) };
         Ok(Writer {
             inner: htsfile,
@@ -639,9 +658,9 @@ impl Writer {
     /// # Arguments
     ///
     /// - `record` - The `Record` to write.
-    pub fn write(&mut self, record: &record::Record) -> Result<(), WriteError> {
+    pub fn write(&mut self, record: &record::Record) -> Result<()> {
         if unsafe { htslib::bcf_write(self.inner, self.header.inner, record.inner) } == -1 {
-            Err(WriteError::Some)
+            Err(Error::Write)
         } else {
             Ok(())
         }
@@ -653,7 +672,7 @@ impl Writer {
     /// # Arguments
     ///
     /// * `n_threads` - number of extra background writer threads to use, must be `> 0`.
-    pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
+    pub fn set_threads(&mut self, n_threads: usize) -> Result<()> {
         set_threads(self.inner, n_threads)
     }
 }
@@ -672,138 +691,40 @@ pub struct Records<'a, R: Read> {
 }
 
 impl<'a, R: Read> Iterator for Records<'a, R> {
-    type Item = Result<record::Record, ReadError>;
+    type Item = Result<record::Record>;
 
-    fn next(&mut self) -> Option<Result<record::Record, ReadError>> {
+    fn next(&mut self) -> Option<Result<record::Record>> {
         let mut record = self.reader.empty_record();
         match self.reader.read(&mut record) {
-            Err(ReadError::NoMoreRecord) => None,
             Err(e) => Some(Err(e)),
-            Ok(()) => Some(Ok(record)),
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum AllocationError {
-        Some {
-            description("Error allocating internal data structure")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum BCFError {
-        Some {
-            description("error reading BCF/VCF file")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum BCFPathError {
-        InvalidPath {
-            description("invalid path")
-        }
-        BCFError(err: BCFError) {
-            from()
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum ThreadingError {
-        Some {
-            description("error setting threads for multi-threaded I/O")
+            Ok(true) => Some(Ok(record)),
+            Ok(false) => None,
         }
     }
 }
 
 /// Wrapper for opening a BCF file.
-fn bcf_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile, BCFError> {
-    let p = ffi::CString::new(path).unwrap();
+fn bcf_open(target: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
+    let p = ffi::CString::new(target).unwrap();
     let ret = unsafe { htslib::hts_open(p.as_ptr(), ffi::CString::new(mode).unwrap().as_ptr()) };
-    if ret.is_null() {
-        Err(BCFError::Some)
-    } else {
-        unsafe {
-            if !mode.contains(&b'w')
-                && (*ret).format.category != htslib::htsFormatCategory_variant_data
-            {
-                Err(BCFError::Some)
-            } else {
-                Ok(ret)
+
+    ensure!(
+        !ret.is_null(),
+        errors::Open {
+            target: str::from_utf8(target).unwrap().to_owned()
+        }
+    );
+
+    unsafe {
+        ensure!(
+            mode.contains(&b'w')
+                || (*ret).format.category == htslib::htsFormatCategory_variant_data,
+            errors::Open {
+                target: str::from_utf8(target).unwrap().to_owned()
             }
-        }
+        );
     }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum ReadError {
-        Invalid {
-            description("invalid record")
-        }
-        NoMoreRecord {
-            description("no more record")
-        }
-        SyncedBcfReaderError {
-            description("problem reading from synced bcf reader")
-        }
-    }
-}
-
-impl ReadError {
-    /// Returns true if no record has been read because the end of the file was reached.
-    pub fn is_eof(&self) -> bool {
-        match self {
-            ReadError::NoMoreRecord => true,
-            _ => false,
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum IndexedReaderPathError {
-        InvalidPath {
-            description("invalid path")
-        }
-        IndexedReaderError(err: IndexedReaderError) {
-            from()
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum IndexedReaderError {
-        InvalidPath {
-            description("invalid path")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum WriteError {
-        Some {
-            description("failed to write record")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum FetchError {
-        Some {
-            description("error fetching a locus")
-        }
-    }
+    Ok(ret)
 }
 
 #[cfg(test)]
@@ -885,7 +806,7 @@ mod tests {
         let header = Header::from_template_subset(&bcf.header, &[b"NA12878.subsample-0.25-0"])
             .ok()
             .expect("Error subsetting samples.");
-        let mut writer = Writer::from_path(&bcfpath, &header, false, false)
+        let mut writer = Writer::from_path(&bcfpath, &header, false, Format::BCF)
             .ok()
             .expect("Error opening file.");
         writer.set_threads(2).unwrap();
@@ -919,7 +840,7 @@ mod tests {
             let header = Header::from_template_subset(&bcf.header, &[b"NA12878.subsample-0.25-0"])
                 .ok()
                 .expect("Error subsetting samples.");
-            let mut writer = Writer::from_path(&bcfpath, &header, false, false)
+            let mut writer = Writer::from_path(&bcfpath, &header, false, Format::BCF)
                 .ok()
                 .expect("Error opening file.");
             for rec in bcf.records() {
@@ -1222,10 +1143,14 @@ mod tests {
         // The writer goes into its own block so we can ensure that the file is closed and
         // all data is written below.
         {
-            let mut writer =
-                Writer::from_path(&out_path, &Header::from_template(&vcf.header()), true, true)
-                    .ok()
-                    .expect("Error opening file.");
+            let mut writer = Writer::from_path(
+                &out_path,
+                &Header::from_template(&vcf.header()),
+                true,
+                Format::VCF,
+            )
+            .ok()
+            .expect("Error opening file.");
             let header = writer.header().clone();
 
             // Setup empty record, filled below.
@@ -1305,7 +1230,7 @@ mod tests {
             .remove_structured(b"Foo2")
             .remove_generic(b"Bar2");
         {
-            let mut _writer = Writer::from_path(&bcfpath, &header, true, true)
+            let mut _writer = Writer::from_path(&bcfpath, &header, true, Format::BCF)
                 .ok()
                 .expect("Error opening output file.");
             // Note that we don't need to write anything, we are just looking at the header.
@@ -1398,5 +1323,4 @@ mod tests {
         let reader = Reader::from_path("test/no_such_file");
         assert!(reader.is_err());
     }
-
 }

@@ -3,9 +3,10 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Module for working with BAM and CRAM files.
+//! Module for working with SAM, BAM, and CRAM files.
 
 pub mod buffer;
+pub mod errors;
 pub mod ext;
 pub mod header;
 pub mod index;
@@ -19,36 +20,52 @@ use libc;
 use std::ffi;
 use std::path::Path;
 use std::slice;
+use std::str;
 use url::Url;
 
 use crate::htslib;
 
 pub use crate::bam::buffer::RecordBuffer;
+pub use crate::bam::errors::{Error, Result};
 pub use crate::bam::header::Header;
 pub use crate::bam::record::Record;
 
 /// Implementation for `Read::set_threads` and `Writer::set_threads`.
-pub fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Result<(), ThreadingError> {
+pub fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
     assert!(n_threads != 0, "n_threads must be > 0");
 
     if unsafe { htslib::hts_set_threads(htsfile, n_threads as i32) } != 0 {
-        Err(ThreadingError::Some)
+        Err(Error::SetThreads)
     } else {
         Ok(())
     }
 }
 
 /// Set the reference FAI index path in a `htslib::htsFile` struct for reading CRAM format.
-pub fn set_fai_filename(
+pub fn set_fai_filename<P: AsRef<Path>>(
     htsfile: *mut htslib::htsFile,
-    path: &[u8],
-) -> Result<(), ReferencePathError> {
-    if unsafe { htslib::hts_set_fai_filename(htsfile, ffi::CString::new(path).unwrap().as_ptr()) }
-        == 0
+    fasta_path: P,
+) -> Result<()> {
+    let path = if let Some(ext) = fasta_path.as_ref().extension() {
+        fasta_path
+            .as_ref()
+            .with_extension(format!("{}.fai", ext.to_str().unwrap()))
+    } else {
+        fasta_path.as_ref().with_extension(".fai")
+    };
+    let p: &Path = path.as_ref();
+    if unsafe {
+        htslib::hts_set_fai_filename(
+            htsfile,
+            ffi::CString::new(p.to_str().unwrap().as_bytes())
+                .unwrap()
+                .as_ptr(),
+        )
+    } == 0
     {
         Ok(())
     } else {
-        Err(ReferencePathError::InvalidPath)
+        Err(Error::InvalidReferencePath { path: p.to_owned() })
     }
 }
 
@@ -61,7 +78,11 @@ pub trait Read: Sized {
     /// # Arguments
     ///
     /// * `record` - the record to be filled
-    fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError>;
+    ///
+    /// # Returns
+    ///
+    /// `Ok(true)` if record was read without error, Ok(false) if there is no more record in the file.
+    fn read(&mut self, record: &mut record::Record) -> Result<bool>;
 
     /// Iterator over the records of the seeked region.
     /// Note that, while being convenient, this is less efficient than pre-allocating a
@@ -79,7 +100,7 @@ pub trait Read: Sized {
     fn header(&self) -> &HeaderView;
 
     /// Seek to the given virtual offset in the file
-    fn seek(&mut self, offset: i64) -> Result<(), SeekError> {
+    fn seek(&mut self, offset: i64) -> Result<()> {
         let htsfile = unsafe { self.htsfile().as_ref() }.expect("bug: null pointer to htsFile");
         let ret = match htsfile.format.format {
             htslib::htsExactFormat_cram => unsafe {
@@ -95,7 +116,7 @@ pub trait Read: Sized {
         if ret == 0 {
             Ok(())
         } else {
-            Err(SeekError::Some)
+            Err(Error::Seek)
         }
     }
 
@@ -116,8 +137,23 @@ pub trait Read: Sized {
     /// # Arguments
     ///
     /// * `n_threads` - number of extra background writer threads to use, must be `> 0`.
-    fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
+    fn set_threads(&mut self, n_threads: usize) -> Result<()> {
         set_threads(self.htsfile(), n_threads)
+    }
+}
+
+fn path_as_bytes<'a, P: 'a + AsRef<Path>>(path: P, must_exist: bool) -> Result<Vec<u8>> {
+    if path.as_ref().exists() || !must_exist {
+        Ok(path
+            .as_ref()
+            .to_str()
+            .ok_or(Error::NonUnicodePath)?
+            .as_bytes()
+            .to_owned())
+    } else {
+        Err(Error::FileNotFound {
+            path: path.as_ref().to_owned(),
+        })
     }
 }
 
@@ -136,20 +172,17 @@ impl Reader {
     /// # Arguments
     ///
     /// * `path` - the path to open.
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, ReaderPathError> {
-        match path.as_ref().to_str() {
-            Some(p) if path.as_ref().exists() => Ok(r#try!(Self::new(p.as_bytes()))),
-            _ => Err(ReaderPathError::InvalidPath),
-        }
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
+        Self::new(&path_as_bytes(path, true)?)
     }
 
     /// Create a new Reader from STDIN.
-    pub fn from_stdin() -> Result<Self, BGZFError> {
+    pub fn from_stdin() -> Result<Self> {
         Self::new(b"-")
     }
 
     /// Create a new Reader from URL.
-    pub fn from_url(url: &Url) -> Result<Self, BGZFError> {
+    pub fn from_url(url: &Url) -> Result<Self> {
         Self::new(url.as_str().as_bytes())
     }
 
@@ -158,8 +191,8 @@ impl Reader {
     /// # Arguments
     ///
     /// * `path` - the path to open. Use "-" for stdin.
-    fn new(path: &[u8]) -> Result<Self, BGZFError> {
-        let htsfile = r#try!(hts_open(&ffi::CString::new(path).unwrap(), b"r"));
+    fn new(path: &[u8]) -> Result<Self> {
+        let htsfile = hts_open(path, b"r")?;
 
         let header = unsafe { htslib::sam_hdr_read(htsfile) };
         Ok(Reader {
@@ -198,24 +231,18 @@ impl Reader {
     /// # Arguments
     ///
     /// * `path` - path to the FASTA reference
-    pub fn set_reference<P: AsRef<Path>>(&mut self, path: P) -> Result<(), ReferencePathError> {
-        let fai_path_str = format!("{}.fai", path.as_ref().to_str().unwrap());
-        let fai_path = Path::new(&fai_path_str);
-
-        match fai_path.to_str() {
-            Some(p) if fai_path.exists() => set_fai_filename(self.htsfile, p.as_bytes()),
-            _ => Err(ReferencePathError::InvalidPath),
-        }
+    pub fn set_reference<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
+        set_fai_filename(self.htsfile, path)
     }
 }
 
 impl Read for Reader {
-    fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError> {
+    fn read(&mut self, record: &mut record::Record) -> Result<bool> {
         match unsafe { htslib::sam_read1(self.htsfile, &mut self.header.inner(), record.inner) } {
-            -1 => Err(ReadError::NoMoreRecord),
-            -2 => Err(ReadError::Truncated),
-            -4 => Err(ReadError::Invalid),
-            _ => Ok(()),
+            -1 => Ok(false),
+            -2 => Err(Error::TruncatedRecord),
+            -4 => Err(Error::InvalidRecord),
+            _ => Ok(true),
         }
     }
 
@@ -271,37 +298,19 @@ impl IndexedReader {
     /// # Arguments
     ///
     /// * `path` - the path to open.
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, IndexedReaderPathError> {
-        match path.as_ref().to_str() {
-            Some(p) if path.as_ref().exists() => {
-                Ok(r#try!(Self::new(&ffi::CString::new(p).unwrap())))
-            }
-            _ => Err(IndexedReaderPathError::InvalidPath),
-        }
-    }
-    pub fn from_path_and_index<P: AsRef<Path>>(
-        path: P,
-        index_path: P,
-    ) -> Result<Self, IndexedReaderPathError> {
-        if !path.as_ref().exists() || !index_path.as_ref().exists() {
-            return Err(IndexedReaderPathError::InvalidPath);
-        }
-        let p = path
-            .as_ref()
-            .to_str()
-            .ok_or(IndexedReaderPathError::InvalidPath)?;
-        let idx_p = index_path
-            .as_ref()
-            .to_str()
-            .ok_or(IndexedReaderPathError::InvalidPath)?;
-        Ok(r#try!(Self::new_with_index_path(
-            &ffi::CString::new(p).unwrap(),
-            &ffi::CString::new(idx_p).unwrap(),
-        )))
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
+        Self::new(&path_as_bytes(path, true)?)
     }
 
-    pub fn from_url(url: &Url) -> Result<Self, IndexedReaderError> {
-        Self::new(&ffi::CString::new(url.as_str()).unwrap())
+    pub fn from_path_and_index<P: AsRef<Path>>(path: P, index_path: P) -> Result<Self> {
+        Self::new_with_index_path(
+            &path_as_bytes(path, true)?,
+            &path_as_bytes(index_path, true)?,
+        )
+    }
+
+    pub fn from_url(url: &Url) -> Result<Self> {
+        Self::new(url.as_str().as_bytes())
     }
 
     /// Create a new Reader.
@@ -309,12 +318,15 @@ impl IndexedReader {
     /// # Arguments
     ///
     /// * `path` - the path. Use "-" for stdin.
-    fn new(path: &ffi::CStr) -> Result<Self, IndexedReaderError> {
-        let htsfile = r#try!(hts_open(path, b"r"));
+    fn new(path: &[u8]) -> Result<Self> {
+        let htsfile = hts_open(path, b"r")?;
         let header = unsafe { htslib::sam_hdr_read(htsfile) };
-        let idx = unsafe { htslib::sam_index_load(htsfile, path.as_ptr()) };
+        let idx =
+            unsafe { htslib::sam_index_load(htsfile, ffi::CString::new(path).unwrap().as_ptr()) };
         if idx.is_null() {
-            Err(IndexedReaderError::InvalidIndex)
+            Err(Error::InvalidIndex {
+                target: str::from_utf8(path).unwrap().to_owned(),
+            })
         } else {
             Ok(IndexedReader {
                 htsfile,
@@ -330,15 +342,20 @@ impl IndexedReader {
     ///
     /// * `path` - the path. Use "-" for stdin.
     /// * `index_path` - the index path to use
-    fn new_with_index_path(
-        path: &ffi::CStr,
-        index_path: &ffi::CStr,
-    ) -> Result<Self, IndexedReaderError> {
-        let htsfile = r#try!(hts_open(path, b"r"));
+    fn new_with_index_path(path: &[u8], index_path: &[u8]) -> Result<Self> {
+        let htsfile = hts_open(path, b"r")?;
         let header = unsafe { htslib::sam_hdr_read(htsfile) };
-        let idx = unsafe { htslib::sam_index_load2(htsfile, path.as_ptr(), index_path.as_ptr()) };
+        let idx = unsafe {
+            htslib::sam_index_load2(
+                htsfile,
+                ffi::CString::new(path).unwrap().as_ptr(),
+                ffi::CString::new(index_path).unwrap().as_ptr(),
+            )
+        };
         if idx.is_null() {
-            Err(IndexedReaderError::InvalidIndex)
+            Err(Error::InvalidIndex {
+                target: str::from_utf8(path).unwrap().to_owned(),
+            })
         } else {
             Ok(IndexedReader {
                 htsfile,
@@ -349,14 +366,14 @@ impl IndexedReader {
         }
     }
 
-    pub fn fetch(&mut self, tid: u32, beg: u32, end: u32) -> Result<(), FetchError> {
+    pub fn fetch(&mut self, tid: u32, beg: u32, end: u32) -> Result<()> {
         if let Some(itr) = self.itr {
             unsafe { htslib::hts_itr_destroy(itr) }
         }
         let itr = unsafe { htslib::sam_itr_queryi(self.idx, tid as i32, beg as i32, end as i32) };
         if itr.is_null() {
             self.itr = None;
-            Err(FetchError::Some)
+            Err(Error::Fetch)
         } else {
             self.itr = Some(itr);
             Ok(())
@@ -368,7 +385,7 @@ impl IndexedReader {
     /// # Arguments
     ///
     /// * `region` - A binary string
-    pub fn fetch_str(&mut self, region: &[u8]) -> Result<(), FetchError> {
+    pub fn fetch_str(&mut self, region: &[u8]) -> Result<()> {
         if let Some(itr) = self.itr {
             unsafe { htslib::hts_itr_destroy(itr) }
         }
@@ -377,7 +394,7 @@ impl IndexedReader {
         let itr = unsafe { htslib::sam_itr_querys(self.idx, &mut self.header.inner(), rptr) };
         if itr.is_null() {
             self.itr = None;
-            Err(FetchError::Some)
+            Err(Error::Fetch)
         } else {
             self.itr = Some(itr);
             Ok(())
@@ -400,27 +417,21 @@ impl IndexedReader {
     /// # Arguments
     ///
     /// * `path` - path to the FASTA reference
-    pub fn set_reference<P: AsRef<Path>>(&mut self, path: P) -> Result<(), ReferencePathError> {
-        let fai_path_str = format!("{}.fai", path.as_ref().to_str().unwrap());
-        let fai_path = Path::new(&fai_path_str);
-
-        match fai_path.to_str() {
-            Some(p) if fai_path.exists() => set_fai_filename(self.htsfile, p.as_bytes()),
-            _ => Err(ReferencePathError::InvalidPath),
-        }
+    pub fn set_reference<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
+        set_fai_filename(self.htsfile, path)
     }
 }
 
 impl Read for IndexedReader {
-    fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError> {
+    fn read(&mut self, record: &mut record::Record) -> Result<bool> {
         match self.itr {
             Some(itr) => match itr_next(self.htsfile, itr, record.inner) {
-                -1 => Err(ReadError::NoMoreRecord),
-                -2 => Err(ReadError::Truncated),
-                -4 => Err(ReadError::Invalid),
-                _ => Ok(()),
+                -1 => Ok(false),
+                -2 => Err(Error::TruncatedRecord),
+                -4 => Err(Error::InvalidRecord),
+                _ => Ok(true),
             },
-            None => Err(ReadError::NoMoreRecord),
+            None => Ok(false),
         }
     }
 
@@ -464,6 +475,23 @@ impl Drop for IndexedReader {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum Format {
+    SAM,
+    BAM,
+    CRAM,
+}
+
+impl Format {
+    fn write_mode(&self) -> &'static [u8] {
+        match self {
+            &Format::SAM => b"w",
+            &Format::BAM => b"wb",
+            &Format::CRAM => b"wc",
+        }
+    }
+}
+
 /// A BAM writer.
 #[derive(Debug)]
 pub struct Writer {
@@ -474,58 +502,40 @@ pub struct Writer {
 unsafe impl Send for Writer {}
 
 impl Writer {
-    /// Create a new BAM file.
+    /// Create a new SAM/BAM/CRAM file.
     ///
     /// # Arguments
     ///
     /// * `path` - the path.
     /// * `header` - header definition to use
+    /// * `format` - the format to use (SAM/BAM/CRAM)
     pub fn from_path<P: AsRef<Path>>(
         path: P,
         header: &header::Header,
-    ) -> Result<Self, WriterPathError> {
-        if let Some(p) = path.as_ref().to_str() {
-            Ok(r#try!(Self::new(p.as_bytes(), b"wb", header)))
-        } else {
-            Err(WriterPathError::InvalidPath)
-        }
+        format: Format,
+    ) -> Result<Self> {
+        Self::new(&path_as_bytes(path, false)?, format.write_mode(), header)
     }
 
-    /// Create a new CRAM file.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - the path.
-    /// * `header` - header definition to use
-    pub fn from_cram_path<P: AsRef<Path>>(
-        path: P,
-        header: &header::Header,
-    ) -> Result<Self, WriterPathError> {
-        if let Some(p) = path.as_ref().to_str() {
-            Ok(r#try!(Self::new(p.as_bytes(), b"wc", header)))
-        } else {
-            Err(WriterPathError::InvalidPath)
-        }
-    }
-
-    /// Create a new BAM file at STDOUT.
+    /// Create a new SAM/BAM/CRAM file at STDOUT.
     ///
     /// # Arguments
     ///
     /// * `header` - header definition to use
-    pub fn from_stdout(header: &header::Header) -> Result<Self, BGZFError> {
-        Self::new(b"-", b"wb", header)
+    /// * `format` - the format to use (SAM/BAM/CRAM)
+    pub fn from_stdout(header: &header::Header, format: Format) -> Result<Self> {
+        Self::new(b"-", format.write_mode(), header)
     }
 
-    /// Create a new BAM or CRAM file.
+    /// Create a new SAM/BAM/CRAM file.
     ///
     /// # Arguments
     ///
     /// * `path` - the path. Use "-" for stdout.
     /// * `mode` - write mode, refer to htslib::hts_open()
     /// * `header` - header definition to use
-    fn new(path: &[u8], mode: &[u8], header: &header::Header) -> Result<Self, BGZFError> {
-        let f = r#try!(hts_open(&ffi::CString::new(path).unwrap(), mode));
+    fn new(path: &[u8], mode: &[u8], header: &header::Header) -> Result<Self> {
+        let f = hts_open(path, mode)?;
 
         // sam_hdr_parse does not populate the text and l_text fields of the header_record.
         // This causes non-SQ headers to be dropped in the output BAM file.
@@ -569,7 +579,7 @@ impl Writer {
     /// # Arguments
     ///
     /// * `n_threads` - number of extra background writer threads to use, must be `> 0`.
-    pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
+    pub fn set_threads(&mut self, n_threads: usize) -> Result<()> {
         set_threads(self.f, n_threads)
     }
 
@@ -578,9 +588,9 @@ impl Writer {
     /// # Arguments
     ///
     /// * `record` - the record to write
-    pub fn write(&mut self, record: &record::Record) -> Result<(), WriteError> {
+    pub fn write(&mut self, record: &record::Record) -> Result<()> {
         if unsafe { htslib::sam_write1(self.f, &self.header.inner(), record.inner) } == -1 {
-            Err(WriteError::Some)
+            Err(Error::Write)
         } else {
             Ok(())
         }
@@ -596,14 +606,8 @@ impl Writer {
     /// # Arguments
     ///
     /// * `path` - path to the FASTA reference
-    pub fn set_reference<P: AsRef<Path>>(&mut self, path: P) -> Result<(), ReferencePathError> {
-        let fai_path_str = format!("{}.fai", path.as_ref().to_str().unwrap());
-        let fai_path = Path::new(&fai_path_str);
-
-        match fai_path.to_str() {
-            Some(p) if fai_path.exists() => set_fai_filename(self.f, p.as_bytes()),
-            _ => Err(ReferencePathError::InvalidPath),
-        }
+    pub fn set_reference<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
+        set_fai_filename(self.f, path)
     }
 
     /// Set the compression level for writing BAM/CRAM files.
@@ -611,10 +615,7 @@ impl Writer {
     /// # Arguments
     ///
     /// * `compression_level` - `CompressionLevel` enum variant
-    pub fn set_compression_level(
-        &mut self,
-        compression_level: CompressionLevel,
-    ) -> Result<(), CompressionLevelError> {
+    pub fn set_compression_level(&mut self, compression_level: CompressionLevel) -> Result<()> {
         let level = compression_level.convert()?;
         match unsafe {
             htslib::hts_set_opt(
@@ -624,7 +625,7 @@ impl Writer {
             )
         } {
             0 => Ok(()),
-            _ => Err(CompressionLevelError::InvalidLevel),
+            _ => Err(Error::InvalidCompressionLevel { level }),
         }
     }
 }
@@ -645,15 +646,15 @@ pub enum CompressionLevel {
 
 impl CompressionLevel {
     // Convert and check the variants of the `CompressionLevel` enum to a numeric level
-    fn convert(self) -> Result<u32, CompressionLevelError> {
+    fn convert(self) -> Result<u32> {
         match self {
             CompressionLevel::Uncompressed => Ok(htslib::Z_NO_COMPRESSION),
             CompressionLevel::Fastest => Ok(htslib::Z_BEST_SPEED),
             CompressionLevel::Maximum => Ok(htslib::Z_BEST_COMPRESSION),
-            CompressionLevel::Level(i @ htslib::Z_NO_COMPRESSION...htslib::Z_BEST_COMPRESSION) => {
+            CompressionLevel::Level(i @ htslib::Z_NO_COMPRESSION..=htslib::Z_BEST_COMPRESSION) => {
                 Ok(i)
             }
-            CompressionLevel::Level(_) => Err(CompressionLevelError::InvalidLevel),
+            CompressionLevel::Level(i) => Err(Error::InvalidCompressionLevel { level: i }),
         }
     }
 }
@@ -673,13 +674,13 @@ pub struct Records<'a, R: Read> {
 }
 
 impl<'a, R: Read> Iterator for Records<'a, R> {
-    type Item = Result<record::Record, ReadError>;
+    type Item = Result<record::Record>;
 
-    fn next(&mut self) -> Option<Result<record::Record, ReadError>> {
+    fn next(&mut self) -> Option<Result<record::Record>> {
         let mut record = record::Record::new();
         match self.reader.read(&mut record) {
-            Err(ReadError::NoMoreRecord) => None,
-            Ok(()) => Some(Ok(record)),
+            Ok(false) => None,
+            Ok(true) => Some(Ok(record)),
             Err(err) => Some(Err(err)),
         }
     }
@@ -692,8 +693,8 @@ pub struct ChunkIterator<'a, R: Read> {
 }
 
 impl<'a, R: Read> Iterator for ChunkIterator<'a, R> {
-    type Item = Result<record::Record, ReadError>;
-    fn next(&mut self) -> Option<Result<record::Record, ReadError>> {
+    type Item = Result<record::Record>;
+    fn next(&mut self) -> Option<Result<record::Record>> {
         if let Some(pos) = self.end {
             if self.reader.tell() >= pos {
                 return None;
@@ -701,169 +702,23 @@ impl<'a, R: Read> Iterator for ChunkIterator<'a, R> {
         }
         let mut record = record::Record::new();
         match self.reader.read(&mut record) {
-            Err(ReadError::NoMoreRecord) => None,
-            Ok(()) => Some(Ok(record)),
+            Ok(false) => None,
+            Ok(true) => Some(Ok(record)),
             Err(err) => Some(Err(err)),
         }
     }
 }
 
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum ReadError {
-        Truncated {
-            description("truncated record")
-        }
-        Invalid {
-            description("invalid record")
-        }
-        NoMoreRecord {
-            description("no more record")
-        }
-    }
-}
-
-impl ReadError {
-    /// Returns true if no record has been read because the end of the file was reached.
-    pub fn is_eof(&self) -> bool {
-        match self {
-            ReadError::NoMoreRecord => true,
-            _ => false,
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum IndexedReaderError {
-        InvalidIndex {
-            description("invalid index")
-        }
-        BGZFError(err: BGZFError) {
-            from()
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum WriterPathError {
-        InvalidPath {
-            description("invalid path")
-        }
-        BGZFError(err: BGZFError) {
-            from()
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum IndexedReaderPathError {
-        InvalidPath {
-            description("invalid path")
-        }
-        IndexedReaderError(err: IndexedReaderError) {
-            from()
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum BGZFError {
-        Some {
-            description("error reading BGZF file")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum ReaderPathError {
-        InvalidPath {
-            description("invalid path")
-        }
-        BGZFError(err: BGZFError) {
-            from()
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum ReferencePathError {
-        InvalidPath {
-            description("invalid path")
-        }
-        BGZFError(err: BGZFError) {
-            from()
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum CompressionLevelError {
-        InvalidLevel {
-            description("invalid compression level")
-        }
-        Some {
-            description("compression level not able to set")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum ThreadingError {
-        Some {
-            description("error setting threads for multi-threaded I/O")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum WriteError {
-        Some {
-            description("error writing record")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum FetchError {
-        Some {
-            description("error fetching a locus")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum SeekError {
-        Some {
-            description("error seeking to voffset")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum AuxWriteError {
-        Some {
-            description("error pushing aux data to record")
-        }
-    }
-}
-
 /// Wrapper for opening a BAM file.
-fn hts_open(path: &ffi::CStr, mode: &[u8]) -> Result<*mut htslib::htsFile, BGZFError> {
-    let ret = unsafe { htslib::hts_open(path.as_ptr(), ffi::CString::new(mode).unwrap().as_ptr()) };
+fn hts_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
+    let cpath = ffi::CString::new(path).unwrap();
+    let path = str::from_utf8(path).unwrap();
+    let ret =
+        unsafe { htslib::hts_open(cpath.as_ptr(), ffi::CString::new(mode).unwrap().as_ptr()) };
     if ret.is_null() {
-        Err(BGZFError::Some)
+        Err(Error::Open {
+            target: path.to_owned(),
+        })
     } else {
         if !mode.contains(&b'w') {
             unsafe {
@@ -872,7 +727,9 @@ fn hts_open(path: &ffi::CStr, mode: &[u8]) -> Result<*mut htslib::htsFile, BGZFE
                 if (*ret).format.format != htslib::htsExactFormat_bam
                     && (*ret).format.format != htslib::htsExactFormat_cram
                 {
-                    return Err(BGZFError::Some);
+                    return Err(Error::Open {
+                        target: path.to_owned(),
+                    });
                 }
             }
         }
@@ -1103,18 +960,15 @@ CCCCCCCCCCCCCCCCCCC"[..],
             let cigar = rec.cigar();
             assert_eq!(*cigar, cigars[i]);
 
-            if let Ok(end_pos) = cigar.end_pos() {
-                assert_eq!(end_pos, rec.pos() + 100 + del_len[i]);
-                assert_eq!(
-                    cigar
-                        .read_pos(end_pos as u32 - 10, false, false)
-                        .unwrap()
-                        .unwrap(),
-                    90
-                );
-            } else {
-                panic!("bug: failed to fetch cigar.end_pos() in test_read()")
-            }
+            let end_pos = cigar.end_pos();
+            assert_eq!(end_pos, rec.pos() + 100 + del_len[i]);
+            assert_eq!(
+                cigar
+                    .read_pos(end_pos as u32 - 10, false, false)
+                    .unwrap()
+                    .unwrap(),
+                90
+            );
             assert_eq!(
                 cigar
                     .read_pos(rec.pos() as u32 + 20, false, false)
@@ -1140,12 +994,8 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let mut offset = bam.tell();
         let mut rec = Record::new();
         loop {
-            if let Err(e) = bam.read(&mut rec) {
-                if e.is_eof() {
-                    break;
-                } else {
-                    panic!("error reading bam");
-                }
+            if !bam.read(&mut rec).expect("error reading bam") {
+                break;
             }
             let qname = str::from_utf8(rec.qname()).unwrap().to_string();
             println!("{} {}", offset, qname);
@@ -1397,6 +1247,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                         .push_tag(b"SN", &"chr1")
                         .push_tag(b"LN", &15072423),
                 ),
+                Format::BAM,
             )
             .ok()
             .expect("Error opening file.");
@@ -1447,6 +1298,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                         .push_tag(b"SN", &"chr1")
                         .push_tag(b"LN", &15072423),
                 ),
+                Format::BAM,
             )
             .ok()
             .expect("Error opening file.");
@@ -1501,9 +1353,13 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .expect("Error opening file.");
 
         {
-            let mut bam = Writer::from_path(&bampath, &Header::from_template(&input_bam.header()))
-                .ok()
-                .expect("Error opening file.");
+            let mut bam = Writer::from_path(
+                &bampath,
+                &Header::from_template(&input_bam.header()),
+                Format::BAM,
+            )
+            .ok()
+            .expect("Error opening file.");
 
             for rec in input_bam.records() {
                 bam.write(&rec.unwrap())
@@ -1683,7 +1539,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                     .push_tag(b"UR", &"test/test_cram.fa"),
             );
 
-            let mut cram_writer = Writer::from_cram_path(&cram_path, &header)
+            let mut cram_writer = Writer::from_path(&cram_path, &header, Format::CRAM)
                 .ok()
                 .expect("Error opening CRAM file.");
             cram_writer.set_reference(ref_path).unwrap();
@@ -1747,7 +1603,8 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 {
                     let mut reader = Reader::from_path(&input_bam_path).unwrap();
                     let header = Header::from_template(reader.header());
-                    let mut writer = Writer::from_path(&output_bam_path, &header).unwrap();
+                    let mut writer =
+                        Writer::from_path(&output_bam_path, &header, Format::BAM).unwrap();
                     writer.set_compression_level(*level).unwrap();
                     for record in reader.records() {
                         writer.write(&record.unwrap()).unwrap();
@@ -1782,5 +1639,51 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let bam_path = "./Cargo.toml";
         let bam_reader = Reader::from_path(bam_path);
         assert!(bam_reader.is_err());
+    }
+
+    #[test]
+    fn test_sam_writer_example() {
+        fn from_bam_with_filter<'a, 'b, F>(bamfile: &'a str, samfile: &'b str, f: F) -> bool
+        where
+            F: Fn(&record::Record) -> Option<bool>,
+        {
+            let mut bam_reader = Reader::from_path(bamfile).unwrap(); // internal functions, just unwarp
+            let header = header::Header::from_template(bam_reader.header());
+            let mut sam_writer = Writer::from_path(samfile, &header, Format::SAM).unwrap();
+            for record in bam_reader.records() {
+                if record.is_err() {
+                    return false;
+                }
+                let parsed = record.unwrap();
+                match f(&parsed) {
+                    None => return true,
+                    Some(false) => {}
+                    Some(true) => {
+                        if let Err(_) = sam_writer.write(&parsed) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            true
+        }
+        use std::fs::File;
+        use std::io::Read;
+        let bamfile = "./test/bam2sam_test.bam";
+        let samfile = "./test/bam2sam_out.sam";
+        let expectedfile = "./test/bam2sam_expected.sam";
+        let result = from_bam_with_filter(bamfile, samfile, |_| Some(true));
+        assert!(result);
+        let mut expected = Vec::new();
+        let mut written = Vec::new();
+        assert!(File::open(expectedfile)
+            .unwrap()
+            .read_to_end(&mut expected)
+            .is_ok());
+        assert!(File::open(samfile)
+            .unwrap()
+            .read_to_end(&mut written)
+            .is_ok());
+        assert_eq!(expected, written);
     }
 }

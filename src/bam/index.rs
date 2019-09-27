@@ -8,6 +8,7 @@
 use std::path::Path;
 use std::ptr;
 
+use crate::bam::errors::{Error, Result};
 use crate::htslib;
 use crate::utils;
 
@@ -25,7 +26,7 @@ pub fn build<P: AsRef<Path>>(
     idx_path: Option<P>,
     idx_type: Type,
     n_threads: u32,
-) -> Result<(), IndexBuildError> {
+) -> Result<()> {
     let min_shift = match idx_type {
         Type::BAI => 0,
         Type::CSI(min_shift) => min_shift as i32,
@@ -48,29 +49,13 @@ pub fn build<P: AsRef<Path>>(
     };
     match ret {
         0 => Ok(()),
-        -1 => Err(IndexBuildError::Some),
-        -2 => Err(IndexBuildError::Opening),
-        -3 => Err(IndexBuildError::InvalidFormat),
-        -4 => Err(IndexBuildError::Saving),
+        -1 => Err(Error::BuildIndex),
+        -2 => Err(Error::Open {
+            target: bam_path.as_ref().to_str().unwrap().to_owned(),
+        }),
+        -3 => Err(Error::NotIndexable),
+        -4 => Err(Error::WriteIndex),
         e => panic!("unexpected error code from sam_index_build3: {}", e),
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum IndexBuildError {
-        Some {
-            description("error building index")
-        }
-        Opening {
-            description("error opening input file for building index")
-        }
-        InvalidFormat {
-            description("format is not indexable")
-        }
-        Saving {
-            description("could not save index")
-        }
     }
 }
 

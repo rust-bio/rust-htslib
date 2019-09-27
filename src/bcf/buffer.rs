@@ -4,9 +4,9 @@
 // except according to those terms.
 
 use std::collections::{vec_deque, VecDeque};
-use std::error::Error;
 use std::mem;
 
+use crate::bcf::errors::Result;
 use crate::bcf::{self, Read};
 
 /// A buffer for BCF records. This allows access regions in a sorted BCF file while iterating
@@ -69,15 +69,10 @@ impl RecordBuffer {
     /// the start coordinate of any previous `fill` operation.
     /// Coordinates are 0-based, and end is exclusive.
     /// Returns tuple with numbers of added and deleted records compared to previous fetch.
-    pub fn fetch(
-        &mut self,
-        chrom: &[u8],
-        start: u32,
-        end: u32,
-    ) -> Result<(usize, usize), Box<dyn Error>> {
+    pub fn fetch(&mut self, chrom: &[u8], start: u32, end: u32) -> Result<(usize, usize)> {
         // TODO panic if start is left of previous start or we have moved past the given chrom
         // before.
-        let rid = r#try!(self.reader.header.name2rid(chrom));
+        let rid = self.reader.header.name2rid(chrom)?;
         let mut added = 0;
         let mut deleted = 0;
 
@@ -129,11 +124,10 @@ impl RecordBuffer {
         // extend to the right
         loop {
             let mut rec = self.reader.empty_record();
-            if let Err(e) = self.reader.read(&mut rec) {
-                if e.is_eof() {
-                    break;
-                }
-                return Err(Box::new(e));
+
+            if !self.reader.read(&mut rec)? {
+                // EOF
+                break;
             }
             let pos = rec.pos();
             if let Some(rec_rid) = rec.rid() {

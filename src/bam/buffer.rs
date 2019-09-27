@@ -4,10 +4,10 @@
 // except according to those terms.
 
 use std::collections::{vec_deque, VecDeque};
-use std::error::Error;
 use std::str;
 
 use crate::bam;
+use crate::bam::errors::{Error, Result};
 use crate::bam::Read;
 
 /// A buffer for BAM records. This allows access regions in a sorted BAM file while iterating
@@ -54,12 +54,7 @@ impl RecordBuffer {
     /// Coordinates are 0-based, and end is exclusive.
     /// Returns tuple with numbers of added and deleted records since the previous fetch.
     #[allow(unused_assignments)] // TODO this is needed because rustc thinks that deleted is unused
-    pub fn fetch(
-        &mut self,
-        chrom: &[u8],
-        start: u32,
-        end: u32,
-    ) -> Result<(usize, usize), Box<dyn Error>> {
+    pub fn fetch(&mut self, chrom: &[u8], start: u32, end: u32) -> Result<(usize, usize)> {
         let mut added = 0;
         // move overflow from last fetch into ringbuffer
         if self.overflow.is_some() {
@@ -95,11 +90,8 @@ impl RecordBuffer {
             // extend to the right
             loop {
                 let mut record = bam::Record::new();
-                if let Err(e) = self.reader.read(&mut record) {
-                    if e.is_eof() {
-                        break;
-                    }
-                    return Err(Box::new(e));
+                if !self.reader.read(&mut record)? {
+                    break;
                 }
 
                 if record.is_unmapped() {
@@ -118,9 +110,9 @@ impl RecordBuffer {
 
             Ok((added, deleted))
         } else {
-            Err(Box::new(RecordBufferError::UnknownSequence(
-                str::from_utf8(chrom).unwrap().to_owned(),
-            )))
+            Err(Error::UnknownSequence {
+                sequence: str::from_utf8(chrom).unwrap().to_owned(),
+            })
         }
     }
 
@@ -136,16 +128,6 @@ impl RecordBuffer {
 
     pub fn len(&self) -> usize {
         self.inner.len()
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum RecordBufferError {
-        UnknownSequence(chrom: String) {
-            description("unknown sequence")
-            display("sequence {} cannot be found in BAM", chrom)
-        }
     }
 }
 

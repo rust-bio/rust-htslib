@@ -10,6 +10,7 @@ use std::slice;
 use crate::htslib;
 
 use crate::bam;
+use crate::bam::errors::{Error, Result};
 use crate::bam::record;
 
 /// Iterator over alignments of a pileup.
@@ -153,14 +154,14 @@ impl<'a, R: bam::Read> Pileups<'a, R> {
 }
 
 impl<'a, R: bam::Read> Iterator for Pileups<'a, R> {
-    type Item = Result<Pileup, PileupError>;
+    type Item = Result<Pileup>;
 
-    fn next(&mut self) -> Option<Result<Pileup, PileupError>> {
+    fn next(&mut self) -> Option<Result<Pileup>> {
         let (mut tid, mut pos, mut depth) = (0i32, 0i32, 0i32);
         let inner = unsafe { htslib::bam_plp_auto(self.itr, &mut tid, &mut pos, &mut depth) };
 
         match inner.is_null() {
-            true if depth == -1 => Some(Err(PileupError::Some)),
+            true if depth == -1 => Some(Err(Error::Pileup)),
             true => None,
             false => Some(Ok(Pileup {
                 inner,
@@ -177,15 +178,6 @@ impl<'a, R: bam::Read> Drop for Pileups<'a, R> {
         unsafe {
             htslib::bam_plp_reset(self.itr);
             htslib::bam_plp_destroy(self.itr);
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum PileupError {
-        Some {
-            description("error generating pileup")
         }
     }
 }
@@ -211,5 +203,4 @@ mod tests {
         let mut p = bam.pileup();
         p.set_max_depth((i32::max_value() as u32) + 1);
     }
-
 }

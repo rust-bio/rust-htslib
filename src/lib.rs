@@ -15,7 +15,7 @@
 //!
 //! let mut bam = bam::Reader::from_path(&"test/test.bam").unwrap();
 //! let header = bam::Header::from_template(bam.header());
-//! let mut out = bam::Writer::from_path(&"test/out.bam", &header).unwrap();
+//! let mut out = bam::Writer::from_path(&"test/out.bam", &header, bam::Format::BAM).unwrap();
 //!
 //! // copy reverse reads to new BAM file
 //! for r in bam.records() {
@@ -72,8 +72,6 @@ extern crate lazy_static;
 extern crate libc;
 #[macro_use]
 extern crate newtype_derive;
-#[macro_use]
-extern crate quick_error;
 
 #[cfg(feature = "serde")]
 extern crate serde;
@@ -94,9 +92,10 @@ extern crate bzip2_sys;
 #[cfg(feature = "lzma")]
 extern crate lzma_sys;
 
+extern crate snafu;
+
 pub mod bam;
 pub mod bcf;
 pub mod htslib;
-pub mod sam;
 pub mod tbx;
 pub mod utils;
