@@ -20,6 +20,7 @@ pub struct RecordBuffer {
     reader: bam::IndexedReader,
     inner: VecDeque<bam::Record>,
     overflow: Option<bam::Record>,
+    cache_cigar: bool,
 }
 
 unsafe impl Sync for RecordBuffer {}
@@ -27,11 +28,17 @@ unsafe impl Send for RecordBuffer {}
 
 impl RecordBuffer {
     /// Create a new `RecordBuffer`.
-    pub fn new(bam: bam::IndexedReader) -> Self {
+    /// 
+    /// # Arguments
+    /// 
+    /// * `bam` - BAM reader
+    /// * `cache_cigar` - whether to call `bam::Record::cache_cigar()` for each record.
+    pub fn new(bam: bam::IndexedReader, cache_cigar: bool) -> Self {
         RecordBuffer {
             reader: bam,
             inner: VecDeque::new(),
             overflow: None,
+            cache_cigar
         }
     }
 
@@ -99,6 +106,11 @@ impl RecordBuffer {
                 }
 
                 let pos = record.pos();
+
+                if self.cache_cigar {
+                    record.cache_cigar();
+                }
+
                 if pos >= end as i32 {
                     self.overflow = Some(record);
                     break;
