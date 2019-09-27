@@ -651,7 +651,7 @@ impl CompressionLevel {
             CompressionLevel::Uncompressed => Ok(htslib::Z_NO_COMPRESSION),
             CompressionLevel::Fastest => Ok(htslib::Z_BEST_SPEED),
             CompressionLevel::Maximum => Ok(htslib::Z_BEST_COMPRESSION),
-            CompressionLevel::Level(i @ htslib::Z_NO_COMPRESSION...htslib::Z_BEST_COMPRESSION) => {
+            CompressionLevel::Level(i @ htslib::Z_NO_COMPRESSION..=htslib::Z_BEST_COMPRESSION) => {
                 Ok(i)
             }
             CompressionLevel::Level(i) => Err(Error::InvalidCompressionLevel { level: i }),
