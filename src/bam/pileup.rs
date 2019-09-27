@@ -203,5 +203,4 @@ mod tests {
         let mut p = bam.pileup();
         p.set_max_depth((i32::max_value() as u32) + 1);
     }
-
 }

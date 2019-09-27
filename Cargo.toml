@@ -45,3 +45,7 @@ pretty_assertions = "0.6"
 fs-utils = "1.1"
 bindgen = {version = "0.51", default-features = false}
 cc = "1.0"
+
+[package.metadata.release]
+pre-release-commit-message = "release version {{version}}"
+tag-message = "Version {{version}} of Rust-HTSlib."

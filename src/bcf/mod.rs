@@ -524,7 +524,6 @@ pub mod synced {
             unsafe { crate::htslib::bcf_sr_destroy(self.inner) };
         }
     }
-
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -1324,5 +1323,4 @@ mod tests {
         let reader = Reader::from_path("test/no_such_file");
         assert!(reader.is_err());
     }
-
 }

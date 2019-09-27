@@ -437,5 +437,4 @@ mod tests {
         let reader = Reader::from_path("test/test_left.vcf");
         assert!(reader.is_err());
     }
-
 }
