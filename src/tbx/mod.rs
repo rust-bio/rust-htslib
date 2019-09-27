@@ -51,13 +51,20 @@ use url::Url;
 pub mod errors;
 
 use crate::htslib;
-use crate::tbx::errors::{Result, Error};
+use crate::tbx::errors::{Error, Result};
 
 fn path_as_bytes<'a, P: 'a + AsRef<Path>>(path: P, must_exist: bool) -> Result<Vec<u8>> {
     if path.as_ref().exists() || !must_exist {
-        Ok(path.as_ref().to_str().ok_or(Error::NonUnicodePath)?.as_bytes().to_owned())
+        Ok(path
+            .as_ref()
+            .to_str()
+            .ok_or(Error::NonUnicodePath)?
+            .as_bytes()
+            .to_owned())
     } else {
-        Err(Error::FileNotFound { path: path.as_ref().to_owned() })
+        Err(Error::FileNotFound {
+            path: path.as_ref().to_owned(),
+        })
     }
 }
 
@@ -71,7 +78,7 @@ pub trait Read: Sized {
     /// # Arguments
     ///
     /// * `record` - the `Vec<u8>` to be filled
-    /// 
+    ///
     /// # Returns
     /// Ok(true) if record was read, Ok(false) if no more record in file
     fn read(&mut self, record: &mut Vec<u8>) -> Result<bool>;
@@ -198,7 +205,9 @@ impl Reader {
             )
         };
         if res < 0 {
-            Err(Error::UnknownSequence { sequence: name.to_owned() })
+            Err(Error::UnknownSequence {
+                sequence: name.to_owned(),
+            })
         } else {
             Ok(res as u32)
         }

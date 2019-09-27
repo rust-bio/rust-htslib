@@ -65,9 +65,7 @@ pub fn set_fai_filename<P: AsRef<Path>>(
     {
         Ok(())
     } else {
-        Err(Error::InvalidReferencePath {
-            path: p.to_owned(),
-        })
+        Err(Error::InvalidReferencePath { path: p.to_owned() })
     }
 }
 
@@ -80,9 +78,9 @@ pub trait Read: Sized {
     /// # Arguments
     ///
     /// * `record` - the record to be filled
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// `Ok(true)` if record was read without error, Ok(false) if there is no more record in the file.
     fn read(&mut self, record: &mut record::Record) -> Result<bool>;
 
@@ -146,9 +144,16 @@ pub trait Read: Sized {
 
 fn path_as_bytes<'a, P: 'a + AsRef<Path>>(path: P, must_exist: bool) -> Result<Vec<u8>> {
     if path.as_ref().exists() || !must_exist {
-        Ok(path.as_ref().to_str().ok_or(Error::NonUnicodePath)?.as_bytes().to_owned())
+        Ok(path
+            .as_ref()
+            .to_str()
+            .ok_or(Error::NonUnicodePath)?
+            .as_bytes()
+            .to_owned())
     } else {
-        Err(Error::FileNotFound { path: path.as_ref().to_owned() })
+        Err(Error::FileNotFound {
+            path: path.as_ref().to_owned(),
+        })
     }
 }
 
@@ -297,10 +302,7 @@ impl IndexedReader {
         Self::new(&path_as_bytes(path, true)?)
     }
 
-    pub fn from_path_and_index<P: AsRef<Path>>(
-        path: P,
-        index_path: P,
-    ) -> Result<Self> {
+    pub fn from_path_and_index<P: AsRef<Path>>(path: P, index_path: P) -> Result<Self> {
         Self::new_with_index_path(
             &path_as_bytes(path, true)?,
             &path_as_bytes(index_path, true)?,
@@ -319,9 +321,12 @@ impl IndexedReader {
     fn new(path: &[u8]) -> Result<Self> {
         let htsfile = hts_open(path, b"r")?;
         let header = unsafe { htslib::sam_hdr_read(htsfile) };
-        let idx = unsafe { htslib::sam_index_load(htsfile, ffi::CString::new(path).unwrap().as_ptr()) };
+        let idx =
+            unsafe { htslib::sam_index_load(htsfile, ffi::CString::new(path).unwrap().as_ptr()) };
         if idx.is_null() {
-            Err(Error::InvalidIndex { target: str::from_utf8(path).unwrap().to_owned() })
+            Err(Error::InvalidIndex {
+                target: str::from_utf8(path).unwrap().to_owned(),
+            })
         } else {
             Ok(IndexedReader {
                 htsfile,
@@ -337,15 +342,20 @@ impl IndexedReader {
     ///
     /// * `path` - the path. Use "-" for stdin.
     /// * `index_path` - the index path to use
-    fn new_with_index_path(
-        path: &[u8],
-        index_path: &[u8],
-    ) -> Result<Self> {
+    fn new_with_index_path(path: &[u8], index_path: &[u8]) -> Result<Self> {
         let htsfile = hts_open(path, b"r")?;
         let header = unsafe { htslib::sam_hdr_read(htsfile) };
-        let idx = unsafe { htslib::sam_index_load2(htsfile, ffi::CString::new(path).unwrap().as_ptr(), ffi::CString::new(index_path).unwrap().as_ptr()) };
+        let idx = unsafe {
+            htslib::sam_index_load2(
+                htsfile,
+                ffi::CString::new(path).unwrap().as_ptr(),
+                ffi::CString::new(index_path).unwrap().as_ptr(),
+            )
+        };
         if idx.is_null() {
-            Err(Error::InvalidIndex { target: str::from_utf8(path).unwrap().to_owned() })
+            Err(Error::InvalidIndex {
+                target: str::from_utf8(path).unwrap().to_owned(),
+            })
         } else {
             Ok(IndexedReader {
                 htsfile,
@@ -504,7 +514,6 @@ impl Writer {
         header: &header::Header,
         format: Format,
     ) -> Result<Self> {
-
         Self::new(&path_as_bytes(path, false)?, format.write_mode(), header)
     }
 
@@ -606,10 +615,7 @@ impl Writer {
     /// # Arguments
     ///
     /// * `compression_level` - `CompressionLevel` enum variant
-    pub fn set_compression_level(
-        &mut self,
-        compression_level: CompressionLevel,
-    ) -> Result<()> {
+    pub fn set_compression_level(&mut self, compression_level: CompressionLevel) -> Result<()> {
         let level = compression_level.convert()?;
         match unsafe {
             htslib::hts_set_opt(
@@ -648,7 +654,7 @@ impl CompressionLevel {
             CompressionLevel::Level(i @ htslib::Z_NO_COMPRESSION...htslib::Z_BEST_COMPRESSION) => {
                 Ok(i)
             }
-            CompressionLevel::Level(i) => Err(Error::InvalidCompressionLevel { level: i}),
+            CompressionLevel::Level(i) => Err(Error::InvalidCompressionLevel { level: i }),
         }
     }
 }
@@ -707,9 +713,12 @@ impl<'a, R: Read> Iterator for ChunkIterator<'a, R> {
 fn hts_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
     let cpath = ffi::CString::new(path).unwrap();
     let path = str::from_utf8(path).unwrap();
-    let ret = unsafe { htslib::hts_open(cpath.as_ptr(), ffi::CString::new(mode).unwrap().as_ptr()) };
+    let ret =
+        unsafe { htslib::hts_open(cpath.as_ptr(), ffi::CString::new(mode).unwrap().as_ptr()) };
     if ret.is_null() {
-        Err(Error::Open { target: path.to_owned() })
+        Err(Error::Open {
+            target: path.to_owned(),
+        })
     } else {
         if !mode.contains(&b'w') {
             unsafe {
@@ -718,7 +727,9 @@ fn hts_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
                 if (*ret).format.format != htslib::htsExactFormat_bam
                     && (*ret).format.format != htslib::htsExactFormat_cram
                 {
-                    return Err(Error::Open { target: path.to_owned() });
+                    return Err(Error::Open {
+                        target: path.to_owned(),
+                    });
                 }
             }
         }
@@ -1342,9 +1353,13 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .expect("Error opening file.");
 
         {
-            let mut bam = Writer::from_path(&bampath, &Header::from_template(&input_bam.header()), Format::BAM)
-                .ok()
-                .expect("Error opening file.");
+            let mut bam = Writer::from_path(
+                &bampath,
+                &Header::from_template(&input_bam.header()),
+                Format::BAM,
+            )
+            .ok()
+            .expect("Error opening file.");
 
             for rec in input_bam.records() {
                 bam.write(&rec.unwrap())
@@ -1588,7 +1603,8 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 {
                     let mut reader = Reader::from_path(&input_bam_path).unwrap();
                     let header = Header::from_template(reader.header());
-                    let mut writer = Writer::from_path(&output_bam_path, &header, Format::BAM).unwrap();
+                    let mut writer =
+                        Writer::from_path(&output_bam_path, &header, Format::BAM).unwrap();
                     writer.set_compression_level(*level).unwrap();
                     for record in reader.records() {
                         writer.write(&record.unwrap()).unwrap();

@@ -8,9 +8,9 @@
 use std::path::Path;
 use std::ptr;
 
+use crate::bam::errors::{Error, Result};
 use crate::htslib;
 use crate::utils;
-use crate::bam::errors::{Result, Error};
 
 /// Index type to build.
 pub enum Type {
@@ -50,7 +50,9 @@ pub fn build<P: AsRef<Path>>(
     match ret {
         0 => Ok(()),
         -1 => Err(Error::BuildIndex),
-        -2 => Err(Error::Open {target: bam_path.as_ref().to_str().unwrap().to_owned() }),
+        -2 => Err(Error::Open {
+            target: bam_path.as_ref().to_str().unwrap().to_owned(),
+        }),
         -3 => Err(Error::NotIndexable),
         -4 => Err(Error::WriteIndex),
         e => panic!("unexpected error code from sam_index_build3: {}", e),

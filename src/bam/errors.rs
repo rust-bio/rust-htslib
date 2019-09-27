@@ -45,5 +45,5 @@ pub enum Error {
     #[snafu(display("failed to build BAM/CRAM index"))]
     BuildIndex,
     #[snafu(display("failed to create SAM/BAM/CRAM pileup"))]
-    Pileup
+    Pileup,
 }

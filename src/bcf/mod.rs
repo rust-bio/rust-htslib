@@ -573,7 +573,12 @@ impl Writer {
     /// * `header` - header definition to use
     /// * `uncompressed` - disable compression
     /// * `vcf` - write VCF instead of BCF
-    pub fn from_url(url: &Url, header: &Header, uncompressed: bool, format: Format) -> Result<Self> {
+    pub fn from_url(
+        url: &Url,
+        header: &Header,
+        uncompressed: bool,
+        format: Format,
+    ) -> Result<Self> {
         Self::new(url.as_str().as_bytes(), header, uncompressed, format)
     }
 
@@ -1139,10 +1144,14 @@ mod tests {
         // The writer goes into its own block so we can ensure that the file is closed and
         // all data is written below.
         {
-            let mut writer =
-                Writer::from_path(&out_path, &Header::from_template(&vcf.header()), true, Format::VCF)
-                    .ok()
-                    .expect("Error opening file.");
+            let mut writer = Writer::from_path(
+                &out_path,
+                &Header::from_template(&vcf.header()),
+                true,
+                Format::VCF,
+            )
+            .ok()
+            .expect("Error opening file.");
             let header = writer.header().clone();
 
             // Setup empty record, filled below.

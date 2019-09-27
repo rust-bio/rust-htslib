@@ -7,8 +7,8 @@ use std::collections::{vec_deque, VecDeque};
 use std::str;
 
 use crate::bam;
+use crate::bam::errors::{Error, Result};
 use crate::bam::Read;
-use crate::bam::errors::{Result, Error};
 
 /// A buffer for BAM records. This allows access regions in a sorted BAM file while iterating
 /// over it in a single pass.
@@ -54,12 +54,7 @@ impl RecordBuffer {
     /// Coordinates are 0-based, and end is exclusive.
     /// Returns tuple with numbers of added and deleted records since the previous fetch.
     #[allow(unused_assignments)] // TODO this is needed because rustc thinks that deleted is unused
-    pub fn fetch(
-        &mut self,
-        chrom: &[u8],
-        start: u32,
-        end: u32,
-    ) -> Result<(usize, usize)> {
+    pub fn fetch(&mut self, chrom: &[u8], start: u32, end: u32) -> Result<(usize, usize)> {
         let mut added = 0;
         // move overflow from last fetch into ringbuffer
         if self.overflow.is_some() {
@@ -115,7 +110,9 @@ impl RecordBuffer {
 
             Ok((added, deleted))
         } else {
-            Err(Error::UnknownSequence { sequence: str::from_utf8(chrom).unwrap().to_owned() })
+            Err(Error::UnknownSequence {
+                sequence: str::from_utf8(chrom).unwrap().to_owned(),
+            })
         }
     }
 
@@ -133,7 +130,6 @@ impl RecordBuffer {
         self.inner.len()
     }
 }
-
 
 #[cfg(test)]
 mod tests {
