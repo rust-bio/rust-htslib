@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.26.0] - 2019-09-27
+## Changes
+- Allow caching of CIGAR in bam::RecordBuffer.
+
+
 ## [0.25.0] - 2019-09-27
 ## Changes
 - Migrated error handling to the snafu crate: https://docs.rs/snafu.
