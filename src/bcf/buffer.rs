@@ -4,10 +4,10 @@
 // except according to those terms.
 
 use std::collections::{vec_deque, VecDeque};
-use std::error::Error;
 use std::mem;
 
 use crate::bcf::{self, Read};
+use crate::bcf::errors::Result;
 
 /// A buffer for BCF records. This allows access regions in a sorted BCF file while iterating
 /// over it in a single pass.
@@ -74,10 +74,10 @@ impl RecordBuffer {
         chrom: &[u8],
         start: u32,
         end: u32,
-    ) -> Result<(usize, usize), Box<dyn Error>> {
+    ) -> Result<(usize, usize)> {
         // TODO panic if start is left of previous start or we have moved past the given chrom
         // before.
-        let rid = r#try!(self.reader.header.name2rid(chrom));
+        let rid = self.reader.header.name2rid(chrom)?;
         let mut added = 0;
         let mut deleted = 0;
 
