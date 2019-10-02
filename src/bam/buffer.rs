@@ -28,9 +28,9 @@ unsafe impl Send for RecordBuffer {}
 
 impl RecordBuffer {
     /// Create a new `RecordBuffer`.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `bam` - BAM reader
     /// * `cache_cigar` - whether to call `bam::Record::cache_cigar()` for each record.
     pub fn new(bam: bam::IndexedReader, cache_cigar: bool) -> Self {
@@ -38,7 +38,7 @@ impl RecordBuffer {
             reader: bam,
             inner: VecDeque::new(),
             overflow: None,
-            cache_cigar
+            cache_cigar,
         }
     }
 
