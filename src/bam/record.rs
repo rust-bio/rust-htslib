@@ -278,9 +278,11 @@ impl Record {
         } else {
             0
         } * 4;
+        let q_len = qname.len() + 1;
+        let extranul = if q_len % 4 != 0 { 4 - q_len % 4 } else { 0 };
 
-        self.inner_mut().l_data = (qname.len()
-            + 1
+        self.inner_mut().l_data = (q_len
+            + extranul
             + cigar_width
             + ((seq.len() as f32 / 2.0).ceil() as usize)
             + qual.len()) as i32;
@@ -298,8 +300,9 @@ impl Record {
         // qname
         utils::copy_memory(qname, data);
         data[qname.len()] = b'\0';
-        let mut i = qname.len() + 1;
+        let mut i = q_len + extranul;
         self.inner_mut().core.l_qname = i as u8;
+        self.inner_mut().core.l_extranul = extranul as u8;
 
         // cigar
         if let Some(cigar_string) = cigar {
@@ -337,11 +340,18 @@ impl Record {
     /// Unlike set(), this preserves all the variable length data including
     /// the aux.
     pub fn set_qname(&mut self, new_qname: &[u8]) {
-        assert!(new_qname.len() <= 256);
+        // 251 + 1NUL is the max 32-bit aligned value that fits in u8
+        assert!(new_qname.len() < 252);
 
         let old_q_len = self.qname_capacity();
         // We're going to add a terminal NUL
         let new_q_len = 1 + new_qname.len();
+        let extranul = if new_q_len % 4 != 0 {
+            4 - new_q_len % 4
+        } else {
+            0
+        };
+        let new_q_len = new_q_len + extranul;
 
         // Length of data after qname
         let other_len = self.inner_mut().l_data - old_q_len as i32;
@@ -377,9 +387,11 @@ impl Record {
         let data =
             unsafe { slice::from_raw_parts_mut((*self.inner).data, self.inner().l_data as usize) };
         utils::copy_memory(new_qname, data);
-        data[new_q_len - 1] = b'\0';
-        self.inner_mut().core.l_extranul = 0;
+        for i in 0..=extranul {
+            data[new_q_len - i - 1] = b'\0';
+        }
         self.inner_mut().core.l_qname = new_q_len as u8;
+        self.inner_mut().core.l_extranul = extranul as u8;
     }
 
     fn realloc_var_data(&mut self, new_len: usize) {
