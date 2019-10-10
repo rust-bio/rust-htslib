@@ -84,6 +84,7 @@ fn main() {
     bindgen::Builder::default()
         .header("wrapper.h")
         .generate_comments(false)
+        .blacklist_function("strtold")
         .blacklist_type("max_align_t")
         .generate()
         .expect("Unable to generate bindings.")
