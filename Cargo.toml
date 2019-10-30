@@ -29,6 +29,7 @@ linear-map = "1.2"
 serde = { version = "^1", optional = true }
 bio-types = ">=0.5.1"
 snafu = "0.5"
+streaming-iterator= "0.1.4"
 
 [features]
 default = ["bzip2", "lzma"]
@@ -40,6 +41,7 @@ tempdir = "0.3"
 bincode = "1.2"
 serde_json = "1.0"
 pretty_assertions = "0.6"
+criterion = "0.3"
 
 [build-dependencies]
 fs-utils = "1.1"
@@ -49,3 +51,7 @@ cc = "1.0"
 [package.metadata.release]
 pre-release-commit-message = "release version {{version}}"
 tag-message = "Version {{version}} of Rust-HTSlib."
+
+[[bench]]
+name = "my_benchmark"
+harness = false

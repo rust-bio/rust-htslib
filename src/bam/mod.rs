@@ -21,6 +21,8 @@ use std::ffi;
 use std::path::Path;
 use std::slice;
 use std::str;
+use std::rc::Rc;
+use streaming_iterator::StreamingIterator;
 use url::Url;
 
 use crate::htslib;
@@ -88,7 +90,19 @@ pub trait Read: Sized {
     /// Note that, while being convenient, this is less efficient than pre-allocating a
     /// `Record` and reading into it with the `read` method, since every iteration involves
     /// the allocation of a new `Record`.
+    /// Another more efficient alternative is to use the stream() method.
+    /// Another more efficient alternative is to use the rc_records() iterator.
     fn records(&mut self) -> Records<'_, Self>;
+
+    /// Streaming Iterator over the records of the seeked region.
+    /// Unlike records(), streaming iterators avoid the constant allocation of a new Record
+    /// for each read.
+    ///
+    /// See the streaming_iterator crate.
+    fn stream(&mut self) -> StreamRecords<'_, Self>;
+
+    /// Records iterator using an Rc to avoid allocating a Record each turn.
+    fn rc_records(&mut self) -> RcRecords<'_, Self>;
 
     /// Iterator over pileups.
     fn pileup(&mut self) -> pileup::Pileups<'_, Self>;
@@ -252,6 +266,15 @@ impl Read for Reader {
     /// the allocation of a new `Record`.
     fn records(&mut self) -> Records<'_, Self> {
         Records { reader: self }
+    }
+
+    fn rc_records(&mut self) -> RcRecords<'_, Self>
+    {
+        RcRecords { reader: self , record: Rc::new(record::Record::new()) }
+    }
+
+    fn stream(&mut self) -> StreamRecords<'_, Self> {
+        StreamRecords::new(self)
     }
 
     fn pileup(&mut self) -> pileup::Pileups<'_, Self> {
@@ -435,12 +458,21 @@ impl Read for IndexedReader {
         }
     }
 
+    fn rc_records(&mut self) -> RcRecords<'_, Self>
+    {
+        RcRecords { reader: self , record: Rc::new(record::Record::new()) }
+    }
+
     /// Iterator over the records of the fetched region.
     /// Note that, while being convenient, this is less efficient than pre-allocating a
     /// `Record` and reading into it with the `read` method, since every iteration involves
     /// the allocation of a new `Record`.
     fn records(&mut self) -> Records<'_, Self> {
         Records { reader: self }
+    }
+
+    fn stream(&mut self) -> StreamRecords<'_, Self> {
+        StreamRecords::new(self)
     }
 
     fn pileup(&mut self) -> pileup::Pileups<'_, Self> {
@@ -685,6 +717,74 @@ impl<'a, R: Read> Iterator for Records<'a, R> {
         }
     }
 }
+
+/// Streaming Iterator over the records of a BAM.
+#[derive(Debug)]
+pub struct StreamRecords<'a, R: Read> {
+    reader: &'a mut R,
+    has_more: bool,
+    record: record::Record,
+}
+
+impl<'a, R: Read> StreamRecords<'a, R> {
+    fn new(reader: &'a mut R) -> StreamRecords<'a, R> {
+        StreamRecords {
+            reader,
+            has_more: true,
+            record: record::Record::new(),
+        }
+    }
+}
+
+impl<'a, R: Read> StreamingIterator for StreamRecords<'a, R> {
+    type Item = record::Record;
+
+    fn advance(&mut self) {
+        if self.has_more {
+            match self.reader.read(&mut self.record) {
+                Ok(false) => self.has_more = false,
+                Ok(true) => {} //{self.has_more=true;},
+                Err(err) => self.has_more = false,
+            }
+        }
+    }
+
+    fn get(&self) -> Option<&Self::Item> {
+        match self.has_more {
+            true => Some(&self.record),
+            false => None,
+        }
+    }
+}
+
+/// Iterator over the records of a BAM.
+#[derive(Debug)]
+pub struct RcRecords<'a, R: Read> {
+    reader: &'a mut R,
+    record: Rc<record::Record>,
+}
+
+impl<'a, R: Read> Iterator for RcRecords<'a, R> {
+    type Item = Result<Rc<record::Record>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut record = match Rc::get_mut(&mut self.record) { //not make_mut, we don't need a clone
+            Some(x) => x,
+            None => {
+                self.record = Rc::new(record::Record::new());
+                Rc::get_mut(&mut self.record).unwrap()
+            }
+        };
+
+        return match self.reader.read(&mut record) {
+            Ok(false) => None,
+            Ok(true) => Some(Ok(Rc::clone(&self.record))),
+            Err(err) =>  Some(Err(err)),
+        }
+    }
+}
+
+
 
 /// Iterator over the records of a BAM until the virtual offset is less than `end`
 pub struct ChunkIterator<'a, R: Read> {
@@ -1686,4 +1786,92 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .is_ok());
         assert_eq!(expected, written);
     }
+
+    #[test]
+    fn test_stream() {
+        use streaming_iterator::StreamingIterator;
+        let (names, flags, seqs, quals, cigars) = gold();
+        let mut bam = Reader::from_path(&Path::new("test/test.bam")).expect("Error opening file.");
+        let del_len = [1, 1, 1, 1, 1, 100000];
+
+        let mut s = bam.stream();
+        let mut i = 0;
+        while let Some(record) = s.next() { // consider removing duplication from test_read
+            //let rec = record.expect("Expected valid record");
+            let rec = record;
+            println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
+            assert_eq!(rec.qname(), names[i]);
+            assert_eq!(rec.flags(), flags[i]);
+            assert_eq!(rec.seq().as_bytes(), seqs[i]);
+
+            let cigar = rec.cigar();
+            assert_eq!(*cigar, cigars[i]);
+
+            let end_pos = cigar.end_pos();
+            assert_eq!(end_pos, rec.pos() + 100 + del_len[i]);
+            assert_eq!(
+                cigar
+                    .read_pos(end_pos as u32 - 10, false, false)
+                    .unwrap()
+                    .unwrap(),
+                90
+            );
+            assert_eq!(
+                cigar
+                    .read_pos(rec.pos() as u32 + 20, false, false)
+                    .unwrap()
+                    .unwrap(),
+                20
+            );
+            assert_eq!(cigar.read_pos(4000000, false, false).unwrap(), None);
+            // fix qual offset
+            let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
+            assert_eq!(rec.qual(), &qual[..]);
+            i += 1;
+        }
+    }
+
+    #[test]
+    fn test_rc_records() {
+        use streaming_iterator::StreamingIterator;
+        let (names, flags, seqs, quals, cigars) = gold();
+        let mut bam = Reader::from_path(&Path::new("test/test.bam")).expect("Error opening file.");
+        let del_len = [1, 1, 1, 1, 1, 100000];
+
+        for (i, record) in bam.rc_records().enumerate() {
+            //let rec = record.expect("Expected valid record");
+            let rec = record.unwrap();
+            println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
+            assert_eq!(rec.qname(), names[i]);
+            assert_eq!(rec.flags(), flags[i]);
+            assert_eq!(rec.seq().as_bytes(), seqs[i]);
+
+            let cigar = rec.cigar();
+            assert_eq!(*cigar, cigars[i]);
+
+            let end_pos = cigar.end_pos();
+            assert_eq!(end_pos, rec.pos() + 100 + del_len[i]);
+            assert_eq!(
+                cigar
+                    .read_pos(end_pos as u32 - 10, false, false)
+                    .unwrap()
+                    .unwrap(),
+                90
+            );
+            assert_eq!(
+                cigar
+                    .read_pos(rec.pos() as u32 + 20, false, false)
+                    .unwrap()
+                    .unwrap(),
+                20
+            );
+            assert_eq!(cigar.read_pos(4000000, false, false).unwrap(), None);
+            // fix qual offset
+            let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
+            assert_eq!(rec.qual(), &qual[..]);
+        }
+    }
+
+
+
 }
