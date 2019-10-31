@@ -313,6 +313,51 @@ pub struct IndexedReader {
     itr: Option<*mut htslib::hts_itr_t>,
 }
 
+pub enum FetchDefinition<'a> {
+    Region(u32, u32, u32),
+    RegionString(&'a [u8], u32, u32),
+    CompleteTid(u32),
+    String(&'a [u8]),
+    Full,
+}
+
+impl <'a> From<(u32, u32, u32)> for FetchDefinition<'a> {
+    fn from(tup: (u32, u32, u32)) -> FetchDefinition<'a> {
+        return FetchDefinition::Region(tup.0, tup.1, tup.2)
+    }
+}
+
+impl <'a> From<u32> for FetchDefinition<'a> {
+    fn from(tid: u32) -> FetchDefinition<'a> {
+        return FetchDefinition::CompleteTid(tid)
+    }
+}
+
+impl <'a> From<&'a str> for FetchDefinition<'a> {
+    fn from(s: &'a str) -> FetchDefinition<'a> {
+        return FetchDefinition::String(s.as_bytes())
+    }
+}
+
+impl <'a> From<&'a [u8]> for FetchDefinition<'a> {
+    fn from(s: &'a [u8]) -> FetchDefinition<'a> {
+        return FetchDefinition::String(s)
+    }
+}
+
+impl <'a> From<(&'a str, u32, u32)> for FetchDefinition<'a> {
+    fn from(tup: (&'a str, u32, u32)) -> FetchDefinition<'a> {
+        return FetchDefinition::RegionString(tup.0.as_bytes(), tup.1, tup.2)
+    }
+}
+
+impl <'a> From<(&'a [u8], u32, u32)> for FetchDefinition<'a> {
+    fn from(tup: (&'a [u8], u32, u32)) -> FetchDefinition<'a> {
+        return FetchDefinition::RegionString(tup.0, tup.1, tup.2)
+    }
+}
+
+
 unsafe impl Send for IndexedReader {}
 
 impl IndexedReader {
@@ -388,6 +433,40 @@ impl IndexedReader {
             })
         }
     }
+
+    pub fn fetchX<'a, T: Into<FetchDefinition<'a>>>(&mut self, fetch_def: T) -> Result<()> {
+        let fd: FetchDefinition = fetch_def.into();
+        return self._inner_fetchX(fd);
+    }
+
+    fn _inner_fetchX<'a> (&mut self, fetch_def: FetchDefinition<'a>) -> Result<()> {
+        match fetch_def {
+            FetchDefinition::Region(tid, start, stop) => return self.fetch(tid, start, stop),
+            FetchDefinition::RegionString(s, start, stop) => {
+                let tid = self.header().tid(s);
+                match tid {
+                    Some(tid) => return self.fetch(tid, start, stop),
+                    None => return Err(Error::Tid),
+                }
+
+            }
+            FetchDefinition::CompleteTid(tid) => {
+                let len = self.header().target_len(tid);
+                match len {
+                    Some(len) => return self.fetch(tid, 0, len),
+                    None => return Err(Error::Tid),
+                }},
+            FetchDefinition::String(s) => { // either a target-name or a samtools style definition
+                let tid = self.header().tid(s);
+                match (tid) {
+                    Some(tid) => return self.fetch(tid as u32, 0, self.header.target_len(tid as u32).unwrap()),
+                    None => return self.fetch_str(&s),
+                }
+            }
+
+            FetchDefinition::Full=> panic!("Todo")
+            }
+        }
 
     pub fn fetch(&mut self, tid: u32, beg: u32, end: u32) -> Result<()> {
         if let Some(itr) = self.itr {
@@ -1833,7 +1912,6 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     #[test]
     fn test_rc_records() {
-        use streaming_iterator::StreamingIterator;
         let (names, flags, seqs, quals, cigars) = gold();
         let mut bam = Reader::from_path(&Path::new("test/test.bam")).expect("Error opening file.");
         let del_len = [1, 1, 1, 1, 1, 100000];
@@ -1870,6 +1948,52 @@ CCCCCCCCCCCCCCCCCCC"[..],
             let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
             assert_eq!(rec.qual(), &qual[..]);
         }
+    }
+
+    #[test]
+    fn test_fetchX() {
+        let mut bam = IndexedReader::from_path(&Path::new("test/bench_seek_100.bam")).expect("Error opening file.");
+
+        bam.fetch(bam.header().tid("KI270733.1".as_bytes()).unwrap(), 0, 10000000);
+        assert!(bam.rc_records().count() == 6);
+
+        bam.fetch(bam.header().tid("GL000220.1".as_bytes()).unwrap(), 0, 10000000);
+        assert!(bam.rc_records().count() == 11);
+
+        bam.fetchX((bam.header().tid("KI270733.1".as_bytes()).unwrap(), 0, 10000000));
+        assert!(bam.rc_records().count() == 6);
+
+        bam.fetchX((bam.header().tid("KI270733.1".as_bytes()).unwrap()));
+        assert!(bam.rc_records().count() == 6);
+
+        bam.fetchX("GL000220.1");
+        assert!(bam.rc_records().count() == 11);
+
+        bam.fetchX("KI270733.1".as_bytes());
+        assert!(bam.rc_records().count() == 6);
+
+        bam.fetchX("GL000220.1:0-1000000000");
+        assert!(bam.rc_records().count() == 11);
+
+        bam.fetchX("GL000220.1:0-153989");
+        assert!(bam.rc_records().count() == 3);
+
+        bam.fetchX(("GL000220.1", 0, 153989));
+        assert!(bam.rc_records().count() == 3);
+        
+    }
+
+    #[test]
+    fn test_concurrent_access() {
+        let mut bam = IndexedReader::from_path(&Path::new("test/bench_seek_100.bam")).expect("Error opening file.");
+        bam.fetchX("KI270733.1");
+        let mut bam2 = bam.clone();
+        let iterA = bam.rc_records();
+        let iterB = bam.rc_records();
+        let cA = iterA.count();
+        let cB = iterB.count();
+        assert!(cA == 6);
+        assert!(cA == cB);
     }
 
 
