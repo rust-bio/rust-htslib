@@ -48,5 +48,4 @@ pub enum Error {
     Pileup,
     #[snafu(display("failed to find the requested target name/tid"))]
     Tid,
-
 }

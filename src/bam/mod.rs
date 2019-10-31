@@ -19,9 +19,9 @@ pub mod record_serde;
 use libc;
 use std::ffi;
 use std::path::Path;
+use std::rc::Rc;
 use std::slice;
 use std::str;
-use std::rc::Rc;
 use streaming_iterator::StreamingIterator;
 use url::Url;
 
@@ -268,9 +268,11 @@ impl Read for Reader {
         Records { reader: self }
     }
 
-    fn rc_records(&mut self) -> RcRecords<'_, Self>
-    {
-        RcRecords { reader: self , record: Rc::new(record::Record::new()) }
+    fn rc_records(&mut self) -> RcRecords<'_, Self> {
+        RcRecords {
+            reader: self,
+            record: Rc::new(record::Record::new()),
+        }
     }
 
     fn stream(&mut self) -> StreamRecords<'_, Self> {
@@ -311,6 +313,8 @@ pub struct IndexedReader {
     header: HeaderView,
     idx: *mut htslib::hts_idx_t,
     itr: Option<*mut htslib::hts_itr_t>,
+    path: Vec<u8>,
+    index_path: Option<Vec<u8>>,
 }
 
 pub enum FetchDefinition<'a> {
@@ -321,42 +325,41 @@ pub enum FetchDefinition<'a> {
     Full,
 }
 
-impl <'a> From<(u32, u32, u32)> for FetchDefinition<'a> {
+impl<'a> From<(u32, u32, u32)> for FetchDefinition<'a> {
     fn from(tup: (u32, u32, u32)) -> FetchDefinition<'a> {
-        return FetchDefinition::Region(tup.0, tup.1, tup.2)
+        return FetchDefinition::Region(tup.0, tup.1, tup.2);
     }
 }
 
-impl <'a> From<u32> for FetchDefinition<'a> {
+impl<'a> From<u32> for FetchDefinition<'a> {
     fn from(tid: u32) -> FetchDefinition<'a> {
-        return FetchDefinition::CompleteTid(tid)
+        return FetchDefinition::CompleteTid(tid);
     }
 }
 
-impl <'a> From<&'a str> for FetchDefinition<'a> {
+impl<'a> From<&'a str> for FetchDefinition<'a> {
     fn from(s: &'a str) -> FetchDefinition<'a> {
-        return FetchDefinition::String(s.as_bytes())
+        return FetchDefinition::String(s.as_bytes());
     }
 }
 
-impl <'a> From<&'a [u8]> for FetchDefinition<'a> {
+impl<'a> From<&'a [u8]> for FetchDefinition<'a> {
     fn from(s: &'a [u8]) -> FetchDefinition<'a> {
-        return FetchDefinition::String(s)
+        return FetchDefinition::String(s);
     }
 }
 
-impl <'a> From<(&'a str, u32, u32)> for FetchDefinition<'a> {
+impl<'a> From<(&'a str, u32, u32)> for FetchDefinition<'a> {
     fn from(tup: (&'a str, u32, u32)) -> FetchDefinition<'a> {
-        return FetchDefinition::RegionString(tup.0.as_bytes(), tup.1, tup.2)
+        return FetchDefinition::RegionString(tup.0.as_bytes(), tup.1, tup.2);
     }
 }
 
-impl <'a> From<(&'a [u8], u32, u32)> for FetchDefinition<'a> {
+impl<'a> From<(&'a [u8], u32, u32)> for FetchDefinition<'a> {
     fn from(tup: (&'a [u8], u32, u32)) -> FetchDefinition<'a> {
-        return FetchDefinition::RegionString(tup.0, tup.1, tup.2)
+        return FetchDefinition::RegionString(tup.0, tup.1, tup.2);
     }
 }
-
 
 unsafe impl Send for IndexedReader {}
 
@@ -401,6 +404,8 @@ impl IndexedReader {
                 header: HeaderView::new(header),
                 idx,
                 itr: None,
+                path: path.to_vec(),
+                index_path: None,
             })
         }
     }
@@ -430,43 +435,68 @@ impl IndexedReader {
                 header: HeaderView::new(header),
                 idx,
                 itr: None,
+                path: path.to_vec(),
+                index_path: Some(index_path.to_vec()),
             })
         }
     }
 
-    pub fn fetchX<'a, T: Into<FetchDefinition<'a>>>(&mut self, fetch_def: T) -> Result<()> {
+    pub(crate) fn _reopen(&self) -> Self {
+        match &self.index_path {
+            Some(index_path) => Self::new_with_index_path(&self.path, &index_path).unwrap(),
+            None => Self::new(&self.path).unwrap(),
+        }
+    }
+
+    fn into_rc_records(self) -> OwningRcRecords<Self> {
+        OwningRcRecords {
+            reader: self,
+            record: Rc::new(record::Record::new()),
+        }
+    }
+
+    pub fn fetchX<'a, T: Into<FetchDefinition<'a>>>(
+        &mut self,
+        fetch_def: T,
+    ) -> Result<OwningRcRecords<Self>> {
         let fd: FetchDefinition = fetch_def.into();
         return self._inner_fetchX(fd);
     }
 
-    fn _inner_fetchX<'a> (&mut self, fetch_def: FetchDefinition<'a>) -> Result<()> {
+    fn _inner_fetchX<'a>(&mut self, fetch_def: FetchDefinition<'a>) -> Result<OwningRcRecords<Self>> {
+        let mut new_bam = self._reopen();
         match fetch_def {
-            FetchDefinition::Region(tid, start, stop) => return self.fetch(tid, start, stop),
+            FetchDefinition::Region(tid, start, stop) => {
+                new_bam.fetch(tid, start, stop);
+            }
             FetchDefinition::RegionString(s, start, stop) => {
-                let tid = self.header().tid(s);
+                let tid = new_bam.header().tid(s);
                 match tid {
-                    Some(tid) => return self.fetch(tid, start, stop),
+                    Some(tid) => new_bam.fetch(tid, start, stop),
                     None => return Err(Error::Tid),
-                }
-
+                };
             }
             FetchDefinition::CompleteTid(tid) => {
-                let len = self.header().target_len(tid);
+                let len = new_bam.header().target_len(tid);
                 match len {
-                    Some(len) => return self.fetch(tid, 0, len),
+                    Some(len) => new_bam.fetch(tid, 0, len),
                     None => return Err(Error::Tid),
-                }},
-            FetchDefinition::String(s) => { // either a target-name or a samtools style definition
+                };
+            }
+            FetchDefinition::String(s) => {
+                // either a target-name or a samtools style definition
                 let tid = self.header().tid(s);
-                match (tid) {
-                    Some(tid) => return self.fetch(tid as u32, 0, self.header.target_len(tid as u32).unwrap()),
-                    None => return self.fetch_str(&s),
-                }
+                match tid {
+                    Some(tid) => {
+                        new_bam.fetch(tid as u32, 0, self.header.target_len(tid as u32).unwrap())
+                    }
+                    None => new_bam.fetch_str(&s),
+                };
             }
-
-            FetchDefinition::Full=> panic!("Todo")
-            }
+            FetchDefinition::Full => panic!("Todo"),
         }
+        Ok(new_bam.into_rc_records())
+    }
 
     pub fn fetch(&mut self, tid: u32, beg: u32, end: u32) -> Result<()> {
         if let Some(itr) = self.itr {
@@ -537,11 +567,14 @@ impl Read for IndexedReader {
         }
     }
 
-    fn rc_records(&mut self) -> RcRecords<'_, Self>
-    {
-        RcRecords { reader: self , record: Rc::new(record::Record::new()) }
+    fn rc_records(&mut self) -> RcRecords<'_, Self> {
+        RcRecords {
+            reader: self,
+            record: Rc::new(record::Record::new()),
+        }
     }
 
+    
     /// Iterator over the records of the fetched region.
     /// Note that, while being convenient, this is less efficient than pre-allocating a
     /// `Record` and reading into it with the `read` method, since every iteration involves
@@ -843,11 +876,19 @@ pub struct RcRecords<'a, R: Read> {
     record: Rc<record::Record>,
 }
 
+#[derive(Debug)]
+pub struct OwningRcRecords<R: Read> {
+    reader: R,
+    record: Rc<record::Record>,
+}
+
+
 impl<'a, R: Read> Iterator for RcRecords<'a, R> {
     type Item = Result<Rc<record::Record>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut record = match Rc::get_mut(&mut self.record) { //not make_mut, we don't need a clone
+        let mut record = match Rc::get_mut(&mut self.record) {
+            //not make_mut, we don't need a clone
             Some(x) => x,
             None => {
                 self.record = Rc::new(record::Record::new());
@@ -858,11 +899,31 @@ impl<'a, R: Read> Iterator for RcRecords<'a, R> {
         return match self.reader.read(&mut record) {
             Ok(false) => None,
             Ok(true) => Some(Ok(Rc::clone(&self.record))),
-            Err(err) =>  Some(Err(err)),
-        }
+            Err(err) => Some(Err(err)),
+        };
     }
 }
 
+impl< R: Read> Iterator for OwningRcRecords< R> {
+    type Item = Result<Rc<record::Record>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut record = match Rc::get_mut(&mut self.record) {
+            //not make_mut, we don't need a clone
+            Some(x) => x,
+            None => {
+                self.record = Rc::new(record::Record::new());
+                Rc::get_mut(&mut self.record).unwrap()
+            }
+        };
+
+        return match self.reader.read(&mut record) {
+            Ok(false) => None,
+            Ok(true) => Some(Ok(Rc::clone(&self.record))),
+            Err(err) => Some(Err(err)),
+        };
+    }
+}
 
 
 /// Iterator over the records of a BAM until the virtual offset is less than `end`
@@ -1875,7 +1936,8 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
         let mut s = bam.stream();
         let mut i = 0;
-        while let Some(record) = s.next() { // consider removing duplication from test_read
+        while let Some(record) = s.next() {
+            // consider removing duplication from test_read
             //let rec = record.expect("Expected valid record");
             let rec = record;
             println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
@@ -1952,50 +2014,51 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     #[test]
     fn test_fetchX() {
-        let mut bam = IndexedReader::from_path(&Path::new("test/bench_seek_100.bam")).expect("Error opening file.");
+        let mut bam = IndexedReader::from_path(&Path::new("test/bench_seek_100.bam"))
+            .expect("Error opening file.");
 
-        bam.fetch(bam.header().tid("KI270733.1".as_bytes()).unwrap(), 0, 10000000);
+        bam.fetch(
+            bam.header().tid("KI270733.1".as_bytes()).unwrap(),
+            0,
+            10000000,
+        );
         assert!(bam.rc_records().count() == 6);
 
-        bam.fetch(bam.header().tid("GL000220.1".as_bytes()).unwrap(), 0, 10000000);
+        bam.fetch(
+            bam.header().tid("GL000220.1".as_bytes()).unwrap(),
+            0,
+            10000000,
+        );
         assert!(bam.rc_records().count() == 11);
 
-        bam.fetchX((bam.header().tid("KI270733.1".as_bytes()).unwrap(), 0, 10000000));
-        assert!(bam.rc_records().count() == 6);
+        let mut iter = bam
+            .fetchX((
+                bam.header().tid("KI270733.1".as_bytes()).unwrap(),
+                0,
+                10000000,
+            ))
+            .unwrap();
+        assert!(iter.count() == 6);
 
-        bam.fetchX((bam.header().tid("KI270733.1".as_bytes()).unwrap()));
-        assert!(bam.rc_records().count() == 6);
+        let mut iter = bam
+            .fetchX(bam.header().tid("KI270733.1".as_bytes()).unwrap())
+            .unwrap();
+        assert!(iter.count() == 6);
 
-        bam.fetchX("GL000220.1");
-        assert!(bam.rc_records().count() == 11);
+        let mut iter = bam.fetchX("GL000220.1").unwrap();
+        assert!(iter.count() == 11);
 
-        bam.fetchX("KI270733.1".as_bytes());
-        assert!(bam.rc_records().count() == 6);
+        let mut iter = bam.fetchX("KI270733.1".as_bytes()).unwrap();
+        assert!(iter.count() == 6);
 
-        bam.fetchX("GL000220.1:0-1000000000");
-        assert!(bam.rc_records().count() == 11);
+        let mut iter = bam.fetchX("GL000220.1:0-1000000000").unwrap();
+        assert!(iter.count() == 11);
 
-        bam.fetchX("GL000220.1:0-153989");
-        assert!(bam.rc_records().count() == 3);
+        let mut iter = bam.fetchX("GL000220.1:0-153989").unwrap();
+        assert!(iter.count() == 3);
 
-        bam.fetchX(("GL000220.1", 0, 153989));
-        assert!(bam.rc_records().count() == 3);
-        
+        let mut iter = bam.fetchX(("GL000220.1", 0, 153989)).unwrap();
+        assert!(iter.count() == 3);
     }
-
-    #[test]
-    fn test_concurrent_access() {
-        let mut bam = IndexedReader::from_path(&Path::new("test/bench_seek_100.bam")).expect("Error opening file.");
-        bam.fetchX("KI270733.1");
-        let mut bam2 = bam.clone();
-        let iterA = bam.rc_records();
-        let iterB = bam.rc_records();
-        let cA = iterA.count();
-        let cB = iterB.count();
-        assert!(cA == 6);
-        assert!(cA == cB);
-    }
-
-
 
 }
