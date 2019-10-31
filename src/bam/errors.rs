@@ -46,6 +46,6 @@ pub enum Error {
     BuildIndex,
     #[snafu(display("failed to create SAM/BAM/CRAM pileup"))]
     Pileup,
-    #[snafu(display("failed to find the requested target name/tid"))]
-    Tid,
+    #[snafu(display("fetch was not performed prior to reading from BAM/CRAM"))]
+    FetchFirst,
 }
