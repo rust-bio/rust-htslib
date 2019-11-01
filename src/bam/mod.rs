@@ -31,10 +31,10 @@ pub use crate::bam::header::Header;
 pub use crate::bam::record::Record;
 
 /// Implementation for `Read::set_threads` and `Writer::set_threads`.
-pub fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
+pub unsafe fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
     assert!(n_threads != 0, "n_threads must be > 0");
 
-    if unsafe { htslib::hts_set_threads(htsfile, n_threads as i32) } != 0 {
+    if htslib::hts_set_threads(htsfile, n_threads as i32) != 0 {
         Err(Error::SetThreads)
     } else {
         Ok(())
@@ -42,7 +42,7 @@ pub fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Result<()
 }
 
 /// Set the reference FAI index path in a `htslib::htsFile` struct for reading CRAM format.
-pub fn set_fai_filename<P: AsRef<Path>>(
+pub unsafe fn set_fai_filename<P: AsRef<Path>>(
     htsfile: *mut htslib::htsFile,
     fasta_path: P,
 ) -> Result<()> {
@@ -54,14 +54,10 @@ pub fn set_fai_filename<P: AsRef<Path>>(
         fasta_path.as_ref().with_extension(".fai")
     };
     let p: &Path = path.as_ref();
-    if unsafe {
-        htslib::hts_set_fai_filename(
-            htsfile,
-            ffi::CString::new(p.to_str().unwrap().as_bytes())
-                .unwrap()
-                .as_ptr(),
-        )
-    } == 0
+    let c_str = ffi::CString::new(p.to_str().unwrap().as_bytes()).unwrap();
+    if htslib::hts_set_fai_filename(
+        htsfile,c_str.as_ptr(),
+        ) == 0
     {
         Ok(())
     } else {
@@ -138,7 +134,7 @@ pub trait Read: Sized {
     ///
     /// * `n_threads` - number of extra background writer threads to use, must be `> 0`.
     fn set_threads(&mut self, n_threads: usize) -> Result<()> {
-        set_threads(self.htsfile(), n_threads)
+        unsafe { set_threads(self.htsfile(), n_threads) }
     }
 }
 
@@ -232,7 +228,7 @@ impl Reader {
     ///
     /// * `path` - path to the FASTA reference
     pub fn set_reference<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
-        set_fai_filename(self.htsfile, path)
+        unsafe { set_fai_filename(self.htsfile, path) }
     }
 }
 
@@ -321,8 +317,9 @@ impl IndexedReader {
     fn new(path: &[u8]) -> Result<Self> {
         let htsfile = hts_open(path, b"r")?;
         let header = unsafe { htslib::sam_hdr_read(htsfile) };
+        let c_str = ffi::CString::new(path).unwrap();
         let idx =
-            unsafe { htslib::sam_index_load(htsfile, ffi::CString::new(path).unwrap().as_ptr()) };
+            unsafe { htslib::sam_index_load(htsfile, c_str.as_ptr()) };
         if idx.is_null() {
             Err(Error::InvalidIndex {
                 target: str::from_utf8(path).unwrap().to_owned(),
@@ -345,11 +342,13 @@ impl IndexedReader {
     fn new_with_index_path(path: &[u8], index_path: &[u8]) -> Result<Self> {
         let htsfile = hts_open(path, b"r")?;
         let header = unsafe { htslib::sam_hdr_read(htsfile) };
+        let c_str_path = ffi::CString::new(path).unwrap();
+        let c_str_index_path = ffi::CString::new(index_path).unwrap();
         let idx = unsafe {
             htslib::sam_index_load2(
                 htsfile,
-                ffi::CString::new(path).unwrap().as_ptr(),
-                ffi::CString::new(index_path).unwrap().as_ptr(),
+                c_str_path.as_ptr(),
+                c_str_index_path.as_ptr(),
             )
         };
         if idx.is_null() {
@@ -418,7 +417,7 @@ impl IndexedReader {
     ///
     /// * `path` - path to the FASTA reference
     pub fn set_reference<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
-        set_fai_filename(self.htsfile, path)
+        unsafe { set_fai_filename(self.htsfile, path) }
     }
 }
 
@@ -483,11 +482,11 @@ pub enum Format {
 }
 
 impl Format {
-    fn write_mode(&self) -> &'static [u8] {
+    fn write_mode(self) -> &'static [u8] {
         match self {
-            &Format::SAM => b"w",
-            &Format::BAM => b"wb",
-            &Format::CRAM => b"wc",
+            Format::SAM => b"w",
+            Format::BAM => b"wb",
+            Format::CRAM => b"wc",
         }
     }
 }
@@ -580,7 +579,7 @@ impl Writer {
     ///
     /// * `n_threads` - number of extra background writer threads to use, must be `> 0`.
     pub fn set_threads(&mut self, n_threads: usize) -> Result<()> {
-        set_threads(self.f, n_threads)
+        unsafe { set_threads(self.f, n_threads) }
     }
 
     /// Write record to BAM.
@@ -607,7 +606,7 @@ impl Writer {
     ///
     /// * `path` - path to the FASTA reference
     pub fn set_reference<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
-        set_fai_filename(self.f, path)
+        unsafe { set_fai_filename(self.f, path) }
     }
 
     /// Set the compression level for writing BAM/CRAM files.
@@ -713,8 +712,9 @@ impl<'a, R: Read> Iterator for ChunkIterator<'a, R> {
 fn hts_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
     let cpath = ffi::CString::new(path).unwrap();
     let path = str::from_utf8(path).unwrap();
+    let c_str = ffi::CString::new(mode).unwrap();
     let ret =
-        unsafe { htslib::hts_open(cpath.as_ptr(), ffi::CString::new(mode).unwrap().as_ptr()) };
+        unsafe { htslib::hts_open(cpath.as_ptr(), c_str.as_ptr()) };
     if ret.is_null() {
         Err(Error::Open {
             target: path.to_owned(),
@@ -813,12 +813,11 @@ impl HeaderView {
     }
 
     pub fn tid(&self, name: &[u8]) -> Option<u32> {
+        let c_str = ffi::CString::new(name).expect("Expected valid name.");
         let tid = unsafe {
             htslib::bam_name2id(
                 self.inner,
-                ffi::CString::new(name)
-                    .expect("Expected valid name.")
-                    .as_ptr(),
+                c_str.as_ptr(),
             )
         };
         if tid < 0 {

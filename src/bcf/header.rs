@@ -47,8 +47,9 @@ impl Default for Header {
 impl Header {
     /// Create a new (empty) `Header`.
     pub fn new() -> Self {
+        let c_str = ffi::CString::new(&b"w"[..]).unwrap();
         Header {
-            inner: unsafe { htslib::bcf_hdr_init(ffi::CString::new(&b"w"[..]).unwrap().as_ptr()) },
+            inner: unsafe { htslib::bcf_hdr_init(c_str.as_ptr()) },
             subset: None,
         }
     }
@@ -105,8 +106,9 @@ impl Header {
     ///
     /// - `sample` - Name of the sample to add (to the end of the sample list).
     pub fn push_sample(&mut self, sample: &[u8]) -> &mut Self {
+        let c_str = ffi::CString::new(sample).unwrap();
         unsafe {
-            htslib::bcf_hdr_add_sample(self.inner, ffi::CString::new(sample).unwrap().as_ptr())
+            htslib::bcf_hdr_add_sample(self.inner, c_str.as_ptr())
         };
         self
     }
@@ -123,7 +125,8 @@ impl Header {
     /// header.push_record(format!("##contig=<ID={},length={}>", "chrX", 155270560).as_bytes());
     /// ```
     pub fn push_record(&mut self, record: &[u8]) -> &mut Self {
-        unsafe { htslib::bcf_hdr_append(self.inner, ffi::CString::new(record).unwrap().as_ptr()) };
+        let c_str = ffi::CString::new(record).unwrap();
+        unsafe { htslib::bcf_hdr_append(self.inner, c_str.as_ptr()) };
         self
     }
 
@@ -284,11 +287,12 @@ impl HeaderView {
     }
 
     pub fn name2rid(&self, name: &[u8]) -> Result<u32> {
+        let c_str = ffi::CString::new(name).unwrap();
         unsafe {
             match htslib::bcf_hdr_id2int(
                 self.inner,
                 htslib::BCF_DT_CTG as i32,
-                ffi::CString::new(name).unwrap().as_ptr() as *mut i8,
+                c_str.as_ptr() as *mut i8,
             ) {
                 -1 => Err(Error::UnknownContig {
                     contig: str::from_utf8(name).unwrap().to_owned(),
@@ -308,11 +312,12 @@ impl HeaderView {
 
     fn tag_type(&self, tag: &[u8], hdr_type: ::libc::c_uint) -> Result<(TagType, TagLength)> {
         let tag_desc = || str::from_utf8(tag).unwrap().to_owned();
+        let c_str_tag = ffi::CString::new(tag).unwrap();
         let (_type, length, num_values) = unsafe {
             let id = htslib::bcf_hdr_id2int(
                 self.inner,
                 htslib::BCF_DT_ID as i32,
-                ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
+                c_str_tag.as_ptr() as *mut i8,
             );
             if id < 0 {
                 return Err(Error::UndefinedTag { tag: tag_desc() });
@@ -343,11 +348,12 @@ impl HeaderView {
 
     /// Convert string ID (e.g., for a `FILTER` value) to its numeric identifier.
     pub fn name_to_id(&self, id: &[u8]) -> Result<Id> {
+        let c_str = ffi::CString::new(id).unwrap();
         unsafe {
             match htslib::bcf_hdr_id2int(
                 self.inner,
                 htslib::BCF_DT_ID as i32,
-                ffi::CString::new(id).unwrap().as_ptr() as *const i8,
+                c_str.as_ptr() as *const i8,
             ) {
                 -1 => Err(Error::UnknownID {
                     id: str::from_utf8(id).unwrap().to_owned(),
@@ -370,11 +376,12 @@ impl HeaderView {
 
     /// Convert string sample name to its numeric identifier.
     pub fn sample_to_id(&self, id: &[u8]) -> Result<Id> {
+        let c_str = ffi::CString::new(id).unwrap();
         unsafe {
             match htslib::bcf_hdr_id2int(
                 self.inner,
                 htslib::BCF_DT_SAMPLE as i32,
-                ffi::CString::new(id).unwrap().as_ptr() as *const i8,
+                c_str.as_ptr() as *const i8,
             ) {
                 -1 => Err(Error::UnknownSample {
                     name: str::from_utf8(id).unwrap().to_owned(),

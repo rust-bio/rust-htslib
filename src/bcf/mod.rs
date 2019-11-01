@@ -75,10 +75,10 @@ pub struct Reader {
 unsafe impl Send for Reader {}
 
 /// Implementation for `Reader::set_threads()` and `Writer::set_threads`.
-pub fn set_threads(hts_file: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
+pub unsafe fn set_threads(hts_file: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
     assert!(n_threads > 0, "n_threads must be > 0");
 
-    let r = unsafe { htslib::hts_set_threads(hts_file, n_threads as i32) };
+    let r = htslib::hts_set_threads(hts_file, n_threads as i32);
     if r != 0 {
         Err(Error::SetThreads)
     } else {
@@ -136,7 +136,7 @@ impl Read for Reader {
     }
 
     fn set_threads(&mut self, n_threads: usize) -> Result<()> {
-        set_threads(self.inner, n_threads)
+       unsafe { set_threads(self.inner, n_threads)}
     }
 
     fn header(&self) -> &HeaderView {
@@ -504,7 +504,7 @@ pub mod synced {
         /// * `end` - `0`-based end coordinate of region on reference.
         pub fn fetch(&mut self, rid: u32, start: u32, end: u32) -> Result<()> {
             let contig = {
-                let contig = self.header(0).rid2name(rid).unwrap().clone();
+                let contig = self.header(0).rid2name(rid).unwrap();//.clone();
                 ffi::CString::new(contig).unwrap()
             };
             if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i32) } != 0 {
@@ -673,7 +673,7 @@ impl Writer {
     ///
     /// * `n_threads` - number of extra background writer threads to use, must be `> 0`.
     pub fn set_threads(&mut self, n_threads: usize) -> Result<()> {
-        set_threads(self.inner, n_threads)
+        unsafe { set_threads(self.inner, n_threads) }
     }
 }
 
@@ -706,7 +706,8 @@ impl<'a, R: Read> Iterator for Records<'a, R> {
 /// Wrapper for opening a BCF file.
 fn bcf_open(target: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
     let p = ffi::CString::new(target).unwrap();
-    let ret = unsafe { htslib::hts_open(p.as_ptr(), ffi::CString::new(mode).unwrap().as_ptr()) };
+    let c_str = ffi::CString::new(mode).unwrap();
+    let ret = unsafe { htslib::hts_open(p.as_ptr(), c_str.as_ptr()) };
 
     ensure!(
         !ret.is_null(),
@@ -1156,7 +1157,7 @@ mod tests {
             // Setup empty record, filled below.
             let mut record = writer.empty_record();
 
-            record.set_rid(&Some(0));
+            record.set_rid(Some(0));
             assert_eq!(record.rid().unwrap(), 0);
 
             record.set_pos(12);

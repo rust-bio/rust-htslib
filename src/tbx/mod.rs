@@ -43,7 +43,6 @@
 
 use libc;
 use std::ffi;
-use std::mem;
 use std::path::Path;
 use std::ptr;
 use url::Url;
@@ -151,8 +150,9 @@ impl Reader {
     /// * `path` - the path.
     fn new(path: &[u8]) -> Result<Self> {
         let path = ffi::CString::new(path).unwrap();
+        let c_str = ffi::CString::new("r").unwrap();
         let hts_file =
-            unsafe { htslib::hts_open(path.as_ptr(), ffi::CString::new("r").unwrap().as_ptr()) };
+            unsafe { htslib::hts_open(path.as_ptr(), c_str.as_ptr()) };
         unsafe {
             if (*hts_file).format.category != htslib::htsFormatCategory_region_list
                 && (*hts_file).format.format != htslib::htsExactFormat_sam
@@ -198,10 +198,11 @@ impl Reader {
 
     /// Get sequence/target ID from sequence name.
     pub fn tid(&self, name: &str) -> Result<u32> {
+        let name_cstr = ffi::CString::new(name.as_bytes()).unwrap();
         let res = unsafe {
             htslib::tbx_name2id(
                 self.tbx,
-                ffi::CString::new(name.as_bytes()).unwrap().as_ptr(),
+                name_cstr.as_ptr(),
             )
         };
         if res < 0 {
@@ -297,8 +298,10 @@ impl Read for Reader {
                         htslib::hts_itr_next(
                             htslib::hts_get_bgzfp(self.hts_file),
                             itr,
-                            mem::transmute(&mut self.buf),
-                            mem::transmute(self.tbx),
+                            //mem::transmute(&mut self.buf),
+                            &mut self.buf as *mut htslib::__kstring_t as *mut libc::c_void,
+                            //mem::transmute(self.tbx),
+                            self.tbx as *mut libc::c_void
                         )
                     };
                     // Handle errors first.

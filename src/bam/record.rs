@@ -10,6 +10,7 @@ use std::slice;
 use std::str;
 use std::str::FromStr;
 use std::u32;
+use std::convert::TryFrom;
 
 use regex::Regex;
 
@@ -307,6 +308,8 @@ impl Record {
         // cigar
         if let Some(cigar_string) = cigar {
             let cigar_data = unsafe {
+                //cigar is always aligned to 4 bytes (see extranul above) - so this is safe
+                #[allow(clippy::cast_ptr_alignment)]
                 slice::from_raw_parts_mut(data[i..].as_ptr() as *mut u32, cigar_string.len())
             };
             for (i, c) in cigar_string.iter().enumerate() {
@@ -423,6 +426,8 @@ impl Record {
     /// Get reference to raw cigar string representation (as stored in BAM file).
     /// Usually, the method `Record::cigar` should be used instead.
     pub fn raw_cigar(&self) -> &[u32] {
+        //cigar is always aligned to 4 bytes - so this is safe
+        #[allow(clippy::cast_ptr_alignment)]
         unsafe {
             slice::from_raw_parts(
                 self.data()[self.qname_capacity()..].as_ptr() as *const u32,
@@ -501,10 +506,11 @@ impl Record {
 
     /// Get auxiliary data (tags).
     pub fn aux(&self, tag: &[u8]) -> Option<Aux<'_>> {
+        let c_str = ffi::CString::new(tag).unwrap();
         let aux = unsafe {
             htslib::bam_aux_get(
                 self.inner,
-                ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
+                c_str.as_ptr() as *mut i8,
             )
         };
 
@@ -555,13 +561,15 @@ impl Record {
                     1,
                     [v].as_mut_ptr() as *mut u8,
                 ),
-                Aux::String(v) => htslib::bam_aux_append(
+                Aux::String(v) => {
+                    let c_str = ffi::CString::new(v).unwrap();
+                    htslib::bam_aux_append(
                     self.inner,
                     ctag,
                     b'Z' as i8,
                     (v.len() + 1) as i32,
-                    ffi::CString::new(v).unwrap().as_ptr() as *mut u8,
-                ),
+                    c_str.as_ptr() as *mut u8)
+                },
             }
         };
 
@@ -572,10 +580,11 @@ impl Record {
 
     // Delete auxiliary tag.
     pub fn remove_aux(&self, tag: &[u8]) -> bool {
+        let c_str = ffi::CString::new(tag).unwrap();
         let aux = unsafe {
             htslib::bam_aux_get(
                 self.inner,
-                ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
+                c_str.as_ptr() as *mut i8,
             )
         };
         unsafe {
@@ -696,7 +705,7 @@ impl<'a> Aux<'a> {
 unsafe impl<'a> Send for Aux<'a> {}
 unsafe impl<'a> Sync for Aux<'a> {}
 
-static DECODE_BASE: &'static [u8] = b"=ACMGRSVTWYHKDBN";
+static DECODE_BASE: &[u8] = b"=ACMGRSVTWYHKDBN";
 static ENCODE_BASE: [u8; 256] = [
     15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
     15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
@@ -742,6 +751,10 @@ impl<'a> Seq<'a> {
     pub fn len(&self) -> usize {
         self.len
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 impl<'a> ops::Index<usize> for Seq<'a> {
@@ -770,9 +783,9 @@ pub enum Cigar {
 }
 
 impl Cigar {
-    fn encode(&self) -> u32 {
-        match *self {
-            Cigar::Match(len) => len << 4 | 0,
+    fn encode(self) -> u32 {
+        match self {
+            Cigar::Match(len) => len << 4,// | 0,
             Cigar::Ins(len) => len << 4 | 1,
             Cigar::Del(len) => len << 4 | 2,
             Cigar::RefSkip(len) => len << 4 | 3,
@@ -785,8 +798,8 @@ impl Cigar {
     }
 
     /// Return the length of the CIGAR.
-    pub fn len(&self) -> u32 {
-        match *self {
+    pub fn len(self) -> u32 {
+        match self {
             Cigar::Match(len) => len,
             Cigar::Ins(len) => len,
             Cigar::Del(len) => len,
@@ -799,9 +812,13 @@ impl Cigar {
         }
     }
 
+    pub fn is_empty(self) -> bool {
+        self.len() == 0 
+    }
+
     /// Return the character representing the CIGAR.
-    pub fn char(&self) -> char {
-        match *self {
+    pub fn char(self) -> char {
+        match self {
             Cigar::Match(_) => 'M',
             Cigar::Ins(_) => 'I',
             Cigar::Del(_) => 'D',
@@ -918,16 +935,24 @@ impl CigarString {
 
         CigarString(cigar)
     }
+}
+
+impl TryFrom<&[u8]> for CigarString {
+    type Error = Error;
 
     /// Create a CigarString from given bytes.
-    pub fn from_bytes(text: &[u8]) -> Result<Self> {
-        Self::from_str(str::from_utf8(text).map_err(|_| Error::ParseCigar {
+    fn try_from(text: &[u8]) -> Result<Self> {
+        Self::try_from(str::from_utf8(text).map_err(|_| Error::ParseCigar {
             msg: "unable to parse as UTF8".to_owned(),
         })?)
     }
+}
+
+impl TryFrom<&str> for CigarString {
+    type Error = Error;
 
     /// Create a CigarString from given str.
-    pub fn from_str(text: &str) -> Result<Self> {
+    fn try_from(text: &str) -> Result<Self> {
         lazy_static! {
             // regex for a cigar string operation
             static ref OP_RE: Regex = Regex::new("^(?P<n>[0-9]+)(?P<op>[MIDNSHP=X])").unwrap();
@@ -966,10 +991,6 @@ impl CigarString {
         }
 
         Ok(CigarString(inner))
-    }
-
-    pub fn to_string(&self) -> String {
-        format!("{}", self)
     }
 }
 
@@ -1417,7 +1438,7 @@ mod tests {
     #[test]
     fn test_cigar_parse() {
         let cigar = "1S20M1D2I3X1=2H";
-        let parsed = CigarString::from_str(cigar).unwrap();
+        let parsed = CigarString::try_from(cigar).unwrap();
         assert_eq!(parsed.to_string(), cigar);
     }
 }

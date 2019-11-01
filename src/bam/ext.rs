@@ -9123,6 +9123,7 @@ mod tests {
 
     #[test]
     fn test_infer_seq_len() {
+        use std::convert::TryFrom;
         let mut bam = bam::Reader::from_path("./test/test_spliced_reads.bam").unwrap();
         for read in bam.records() {
             let read = read.unwrap();
@@ -9145,7 +9146,7 @@ mod tests {
         ] {
             read.set(
                 b"test",
-                Some(&CigarString::from_str(input_cigar).unwrap()),
+                Some(&CigarString::try_from(input_cigar).unwrap()),
                 b"agtc",
                 b"BBBB",
             );
