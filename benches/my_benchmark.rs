@@ -37,7 +37,6 @@ fn count_reads_fetch_iter(reader: &mut bam::IndexedReader, should: usize) {
     assert!(count == should);
 }
 
-
 fn count_reads_read(reader: &mut bam::IndexedReader, should: usize) {
     let mut count = 0;
     let it = 0..reader.header().target_count();
@@ -155,25 +154,23 @@ fn criterion_benchmarks_from_input(
             let mut reader = bam::IndexedReader::from_path(i.0).unwrap();
             b.iter(move || count_reads_fetch_iter(&mut reader, i.1))
         });
-
-
-       /* 
-        group.bench_with_input(BenchmarkId::new("records_filter", i.1), i, move |b, i| {
-            let mut reader = bam::IndexedReader::from_path(i.0).unwrap();
-            b.iter(move || filter_reads_records(&mut reader, i.1))
-        });
-        group.bench_with_input(BenchmarkId::new("read_filter", i.1), i, move |b, i| {
-            let mut reader = bam::IndexedReader::from_path(i.0).unwrap();
-            b.iter(move || filter_reads_read(&mut reader, i.1))
-        });
-        group.bench_with_input(BenchmarkId::new("stream_filter", i.1), i, move |b, i| {
-            let mut reader = bam::IndexedReader::from_path(i.0).unwrap();
-            b.iter(move || filter_reads_stream(&mut reader, i.1))
-        });
-        group.bench_with_input(BenchmarkId::new("rcrecords_filter", i.1), i, move |b, i| {
-            let mut reader = bam::IndexedReader::from_path(i.0).unwrap();
-            b.iter(move || filter_reads_rc_records(&mut reader, i.1))
-        });
+        /*
+            group.bench_with_input(BenchmarkId::new("records_filter", i.1), i, move |b, i| {
+                let mut reader = bam::IndexedReader::from_path(i.0).unwrap();
+                b.iter(move || filter_reads_records(&mut reader, i.1))
+            });
+            group.bench_with_input(BenchmarkId::new("read_filter", i.1), i, move |b, i| {
+                let mut reader = bam::IndexedReader::from_path(i.0).unwrap();
+                b.iter(move || filter_reads_read(&mut reader, i.1))
+            });
+            group.bench_with_input(BenchmarkId::new("stream_filter", i.1), i, move |b, i| {
+                let mut reader = bam::IndexedReader::from_path(i.0).unwrap();
+                b.iter(move || filter_reads_stream(&mut reader, i.1))
+            });
+            group.bench_with_input(BenchmarkId::new("rcrecords_filter", i.1), i, move |b, i| {
+                let mut reader = bam::IndexedReader::from_path(i.0).unwrap();
+                b.iter(move || filter_reads_rc_records(&mut reader, i.1))
+            });
         */
     }
 }
@@ -194,7 +191,6 @@ fn criterion_benchmarks_seek(c: &mut Criterion) {
     ];
     criterion_benchmarks_from_input(c, "seek", inputs);
 }
-
 
 fn criterion_benchmarks(c: &mut Criterion) {
     criterion_benchmarks_no_seek(c);
