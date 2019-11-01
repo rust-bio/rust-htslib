@@ -328,37 +328,37 @@ pub enum FetchDefinition<'a> {
 
 impl<'a> From<(u32, u32, u32)> for FetchDefinition<'a> {
     fn from(tup: (u32, u32, u32)) -> FetchDefinition<'a> {
-        return FetchDefinition::Region(tup.0, tup.1, tup.2);
+        FetchDefinition::Region(tup.0, tup.1, tup.2)
     }
 }
 
 impl<'a> From<u32> for FetchDefinition<'a> {
     fn from(tid: u32) -> FetchDefinition<'a> {
-        return FetchDefinition::CompleteTid(tid);
+        FetchDefinition::CompleteTid(tid)
     }
 }
 
 impl<'a> From<&'a str> for FetchDefinition<'a> {
     fn from(s: &'a str) -> FetchDefinition<'a> {
-        return FetchDefinition::String(s.as_bytes());
+        FetchDefinition::String(s.as_bytes())
     }
 }
 
 impl<'a> From<&'a [u8]> for FetchDefinition<'a> {
     fn from(s: &'a [u8]) -> FetchDefinition<'a> {
-        return FetchDefinition::String(s);
+        FetchDefinition::String(s)
     }
 }
 
 impl<'a> From<(&'a str, u32, u32)> for FetchDefinition<'a> {
     fn from(tup: (&'a str, u32, u32)) -> FetchDefinition<'a> {
-        return FetchDefinition::RegionString(tup.0.as_bytes(), tup.1, tup.2);
+        FetchDefinition::RegionString(tup.0.as_bytes(), tup.1, tup.2)
     }
 }
 
 impl<'a> From<(&'a [u8], u32, u32)> for FetchDefinition<'a> {
     fn from(tup: (&'a [u8], u32, u32)) -> FetchDefinition<'a> {
-        return FetchDefinition::RegionString(tup.0, tup.1, tup.2);
+        FetchDefinition::RegionString(tup.0, tup.1, tup.2)
     }
 }
 
@@ -464,7 +464,7 @@ impl IndexedReader {
         fetch_def: T,
     ) -> Result<RcRecords<Self>> {
         let fd: FetchDefinition = fetch_def.into();
-        return self._inner_fetch_iter(fd);
+        self._inner_fetch_iter(fd)
     }
 
     fn _inner_fetch_iter<'a>(&mut self, fetch_def: FetchDefinition<'a>) -> Result<RcRecords<Self>> {
@@ -865,7 +865,7 @@ impl<'a, R: Read> StreamingIterator for StreamRecords<'a, R> {
             match self.reader.read(&mut self.record) {
                 Ok(false) => self.has_more = false,
                 Ok(true) => {} //{self.has_more=true;},
-                Err(err) => self.has_more = false,
+                Err(_) => self.has_more = false,
             }
         }
     }
@@ -898,11 +898,11 @@ impl<'a, R: Read> Iterator for RcRecords<'a, R> {
             }
         };
 
-        return match self.reader.read(&mut record) {
+        match self.reader.read(&mut record) {
             Ok(false) => None,
             Ok(true) => Some(Ok(Rc::clone(&self.record))),
             Err(err) => Some(Err(err)),
-        };
+        }
     }
 }
 
@@ -2001,17 +2001,17 @@ CCCCCCCCCCCCCCCCCCC"[..],
             bam.header().tid("KI270733.1".as_bytes()).unwrap(),
             0,
             10000000,
-        );
+        ).unwrap();
         assert!(bam.rc_records().count() == 6);
 
         bam.fetch(
             bam.header().tid("GL000220.1".as_bytes()).unwrap(),
             0,
             10000000,
-        );
+        ).unwrap();
         assert!(bam.rc_records().count() == 11);
 
-        let mut iter = bam
+        let iter = bam
             .fetch_iter((
                 bam.header().tid("KI270733.1".as_bytes()).unwrap(),
                 0,
@@ -2020,34 +2020,34 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .unwrap();
         assert!(iter.count() == 6);
 
-        let mut iter = bam
+        let iter = bam
             .fetch_iter(bam.header().tid("KI270733.1".as_bytes()).unwrap())
             .unwrap();
         assert!(iter.count() == 6);
 
-        let mut iter = bam.fetch_iter("GL000220.1").unwrap();
+        let iter = bam.fetch_iter("GL000220.1").unwrap();
         assert!(iter.count() == 11);
 
-        let mut iter = bam.fetch_iter("KI270733.1".as_bytes()).unwrap();
+        let iter = bam.fetch_iter("KI270733.1".as_bytes()).unwrap();
         assert!(iter.count() == 6);
 
-        let mut iter = bam.fetch_iter("GL000220.1:0-1000000000").unwrap();
+        let iter = bam.fetch_iter("GL000220.1:0-1000000000").unwrap();
         assert!(iter.count() == 11);
 
-        let mut iter = bam.fetch_iter("GL000220.1:0-153989").unwrap();
+        let iter = bam.fetch_iter("GL000220.1:0-153989").unwrap();
         assert!(iter.count() == 3);
 
-        let mut iter = bam.fetch_iter(("GL000220.1", 0, 153989)).unwrap();
+        let iter = bam.fetch_iter(("GL000220.1", 0, 153989)).unwrap();
         assert!(iter.count() == 3);
 
-        let mut iter = bam.fetch_iter(".").unwrap();
+        let iter = bam.fetch_iter(".").unwrap();
         assert!(iter.count() == 101);
-        let mut iter = bam.fetch_iter(FetchDefinition::Full).unwrap();
+        let iter = bam.fetch_iter(FetchDefinition::Full).unwrap();
         assert!(iter.count() == 101);
 
-        let mut iter = bam.fetch_iter(FetchDefinition::Unmapped).unwrap();
+        let iter = bam.fetch_iter(FetchDefinition::Unmapped).unwrap();
         assert!(iter.count() == 1);
-        let mut iter = bam.fetch_iter("*").unwrap();
+        let iter = bam.fetch_iter("*").unwrap();
         assert!(iter.count() == 1);
 
         //now things we expect to fail
@@ -2076,7 +2076,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         assert!(bam2.fetch_iter("aoeurcg*;qsjkch62[)*@&#$P").unwrap_err() == Error::Fetch);
 
         //and just to make sure the interface still works
-        let mut iter = bam.fetch_iter(".").unwrap();
+        let iter = bam.fetch_iter(".").unwrap();
         assert!(iter.count() == 101);
     }
 }
