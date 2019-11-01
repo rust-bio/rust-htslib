@@ -185,11 +185,7 @@ impl Record {
     pub fn set_id(&mut self, id: &[u8]) -> Result<()> {
         let c_str = ffi::CString::new(id).unwrap();
         if unsafe {
-            htslib::bcf_update_id(
-                self.header().inner,
-                self.inner,
-                c_str.as_ptr() as *mut i8,
-            )
+            htslib::bcf_update_id(self.header().inner, self.inner, c_str.as_ptr() as *mut i8)
         } == 0
         {
             Ok(())
@@ -202,11 +198,7 @@ impl Record {
     pub fn clear_id(&mut self) -> Result<()> {
         let c_str = ffi::CString::new(&b"."[..]).unwrap();
         if unsafe {
-            htslib::bcf_update_id(
-                self.header().inner,
-                self.inner,
-                c_str.as_ptr() as *mut i8,
-            )
+            htslib::bcf_update_id(self.header().inner, self.inner, c_str.as_ptr() as *mut i8)
         } == 0
         {
             Ok(())
@@ -218,13 +210,8 @@ impl Record {
     /// Add the ID string (the ID field is semicolon-separated), checking for duplicates.
     pub fn push_id(&mut self, id: &[u8]) -> Result<()> {
         let c_str = ffi::CString::new(id).unwrap();
-        if unsafe {
-            htslib::bcf_add_id(
-                self.header().inner,
-                self.inner,
-                c_str.as_ptr() as *mut i8,
-            )
-        } == 0
+        if unsafe { htslib::bcf_add_id(self.header().inner, self.inner, c_str.as_ptr() as *mut i8) }
+            == 0
         {
             Ok(())
         } else {

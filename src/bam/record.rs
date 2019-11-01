@@ -3,6 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::convert::TryFrom;
 use std::ffi;
 use std::fmt;
 use std::ops;
@@ -10,7 +11,6 @@ use std::slice;
 use std::str;
 use std::str::FromStr;
 use std::u32;
-use std::convert::TryFrom;
 
 use regex::Regex;
 
@@ -507,12 +507,7 @@ impl Record {
     /// Get auxiliary data (tags).
     pub fn aux(&self, tag: &[u8]) -> Option<Aux<'_>> {
         let c_str = ffi::CString::new(tag).unwrap();
-        let aux = unsafe {
-            htslib::bam_aux_get(
-                self.inner,
-                c_str.as_ptr() as *mut i8,
-            )
-        };
+        let aux = unsafe { htslib::bam_aux_get(self.inner, c_str.as_ptr() as *mut i8) };
 
         unsafe {
             if aux.is_null() {
@@ -564,12 +559,13 @@ impl Record {
                 Aux::String(v) => {
                     let c_str = ffi::CString::new(v).unwrap();
                     htslib::bam_aux_append(
-                    self.inner,
-                    ctag,
-                    b'Z' as i8,
-                    (v.len() + 1) as i32,
-                    c_str.as_ptr() as *mut u8)
-                },
+                        self.inner,
+                        ctag,
+                        b'Z' as i8,
+                        (v.len() + 1) as i32,
+                        c_str.as_ptr() as *mut u8,
+                    )
+                }
             }
         };
 
@@ -581,12 +577,7 @@ impl Record {
     // Delete auxiliary tag.
     pub fn remove_aux(&self, tag: &[u8]) -> bool {
         let c_str = ffi::CString::new(tag).unwrap();
-        let aux = unsafe {
-            htslib::bam_aux_get(
-                self.inner,
-                c_str.as_ptr() as *mut i8,
-            )
-        };
+        let aux = unsafe { htslib::bam_aux_get(self.inner, c_str.as_ptr() as *mut i8) };
         unsafe {
             if aux.is_null() {
                 false
@@ -785,7 +776,7 @@ pub enum Cigar {
 impl Cigar {
     fn encode(self) -> u32 {
         match self {
-            Cigar::Match(len) => len << 4,// | 0,
+            Cigar::Match(len) => len << 4, // | 0,
             Cigar::Ins(len) => len << 4 | 1,
             Cigar::Del(len) => len << 4 | 2,
             Cigar::RefSkip(len) => len << 4 | 3,
@@ -813,7 +804,7 @@ impl Cigar {
     }
 
     pub fn is_empty(self) -> bool {
-        self.len() == 0 
+        self.len() == 0
     }
 
     /// Return the character representing the CIGAR.

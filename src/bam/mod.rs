@@ -55,10 +55,7 @@ pub unsafe fn set_fai_filename<P: AsRef<Path>>(
     };
     let p: &Path = path.as_ref();
     let c_str = ffi::CString::new(p.to_str().unwrap().as_bytes()).unwrap();
-    if htslib::hts_set_fai_filename(
-        htsfile,c_str.as_ptr(),
-        ) == 0
-    {
+    if htslib::hts_set_fai_filename(htsfile, c_str.as_ptr()) == 0 {
         Ok(())
     } else {
         Err(Error::InvalidReferencePath { path: p.to_owned() })
@@ -318,8 +315,7 @@ impl IndexedReader {
         let htsfile = hts_open(path, b"r")?;
         let header = unsafe { htslib::sam_hdr_read(htsfile) };
         let c_str = ffi::CString::new(path).unwrap();
-        let idx =
-            unsafe { htslib::sam_index_load(htsfile, c_str.as_ptr()) };
+        let idx = unsafe { htslib::sam_index_load(htsfile, c_str.as_ptr()) };
         if idx.is_null() {
             Err(Error::InvalidIndex {
                 target: str::from_utf8(path).unwrap().to_owned(),
@@ -345,11 +341,7 @@ impl IndexedReader {
         let c_str_path = ffi::CString::new(path).unwrap();
         let c_str_index_path = ffi::CString::new(index_path).unwrap();
         let idx = unsafe {
-            htslib::sam_index_load2(
-                htsfile,
-                c_str_path.as_ptr(),
-                c_str_index_path.as_ptr(),
-            )
+            htslib::sam_index_load2(htsfile, c_str_path.as_ptr(), c_str_index_path.as_ptr())
         };
         if idx.is_null() {
             Err(Error::InvalidIndex {
@@ -713,8 +705,7 @@ fn hts_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
     let cpath = ffi::CString::new(path).unwrap();
     let path = str::from_utf8(path).unwrap();
     let c_str = ffi::CString::new(mode).unwrap();
-    let ret =
-        unsafe { htslib::hts_open(cpath.as_ptr(), c_str.as_ptr()) };
+    let ret = unsafe { htslib::hts_open(cpath.as_ptr(), c_str.as_ptr()) };
     if ret.is_null() {
         Err(Error::Open {
             target: path.to_owned(),
@@ -814,12 +805,7 @@ impl HeaderView {
 
     pub fn tid(&self, name: &[u8]) -> Option<u32> {
         let c_str = ffi::CString::new(name).expect("Expected valid name.");
-        let tid = unsafe {
-            htslib::bam_name2id(
-                self.inner,
-                c_str.as_ptr(),
-            )
-        };
+        let tid = unsafe { htslib::bam_name2id(self.inner, c_str.as_ptr()) };
         if tid < 0 {
             None
         } else {

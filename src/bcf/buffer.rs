@@ -175,7 +175,7 @@ impl RecordBuffer {
         self.ringbuffer.len()
     }
 
-    pub fn is_empty(&self) -> bool{
+    pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 }

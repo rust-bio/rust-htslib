@@ -136,7 +136,7 @@ impl Read for Reader {
     }
 
     fn set_threads(&mut self, n_threads: usize) -> Result<()> {
-       unsafe { set_threads(self.inner, n_threads)}
+        unsafe { set_threads(self.inner, n_threads) }
     }
 
     fn header(&self) -> &HeaderView {
@@ -504,7 +504,7 @@ pub mod synced {
         /// * `end` - `0`-based end coordinate of region on reference.
         pub fn fetch(&mut self, rid: u32, start: u32, end: u32) -> Result<()> {
             let contig = {
-                let contig = self.header(0).rid2name(rid).unwrap();//.clone();
+                let contig = self.header(0).rid2name(rid).unwrap(); //.clone();
                 ffi::CString::new(contig).unwrap()
             };
             if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i32) } != 0 {

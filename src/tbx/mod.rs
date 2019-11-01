@@ -151,8 +151,7 @@ impl Reader {
     fn new(path: &[u8]) -> Result<Self> {
         let path = ffi::CString::new(path).unwrap();
         let c_str = ffi::CString::new("r").unwrap();
-        let hts_file =
-            unsafe { htslib::hts_open(path.as_ptr(), c_str.as_ptr()) };
+        let hts_file = unsafe { htslib::hts_open(path.as_ptr(), c_str.as_ptr()) };
         unsafe {
             if (*hts_file).format.category != htslib::htsFormatCategory_region_list
                 && (*hts_file).format.format != htslib::htsExactFormat_sam
@@ -199,12 +198,7 @@ impl Reader {
     /// Get sequence/target ID from sequence name.
     pub fn tid(&self, name: &str) -> Result<u32> {
         let name_cstr = ffi::CString::new(name.as_bytes()).unwrap();
-        let res = unsafe {
-            htslib::tbx_name2id(
-                self.tbx,
-                name_cstr.as_ptr(),
-            )
-        };
+        let res = unsafe { htslib::tbx_name2id(self.tbx, name_cstr.as_ptr()) };
         if res < 0 {
             Err(Error::UnknownSequence {
                 sequence: name.to_owned(),
@@ -301,7 +295,7 @@ impl Read for Reader {
                             //mem::transmute(&mut self.buf),
                             &mut self.buf as *mut htslib::__kstring_t as *mut libc::c_void,
                             //mem::transmute(self.tbx),
-                            self.tbx as *mut libc::c_void
+                            self.tbx as *mut libc::c_void,
                         )
                     };
                     // Handle errors first.

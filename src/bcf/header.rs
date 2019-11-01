@@ -107,9 +107,7 @@ impl Header {
     /// - `sample` - Name of the sample to add (to the end of the sample list).
     pub fn push_sample(&mut self, sample: &[u8]) -> &mut Self {
         let c_str = ffi::CString::new(sample).unwrap();
-        unsafe {
-            htslib::bcf_hdr_add_sample(self.inner, c_str.as_ptr())
-        };
+        unsafe { htslib::bcf_hdr_add_sample(self.inner, c_str.as_ptr()) };
         self
     }
 
