@@ -2001,14 +2001,16 @@ CCCCCCCCCCCCCCCCCCC"[..],
             bam.header().tid("KI270733.1".as_bytes()).unwrap(),
             0,
             10000000,
-        ).unwrap();
+        )
+        .unwrap();
         assert!(bam.rc_records().count() == 6);
 
         bam.fetch(
             bam.header().tid("GL000220.1".as_bytes()).unwrap(),
             0,
             10000000,
-        ).unwrap();
+        )
+        .unwrap();
         assert!(bam.rc_records().count() == 11);
 
         let iter = bam
