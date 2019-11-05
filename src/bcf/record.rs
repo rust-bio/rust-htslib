@@ -790,9 +790,9 @@ impl<'a> Info<'a> {
     /// Get strings from tag. `None` if tag not present in record.
     pub fn string(&mut self) -> Result<Option<Vec<&'a [u8]>>> {
         self.data(htslib::BCF_HT_STR).map(|data| {
-            data.map(|(n, ret)| {
+            data.map(|(_, ret)| {
                 unsafe { slice::from_raw_parts(self.record.buffer as *const u8, ret as usize) }
-                    .chunks(n)
+                    .split(|c| *c == b',')
                     .map(|s| {
                         // stop at zero character
                         s.split(|c| *c == 0u8)
