@@ -596,7 +596,7 @@ impl Writer {
         let mode: &[u8] = match (uncompressed, format) {
             (true, Format::VCF) => b"w",
             (false, Format::VCF) => b"wz",
-            (true, Format::BCF) => b"wu",
+            (true, Format::BCF) => b"wbu",
             (false, Format::BCF) => b"wb",
         };
 
@@ -1220,7 +1220,7 @@ mod tests {
         let tmp = tempdir::TempDir::new("rust-htslib")
             .ok()
             .expect("Cannot create temp dir");
-        let bcfpath = tmp.path().join("test.vcf");
+        let vcfpath = tmp.path().join("test.vcf");
         let mut header = Header::from_template(&vcf.header);
         header
             .remove_contig(b"contig2")
@@ -1230,14 +1230,14 @@ mod tests {
             .remove_structured(b"Foo2")
             .remove_generic(b"Bar2");
         {
-            let mut _writer = Writer::from_path(&bcfpath, &header, true, Format::BCF)
+            let mut _writer = Writer::from_path(&vcfpath, &header, true, Format::VCF)
                 .ok()
                 .expect("Error opening output file.");
             // Note that we don't need to write anything, we are just looking at the header.
         }
 
         let expected = read_all("test/test_headers.out.vcf");
-        let actual = read_all(&bcfpath);
+        let actual = read_all(&vcfpath);
         assert_eq!(expected, actual);
     }
 
