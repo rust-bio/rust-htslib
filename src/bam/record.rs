@@ -601,6 +601,42 @@ impl Record {
         }
     }
 
+    /// Get auxiliary data (tags).
+    pub fn get_tags(&self) -> Vec<(&[u8], Aux<'_>)> {
+        let aux = &self.data()[self.qname_capacity()
+            + self.cigar_len() * 4
+            + (self.seq_len() + 1) / 2
+            + self.seq_len()..];
+
+        let mut out = Vec::new();
+        unsafe {
+            let mut s = 0;
+            while s + 2 < aux.len() {
+                let key = &aux[s..s + 2];
+                let data_ptr = aux[s + 2..].as_ptr();
+                let (parsed, offset) = match aux[s + 2] {
+                    b'c' | b'C' => (Some(Aux::Integer(htslib::bam_aux2i(data_ptr))), 1),
+                    b's' | b'S' => (Some(Aux::Integer(htslib::bam_aux2i(data_ptr))), 2),
+                    b'i' | b'I' => (Some(Aux::Integer(htslib::bam_aux2i(data_ptr))), 4),
+                    b'f' => (Some(Aux::Float(htslib::bam_aux2f(data_ptr))), 4),
+                    b'd' => (Some(Aux::Float(htslib::bam_aux2f(data_ptr))), 8),
+                    b'A' => (Some(Aux::Char(htslib::bam_aux2A(data_ptr) as u8)), 1),
+                    b'Z' | b'H' => {
+                        let f = data_ptr as *const i8;
+                        let c_str = ffi::CStr::from_ptr(f).to_bytes();
+                        (Some(Aux::String(&c_str[1..])), c_str.len())
+                    }
+                    _ => (None, aux.len()),
+                };
+                s += offset + 3;
+                if let Some(parsed_value) = parsed {
+                    out.push((key, parsed_value))
+                };
+            }
+        }
+        out
+    }
+
     /// Add auxiliary data.
     pub fn push_aux(&mut self, tag: &[u8], value: &Aux<'_>) {
         let ctag = tag.as_ptr() as *mut i8;
