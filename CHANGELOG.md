@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.26.1] - 2019-12-03
+## Changes
+- Various bug fixes in CIGAR string handling, INFO tag reading and FORMAT tag reading.
+
 ## [0.26.0] - 2019-09-27
 ## Changes
 - Allow caching of CIGAR in bam::RecordBuffer.
