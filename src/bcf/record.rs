@@ -757,8 +757,9 @@ impl<'a> Info<'a> {
     /// Import `bcf::record::Numeric` for missing value handling.
     pub fn integer(&mut self) -> Result<Option<&'a [i32]>> {
         self.data(htslib::BCF_HT_INT).map(|data| {
-            data.map(|(n, _)| {
-                trim_slice(unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) })
+            data.map(|(n, ret)| {
+                dbg!((n, ret));
+                trim_slice(&unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) }[..ret as usize])
             })
         })
     }
@@ -768,8 +769,8 @@ impl<'a> Info<'a> {
     /// Import `bcf::record::Numeric` for missing value handling.
     pub fn float(&mut self) -> Result<Option<&'a [f32]>> {
         self.data(htslib::BCF_HT_REAL).map(|data| {
-            data.map(|(n, _)| {
-                trim_slice(unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) })
+            data.map(|(n, ret)| {
+                trim_slice(&unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) }[..ret as usize])
             })
         })
     }
