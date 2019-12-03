@@ -1,6 +1,6 @@
 [package]
 name = "rust-htslib"
-version = "0.26.1-alpha.0"
+version = "0.26.1"
 authors = ["Christopher Schröder <christopher.schroeder@tu-dortmund.de>", "Johannes Köster <johannes.koester@tu-dortmund.de>"]
 build = "build.rs"
 description = "This library provides HTSlib bindings and a high level Rust API for reading and writing BAM files."
@@ -10,6 +10,10 @@ license = "MIT"
 repository = "https://github.com/rust-bio/rust-htslib.git"
 documentation = "https://docs.rs/rust-htslib"
 edition = "2018"
+
+[package.metadata.release]
+pre-release-commit-message = "release version {{version}}"
+tag-message = "Version {{version}} of Rust-HTSlib."
 
 
 [dependencies]
@@ -45,7 +49,3 @@ pretty_assertions = "0.6"
 fs-utils = "1.1"
 bindgen = "0.51.0"
 cc = "1.0"
-
-[package.metadata.release]
-pre-release-commit-message = "release version {{version}}"
-tag-message = "Version {{version}} of Rust-HTSlib."
