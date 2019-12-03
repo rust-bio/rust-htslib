@@ -670,13 +670,13 @@ custom_derive! {
 impl fmt::Display for Genotype {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let &Genotype(ref alleles) = self;
-        r#try!(write!(f, "{}", alleles[0]));
+        write!(f, "{}", alleles[0])?;
         for a in &alleles[1..] {
             let sep = match a {
                 GenotypeAllele::Phased(_) | GenotypeAllele::PhasedMissing => '|',
                 GenotypeAllele::Unphased(_) | GenotypeAllele::UnphasedMissing => '/',
             };
-            r#try!(write!(f, "{}{}", sep, a));
+            write!(f, "{}{}", sep, a)?;
         }
         Ok(())
     }
@@ -758,7 +758,8 @@ impl<'a> Info<'a> {
     pub fn integer(&mut self) -> Result<Option<&'a [i32]>> {
         self.data(htslib::BCF_HT_INT).map(|data| {
             data.map(|(n, ret)| {
-                unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) }[..ret as usize]
+                let values = unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) };
+                &values[..ret as usize]
             })
         })
     }
@@ -769,7 +770,8 @@ impl<'a> Info<'a> {
     pub fn float(&mut self) -> Result<Option<&'a [f32]>> {
         self.data(htslib::BCF_HT_REAL).map(|data| {
             data.map(|(n, ret)| {
-                unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) }[..ret as usize]
+                let values = unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) };
+                &values[..ret as usize]
             })
         })
     }
