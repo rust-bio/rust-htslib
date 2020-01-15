@@ -47,5 +47,5 @@ pretty_assertions = "0.6"
 
 [build-dependencies]
 fs-utils = "1.1"
-bindgen = "0.51.0"
+bindgen = "0.52.0"
 cc = "1.0"
