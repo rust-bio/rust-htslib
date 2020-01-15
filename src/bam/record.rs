@@ -91,6 +91,15 @@ impl Default for Record {
     }
 }
 
+#[inline]
+fn l_extranul(qname_len: usize) -> usize {
+    if qname_len % 4 != 0 {
+        4 - qname_len % 4
+    } else {
+        0
+    }
+}
+
 impl Record {
     /// Create an empty BAM record.
     pub fn new() -> Self {
@@ -280,7 +289,7 @@ impl Record {
             0
         } * 4;
         let q_len = qname.len() + 1;
-        let extranul = if q_len % 4 != 0 { 4 - q_len % 4 } else { 0 };
+        let extranul = l_extranul(q_len);
 
         self.inner_mut().l_data = (q_len
             + extranul
@@ -300,7 +309,9 @@ impl Record {
             unsafe { slice::from_raw_parts_mut((*self.inner).data, self.inner().l_data as usize) };
         // qname
         utils::copy_memory(qname, data);
-        data[qname.len()] = b'\0';
+        for i in 0..=extranul {
+            data[qname.len() + i] = b'\0';
+        }
         let mut i = q_len + extranul;
         self.inner_mut().core.l_qname = i as u8;
         self.inner_mut().core.l_extranul = extranul as u8;
@@ -348,12 +359,8 @@ impl Record {
 
         let old_q_len = self.qname_capacity();
         // We're going to add a terminal NUL
-        let new_q_len = 1 + new_qname.len();
-        let extranul = if new_q_len % 4 != 0 {
-            4 - new_q_len % 4
-        } else {
-            0
-        };
+        let new_q_len = new_qname.len() + 1;
+        let extranul = l_extranul(new_q_len);
         let new_q_len = new_q_len + extranul;
 
         // Length of data after qname
