@@ -230,6 +230,30 @@ impl Reader {
 }
 
 impl Read for Reader {
+    /// Read the next BAM record into the given `Record`.
+    /// Returns a true result if a record was read, or false if there are no more records.
+    ///
+    /// This method is useful if you want to read records as fast as possible as the
+    /// `Record` can be reused. A more ergonomic approach is to use the [records](Reader::records)
+    /// iterator.
+    ///
+    /// # Errors
+    /// If there are any issues with reading the next record an error will be returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rust_htslib::bam::{Error, Read, Reader, Record};
+    ///
+    /// let mut bam = Reader::from_path(&"test/test.bam")?;
+    /// let mut record = Record::new();
+    ///
+    /// // Print the TID of each record
+    /// while bam.read(&mut record)? {
+    ///    println!("TID: {}", record.tid())
+    /// }
+    /// # Ok::<(), Error>(())
+    /// ```
     fn read(&mut self, record: &mut record::Record) -> Result<bool> {
         match unsafe { htslib::sam_read1(self.htsfile, &mut self.header.inner(), record.inner) } {
             -1 => Ok(false),
