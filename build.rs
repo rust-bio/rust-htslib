@@ -6,6 +6,7 @@
 use bindgen;
 use cc;
 use fs_utils::copy::copy_directory;
+use glob::glob;
 
 use std::env;
 use std::fs;
@@ -103,4 +104,10 @@ fn main() {
     println!("cargo:include={}", include.display());
     println!("cargo:libdir={}", out.display());
     println!("cargo:rustc-link-lib=static=hts");
+    println!("cargo:rerun-if-changed=wrapper.c");
+    println!("cargo:rerun-if-changed=wrapper.h");
+    for htsfile in glob("htslib/**/*").unwrap() {
+        let htsfile = htsfile.as_ref().unwrap().to_str().unwrap();
+        println!("cargo:rerun-if-changed={}", htsfile);
+    }
 }
