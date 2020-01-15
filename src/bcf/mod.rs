@@ -179,9 +179,7 @@ impl IndexedReader {
     /// * `path` - the path to open.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         match path.as_ref().to_str() {
-            Some(p) if path.as_ref().exists() => {
-                Ok(Self::new(&ffi::CString::new(p).unwrap())?)
-            }
+            Some(p) if path.as_ref().exists() => Ok(Self::new(&ffi::CString::new(p).unwrap())?),
             _ => Err(Error::NonUnicodePath),
         }
     }
