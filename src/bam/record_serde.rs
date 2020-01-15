@@ -1,8 +1,9 @@
 use std::fmt;
 
-use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
-use serde::ser::SerializeStruct;
-use serde::{Serialize, Serializer};
+use serde_base::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
+use serde_base::ser::SerializeStruct;
+use serde_base::{Serialize, Serializer};
+use serde_bytes::{ByteBuf, Bytes};
 
 use crate::bam::record::Record;
 
@@ -29,7 +30,7 @@ impl Serialize for Record {
         state.serialize_field("mtid", &core.mtid)?;
         state.serialize_field("mpos", &core.mpos)?;
         state.serialize_field("isize", &core.isize)?;
-        state.serialize_field("data", self.data())?;
+        state.serialize_field("data", Bytes::new(self.data()))?;
         state.end()
     }
 }
@@ -140,9 +141,10 @@ impl<'de> Deserialize<'de> for Record {
                 let isize = seq
                     .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let data: Vec<u8> = seq
-                    .next_element()?
-                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let data = seq
+                    .next_element::<ByteBuf>()?
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?
+                    .into_vec();
 
                 let mut rec = Record::new();
                 {
@@ -181,7 +183,7 @@ impl<'de> Deserialize<'de> for Record {
                 let mut mtid = None;
                 let mut mpos = None;
                 let mut isize = None;
-                let mut data: Option<Vec<u8>> = None;
+                let mut data: Option<ByteBuf> = None;
 
                 while let Some(key) = map.next_key()? {
                     match key {
@@ -271,7 +273,9 @@ impl<'de> Deserialize<'de> for Record {
                 let mtid = mtid.ok_or_else(|| de::Error::missing_field("mtid"))?;
                 let mpos = mpos.ok_or_else(|| de::Error::missing_field("mpos"))?;
                 let isize = isize.ok_or_else(|| de::Error::missing_field("isize"))?;
-                let data = data.ok_or_else(|| de::Error::missing_field("data"))?;
+                let data = data
+                    .ok_or_else(|| de::Error::missing_field("data"))?
+                    .into_vec();
 
                 let mut rec = Record::new();
                 {
