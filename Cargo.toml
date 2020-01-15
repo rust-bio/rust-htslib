@@ -26,7 +26,8 @@ lazy_static = "1.4"
 bitflags = "1.2"
 regex = "1.3"
 linear-map = "1.2"
-serde = { version = "^1", optional = true }
+serde_base = { version = "^1", optional = true, package = "serde" }
+serde_bytes = { version = "0.11", optional = true }
 bio-types = ">=0.5.1"
 snafu = "0.5"
 
@@ -34,6 +35,7 @@ snafu = "0.5"
 default = ["bzip2", "lzma"]
 bzip2 = ["bzip2-sys"]
 lzma = ["lzma-sys"]
+serde = ["serde_base", "serde_bytes"]
 
 [dev-dependencies]
 tempdir = "0.3"

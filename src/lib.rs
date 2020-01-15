@@ -74,7 +74,9 @@ extern crate libc;
 extern crate newtype_derive;
 
 #[cfg(feature = "serde")]
-extern crate serde;
+extern crate serde_base;
+#[cfg(feature = "serde")]
+extern crate serde_bytes;
 
 #[cfg(all(test, feature = "serde"))]
 extern crate bincode;
