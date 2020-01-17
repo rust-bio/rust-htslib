@@ -148,8 +148,7 @@ impl<'de> Deserialize<'de> for Record {
 
                 let mut rec = Record::new();
                 {
-                    let _m = rec.inner_mut();
-                    let m = &mut _m.core;
+                    let m = &mut rec.inner_mut().core;
                     m.tid = tid;
                     m.pos = pos;
                     m.bin = bin;
@@ -279,8 +278,7 @@ impl<'de> Deserialize<'de> for Record {
 
                 let mut rec = Record::new();
                 {
-                    let _m = rec.inner_mut();
-                    let m = &mut _m.core;
+                    let m = &mut rec.inner_mut().core;
                     m.tid = tid;
                     m.pos = pos;
                     m.bin = bin;

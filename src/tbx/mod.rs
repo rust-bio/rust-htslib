@@ -253,7 +253,7 @@ impl Reader {
             }
         }
         unsafe {
-            libc::free(seqs as (*mut libc::c_void));
+            libc::free(seqs as *mut libc::c_void);
         };
 
         result
