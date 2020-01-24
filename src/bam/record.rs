@@ -280,8 +280,12 @@ impl Record {
     /// Note: Pre-existing aux data will be invalidated
     /// if called on an existing record. For this
     /// reason, never call push_aux() before set().
+    /// Note seq.len() must equal qual.len() or this method
+    /// will panic.
     pub fn set(&mut self, qname: &[u8], cigar: Option<&CigarString>, seq: &[u8], qual: &[u8]) {
         self.cigar = None;
+
+        assert!(seq.len() == qual.len(), "seq.len() must equal qual.len()");
 
         let cigar_width = if let Some(cigar_string) = cigar {
             cigar_string.len()
