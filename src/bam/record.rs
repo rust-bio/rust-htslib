@@ -279,9 +279,12 @@ impl Record {
     /// Set variable length data (qname, cigar, seq, qual).
     /// Note: Pre-existing aux data will be invalidated
     /// if called on an existing record. For this
-    /// reason, never call push_aux() before set().
-    /// Note seq.len() must equal qual.len() or this method
-    /// will panic.
+    /// reason, never call push_aux() before set(). `qual` is Phred-scaled
+    /// quality values, without any offset.
+    /// NOTE: seq.len() must equal qual.len() or this method
+    /// will panic. If you don't have quality values use
+    /// `let quals = vec![ 255 as u8; seq.len()];` as a placeholder that will
+    /// be recognized as missing QVs by `samtools`.
     pub fn set(&mut self, qname: &[u8], cigar: Option<&CigarString>, seq: &[u8], qual: &[u8]) {
         self.cigar = None;
 
