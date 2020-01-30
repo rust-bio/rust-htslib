@@ -5,6 +5,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [0.26.1] - 2019-12-03
 ## Changes
 - Various bug fixes in CIGAR string handling, INFO tag reading and FORMAT tag reading.
+- bam::Record.set() will panic if seq.len() != qual.len(). Previously, mismatched length would cause
+  uninitialized memory to be written into the BAM file.
 
 ## [0.26.0] - 2019-09-27
 ## Changes
