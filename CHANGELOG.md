@@ -2,16 +2,20 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.26.2] - (TBD)
+- bam::Record.set() will panic if seq.len() != qual.len(). Previously, mismatched length would cause
+  uninitialized memory to be written into the BAM file.
+- use `serde_bytes` to serialize .data section of bam::Record when using serde - large speed improvement.
+- change build.rs to avoid re-running when htslib or wrapper.h haven't changed.
+- update some dependencies.
+
 ## [0.26.1] - 2019-12-03
 ## Changes
 - Various bug fixes in CIGAR string handling, INFO tag reading and FORMAT tag reading.
-- bam::Record.set() will panic if seq.len() != qual.len(). Previously, mismatched length would cause
-  uninitialized memory to be written into the BAM file.
 
 ## [0.26.0] - 2019-09-27
 ## Changes
 - Allow caching of CIGAR in bam::RecordBuffer.
-
 
 ## [0.25.0] - 2019-09-27
 ## Changes
