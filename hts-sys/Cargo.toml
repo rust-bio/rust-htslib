@@ -29,6 +29,6 @@ lzma = ["lzma-sys"]
 
 [build-dependencies]
 fs-utils = "1.1"
-bindgen = "0.52.0"
+bindgen = { version = "0.52.0", default-features = false }
 cc = "1.0"
 glob = "0.3.0"
