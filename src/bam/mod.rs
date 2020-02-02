@@ -255,7 +255,13 @@ impl Read for Reader {
     /// # Ok::<(), Error>(())
     /// ```
     fn read(&mut self, record: &mut record::Record) -> Result<bool> {
-        match unsafe { htslib::sam_read1(self.htsfile, &mut self.header.inner(), record.inner) } {
+        match unsafe {
+            htslib::sam_read1(
+                self.htsfile,
+                &mut self.header.inner(),
+                record.inner_ptr_mut(),
+            )
+        } {
             -1 => Ok(false),
             -2 => Err(Error::TruncatedRecord),
             -4 => Err(Error::InvalidRecord),
@@ -440,12 +446,14 @@ impl IndexedReader {
 impl Read for IndexedReader {
     fn read(&mut self, record: &mut record::Record) -> Result<bool> {
         match self.itr {
-            Some(itr) => match itr_next(self.htsfile, itr, record.inner) {
-                -1 => Ok(false),
-                -2 => Err(Error::TruncatedRecord),
-                -4 => Err(Error::InvalidRecord),
-                _ => Ok(true),
-            },
+            Some(itr) => {
+                match itr_next(self.htsfile, itr, &mut record.inner as *mut htslib::bam1_t) {
+                    -1 => Ok(false),
+                    -2 => Err(Error::TruncatedRecord),
+                    -4 => Err(Error::InvalidRecord),
+                    _ => Ok(true),
+                }
+            }
             None => Ok(false),
         }
     }
@@ -604,7 +612,7 @@ impl Writer {
     ///
     /// * `record` - the record to write
     pub fn write(&mut self, record: &record::Record) -> Result<()> {
-        if unsafe { htslib::sam_write1(self.f, &self.header.inner(), record.inner) } == -1 {
+        if unsafe { htslib::sam_write1(self.f, &self.header.inner(), record.inner_ptr()) } == -1 {
             Err(Error::Write)
         } else {
             Ok(())
@@ -1027,11 +1035,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .ok()
             .expect("Error opening file.");
 
-        let true_header =
-            "@SQ\tSN:CHROMOSOME_I\tLN:15072423\n@SQ\tSN:CHROMOSOME_II\tLN:15279345\
+        let true_header = "@SQ\tSN:CHROMOSOME_I\tLN:15072423\n@SQ\tSN:CHROMOSOME_II\tLN:15279345\
              \n@SQ\tSN:CHROMOSOME_III\tLN:13783700\n@SQ\tSN:CHROMOSOME_IV\tLN:17493793\n@SQ\t\
              SN:CHROMOSOME_V\tLN:20924149\n"
-                .to_string();
+            .to_string();
         let header_text = String::from_utf8(bam.header.as_bytes().to_owned()).unwrap();
         assert_eq!(header_text, true_header);
     }
@@ -1222,7 +1229,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .expect("Error opening file.");
 
         for record in bam.records() {
-            let rec = record.expect("Expected valid record");
+            let mut rec = record.expect("Expected valid record");
 
             if rec.aux(b"XS").is_some() {
                 rec.remove_aux(b"XS");
