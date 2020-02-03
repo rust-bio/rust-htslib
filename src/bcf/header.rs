@@ -243,7 +243,7 @@ impl HeaderView {
 
     #[inline]
     fn inner(&self) -> htslib::bcf_hdr_t {
-        unsafe { (*self.inner) }
+        unsafe { *self.inner }
     }
 
     /// Get the number of samples defined in the header.

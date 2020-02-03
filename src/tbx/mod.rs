@@ -223,8 +223,8 @@ impl Reader {
             htslib::hts_itr_query(
                 (*self.tbx).idx,
                 tid as i32,
-                start as i32,
-                end as i32,
+                start as i64,
+                end as i64,
                 Some(htslib::tbx_readrec),
             )
         };
@@ -293,7 +293,7 @@ impl Read for Reader {
                             htslib::hts_get_bgzfp(self.hts_file),
                             itr,
                             //mem::transmute(&mut self.buf),
-                            &mut self.buf as *mut htslib::__kstring_t as *mut libc::c_void,
+                            &mut self.buf as *mut htslib::kstring_t as *mut libc::c_void,
                             //mem::transmute(self.tbx),
                             self.tbx as *mut libc::c_void,
                         )
@@ -310,7 +310,7 @@ impl Read for Reader {
                     // returns `< 0`).
                     let (tid, start, end) =
                         unsafe { ((*itr).curr_tid, (*itr).curr_beg, (*itr).curr_end) };
-                    if overlap(self.tid, self.start, self.end, tid, start, end) {
+                    if overlap(self.tid, self.start, self.end, tid,start,end) {
                         *record =
                             unsafe { Vec::from(ffi::CStr::from_ptr(self.buf.s).to_str().unwrap()) };
                         return Ok(true);

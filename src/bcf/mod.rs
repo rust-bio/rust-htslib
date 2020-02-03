@@ -228,7 +228,7 @@ impl IndexedReader {
     pub fn fetch(&mut self, rid: u32, start: u32, end: u32) -> Result<()> {
         let contig = self.header.rid2name(rid).unwrap();
         let contig = ffi::CString::new(contig).unwrap();
-        if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i32) } != 0 {
+        if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i64) } != 0 {
             Err(Error::Seek {
                 contig: contig.to_str().unwrap().to_owned(),
                 start,
@@ -443,7 +443,7 @@ pub mod synced {
                                 let record = *(*(*self.inner).readers.offset(idx as isize))
                                     .buffer
                                     .offset(0);
-                                if (*record).rid != (rid as i32) || (*record).pos >= (end as i32) {
+                                if (*record).rid != (rid as i64) || (*record).pos >= (end as i64) {
                                     return Ok(0);
                                 }
                             }
@@ -505,7 +505,7 @@ pub mod synced {
                 let contig = self.header(0).rid2name(rid).unwrap(); //.clone();
                 ffi::CString::new(contig).unwrap()
             };
-            if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i32) } != 0 {
+            if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i64) } != 0 {
                 Err(Error::Seek {
                     contig: contig.to_str().unwrap().to_owned(),
                     start,

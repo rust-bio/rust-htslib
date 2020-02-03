@@ -91,34 +91,34 @@ pub trait BamRecordExtensions {
 }
 
 impl BamRecordExtensions for bam::Record {
-    fn aligned_blocks(&self) -> Vec<[i32; 2]> {
+    fn aligned_blocks(&self) -> Vec<[i64; 2]> {
         let mut result = Vec::new();
         let mut pos = self.pos();
         for entry in self.cigar().iter() {
             match entry {
                 Cigar::Match(len) => {
-                    result.push([pos, pos + *len as i32]);
-                    pos += *len as i32;
+                    result.push([pos, pos + *len as i64]);
+                    pos += *len as i64;
                 }
-                Cigar::Del(len) => pos += *len as i32,
-                Cigar::RefSkip(len) => pos += *len as i32,
+                Cigar::Del(len) => pos += *len as i64,
+                Cigar::RefSkip(len) => pos += *len as i64,
                 _ => (),
             }
         }
         result
     }
 
-    fn introns(&self) -> Vec<[i32; 2]> {
+    fn introns(&self) -> Vec<[i64; 2]> {
         let mut base_position = self.pos();
         let mut result = Vec::new();
         for entry in self.cigar().iter() {
             match entry {
                 Cigar::Match(len) | Cigar::Del(len) | Cigar::Equal(len) | Cigar::Diff(len) => {
-                    base_position += *len as i32
+                    base_position += *len as i64
                 }
                 Cigar::RefSkip(len) => {
                     let junc_start = base_position;
-                    base_position += *len as i32;
+                    base_position += *len as i64;
                     result.push([junc_start, base_position]);
                 }
                 _ => {}
@@ -127,25 +127,25 @@ impl BamRecordExtensions for bam::Record {
         result
     }
 
-    fn aligned_pairs(&self) -> Vec<[i32; 2]> {
+    fn aligned_pairs(&self) -> Vec<[i64; 2]> {
         let mut result = Vec::new();
 
-        let mut pos: i32 = self.pos();
-        let mut qpos: i32 = 0;
+        let mut pos: i64 = self.pos();
+        let mut qpos: i64 = 0;
         for entry in self.cigar().iter() {
             match entry {
                 Cigar::Match(len) | Cigar::Equal(len) | Cigar::Diff(len) => {
-                    for i in pos..(pos + *len as i32) {
+                    for i in pos..(pos + *len as i64) {
                         result.push([qpos, i]);
                         qpos += 1;
                     }
-                    pos += *len as i32;
+                    pos += *len as i64;
                 }
                 Cigar::Ins(len) | Cigar::SoftClip(len) => {
-                    qpos += *len as i32;
+                    qpos += *len as i64;
                 }
                 Cigar::Del(len) | Cigar::RefSkip(len) => {
-                    pos += *len as i32;
+                    pos += *len as i64;
                 }
                 Cigar::HardClip(_) => {} // no advance
                 Cigar::Pad(_) => panic!("Padding (Cigar::Pad) is not supported."), //padding is only used for multiple sequence alignment
@@ -154,11 +154,11 @@ impl BamRecordExtensions for bam::Record {
         result
     }
 
-    fn aligned_pairs_full(&self) -> Vec<[Option<i32>; 2]> {
+    fn aligned_pairs_full(&self) -> Vec<[Option<i64>; 2]> {
         let mut result = Vec::new();
 
-        let mut pos: i32 = self.pos();
-        let mut qpos: i32 = 0;
+        let mut pos: i64 = self.pos();
+        let mut qpos: i64 = 0;
         for entry in self.cigar().iter() {
             match entry {
                 Cigar::Match(len) | Cigar::Equal(len) | Cigar::Diff(len) => {
@@ -244,21 +244,21 @@ impl BamRecordExtensions for bam::Record {
         result
     }
 
-    fn reference_positions(&self) -> Vec<i32> {
+    fn reference_positions(&self) -> Vec<i64> {
         self.aligned_pairs().iter().map(|x| x[1]).collect()
     }
 
-    fn reference_positions_full(&self) -> Vec<Option<i32>> {
+    fn reference_positions_full(&self) -> Vec<Option<i64>> {
         self.aligned_pairs_full()
             .iter()
             .filter(|x| x[0].is_some())
             .map(|x| x[1])
             .collect()
     }
-    fn reference_start(&self) -> i32 {
+    fn reference_start(&self) -> i64 {
         self.pos()
     }
-    fn reference_end(&self) -> i32 {
+    fn reference_end(&self) -> i64 {
         unsafe { htslib::bam_endpos(self.inner_ptr()) }
     }
 

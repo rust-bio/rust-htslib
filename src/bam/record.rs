@@ -196,12 +196,12 @@ impl Record {
     }
 
     /// Get position (0-based).
-    pub fn pos(&self) -> i32 {
+    pub fn pos(&self) -> i64 {
         self.inner().core.pos
     }
 
     /// Set position (0-based).
-    pub fn set_pos(&mut self, pos: i32) {
+    pub fn set_pos(&mut self, pos: i64) {
         self.inner_mut().core.pos = pos;
     }
 
@@ -249,22 +249,22 @@ impl Record {
     }
 
     /// Get mate position.
-    pub fn mpos(&self) -> i32 {
+    pub fn mpos(&self) -> i64 {
         self.inner().core.mpos
     }
 
     /// Set mate position.
-    pub fn set_mpos(&mut self, mpos: i32) {
+    pub fn set_mpos(&mut self, mpos: i64) {
         self.inner_mut().core.mpos = mpos;
     }
 
     /// Get insert size.
-    pub fn insert_size(&self) -> i32 {
+    pub fn insert_size(&self) -> i64 {
         self.inner().core.isize
     }
 
     /// Set insert size.
-    pub fn set_insert_size(&mut self, insert_size: i32) {
+    pub fn set_insert_size(&mut self, insert_size: i64) {
         self.inner_mut().core.isize = insert_size;
     }
 
@@ -343,7 +343,7 @@ impl Record {
             data[qname.len() + i] = b'\0';
         }
         let mut i = q_len + extranul;
-        self.inner_mut().core.l_qname = i as u8;
+        self.inner_mut().core.l_qname = i as u16;
         self.inner_mut().core.l_extranul = extranul as u8;
 
         // cigar
@@ -428,7 +428,7 @@ impl Record {
         for i in 0..=extranul {
             data[new_q_len - i - 1] = b'\0';
         }
-        self.inner_mut().core.l_qname = new_q_len as u8;
+        self.inner_mut().core.l_qname = new_q_len as u16;
         self.inner_mut().core.l_extranul = extranul as u8;
     }
 
@@ -1060,7 +1060,7 @@ impl fmt::Display for CigarString {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct CigarStringView {
     inner: CigarString,
-    pos: i32,
+    pos: i64,
 }
 
 impl CigarStringView {

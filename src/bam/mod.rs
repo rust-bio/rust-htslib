@@ -29,6 +29,7 @@ pub use crate::bam::buffer::RecordBuffer;
 pub use crate::bam::errors::{Error, Result};
 pub use crate::bam::header::Header;
 pub use crate::bam::record::Record;
+use std::convert::TryInto;
 
 /// Implementation for `Read::set_threads` and `Writer::set_threads`.
 pub unsafe fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
@@ -391,7 +392,7 @@ impl IndexedReader {
         if let Some(itr) = self.itr {
             unsafe { htslib::hts_itr_destroy(itr) }
         }
-        let itr = unsafe { htslib::sam_itr_queryi(self.idx, tid as i32, beg as i32, end as i32) };
+        let itr = unsafe { htslib::sam_itr_queryi(self.idx, tid as i32, beg as i64, end as i64) };
         if itr.is_null() {
             self.itr = None;
             Err(Error::Fetch)
@@ -579,10 +580,10 @@ impl Writer {
             );
 
             //println!("{}", str::from_utf8(&header_string).unwrap());
-            let rec = htslib::sam_hdr_parse((l_text + 1) as i32, text as *const i8);
+            let rec = htslib::sam_hdr_parse(((l_text + 1) as usize).try_into().unwrap(), text as *const i8);
 
             (*rec).text = text as *mut i8;
-            (*rec).l_text = l_text as u32;
+            (*rec).l_text = l_text as usize;
             rec
         };
 
@@ -804,9 +805,9 @@ impl HeaderView {
                 header_string.len(),
             );
 
-            let rec = htslib::sam_hdr_parse((l_text + 1) as i32, text as *const i8);
+            let rec = htslib::sam_hdr_parse((l_text + 1) as usize, text as *const i8);
             (*rec).text = text as *mut i8;
-            (*rec).l_text = l_text as u32;
+            (*rec).l_text = l_text as usize;
             rec
         };
 
@@ -820,7 +821,7 @@ impl HeaderView {
 
     #[inline]
     pub fn inner(&self) -> htslib::bam_hdr_t {
-        unsafe { (*self.inner) }
+        unsafe { *self.inner }
     }
 
     #[inline]
@@ -1325,7 +1326,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 let idx = i % names.len();
                 rec.set(names[idx], Some(&cigars[idx]), seqs[idx], quals[idx]);
                 rec.push_aux(b"NM", &Aux::Integer(15));
-                rec.set_pos(i as i32);
+                rec.set_pos(i as i64);
 
                 bam.write(&mut rec).expect("Failed to write record.");
             }
@@ -1341,7 +1342,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
                 let rec = _rec.expect("Failed to read record.");
 
-                assert_eq!(rec.pos(), i as i32);
+                assert_eq!(rec.pos(), i as i64);
                 assert_eq!(rec.qname(), names[idx]);
                 assert_eq!(*rec.cigar(), cigars[idx]);
                 assert_eq!(rec.seq().as_bytes(), seqs[idx]);

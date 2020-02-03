@@ -165,7 +165,7 @@ impl Record {
     }
 
     /// Set 0-based position.
-    pub fn set_pos(&mut self, pos: i32) {
+    pub fn set_pos(&mut self, pos: i64) {
         self.inner_mut().pos = pos;
     }
 
