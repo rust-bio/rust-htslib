@@ -19,7 +19,11 @@ If you only want to use the library, there is no need to clone the repository. G
 
 ## Requirements
 
-To compile this crate you need the development headers of zlib, bzip2 and xz.
+To compile this crate you need the development headers of zlib, bzip2 and xz. For instance, in Debian systems one needs the following dependencies:
+
+```shell
+$ sudo apt-get install zlib1g-dev libbz2-dev liblzma-dev clang
+```
 
 ## Usage
 
