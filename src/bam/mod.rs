@@ -580,7 +580,10 @@ impl Writer {
             );
 
             //println!("{}", str::from_utf8(&header_string).unwrap());
-            let rec = htslib::sam_hdr_parse(((l_text + 1) as usize).try_into().unwrap(), text as *const i8);
+            let rec = htslib::sam_hdr_parse(
+                ((l_text + 1) as usize).try_into().unwrap(),
+                text as *const i8,
+            );
 
             (*rec).text = text as *mut i8;
             (*rec).l_text = l_text as usize;
@@ -672,12 +675,10 @@ impl CompressionLevel {
     // Convert and check the variants of the `CompressionLevel` enum to a numeric level
     fn convert(self) -> Result<u32> {
         match self {
-            CompressionLevel::Uncompressed => Ok(htslib::Z_NO_COMPRESSION),
-            CompressionLevel::Fastest => Ok(htslib::Z_BEST_SPEED),
-            CompressionLevel::Maximum => Ok(htslib::Z_BEST_COMPRESSION),
-            CompressionLevel::Level(i @ htslib::Z_NO_COMPRESSION..=htslib::Z_BEST_COMPRESSION) => {
-                Ok(i)
-            }
+            CompressionLevel::Uncompressed => Ok(0),
+            CompressionLevel::Fastest => Ok(1),
+            CompressionLevel::Maximum => Ok(9),
+            CompressionLevel::Level(i @ 0..=9) => Ok(i),
             CompressionLevel::Level(i) => Err(Error::InvalidCompressionLevel { level: i }),
         }
     }
