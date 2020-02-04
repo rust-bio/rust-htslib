@@ -30,7 +30,7 @@ serde_base = { version = "^1", optional = true, package = "serde" }
 serde_bytes = { version = "0.11", optional = true }
 bio-types = ">=0.5.1"
 snafu = ">= 0.5.0, <= 0.6.0"
-hts-sys = { version = "^1.9", path = "hts-sys, default-features = false }
+hts-sys = { version = "^1.9", path = "hts-sys", default-features = false }
 
 [features]
 default = ["bzip2", "lzma"]
