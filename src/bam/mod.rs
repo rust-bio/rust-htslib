@@ -839,7 +839,7 @@ impl HeaderView {
 
     pub fn tid(&self, name: &[u8]) -> Option<u32> {
         let c_str = ffi::CString::new(name).expect("Expected valid name.");
-        let tid = unsafe { htslib::bam_name2id(self.inner, c_str.as_ptr()) };
+        let tid = unsafe { htslib::sam_hdr_name2tid(self.inner, c_str.as_ptr()) };
         if tid < 0 {
             None
         } else {
@@ -881,7 +881,7 @@ impl HeaderView {
 impl Clone for HeaderView {
     fn clone(&self) -> Self {
         HeaderView {
-            inner: unsafe { htslib::bam_hdr_dup(self.inner) },
+            inner: unsafe { htslib::sam_hdr_dup(self.inner) },
             owned: true,
         }
     }
@@ -891,7 +891,7 @@ impl Drop for HeaderView {
     fn drop(&mut self) {
         if self.owned {
             unsafe {
-                htslib::bam_hdr_destroy(self.inner);
+                htslib::sam_hdr_destroy(self.inner);
             }
         }
     }

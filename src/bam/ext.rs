@@ -21,7 +21,7 @@ pub trait BamRecordExtensions {
     /// this happens on insertions.
     ///
     /// pysam: blocks
-    fn aligned_blocks(&self) -> Vec<[i32; 2]>;
+    fn aligned_blocks(&self) -> Vec<[i64; 2]>;
 
     /// find intron positions (start, stop)
     ///
@@ -29,14 +29,14 @@ pub trait BamRecordExtensions {
     /// and reports their positions.
     ///
     /// pysam: get_introns
-    fn introns(&self) -> Vec<[i32; 2]>;
+    fn introns(&self) -> Vec<[i64; 2]>;
 
     /// a list of aligned read and reference positions
     ///
     /// No entry for insertions, deletions or skipped pairs
     ///
     /// pysam: get_aligned_pairs(matches_only = True)
-    fn aligned_pairs(&self) -> Vec<[i32; 2]>;
+    fn aligned_pairs(&self) -> Vec<[i64; 2]>;
 
     /// a list of aligned read and reference positions
     ///
@@ -44,7 +44,7 @@ pub trait BamRecordExtensions {
     /// for insertions, deletions or skipped pairs
     ///
     /// pysam: aligned_pairs(matches_only = False)
-    fn aligned_pairs_full(&self) -> Vec<[Option<i32>; 2]>;
+    fn aligned_pairs_full(&self) -> Vec<[Option<i64>; 2]>;
 
     /// the number of nucleotides covered by each Cigar:: possibility
     ///
@@ -67,19 +67,19 @@ pub trait BamRecordExtensions {
     /// or unaligned positions within the read
     ///
     /// pysam: get_reference_positions(full_length=False)
-    fn reference_positions(&self) -> Vec<i32>;
+    fn reference_positions(&self) -> Vec<i64>;
     ///
     /// a Vec of reference positions that this read aligns to
     ///
     /// include soft-clipped or skipped positions as None
     ///
     /// pysam: get_reference_positions(full_length=True)
-    fn reference_positions_full(&self) -> Vec<Option<i32>>;
+    fn reference_positions_full(&self) -> Vec<Option<i64>>;
 
     /// left most aligned reference position of the read on the reference genome.
-    fn reference_start(&self) -> i32;
+    fn reference_start(&self) -> i64;
     /// right most aligned reference position of the read on the reference genome.
-    fn reference_end(&self) -> i32;
+    fn reference_end(&self) -> i64;
 
     /// infer the query length from the cigar string, optionally include hard clipped bases
     ///
@@ -162,23 +162,23 @@ impl BamRecordExtensions for bam::Record {
         for entry in self.cigar().iter() {
             match entry {
                 Cigar::Match(len) | Cigar::Equal(len) | Cigar::Diff(len) => {
-                    for i in pos..(pos + *len as i32) {
+                    for i in pos..(pos + *len as i64) {
                         result.push([Some(qpos), Some(i)]);
                         qpos += 1;
                     }
-                    pos += *len as i32;
+                    pos += *len as i64;
                 }
                 Cigar::Ins(len) | Cigar::SoftClip(len) => {
-                    for i in qpos..(qpos + *len as i32) {
+                    for i in qpos..(qpos + *len as i64) {
                         result.push([Some(i), None]);
                     }
-                    qpos += *len as i32;
+                    qpos += *len as i64;
                 }
                 Cigar::Del(len) | Cigar::RefSkip(len) => {
-                    for i in pos..(pos + *len as i32) {
+                    for i in pos..(pos + *len as i64) {
                         result.push([None, Some(i)]);
                     }
-                    pos += *len as i32;
+                    pos += *len as i64;
                 }
                 Cigar::HardClip(_) => {} // no advance
                 Cigar::Pad(_) => panic!("Padding (Cigar::Pad) is not supported."), //padding is only used for multiple sequence alignment
@@ -4304,11 +4304,11 @@ mod tests {
 
         //
         //for the rest, we just verify that they have the expected amount of None in each position
-        fn some_count(pairs: &Vec<[Option<i32>; 2]>, pos: usize) -> i32 {
-            pairs.iter().filter(|x| x[pos].is_some()).count() as i32
+        fn some_count(pairs: &Vec<[Option<i64>; 2]>, pos: usize) -> i64 {
+            pairs.iter().filter(|x| x[pos].is_some()).count() as i64
         }
-        fn none_count(pairs: &Vec<[Option<i32>; 2]>, pos: usize) -> i32 {
-            pairs.iter().filter(|x| x[pos].is_none()).count() as i32
+        fn none_count(pairs: &Vec<[Option<i64>; 2]>, pos: usize) -> i64 {
+            pairs.iter().filter(|x| x[pos].is_none()).count() as i64
         }
 
         let pairs = it.next().unwrap().unwrap().aligned_pairs_full();

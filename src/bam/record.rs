@@ -914,7 +914,7 @@ custom_derive! {
 
 impl CigarString {
     /// Create a `CigarStringView` from this CigarString at position `pos`
-    pub fn into_view(self, pos: i32) -> CigarStringView {
+    pub fn into_view(self, pos: i64) -> CigarStringView {
         CigarStringView::new(self, pos)
     }
 
@@ -1065,12 +1065,12 @@ pub struct CigarStringView {
 
 impl CigarStringView {
     /// Construct a new CigarStringView from a CigarString at a position
-    pub fn new(c: CigarString, pos: i32) -> CigarStringView {
+    pub fn new(c: CigarString, pos: i64) -> CigarStringView {
         CigarStringView { inner: c, pos }
     }
 
     /// Get (exclusive) end position of alignment.
-    pub fn end_pos(&self) -> i32 {
+    pub fn end_pos(&self) -> i64 {
         let mut pos = self.pos;
         for c in self {
             match c {
@@ -1078,7 +1078,7 @@ impl CigarStringView {
                 | Cigar::RefSkip(l)
                 | Cigar::Del(l)
                 | Cigar::Equal(l)
-                | Cigar::Diff(l) => pos += *l as i32,
+                | Cigar::Diff(l) => pos += *l as i64,
                 // these don't add to end_pos on reference
                 Cigar::Ins(_) | Cigar::SoftClip(_) | Cigar::HardClip(_) | Cigar::Pad(_) => (),
             }
