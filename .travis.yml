@@ -35,6 +35,7 @@ before_install:
 addons:
   apt:
     packages:
+      - libssl-dev
       - libelf-dev
       - libdw-dev
       - libbz2-dev
