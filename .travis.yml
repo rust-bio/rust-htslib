@@ -1,3 +1,4 @@
+dist: bionic
 language: rust
 
 rust:
@@ -20,7 +21,7 @@ before_install:
 addons:
   apt:
     packages:
-      - libcurl-dev
+      - libcurl4-openssl-dev
       - libelf-dev
       - libdw-dev
       - libbz2-dev
