@@ -33,9 +33,10 @@ snafu = ">= 0.5.0, <= 0.6.0"
 hts-sys = { version = "^1.9", path = "hts-sys" }
 
 [features]
-default = ["bzip2", "lzma"]
+default = ["bzip2", "lzma", "curl"]
 bzip2 = ["hts-sys/bzip2"]
 lzma = ["hts-sys/lzma"]
+curl = ["hts-sys/curl"]
 serde = ["serde_base", "serde_bytes"]
 
 [dev-dependencies]

@@ -63,6 +63,9 @@ fn main() {
         cfg.include(inc);
     }
 
+    // libcurl is (always?) needed
+    let _use_curl = env::var("CARGO_FEATURE_CURL").is_ok();
+
     let tool = cfg.get_compiler();
     let (cc_path, cflags_env) = (tool.path(), tool.cflags_env());
     let cc_cflags = cflags_env.to_string_lossy().replace("-O0", "");
