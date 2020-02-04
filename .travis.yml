@@ -3,6 +3,21 @@ language: rust
 
 rust:
   - stable
+  - nightly
+
+os:
+  - linux
+  - osx
+
+matrix:
+  fast_finish: true
+  allow_failures:
+    - rust: nightly
+  include:
+    - os: linux
+      dist: bionic
+    - os: osx
+      osx_image: xcode11
 
 cache:
   directories:
