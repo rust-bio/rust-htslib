@@ -46,8 +46,6 @@ addons:
       - musl
       - musl-dev
       - musl-tools
-    sources:
-      - kalakris-cmake
 
 before_script:
   - export PATH=$HOME/.cargo/bin:$PATH
