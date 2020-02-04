@@ -443,7 +443,7 @@ pub mod synced {
                                 let record = *(*(*self.inner).readers.offset(idx as isize))
                                     .buffer
                                     .offset(0);
-                                if (*record).rid != (rid as i32) || (*record).pos >= (end as i32) {
+                                if (*record).rid != (rid as i32) || (*record).pos >= (end as i64) {
                                     return Ok(0);
                                 }
                             }

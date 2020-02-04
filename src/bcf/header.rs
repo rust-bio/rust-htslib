@@ -333,7 +333,8 @@ impl HeaderView {
             _ => return Err(Error::UnexpectedType { tag: tag_desc() }),
         };
         let length = match length as ::libc::c_uint {
-            htslib::BCF_VL_FIXED => TagLength::Fixed(num_values),
+            // XXX: Hacky "as u32" cast. Trace back through unsafe{} towards BCF struct and rollback to proper type
+            htslib::BCF_VL_FIXED => TagLength::Fixed(num_values as u32),
             htslib::BCF_VL_VAR => TagLength::Variable,
             htslib::BCF_VL_A => TagLength::AltAlleles,
             htslib::BCF_VL_R => TagLength::Alleles,
