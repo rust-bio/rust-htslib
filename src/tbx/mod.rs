@@ -311,7 +311,7 @@ impl Read for Reader {
                     let (tid, start, end) =
                         unsafe { ((*itr).curr_tid, (*itr).curr_beg, (*itr).curr_end) };
                     // XXX: Careful with this tid conversion!!!
-                    if overlap(self.tid, self.start, self.end, tid as i64,start,end) {
+                    if overlap(self.tid, self.start, self.end, tid as i64, start, end) {
                         *record =
                             unsafe { Vec::from(ffi::CStr::from_ptr(self.buf.s).to_str().unwrap()) };
                         return Ok(true);
