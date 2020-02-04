@@ -20,7 +20,7 @@ before_install:
 addons:
   apt:
     packages:
-      - libcurl4-openssl-dev
+      - libcurl-dev
       - libelf-dev
       - libdw-dev
       - libbz2-dev
