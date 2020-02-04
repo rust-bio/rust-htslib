@@ -35,6 +35,7 @@ before_install:
 addons:
   apt:
     packages:
+      - build-essential
       - libssl-dev
       - libelf-dev
       - libdw-dev
