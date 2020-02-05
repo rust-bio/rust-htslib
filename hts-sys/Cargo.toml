@@ -8,7 +8,7 @@ description = "This library provides HTSlib bindings."
 readme = "README.md"
 keywords = ["htslib", "bam", "bioinformatics", "pileup", "sequencing"]
 license = "MIT"
-repository = "https://github.com/samtools/rust-htslib.git"
+repository = "https://github.com/samtools/htslib.git"
 documentation = "https://docs.rs/rust-htslib"
 edition = "2018"
 
