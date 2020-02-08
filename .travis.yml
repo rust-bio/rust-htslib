@@ -49,7 +49,7 @@ addons:
   homebrew:
     taps: filosottile/musl-cross
     packages:
-      - musl-cross
+      - travis_wait musl-cross
 
 before_script:
   - export PATH=$HOME/.cargo/bin:$PATH
