@@ -35,7 +35,6 @@ before_install:
 addons:
   apt:
     packages:
-      - build-essential
       - libcurl4-gnutls-dev
       - libssl-dev
       - libelf-dev
