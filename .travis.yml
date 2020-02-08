@@ -60,8 +60,7 @@ before_script:
   - cargo install-update -a
   - rustup component add rustfmt
   - rustup target add x86_64-unknown-linux-musl
-#  - if [ $TRAVIS_OS_NAME = osx ]; then travis_wait 40 brew install musl-cross; fi
-  - if [ $TRAVIS_OS_NAME = osx ]; then brew install --verbose musl-cross; fi
+  - if [ $TRAVIS_OS_NAME = osx ]; then travis_wait 40 brew install musl-cross; fi
   - mkdir .cargo && echo '[target.x86_64-unknown-linux-musl]' >> .cargo/config
   - echo 'linker = "x86_64-linux-musl-gcc"' >> .cargo/config
 
