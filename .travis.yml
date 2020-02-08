@@ -46,6 +46,10 @@ addons:
       - musl
       - musl-dev
       - musl-tools
+  homebrew:
+    taps: filosottile/musl-cross
+    packages:
+      - musl-cross
 
 before_script:
   - export PATH=$HOME/.cargo/bin:$PATH
@@ -54,6 +58,8 @@ before_script:
   - cargo install-update -a
   - rustup component add rustfmt
   - rustup target add x86_64-unknown-linux-musl
+  - mkdir .cargo && echo '[target.x86_64-unknown-linux-musl]' >> .cargo/config
+  - echo 'linker = "x86_64-linux-musl-gcc"' >> .cargo/config
 
 script:
   - cargo fmt --version
