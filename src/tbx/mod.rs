@@ -196,7 +196,7 @@ impl Reader {
     }
 
     /// Get sequence/target ID from sequence name.
-    pub fn tid(&self, name: &str) -> Result<u32> {
+    pub fn tid(&self, name: &str) -> Result<u64> {
         let name_cstr = ffi::CString::new(name.as_bytes()).unwrap();
         let res = unsafe { htslib::tbx_name2id(self.tbx, name_cstr.as_ptr()) };
         if res < 0 {
@@ -204,12 +204,12 @@ impl Reader {
                 sequence: name.to_owned(),
             })
         } else {
-            Ok(res as u32)
+            Ok(res as u64)
         }
     }
 
     /// Fetch region given by numeric sequence number and 0-based begin and end position.
-    pub fn fetch(&mut self, tid: u32, start: u64, end: u64) -> Result<()> {
+    pub fn fetch(&mut self, tid: u64, start: u64, end: u64) -> Result<()> {
         self.tid = tid as i64;
         self.start = start as i64;
         self.end = end as i64;

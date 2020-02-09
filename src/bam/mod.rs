@@ -1507,9 +1507,19 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let mut bam_reader = Reader::from_path(bam_path).unwrap();
         let bam_records: Vec<Record> = bam_reader.records().map(|v| v.unwrap()).collect();
 
+        // Compare l_data and m_data fields from BAM and CRAM
+        for (c1, b1) in cram_records.iter().zip(bam_records.iter()) {
+            dbg!(c1.inner().l_data, b1.inner().l_data);
+            // XXX: Why is CRAM l_data off by 3 ?
+            assert_eq!(c1.inner().l_data + 3, b1.inner().l_data);
+
+            dbg!(c1.inner().m_data, b1.inner().m_data);
+            assert_eq!(c1.inner().m_data, b1.inner().m_data);
+        }
+
         // Compare CRAM records to BAM records
         for (c1, b1) in cram_records.iter().zip(bam_records.iter()) {
-            assert!(c1 == b1);
+            assert_eq!(c1, b1);
         }
     }
 
