@@ -259,7 +259,7 @@ impl BamRecordExtensions for bam::Record {
         self.pos()
     }
     fn reference_end(&self) -> i32 {
-        unsafe { htslib::bam_endpos(self.inner) }
+        unsafe { htslib::bam_endpos(self.inner_ptr()) }
     }
 
     fn seq_len_from_cigar(&self, include_hard_clip: bool) -> usize {

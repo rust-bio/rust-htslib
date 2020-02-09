@@ -24,10 +24,24 @@ To compile this crate you need the development headers of zlib, bzip2 and xz.
 ## Usage
 
 Add this to your `Cargo.toml`:
-
 ```toml
 [dependencies]
 rust-htslib = "*"
+```
+
+By default `rust-htslib` links to `bzip2-sys` and `lzma-sys` for full CRAM support. If you do not need CRAM support, or you do need to support CRAM files
+with these compression methods, you can deactivate these features to reduce you dependency count:
+
+```toml
+[dependencies]
+rust-htslib = { version = "*", default-features = false }
+```
+
+`rust-htslib` also has optional support for `serde`, to allow (de)serialization of `bam::Record` via any serde-supported format:
+
+```toml
+[dependencies]
+rust-htslib = { version = "*", features = ["serde"] }
 ```
 
 For more information, please see the [docs](https://docs.rs/rust-htslib).

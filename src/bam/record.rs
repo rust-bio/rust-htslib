@@ -6,6 +6,7 @@
 use std::convert::TryFrom;
 use std::ffi;
 use std::fmt;
+use std::mem::{size_of, MaybeUninit};
 use std::ops;
 use std::slice;
 use std::str;
@@ -42,7 +43,7 @@ macro_rules! flag {
 
 /// A BAM record.
 pub struct Record {
-    pub inner: *mut htslib::bam1_t,
+    pub inner: htslib::bam1_t,
     own: bool,
     cigar: Option<CigarStringView>,
 }
@@ -52,8 +53,8 @@ unsafe impl Sync for Record {}
 
 impl Clone for Record {
     fn clone(&self) -> Self {
-        let copy = Record::new();
-        unsafe { htslib::bam_copy1(copy.inner, self.inner) };
+        let mut copy = Record::new();
+        unsafe { htslib::bam_copy1(copy.inner_ptr_mut(), self.inner_ptr()) };
         copy
     }
 }
@@ -92,9 +93,10 @@ impl Default for Record {
 }
 
 #[inline]
-fn l_extranul(qname_len: usize) -> usize {
-    if qname_len % 4 != 0 {
-        4 - qname_len % 4
+fn extranul_from_qname(qname: &[u8]) -> usize {
+    let qlen = qname.len() + 1;
+    if qlen % 4 != 0 {
+        4 - qlen % 4
     } else {
         0
     }
@@ -103,19 +105,26 @@ fn l_extranul(qname_len: usize) -> usize {
 impl Record {
     /// Create an empty BAM record.
     pub fn new() -> Self {
-        let inner = unsafe { htslib::bam_init1() };
-        let mut record = Record {
-            inner,
+        Record {
+            inner: unsafe { MaybeUninit::zeroed().assume_init() },
             own: true,
             cigar: None,
-        };
-        record.inner_mut().m_data = 0;
-        record
+        }
     }
 
-    pub fn from_inner(inner: *mut htslib::bam1_t) -> Self {
+    pub fn from_inner(from: *mut htslib::bam1_t) -> Self {
         Record {
-            inner,
+            inner: {
+                let mut inner = unsafe { MaybeUninit::uninit().assume_init() };
+                unsafe {
+                    ::libc::memcpy(
+                        &mut inner as *mut htslib::bam1_t as *mut ::libc::c_void,
+                        from as *const ::libc::c_void,
+                        size_of::<htslib::bam1_t>(),
+                    );
+                }
+                inner
+            },
             own: false,
             cigar: None,
         }
@@ -123,7 +132,7 @@ impl Record {
 
     // Create a BAM record from a line SAM text. SAM slice need not be 0-terminated.
     pub fn from_sam(header_view: &HeaderView, sam: &[u8]) -> Result<Record> {
-        let record = Self::new();
+        let mut record = Self::new();
 
         let mut sam_copy = Vec::with_capacity(sam.len() + 1);
         sam_copy.extend(sam);
@@ -136,7 +145,11 @@ impl Record {
         };
 
         let succ = unsafe {
-            htslib::sam_parse1(&mut sam_string, header_view.inner_ptr_mut(), record.inner)
+            htslib::sam_parse1(
+                &mut sam_string,
+                header_view.inner_ptr_mut(),
+                record.inner_ptr_mut(),
+            )
         };
 
         if succ == 0 {
@@ -154,12 +167,22 @@ impl Record {
 
     #[inline]
     pub fn inner_mut(&mut self) -> &mut htslib::bam1_t {
-        unsafe { &mut *self.inner }
+        &mut self.inner
+    }
+
+    #[inline]
+    pub(super) fn inner_ptr_mut(&mut self) -> *mut htslib::bam1_t {
+        &mut self.inner as *mut htslib::bam1_t
     }
 
     #[inline]
     pub fn inner(&self) -> &htslib::bam1_t {
-        unsafe { &*self.inner }
+        &self.inner
+    }
+
+    #[inline]
+    pub(super) fn inner_ptr(&self) -> *const htslib::bam1_t {
+        &self.inner as *const htslib::bam1_t
     }
 
     /// Get target id.
@@ -272,7 +295,7 @@ impl Record {
 
         // Copy new data into buffer
         let data =
-            unsafe { slice::from_raw_parts_mut((*self.inner).data, self.inner().l_data as usize) };
+            unsafe { slice::from_raw_parts_mut(self.inner.data, self.inner().l_data as usize) };
         utils::copy_memory(new_data, data);
     }
 
@@ -296,7 +319,7 @@ impl Record {
             0
         } * 4;
         let q_len = qname.len() + 1;
-        let extranul = l_extranul(q_len);
+        let extranul = extranul_from_qname(qname);
 
         self.inner_mut().l_data = (q_len
             + extranul
@@ -313,7 +336,7 @@ impl Record {
         }
 
         let data =
-            unsafe { slice::from_raw_parts_mut((*self.inner).data, self.inner().l_data as usize) };
+            unsafe { slice::from_raw_parts_mut(self.inner.data, self.inner().l_data as usize) };
         // qname
         utils::copy_memory(qname, data);
         for i in 0..=extranul {
@@ -366,9 +389,8 @@ impl Record {
 
         let old_q_len = self.qname_capacity();
         // We're going to add a terminal NUL
-        let new_q_len = new_qname.len() + 1;
-        let extranul = l_extranul(new_q_len);
-        let new_q_len = new_q_len + extranul;
+        let extranul = extranul_from_qname(new_qname);
+        let new_q_len = new_qname.len() + 1 + extranul;
 
         // Length of data after qname
         let other_len = self.inner_mut().l_data - old_q_len as i32;
@@ -389,8 +411,7 @@ impl Record {
         if new_q_len != old_q_len {
             // Move other data to new location
             unsafe {
-                let data =
-                    slice::from_raw_parts_mut((*self.inner).data, self.inner().l_data as usize);
+                let data = slice::from_raw_parts_mut(self.inner.data, self.inner().l_data as usize);
 
                 ::libc::memmove(
                     data.as_mut_ptr().add(new_q_len) as *mut ::libc::c_void,
@@ -402,7 +423,7 @@ impl Record {
 
         // Copy qname data
         let data =
-            unsafe { slice::from_raw_parts_mut((*self.inner).data, self.inner().l_data as usize) };
+            unsafe { slice::from_raw_parts_mut(self.inner.data, self.inner().l_data as usize) };
         utils::copy_memory(new_qname, data);
         for i in 0..=extranul {
             data[new_q_len - i - 1] = b'\0';
@@ -431,6 +452,9 @@ impl Record {
         // a successful allocation.
         self.inner_mut().m_data = new_request;
         self.inner_mut().data = ptr;
+
+        // we now own inner.data
+        self.own = true;
     }
 
     pub fn cigar_len(&self) -> usize {
@@ -521,7 +545,12 @@ impl Record {
     /// Get auxiliary data (tags).
     pub fn aux(&self, tag: &[u8]) -> Option<Aux<'_>> {
         let c_str = ffi::CString::new(tag).unwrap();
-        let aux = unsafe { htslib::bam_aux_get(self.inner, c_str.as_ptr() as *mut i8) };
+        let aux = unsafe {
+            htslib::bam_aux_get(
+                &self.inner as *const htslib::bam1_t,
+                c_str.as_ptr() as *mut i8,
+            )
+        };
 
         unsafe {
             if aux.is_null() {
@@ -550,21 +579,21 @@ impl Record {
         let ret = unsafe {
             match *value {
                 Aux::Integer(v) => htslib::bam_aux_append(
-                    self.inner,
+                    self.inner_ptr_mut(),
                     ctag,
                     b'i' as i8,
                     4,
                     [v].as_mut_ptr() as *mut u8,
                 ),
                 Aux::Float(v) => htslib::bam_aux_append(
-                    self.inner,
+                    self.inner_ptr_mut(),
                     ctag,
                     b'f' as i8,
                     4,
                     [v].as_mut_ptr() as *mut u8,
                 ),
                 Aux::Char(v) => htslib::bam_aux_append(
-                    self.inner,
+                    self.inner_ptr_mut(),
                     ctag,
                     b'A' as i8,
                     1,
@@ -573,7 +602,7 @@ impl Record {
                 Aux::String(v) => {
                     let c_str = ffi::CString::new(v).unwrap();
                     htslib::bam_aux_append(
-                        self.inner,
+                        self.inner_ptr_mut(),
                         ctag,
                         b'Z' as i8,
                         (v.len() + 1) as i32,
@@ -589,14 +618,19 @@ impl Record {
     }
 
     // Delete auxiliary tag.
-    pub fn remove_aux(&self, tag: &[u8]) -> bool {
+    pub fn remove_aux(&mut self, tag: &[u8]) -> bool {
         let c_str = ffi::CString::new(tag).unwrap();
-        let aux = unsafe { htslib::bam_aux_get(self.inner, c_str.as_ptr() as *mut i8) };
+        let aux = unsafe {
+            htslib::bam_aux_get(
+                &self.inner as *const htslib::bam1_t,
+                c_str.as_ptr() as *mut i8,
+            )
+        };
         unsafe {
             if aux.is_null() {
                 false
             } else {
-                htslib::bam_aux_del(self.inner, aux);
+                htslib::bam_aux_del(self.inner_ptr_mut(), aux);
                 true
             }
         }
@@ -644,7 +678,7 @@ impl Record {
 impl Drop for Record {
     fn drop(&mut self) {
         if self.own {
-            unsafe { htslib::bam_destroy1(self.inner) };
+            unsafe { ::libc::free(self.inner.data as *mut ::libc::c_void) }
         }
     }
 }

@@ -87,13 +87,6 @@ extern crate pretty_assertions;
 #[cfg(all(test, feature = "serde"))]
 extern crate serde_json;
 
-extern crate libz_sys;
-
-#[cfg(feature = "bzip2")]
-extern crate bzip2_sys;
-#[cfg(feature = "lzma")]
-extern crate lzma_sys;
-
 extern crate snafu;
 
 pub mod bam;
