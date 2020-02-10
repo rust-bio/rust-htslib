@@ -60,7 +60,7 @@ before_script:
   - cargo install-update -a
   - rustup component add rustfmt
   - rustup target add x86_64-unknown-linux-musl
-  - if [ $TRAVIS_OS_NAME = osx ]; then travis_wait 40 brew install musl-cross curl; fi
+  - if [ $TRAVIS_OS_NAME = osx ]; then brew install -v wget curl musl-cross; fi
 
 script:
   - cargo fmt --version
