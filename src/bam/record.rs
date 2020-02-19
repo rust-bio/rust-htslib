@@ -300,18 +300,17 @@ impl Record {
     }
 
     /// Set variable length data (qname, cigar, seq, qual).
-    /// Note: Pre-existing aux data will be invalidated
-    /// if called on an existing record. For this
-    /// reason, never call push_aux() before set(). `qual` is Phred-scaled
-    /// quality values, without any offset.
+    /// The aux data is left unchanged.
+    /// `qual` is Phred-scaled quality values, without any offset.
     /// NOTE: seq.len() must equal qual.len() or this method
     /// will panic. If you don't have quality values use
     /// `let quals = vec![ 255 as u8; seq.len()];` as a placeholder that will
     /// be recognized as missing QVs by `samtools`.
     pub fn set(&mut self, qname: &[u8], cigar: Option<&CigarString>, seq: &[u8], qual: &[u8]) {
-        self.cigar = None;
-
+        assert!(qname.len() < 255);
         assert!(seq.len() == qual.len(), "seq.len() must equal qual.len()");
+
+        self.cigar = None;
 
         let cigar_width = if let Some(cigar_string) = cigar {
             cigar_string.len()
@@ -321,22 +320,30 @@ impl Record {
         let q_len = qname.len() + 1;
         let extranul = extranul_from_qname(qname);
 
-        self.inner_mut().l_data = (q_len
-            + extranul
-            + cigar_width
-            + ((seq.len() as f32 / 2.0).ceil() as usize)
-            + qual.len()) as i32;
-
-        assert!(qname.len() <= 256);
-
+        let orig_aux_offset = self.qname_capacity()
+            + 4 * self.cigar_len()
+            + (self.seq_len() + 1) / 2
+            + self.seq_len();
+        let new_aux_offset = q_len + extranul + cigar_width + (seq.len() + 1) / 2 + qual.len();
+        assert!(orig_aux_offset <= self.inner.l_data as usize);
+        let aux_len = self.inner.l_data as usize - orig_aux_offset;
+        self.inner_mut().l_data = (new_aux_offset + aux_len) as i32;
         if (self.inner().m_data as i32) < self.inner().l_data {
             // Verbosity due to lexical borrowing
             let l_data = self.inner().l_data;
             self.realloc_var_data(l_data as usize);
         }
 
+        // Copy the aux data.
+        if aux_len > 0 && orig_aux_offset != new_aux_offset {
+            let data =
+                unsafe { slice::from_raw_parts_mut(self.inner.data, self.inner().m_data as usize) };
+            data.copy_within(orig_aux_offset..orig_aux_offset + aux_len, new_aux_offset);
+        }
+
         let data =
             unsafe { slice::from_raw_parts_mut(self.inner.data, self.inner().l_data as usize) };
+
         // qname
         utils::copy_memory(qname, data);
         for i in 0..=extranul {
@@ -381,8 +388,6 @@ impl Record {
     }
 
     /// Replace current qname with a new one.
-    /// Unlike set(), this preserves all the variable length data including
-    /// the aux.
     pub fn set_qname(&mut self, new_qname: &[u8]) {
         // 251 + 1NUL is the max 32-bit aligned value that fits in u8
         assert!(new_qname.len() < 252);
@@ -573,7 +578,6 @@ impl Record {
     }
 
     /// Add auxiliary data.
-    /// push_aux() should never be called before set().
     pub fn push_aux(&mut self, tag: &[u8], value: &Aux<'_>) {
         let ctag = tag.as_ptr() as *mut i8;
         let ret = unsafe {
