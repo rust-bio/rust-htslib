@@ -26,7 +26,7 @@ use bio_types::sequence::SequenceRead;
 
 /// A macro creating methods for flag access.
 macro_rules! flag {
-    ($get:ident, $set:ident, $unset:ident, $bit:expr) => (
+    ($get:ident, $set:ident, $unset:ident, $bit:expr) => {
         pub fn $get(&self) -> bool {
             self.inner().core.flag & $bit != 0
         }
@@ -38,7 +38,7 @@ macro_rules! flag {
         pub fn $unset(&mut self) {
             self.inner_mut().core.flag &= !$bit;
         }
-    )
+    };
 }
 
 /// A BAM record.
