@@ -1521,22 +1521,30 @@ CCCCCCCCCCCCCCCCCCC"[..],
         //Compare CRAM records to BAM records
         for (c1, b1) in cram_records.iter().zip(bam_records.iter()) {
             // Compare core struct
-            print!("{:?}", b1.inner().core);
-            println!();
-            print!("{:?}", c1.inner().core);
-            println!();
-            println!();
+            // print!("{:?}", b1.inner().core);
+            // println!();
+            // print!("{:?}", c1.inner().core);
+            // println!();
+            // println!();
 
             // Compare cigars
-            print!("{:?}", b1.cigar());
+            // print!("{:?}", b1.cigar());
+            // println!();
+            // print!("{:?}", c1.cigar());
+            // println!();
+            // println!();
+
+            // Compare extranuls
+            print!("{:?}", b1.inner().core.l_extranul);
             println!();
-            print!("{:?}", c1.cigar());
+            print!("{:?}", c1.inner().core.l_extranul);
             println!();
             println!();
+            
 
             // l_data is the only one changing...
-            dbg!(b1.inner().l_data, c1.inner().l_data);
-            println!();
+            // dbg!(b1.inner().l_data, c1.inner().l_data);
+            // println!();
             //assert_eq!(c1, b1);
         }
     }

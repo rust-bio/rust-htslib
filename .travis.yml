@@ -7,7 +7,7 @@ rust:
 
 os:
   - linux
-  - osx
+#  - osx
 
 matrix:
   fast_finish: true
@@ -16,8 +16,8 @@ matrix:
   include:
     - os: linux
       dist: bionic
-    - os: osx
-      osx_image: xcode11
+    # - os: osx
+    #   osx_image: xcode11
 
 cache:
   directories:
@@ -49,9 +49,6 @@ addons:
   homebrew:
     taps: filosottile/musl-cross
     update: false
-#    packages:
-#      - travis_wait musl-cross
-
 
 before_script:
   - export PATH=$HOME/.cargo/bin:$PATH
@@ -60,7 +57,9 @@ before_script:
   - cargo install-update -a
   - rustup component add rustfmt
   - rustup target add x86_64-unknown-linux-musl
-  - if [ $TRAVIS_OS_NAME = osx ]; then brew install -v wget curl musl-cross; fi
+  # XXX: times out, might make sense to repackage https://github.com/FiloSottile/homebrew-musl-cross to reduce build times
+  # upstream or build DockCross images instead: https://github.com/dockcross/dockcross
+  #- if [ $TRAVIS_OS_NAME = osx ]; then brew install -v wget curl musl-cross; fi
 
 script:
   - cargo fmt --version
