@@ -3,6 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[cfg(feature = "serde")]
 use bindgen;
 use cc;
 use fs_utils::copy::copy_directory;
@@ -82,15 +83,32 @@ fn main() {
 
     cfg.file("wrapper.c").compile("wrapper");
 
-    bindgen::Builder::default()
-        .header("wrapper.h")
-        .generate_comments(false)
-        .blacklist_function("strtold")
-        .blacklist_type("max_align_t")
-        .generate()
-        .expect("Unable to generate bindings.")
-        .write_to_file(out.join("bindings.rs"))
-        .expect("Could not write bindings.");
+    // If bindgen is enabled, use it
+    #[cfg(feature = "bindgen")]
+    {
+        bindgen::Builder::default()
+            .header("wrapper.h")
+            .generate_comments(false)
+            .blacklist_function("strtold")
+            .blacklist_type("max_align_t")
+            .generate()
+            .expect("Unable to generate bindings.")
+            .write_to_file(out.join("bindings.rs"))
+            .expect("Could not write bindings.");
+    }
+
+    // If no bindgen, use pre-built bindings
+    #[cfg(all(not(feature = "bindgen"), target_os="macos")]
+    {
+        fs::copy("osx_prebuilt_bindings.rs", out.join("bindings.rs"))
+            .expect("couldn't copy prebuilt bindings");
+    }
+
+    #[cfg(all(not(feature = "bindgen"), target_os="linux")]
+    {
+        fs::copy("linux_prebuilt_bindings.rs", out.join("bindings.rs"))
+            .expect("couldn't copy prebuilt bindings");
+    }
 
     let include = out.join("include");
     fs::create_dir_all(&include).unwrap();

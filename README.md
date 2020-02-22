@@ -37,6 +37,11 @@ with these compression methods, you can deactivate these features to reduce you 
 rust-htslib = { version = "*", default-features = false }
 ```
 
+By default `rust-htslib` uses `bindgen` to generate bindings to htslib. This can slow down the build substantially. Disabling the `bindgen` feature will 
+cause `hts-sys` to use a prebuilt binding.rs file for your architecture.  Note
+Windows is not currently supported & this approach is experimental -- please 
+exercise caution.
+
 `rust-htslib` also has optional support for `serde`, to allow (de)serialization of `bam::Record` via any serde-supported format:
 
 ```toml
