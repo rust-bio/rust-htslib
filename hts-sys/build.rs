@@ -98,13 +98,13 @@ fn main() {
     }
 
     // If no bindgen, use pre-built bindings
-    #[cfg(all(not(feature = "bindgen"), target_os="macos")]
+    #[cfg(all(not(feature = "bindgen"), target_os="macos"))]
     {
         fs::copy("osx_prebuilt_bindings.rs", out.join("bindings.rs"))
             .expect("couldn't copy prebuilt bindings");
     }
 
-    #[cfg(all(not(feature = "bindgen"), target_os="linux")]
+    #[cfg(all(not(feature = "bindgen"), target_os="linux"))]
     {
         fs::copy("linux_prebuilt_bindings.rs", out.join("bindings.rs"))
             .expect("couldn't copy prebuilt bindings");
