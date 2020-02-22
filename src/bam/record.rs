@@ -131,7 +131,7 @@ impl Record {
     }
 
     // Create a BAM record from a line SAM text. SAM slice need not be 0-terminated.
-    pub fn from_sam(header_view: &HeaderView, sam: &[u8]) -> Result<Record> {
+    pub fn from_sam(header_view: &mut HeaderView, sam: &[u8]) -> Result<Record> {
         let mut record = Self::new();
 
         let mut sam_copy = Vec::with_capacity(sam.len() + 1);
