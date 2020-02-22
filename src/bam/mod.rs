@@ -1149,6 +1149,44 @@ CCCCCCCCCCCCCCCCCCC"[..],
     }
 
     #[test]
+    fn test_set_repeated() {
+        let mut rec = Record::new();
+        rec.set(
+            b"123",
+            Some(&CigarString(vec![Cigar::Match(3)])),
+            b"AAA",
+            b"III",
+        );
+        rec.push_aux(b"AS", &Aux::Integer(12345));
+        assert_eq!(rec.qname(), b"123");
+        assert_eq!(rec.seq().as_bytes(), b"AAA");
+        assert_eq!(rec.qual(), b"III");
+        assert_eq!(rec.aux(b"AS").unwrap(), Aux::Integer(12345));
+
+        rec.set(
+            b"1234",
+            Some(&CigarString(vec![Cigar::SoftClip(1), Cigar::Match(3)])),
+            b"AAAA",
+            b"IIII",
+        );
+        assert_eq!(rec.qname(), b"1234");
+        assert_eq!(rec.seq().as_bytes(), b"AAAA");
+        assert_eq!(rec.qual(), b"IIII");
+        assert_eq!(rec.aux(b"AS").unwrap(), Aux::Integer(12345));
+
+        rec.set(
+            b"12",
+            Some(&CigarString(vec![Cigar::Match(2)])),
+            b"AA",
+            b"II",
+        );
+        assert_eq!(rec.qname(), b"12");
+        assert_eq!(rec.seq().as_bytes(), b"AA");
+        assert_eq!(rec.qual(), b"II");
+        assert_eq!(rec.aux(b"AS").unwrap(), Aux::Integer(12345));
+    }
+
+    #[test]
     fn test_set_qname() {
         let (names, _, seqs, quals, cigars) = gold();
 
