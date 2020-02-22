@@ -953,7 +953,7 @@ mod tests {
             .ok()
             .expect("Error opening file.");
         let expected = ["./1", "1|1", "0/1", "0|1", "1|.", "1/1"];
-        for (rec, exp_gt) in vcf.records().zip(expected.into_iter()) {
+        for (rec, exp_gt) in vcf.records().zip(expected.iter()) {
             let mut rec = rec.expect("Error reading record.");
             let genotypes = rec.genotypes().expect("Error reading genotypes");
             assert_eq!(&format!("{}", genotypes.get(0)), exp_gt);
@@ -1327,7 +1327,7 @@ mod tests {
     fn test_multi_string_info_tag() {
         let mut reader = Reader::from_path("test/test-info-multi-string.vcf").unwrap();
         let mut rec = reader.empty_record();
-        reader.read(&mut rec);
+        let _ = reader.read(&mut rec);
 
         assert_eq!(rec.info(b"ANN").string().unwrap().unwrap().len(), 14);
     }
@@ -1336,7 +1336,7 @@ mod tests {
     fn test_multi_string_info_tag_number_a() {
         let mut reader = Reader::from_path("test/test-info-multi-string-number=A.vcf").unwrap();
         let mut rec = reader.empty_record();
-        reader.read(&mut rec);
+        let _ = reader.read(&mut rec);
 
         assert_eq!(rec.info(b"X").string().unwrap().unwrap().len(), 2);
     }
