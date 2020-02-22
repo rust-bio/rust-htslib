@@ -9,6 +9,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - change build.rs to avoid re-running when htslib or wrapper.h haven't changed.
 - update some dependencies.
 - refactor native dependency into htslib-sys crate, for greater versioning flexibility
+- Record::from_sam require `&mut HeaderView`. Provide the appropriate accessor.
+- set() no longer invalidates tag data.
 
 ## [0.26.1] - 2019-12-03
 ## Changes
