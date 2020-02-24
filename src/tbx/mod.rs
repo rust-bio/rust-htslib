@@ -152,13 +152,16 @@ impl Reader {
         let path = ffi::CString::new(path).unwrap();
         let c_str = ffi::CString::new("r").unwrap();
         let hts_file = unsafe { htslib::hts_open(path.as_ptr(), c_str.as_ptr()) };
-        unsafe {
-            if (*hts_file).format.category != htslib::htsFormatCategory_region_list
-                && (*hts_file).format.format != htslib::htsExactFormat_sam
-            {
-                return Err(Error::InvalidIndex);
-            }
-        }
+        // unsafe {
+        //     println!("{:#?}", (*hts_file).format);
+
+        //     // XXX: Just wrong format detection?
+        //     if (*hts_file).format.category != htslib::htsFormatCategory_region_list
+        //         && (*hts_file).format.format != htslib::htsExactFormat_sam
+        //     {
+        //         return Err(Error::InvalidIndex);
+        //     }
+        // }
 
         let hts_format = unsafe { (*htslib::hts_get_format(hts_file)).format };
         let tbx = unsafe { htslib::tbx_index_load(path.as_ptr()) };
