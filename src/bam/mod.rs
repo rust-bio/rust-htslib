@@ -964,26 +964,26 @@ CCCCCCCCCCCCCCCCCCC"[..],
     }
 
     fn compare_inner_bam_cram_records(cram_records: &Vec<Record>, bam_records: &Vec<Record>) {
-    // Selectively compares bam1_t struct fields from BAM and CRAM
-            for (c1, b1) in cram_records.iter().zip(bam_records.iter()) {
-                // CRAM vs BAM l_data is off by 3, see: https://github.com/rust-bio/rust-htslib/pull/184#issuecomment-590133544
-                assert_ne!(c1.inner().l_data, b1.inner().l_data);
-                // The rest of the fields should be identical:
-                assert_eq!(c1.cigar(), b1.cigar());
-                assert_eq!(c1.inner().core.pos, b1.inner().core.pos);
-                assert_eq!(c1.inner().core.mpos, b1.inner().core.mpos);
-                assert_eq!(c1.inner().core.mtid, b1.inner().core.mtid);
-                assert_eq!(c1.inner().core.tid, b1.inner().core.tid);
-                assert_eq!(c1.inner().core.bin, b1.inner().core.bin);
-                assert_eq!(c1.inner().core.qual, b1.inner().core.qual);
-                assert_eq!(c1.inner().core.l_extranul, b1.inner().core.l_extranul);
-                assert_eq!(c1.inner().core.flag, b1.inner().core.flag);
-                assert_eq!(c1.inner().core.l_qname, b1.inner().core.l_qname);
-                assert_eq!(c1.inner().core.n_cigar, b1.inner().core.n_cigar);
-                assert_eq!(c1.inner().core.l_qseq, b1.inner().core.l_qseq);
-                assert_eq!(c1.inner().core.isize, b1.inner().core.isize);
-                //... except m_data
-            }
+        // Selectively compares bam1_t struct fields from BAM and CRAM
+        for (c1, b1) in cram_records.iter().zip(bam_records.iter()) {
+            // CRAM vs BAM l_data is off by 3, see: https://github.com/rust-bio/rust-htslib/pull/184#issuecomment-590133544
+            assert_ne!(c1.inner().l_data, b1.inner().l_data);
+            // The rest of the fields should be identical:
+            assert_eq!(c1.cigar(), b1.cigar());
+            assert_eq!(c1.inner().core.pos, b1.inner().core.pos);
+            assert_eq!(c1.inner().core.mpos, b1.inner().core.mpos);
+            assert_eq!(c1.inner().core.mtid, b1.inner().core.mtid);
+            assert_eq!(c1.inner().core.tid, b1.inner().core.tid);
+            assert_eq!(c1.inner().core.bin, b1.inner().core.bin);
+            assert_eq!(c1.inner().core.qual, b1.inner().core.qual);
+            assert_eq!(c1.inner().core.l_extranul, b1.inner().core.l_extranul);
+            assert_eq!(c1.inner().core.flag, b1.inner().core.flag);
+            assert_eq!(c1.inner().core.l_qname, b1.inner().core.l_qname);
+            assert_eq!(c1.inner().core.n_cigar, b1.inner().core.n_cigar);
+            assert_eq!(c1.inner().core.l_qseq, b1.inner().core.l_qseq);
+            assert_eq!(c1.inner().core.isize, b1.inner().core.isize);
+            //... except m_data
+        }
     }
 
     #[test]
@@ -1600,7 +1600,6 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
             // Compare CRAM records to BAM records
             compare_inner_bam_cram_records(&cram_records, &bam_records);
-
         }
 
         tmp.close().expect("Failed to delete temp dir");
