@@ -35,7 +35,7 @@ before_install:
 addons:
   apt:
     packages:
-      - libcurl4-gnutls-dev
+      - libcurl4-openssl-dev
       - libssl-dev
       - libelf-dev
       - libdw-dev
