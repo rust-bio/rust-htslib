@@ -93,6 +93,9 @@ pub trait Read: Sized {
     /// Return the header.
     fn header(&self) -> &HeaderView;
 
+    /// Return the header, mutable.
+    fn header_mut(&mut self) -> &mut HeaderView;
+
     /// Seek to the given virtual offset in the file
     fn seek(&mut self, offset: i64) -> Result<()> {
         let htsfile = unsafe { self.htsfile().as_ref() }.expect("bug: null pointer to htsFile");
@@ -199,8 +202,8 @@ impl Reader {
         data: *mut ::std::os::raw::c_void,
         record: *mut htslib::bam1_t,
     ) -> i32 {
-        let _self = unsafe { &*(data as *mut Self) };
-        unsafe { htslib::sam_read1(_self.htsfile(), &mut _self.header().inner(), record) }
+        let mut _self = unsafe { (data as *mut Self).as_mut().unwrap() };
+        unsafe { htslib::sam_read1(_self.htsfile(), _self.header_mut().inner_mut(), record) }
     }
 
     /// Iterator over the records between the (optional) virtual offsets `start` and `end`
@@ -259,7 +262,7 @@ impl Read for Reader {
         match unsafe {
             htslib::sam_read1(
                 self.htsfile,
-                &mut self.header.inner(),
+                self.header.inner_mut(),
                 record.inner_ptr_mut(),
             )
         } {
@@ -295,6 +298,10 @@ impl Read for Reader {
 
     fn header(&self) -> &HeaderView {
         &self.header
+    }
+
+    fn header_mut(&mut self) -> &mut HeaderView {
+        &mut self.header
     }
 }
 
@@ -413,7 +420,7 @@ impl IndexedReader {
         }
         let rstr = ffi::CString::new(region).unwrap();
         let rptr = rstr.as_ptr();
-        let itr = unsafe { htslib::sam_itr_querys(self.idx, &mut self.header.inner(), rptr) };
+        let itr = unsafe { htslib::sam_itr_querys(self.idx, self.header.inner_mut(), rptr) };
         if itr.is_null() {
             self.itr = None;
             Err(Error::Fetch)
@@ -427,10 +434,10 @@ impl IndexedReader {
         data: *mut ::std::os::raw::c_void,
         record: *mut htslib::bam1_t,
     ) -> i32 {
-        let _self = unsafe { &*(data as *mut Self) };
+        let _self = unsafe { (data as *mut Self).as_mut().unwrap() };
         match _self.itr {
             Some(itr) => itr_next(_self.htsfile, itr, record), // read fetched region
-            None => unsafe { htslib::sam_read1(_self.htsfile, &mut _self.header.inner(), record) }, // ordinary reading
+            None => unsafe { htslib::sam_read1(_self.htsfile, _self.header.inner_mut(), record) }, // ordinary reading
         }
     }
 
@@ -484,6 +491,10 @@ impl Read for IndexedReader {
 
     fn header(&self) -> &HeaderView {
         &self.header
+    }
+
+    fn header_mut(&mut self) -> &mut HeaderView {
+        &mut self.header
     }
 }
 
@@ -616,7 +627,7 @@ impl Writer {
     ///
     /// * `record` - the record to write
     pub fn write(&mut self, record: &record::Record) -> Result<()> {
-        if unsafe { htslib::sam_write1(self.f, &self.header.inner(), record.inner_ptr()) } == -1 {
+        if unsafe { htslib::sam_write1(self.f, self.header.inner(), record.inner_ptr()) } == -1 {
             Err(Error::Write)
         } else {
             Ok(())
@@ -821,8 +832,8 @@ impl HeaderView {
     }
 
     #[inline]
-    pub fn inner(&self) -> htslib::bam_hdr_t {
-        unsafe { *self.inner }
+    pub fn inner(&self) -> &htslib::bam_hdr_t {
+        unsafe { self.inner.as_ref().unwrap() }
     }
 
     #[inline]
@@ -832,8 +843,13 @@ impl HeaderView {
     }
 
     #[inline]
+    pub fn inner_mut(&mut self) -> &mut htslib::bam_hdr_t {
+        unsafe { self.inner.as_mut().unwrap() }
+    }
+
+    #[inline]
     // Mutable pointer to bam_hdr_t struct
-    pub fn inner_ptr_mut(&self) -> *mut htslib::bam_hdr_t {
+    pub fn inner_ptr_mut(&mut self) -> *mut htslib::bam_hdr_t {
         self.inner
     }
 
@@ -1174,6 +1190,44 @@ CCCCCCCCCCCCCCCCCCC"[..],
     }
 
     #[test]
+    fn test_set_repeated() {
+        let mut rec = Record::new();
+        rec.set(
+            b"123",
+            Some(&CigarString(vec![Cigar::Match(3)])),
+            b"AAA",
+            b"III",
+        );
+        rec.push_aux(b"AS", &Aux::Integer(12345));
+        assert_eq!(rec.qname(), b"123");
+        assert_eq!(rec.seq().as_bytes(), b"AAA");
+        assert_eq!(rec.qual(), b"III");
+        assert_eq!(rec.aux(b"AS").unwrap(), Aux::Integer(12345));
+
+        rec.set(
+            b"1234",
+            Some(&CigarString(vec![Cigar::SoftClip(1), Cigar::Match(3)])),
+            b"AAAA",
+            b"IIII",
+        );
+        assert_eq!(rec.qname(), b"1234");
+        assert_eq!(rec.seq().as_bytes(), b"AAAA");
+        assert_eq!(rec.qual(), b"IIII");
+        assert_eq!(rec.aux(b"AS").unwrap(), Aux::Integer(12345));
+
+        rec.set(
+            b"12",
+            Some(&CigarString(vec![Cigar::Match(2)])),
+            b"AA",
+            b"II",
+        );
+        assert_eq!(rec.qname(), b"12");
+        assert_eq!(rec.seq().as_bytes(), b"AA");
+        assert_eq!(rec.qual(), b"II");
+        assert_eq!(rec.aux(b"AS").unwrap(), Aux::Integer(12345));
+    }
+
+    #[test]
     fn test_set_qname() {
         let (names, _, seqs, quals, cigars) = gold();
 
@@ -1236,12 +1290,12 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 .push_tag(b"SN", &"1")
                 .push_tag(b"LN", &10000000),
         );
-        let header = HeaderView::from_header(&_header);
+        let mut header = HeaderView::from_header(&_header);
 
         let line =
             b"blah1	0	1	1	255	1M	*	0	0	A	F	CB:Z:AAAA-1	UR:Z:AAAA	UB:Z:AAAA	GX:Z:G1	xf:i:1	fx:Z:G1\tli:i:0\ttf:Z:cC";
 
-        let mut rec = Record::from_sam(&header, line).unwrap();
+        let mut rec = Record::from_sam(&mut header, line).unwrap();
         assert_eq!(rec.qname(), b"blah1");
         rec.set_qname(b"r0");
         assert_eq!(rec.qname(), b"r0");
@@ -1479,7 +1533,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let sam_recs: Vec<Record> = sam
             .split(|x| *x == b'\n')
             .filter(|x| x.len() > 0 && x[0] != b'@')
-            .map(|line| Record::from_sam(rdr.header(), line).unwrap())
+            .map(|line| Record::from_sam(rdr.header_mut(), line).unwrap())
             .collect();
 
         for (b1, s1) in bam_recs.iter().zip(sam_recs.iter()) {

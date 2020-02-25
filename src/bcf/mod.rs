@@ -1327,7 +1327,7 @@ mod tests {
     fn test_multi_string_info_tag() {
         let mut reader = Reader::from_path("test/test-info-multi-string.vcf").unwrap();
         let mut rec = reader.empty_record();
-        reader.read(&mut rec).unwrap();
+        let _ = reader.read(&mut rec);
 
         assert_eq!(rec.info(b"ANN").string().unwrap().unwrap().len(), 14);
     }
@@ -1336,7 +1336,7 @@ mod tests {
     fn test_multi_string_info_tag_number_a() {
         let mut reader = Reader::from_path("test/test-info-multi-string-number=A.vcf").unwrap();
         let mut rec = reader.empty_record();
-        reader.read(&mut rec).unwrap();
+        let _ = reader.read(&mut rec);
 
         assert_eq!(rec.info(b"X").string().unwrap().unwrap().len(), 2);
     }
