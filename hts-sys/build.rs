@@ -77,7 +77,7 @@ fn main() {
     if Command::new("make")
         .current_dir(out.join("htslib"))
         .arg(format!("CC={}", cc_path.display()))
-        .arg(format!("CFLAGS=-std=c99 -pedantic -lm -I/usr/include -I/usr/include/x86_64-linux-gnu{}", cc_cflags))
+        .arg(format!("CFLAGS=-D_XOPEN_SOURCE=600 -D_GNU_SOURCE -std=gnu99 -pedantic -lm -I/usr/include -I/usr/include/x86_64-linux-gnu{}", cc_cflags))
         .arg("lib-static")
         .arg("-B")
         .status()
