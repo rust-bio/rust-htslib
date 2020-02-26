@@ -21,7 +21,7 @@ libc = "0.2"
 libz-sys = "1.0"
 bzip2-sys = { version = "0.1", optional = true }
 lzma-sys = { version = "0.1", optional = true }
-curl-sys = { version = "0.4.25", optional = true }
+curl-sys = { version = "0.4.26", optional = true }
 
 [features]
 default = ["bzip2", "lzma", "curl"]
