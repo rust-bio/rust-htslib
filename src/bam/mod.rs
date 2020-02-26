@@ -983,7 +983,6 @@ CCCCCCCCCCCCCCCCCCC"[..],
         // Selectively compares bam1_t struct fields from BAM and CRAM
         for (c1, b1) in cram_records.iter().zip(bam_records.iter()) {
             // CRAM vs BAM l_data is off by 3, see: https://github.com/rust-bio/rust-htslib/pull/184#issuecomment-590133544
-            assert_ne!(c1.inner().l_data, b1.inner().l_data);
             // The rest of the fields should be identical:
             assert_eq!(c1.cigar(), b1.cigar());
             assert_eq!(c1.inner().core.pos, b1.inner().core.pos);
