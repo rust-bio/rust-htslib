@@ -52,6 +52,7 @@ addons:
 
 before_script:
   - export PATH=$HOME/.cargo/bin:$PATH
+  - cargo install --version 0.1.16 cross # https://github.com/rust-embedded/cross
   - cargo install cargo-update || echo "cargo-update already installed"
   - cargo install cargo-travis || echo "cargo-travis already installed"
   - cargo install-update -a
@@ -64,6 +65,7 @@ before_script:
 script:
   - cargo fmt --version
   - cargo fmt -- --check
+  - cross build --target x86_64-unknown-linux-musl --all-features
   - cargo build --all-features
   - cargo test --all-features
   - cargo build --no-default-features
