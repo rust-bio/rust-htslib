@@ -76,8 +76,10 @@ fn main() {
     let cc_cflags = cflags_env.to_string_lossy().replace("-O0", "");
     if Command::new("make")
         .current_dir(out.join("htslib"))
-        .arg(format!("CC={}", cc_path.display()))
-        .arg(format!("CFLAGS=-D_XOPEN_SOURCE=600 -D_GNU_SOURCE -std=gnu99 -pedantic -lm -I/usr/include -I/usr/include/x86_64-linux-gnu{}", cc_cflags))
+        //.arg(format!("CC=/usr/bin/musl-gcc {}", cc_path.display()))
+        .arg("CC=musl-gcc")
+        //.arg(format!("CFLAGS=-D_XOPEN_SOURCE=600 -D_GNU_SOURCE -I/usr/include -I/usr/include/x86_64-linux-gnu -std=c99 {}", cc_cflags))
+        .arg(format!("CFLAGS=-D_XOPEN_SOURCE=600 -D_GNU_SOURCE -I/usr/include/x86_64-linux-musl -std=c99 {}", cc_cflags))
         .arg("lib-static")
         .arg("-B")
         .status()
