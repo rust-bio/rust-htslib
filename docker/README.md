@@ -6,8 +6,8 @@ Allows to compile (rust-)htslib in a variety of environments and architectures v
 
 ```shell
 $ cd docker
-$ docker build -t brainstorm/cross-x86_64-unknown-linux-musl:libcurl-openssl . -f dockerfile.musl
-$ docker build -t brainstorm/cross-x86_64-unknown-linux-gnu:libcurl-openssl . -f dockerfile.gnu
+$ docker build -t brainstorm/cross-x86_64-unknown-linux-musl:libcurl-openssl . -f Dockerfile.musl
+$ docker build -t brainstorm/cross-x86_64-unknown-linux-gnu:libcurl-openssl . -f Dockerfile.gnu
 ```
 
 Then to build and test rust-htslib with the above containers, proceed as you would with `cargo`, using `cross` instead, i.e:
