@@ -153,14 +153,8 @@ impl Reader {
         let c_str = ffi::CString::new("r").unwrap();
         let hts_file = unsafe { htslib::hts_open(path.as_ptr(), c_str.as_ptr()) };
         unsafe {
-            println!("{:#?}", (*hts_file).format);
-
-            // XXX: Format detection broken upstream on htslib (BED.gz files are 
-            //      incorrectly detected among other potential errors.
-            //
-            //      see: https://github.com/rust-bio/rust-htslib/pull/184#issuecomment-590166289
-            //if (*hts_file).format.category != htslib::htsFormatCategory_region_list
-            if (*hts_file).format.format != htslib::htsExactFormat_text_format
+            if (*hts_file).format.category != htslib::htsFormatCategory_region_list
+                && (*hts_file).format.format != htslib::htsExactFormat_sam
             {
                 return Err(Error::InvalidIndex);
             }
@@ -381,7 +375,9 @@ mod tests {
         // Check header lines.
         assert_eq!(
             reader.header,
-            vec![String::from("#foo"), String::from("#bar")]
+            vec![String::from(
+                "track name=\"Test Bed\" maxheightpixels=120:120"
+            )]
         );
 
         // Check sequence name vector.
