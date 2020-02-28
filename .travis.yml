@@ -49,9 +49,6 @@ addons:
       - musl
       - musl-dev
       - musl-tools
-  homebrew:
-    taps: filosottile/musl-cross
-    update: false
 
 before_script:
   - export PATH=$HOME/.cargo/bin:$PATH
@@ -60,15 +57,15 @@ before_script:
   - cargo install cargo-travis || echo "cargo-travis already installed"
   - cargo install-update -a
   - rustup component add rustfmt
-  - rustup target add x86_64-unknown-linux-musl
 
 script:
   - cargo fmt --version
   - cargo fmt -- --check
-  - cross build --all-features
-  - cross test --all-features
-  - cross build --no-default-features
-  - cross test --no-default-features
+  - cargo build --all-features
+  - cargo test --all-features
+  - cargo build --no-default-features
+  - cargo test --no-default-features
+  # Cross compile to musl target (docker support not available on OSX)
   - cross build --target x86_64-unknown-linux-musl --all-features
   - cross test --target x86_64-unknown-linux-musl --all-features
   - cross build --target x86_64-unknown-linux-musl --no-default-features
