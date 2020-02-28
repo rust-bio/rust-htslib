@@ -589,7 +589,7 @@ impl Record {
     }
 
     pub fn remove_alleles(&mut self, remove: &[bool]) -> Result<()> {
-        let rm_set = unsafe { htslib::kbs_init(remove.len()) };
+        let rm_set = unsafe { htslib::kbs_init(remove.len() as u64) };
 
         for (i, &r) in remove.iter().enumerate() {
             if r {
