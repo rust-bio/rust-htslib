@@ -140,8 +140,8 @@ impl Record {
 
         let mut sam_string = htslib::kstring_t {
             s: sam_copy.as_ptr() as *mut i8,
-            l: sam_copy.len() as usize,
-            m: sam_copy.len() as usize,
+            l: sam_copy.len() as u64,
+            m: sam_copy.len() as u64,
         };
 
         let succ = unsafe {

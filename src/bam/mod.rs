@@ -597,7 +597,7 @@ impl Writer {
             );
 
             (*rec).text = text as *mut i8;
-            (*rec).l_text = l_text as usize;
+            (*rec).l_text = l_text as u64;
             rec
         };
 
@@ -817,7 +817,7 @@ impl HeaderView {
                 header_string.len(),
             );
 
-            let rec = htslib::sam_hdr_parse((l_text + 1) as usize, text as *const i8);
+            let rec = htslib::sam_hdr_parse((l_text + 1) as u64, text as *const i8);
             (*rec).text = text as *mut i8;
             (*rec).l_text = l_text as usize;
             rec
