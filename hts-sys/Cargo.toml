@@ -31,7 +31,6 @@ curl = ["curl-sys"]
 
 [build-dependencies]
 fs-utils = "1.1"
-openssl = { version = "0.10.28", features = ["vendored"] }
 bindgen = { version = "0.53.1", default-features = false, features = ["runtime"] }
 cc = "1.0"
 glob = "0.3.0"

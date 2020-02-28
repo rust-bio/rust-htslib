@@ -1,4 +1,4 @@
 [target.x86_64-unknown-linux-musl]
-image = "clux/muslrust:stable"
+image = "brainstorm/rust_musl_docker:stable-latest-libcurl"
 [target.x86_64-unknown-linux-gnu]
 image = "brainstorm/cross-x86_64-unknown-linux-gnu:libcurl-openssl"
