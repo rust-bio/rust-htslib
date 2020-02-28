@@ -367,7 +367,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn bed_header() {
+    fn bed_basic() {
         let reader = Reader::from_path("test/test_bed3.bed.gz")
             .ok()
             .expect("Error opening file.");
