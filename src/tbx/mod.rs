@@ -372,14 +372,6 @@ mod tests {
             .ok()
             .expect("Error opening file.");
 
-        // Check header lines.
-        assert_eq!(
-            reader.header,
-            vec![String::from(
-                "track name=\"Test Bed\" maxheightpixels=120:120"
-            )]
-        );
-
         // Check sequence name vector.
         assert_eq!(
             reader.seqnames(),
