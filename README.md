@@ -25,6 +25,13 @@ To compile this crate you need the development headers of zlib, bzip2 and xz. Fo
 $ sudo apt-get install zlib1g-dev libbz2-dev liblzma-dev clang
 ```
 
+On OSX, this will take a significant amount of time due to musl cross compiling toolchain:
+
+```shell
+$ brew install FiloSottile/musl-cross/musl-cross
+$ brew install bzip2 zlib xz curl-openssl
+```
+
 ## Usage
 
 Add this to your `Cargo.toml`:
