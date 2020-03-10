@@ -115,6 +115,7 @@ impl Record {
     pub fn from_inner(from: *mut htslib::bam1_t) -> Self {
         Record {
             inner: {
+                #[allow(clippy::uninit_assumed_init)]
                 let mut inner = unsafe { MaybeUninit::uninit().assume_init() };
                 unsafe {
                     ::libc::memcpy(
