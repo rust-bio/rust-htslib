@@ -63,7 +63,7 @@ jobs:
 
       - name: Install system dependencies
         run: |
-            sudo apt-get install --yes zlib1g-dev libbz2-dev musl musl-dev musl-tools libclang1
+            sudo apt-get install --yes zlib1g-dev libbz2-dev musl musl-dev musl-tools libclang1 libclang-dev
 
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
