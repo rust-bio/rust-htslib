@@ -1051,11 +1051,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .ok()
             .expect("Error opening file.");
 
-        let true_header =
-            "@SQ\tSN:CHROMOSOME_I\tLN:15072423\n@SQ\tSN:CHROMOSOME_II\tLN:15279345\
+        let true_header = "@SQ\tSN:CHROMOSOME_I\tLN:15072423\n@SQ\tSN:CHROMOSOME_II\tLN:15279345\
              \n@SQ\tSN:CHROMOSOME_III\tLN:13783700\n@SQ\tSN:CHROMOSOME_IV\tLN:17493793\n@SQ\t\
              SN:CHROMOSOME_V\tLN:20924149\n"
-                .to_string();
+            .to_string();
         let header_text = String::from_utf8(bam.header.as_bytes().to_owned()).unwrap();
         assert_eq!(header_text, true_header);
     }
