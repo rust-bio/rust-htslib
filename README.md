@@ -2,7 +2,7 @@
 [![Crates.io](https://img.shields.io/crates/v/rust-htslib.svg)](https://crates.io/crates/rust-htslib)
 [![Crates.io](https://img.shields.io/crates/l/rust-htslib.svg)](https://crates.io/crates/rust-htslib)
 [![docs.rs](https://docs.rs/rust-htslib/badge.svg)](https://docs.rs/rust-htslib)
-![](https://github.com/rust-bio/rust-htslib/workflows/rust/badge.svg)
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/rust-bio/rust-htslib/CI/master?label=tests)
 
 # HTSlib bindings for Rust
 
