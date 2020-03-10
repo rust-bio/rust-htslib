@@ -35,7 +35,11 @@ jobs:
           toolchain: stable
           override: true
           components: clippy
-      
+
+      - name: Install system dependencies
+        run: |
+            sudo apt-get install --yes libgsl0-dev zlib1g-dev samtools
+
       - name: Lint with clippy
         uses: actions-rs/clippy-check@v1
         with:
@@ -54,6 +58,10 @@ jobs:
         with:
           toolchain: stable
           override: true
+
+      - name: Install system dependencies
+        run: |
+            sudo apt-get install --yes libgsl0-dev zlib1g-dev samtools
 
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
