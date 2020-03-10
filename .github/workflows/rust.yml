@@ -38,7 +38,7 @@ jobs:
 
       - name: Install system dependencies
         run: |
-            sudo apt-get install --yes libgsl0-dev zlib1g-dev samtools
+            sudo apt-get install --yes zlib1g-dev libbz2-dev musl musl-dev musl-tools
 
       - name: Lint with clippy
         uses: actions-rs/clippy-check@v1
@@ -61,7 +61,7 @@ jobs:
 
       - name: Install system dependencies
         run: |
-            sudo apt-get install --yes libgsl0-dev zlib1g-dev samtools
+            sudo apt-get install --yes zlib1g-dev libbz2-dev musl musl-dev musl-tools
 
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
