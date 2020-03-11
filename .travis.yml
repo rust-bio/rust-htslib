@@ -49,14 +49,18 @@ addons:
       - musl
       - musl-dev
       - musl-tools
+    homebrew:
+        taps: brainstorm/musl-cross
+        update: false
 
 before_script:
   - export PATH=$HOME/.cargo/bin:$PATH
-  - cargo install cross # https://github.com/rust-embedded/cross
+#  - cargo install cross # https://github.com/rust-embedded/cross
   - cargo install cargo-update || echo "cargo-update already installed"
   - cargo install cargo-travis || echo "cargo-travis already installed"
   - cargo install-update -a
   - rustup component add rustfmt
+  - rustup target add x86_64-unknown-linux-musl
 
 script:
   - cargo fmt --version
@@ -65,11 +69,10 @@ script:
   - cargo test --all-features
   - cargo build --no-default-features
   - cargo test --no-default-features
-  # Cross compile to musl target (docker support not available on OSX)
-  - cross build --target x86_64-unknown-linux-musl --all-features
-  - cross test --target x86_64-unknown-linux-musl --all-features
-  - cross build --target x86_64-unknown-linux-musl --no-default-features
-  - cross test --target x86_64-unknown-linux-musl --no-default-features
+  - cargo build --target x86_64-unknown-linux-musl --all-features
+  - cargo test --target x86_64-unknown-linux-musl --all-features
+  - cargo build --target x86_64-unknown-linux-musl --no-default-features
+  - cargo test --target x86_64-unknown-linux-musl --no-default-features
 
 after_success:
   - cargo coveralls

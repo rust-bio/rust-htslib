@@ -31,7 +31,20 @@ fn sed_htslib_makefile(out: &PathBuf, patterns: &Vec<&str>, feature: &str) {
     }
 }
 
+fn check_homebrew_osx() {
+    let htslib_deps = vec!("bzip2", "zlib", "xz", "curl-openssl");
+    for dep in htslib_deps {
+        let cmd = Command::new("brew")
+                            .arg("--prefix")
+                            .arg(dep)
+                            .output().expect("Uh-oh, you are not on OSX");
+
+        dbg!(cmd);
+    }
+}
+
 fn main() {
+    check_homebrew_osx();
     let out = PathBuf::from(env::var("OUT_DIR").unwrap());
     let mut cfg = cc::Build::new();
     cfg.warnings(false).static_flag(true).pic(true);
