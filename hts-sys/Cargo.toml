@@ -22,11 +22,13 @@ libz-sys = "1.0"
 bzip2-sys = { version = "0.1", optional = true }
 lzma-sys = { version = "0.1", optional = true }
 curl-sys = { version = "0.4.26", optional = true }
+openssl-sys = { version = "0.9.54", optional = true }
 
 [features]
 default = ["bzip2", "lzma", "curl"]
 bzip2 = ["bzip2-sys"]
 lzma = ["lzma-sys"]
+openssl = ["openssl-sys"]
 curl = ["curl-sys"]
 
 [build-dependencies]

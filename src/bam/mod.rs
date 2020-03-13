@@ -16,7 +16,6 @@ pub mod record;
 #[cfg(feature = "serde")]
 pub mod record_serde;
 
-use libc;
 use std::ffi;
 use std::path::Path;
 use std::slice;
