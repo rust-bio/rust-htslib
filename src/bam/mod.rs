@@ -16,7 +16,6 @@ pub mod record;
 #[cfg(feature = "serde")]
 pub mod record_serde;
 
-use libc;
 use std::ffi;
 use std::path::Path;
 use std::slice;
@@ -29,6 +28,7 @@ pub use crate::bam::buffer::RecordBuffer;
 pub use crate::bam::errors::{Error, Result};
 pub use crate::bam::header::Header;
 pub use crate::bam::record::Record;
+use std::convert::TryInto;
 
 /// Implementation for `Read::set_threads` and `Writer::set_threads`.
 pub unsafe fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
@@ -398,7 +398,7 @@ impl IndexedReader {
         if let Some(itr) = self.itr {
             unsafe { htslib::hts_itr_destroy(itr) }
         }
-        let itr = unsafe { htslib::sam_itr_queryi(self.idx, tid as i32, beg as i32, end as i32) };
+        let itr = unsafe { htslib::sam_itr_queryi(self.idx, tid as i32, beg as i64, end as i64) };
         if itr.is_null() {
             self.itr = None;
             Err(Error::Fetch)
@@ -590,10 +590,13 @@ impl Writer {
             );
 
             //println!("{}", str::from_utf8(&header_string).unwrap());
-            let rec = htslib::sam_hdr_parse((l_text + 1) as i32, text as *const i8);
+            let rec = htslib::sam_hdr_parse(
+                ((l_text + 1) as usize).try_into().unwrap(),
+                text as *const i8,
+            );
 
             (*rec).text = text as *mut i8;
-            (*rec).l_text = l_text as u32;
+            (*rec).l_text = l_text as u64;
             rec
         };
 
@@ -682,12 +685,10 @@ impl CompressionLevel {
     // Convert and check the variants of the `CompressionLevel` enum to a numeric level
     fn convert(self) -> Result<u32> {
         match self {
-            CompressionLevel::Uncompressed => Ok(htslib::Z_NO_COMPRESSION),
-            CompressionLevel::Fastest => Ok(htslib::Z_BEST_SPEED),
-            CompressionLevel::Maximum => Ok(htslib::Z_BEST_COMPRESSION),
-            CompressionLevel::Level(i @ htslib::Z_NO_COMPRESSION..=htslib::Z_BEST_COMPRESSION) => {
-                Ok(i)
-            }
+            CompressionLevel::Uncompressed => Ok(0),
+            CompressionLevel::Fastest => Ok(1),
+            CompressionLevel::Maximum => Ok(9),
+            CompressionLevel::Level(i @ 0..=9) => Ok(i),
             CompressionLevel::Level(i) => Err(Error::InvalidCompressionLevel { level: i }),
         }
     }
@@ -815,9 +816,9 @@ impl HeaderView {
                 header_string.len(),
             );
 
-            let rec = htslib::sam_hdr_parse((l_text + 1) as i32, text as *const i8);
+            let rec = htslib::sam_hdr_parse((l_text + 1) as u64, text as *const i8);
             (*rec).text = text as *mut i8;
-            (*rec).l_text = l_text as u32;
+            (*rec).l_text = l_text as u64;
             rec
         };
 
@@ -853,7 +854,7 @@ impl HeaderView {
 
     pub fn tid(&self, name: &[u8]) -> Option<u32> {
         let c_str = ffi::CString::new(name).expect("Expected valid name.");
-        let tid = unsafe { htslib::bam_name2id(self.inner, c_str.as_ptr()) };
+        let tid = unsafe { htslib::sam_hdr_name2tid(self.inner, c_str.as_ptr()) };
         if tid < 0 {
             None
         } else {
@@ -895,7 +896,7 @@ impl HeaderView {
 impl Clone for HeaderView {
     fn clone(&self) -> Self {
         HeaderView {
-            inner: unsafe { htslib::bam_hdr_dup(self.inner) },
+            inner: unsafe { htslib::sam_hdr_dup(self.inner) },
             owned: true,
         }
     }
@@ -905,7 +906,7 @@ impl Drop for HeaderView {
     fn drop(&mut self) {
         if self.owned {
             unsafe {
-                htslib::bam_hdr_destroy(self.inner);
+                htslib::sam_hdr_destroy(self.inner);
             }
         }
     }
@@ -975,6 +976,28 @@ CCCCCCCCCCCCCCCCCCC"[..],
             CigarString(vec![Cigar::Match(27), Cigar::Del(100000), Cigar::Match(73)]),
         ];
         (names, flags, seqs, quals, cigars)
+    }
+
+    fn compare_inner_bam_cram_records(cram_records: &Vec<Record>, bam_records: &Vec<Record>) {
+        // Selectively compares bam1_t struct fields from BAM and CRAM
+        for (c1, b1) in cram_records.iter().zip(bam_records.iter()) {
+            // CRAM vs BAM l_data is off by 3, see: https://github.com/rust-bio/rust-htslib/pull/184#issuecomment-590133544
+            // The rest of the fields should be identical:
+            assert_eq!(c1.cigar(), b1.cigar());
+            assert_eq!(c1.inner().core.pos, b1.inner().core.pos);
+            assert_eq!(c1.inner().core.mpos, b1.inner().core.mpos);
+            assert_eq!(c1.inner().core.mtid, b1.inner().core.mtid);
+            assert_eq!(c1.inner().core.tid, b1.inner().core.tid);
+            assert_eq!(c1.inner().core.bin, b1.inner().core.bin);
+            assert_eq!(c1.inner().core.qual, b1.inner().core.qual);
+            assert_eq!(c1.inner().core.l_extranul, b1.inner().core.l_extranul);
+            assert_eq!(c1.inner().core.flag, b1.inner().core.flag);
+            assert_eq!(c1.inner().core.l_qname, b1.inner().core.l_qname);
+            assert_eq!(c1.inner().core.n_cigar, b1.inner().core.n_cigar);
+            assert_eq!(c1.inner().core.l_qseq, b1.inner().core.l_qseq);
+            assert_eq!(c1.inner().core.isize, b1.inner().core.isize);
+            //... except m_data
+        }
     }
 
     #[test]
@@ -1379,7 +1402,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 let idx = i % names.len();
                 rec.set(names[idx], Some(&cigars[idx]), seqs[idx], quals[idx]);
                 rec.push_aux(b"NM", &Aux::Integer(15));
-                rec.set_pos(i as i32);
+                rec.set_pos(i as i64);
 
                 bam.write(&mut rec).expect("Failed to write record.");
             }
@@ -1395,7 +1418,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
                 let rec = _rec.expect("Failed to read record.");
 
-                assert_eq!(rec.pos(), i as i32);
+                assert_eq!(rec.pos(), i as i64);
                 assert_eq!(rec.qname(), names[idx]);
                 assert_eq!(*rec.cigar(), cigars[idx]);
                 assert_eq!(rec.seq().as_bytes(), seqs[idx]);
@@ -1559,10 +1582,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let mut bam_reader = Reader::from_path(bam_path).unwrap();
         let bam_records: Vec<Record> = bam_reader.records().map(|v| v.unwrap()).collect();
 
-        // Compare CRAM records to BAM records
-        for (c1, b1) in cram_records.iter().zip(bam_records.iter()) {
-            assert!(c1 == b1);
-        }
+        compare_inner_bam_cram_records(&cram_records, &bam_records);
     }
 
     #[test]
@@ -1631,9 +1651,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             let cram_records: Vec<Record> = cram_reader.records().map(|v| v.unwrap()).collect();
 
             // Compare CRAM records to BAM records
-            for (c1, b1) in cram_records.iter().zip(bam_records.iter()) {
-                assert!(c1 == b1);
-            }
+            compare_inner_bam_cram_records(&cram_records, &bam_records);
         }
 
         tmp.close().expect("Failed to delete temp dir");

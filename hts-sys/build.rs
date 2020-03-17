@@ -13,9 +13,9 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
-fn sed_htslib_makefile(out: &PathBuf, patterns: &Vec<&str>, feature: &str) {
+fn sed_htslib_makefile(out: &PathBuf, patterns: &[&str], feature: &str) {
     for pattern in patterns {
-        if Command::new("sed")
+        if !Command::new("sed")
             .current_dir(out.join("htslib"))
             .arg("-i")
             .arg("-e")
@@ -24,7 +24,6 @@ fn sed_htslib_makefile(out: &PathBuf, patterns: &Vec<&str>, feature: &str) {
             .status()
             .unwrap()
             .success()
-            != true
         {
             panic!("failed to strip {} support", feature);
         }
@@ -63,10 +62,18 @@ fn main() {
         cfg.include(inc);
     }
 
+    let use_curl = env::var("CARGO_FEATURE_CURL").is_ok();
+    if !use_curl {
+        let curl_patterns = vec!["s/ -lcurl//", "/#define HAVE_LIBCURL/d"];
+        sed_htslib_makefile(&out, &curl_patterns, "curl");
+    } else if let Ok(inc) = env::var("DEP_CURL_INCLUDE").map(PathBuf::from) {
+        cfg.include(inc);
+    }
+
     let tool = cfg.get_compiler();
     let (cc_path, cflags_env) = (tool.path(), tool.cflags_env());
     let cc_cflags = cflags_env.to_string_lossy().replace("-O0", "");
-    if Command::new("make")
+    if !Command::new("make")
         .current_dir(out.join("htslib"))
         .arg(format!("CC={}", cc_path.display()))
         .arg(format!("CFLAGS={}", cc_cflags))
@@ -75,7 +82,6 @@ fn main() {
         .status()
         .unwrap()
         .success()
-        != true
     {
         panic!("failed to build htslib");
     }
