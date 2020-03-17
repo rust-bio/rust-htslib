@@ -165,7 +165,7 @@ impl Record {
     }
 
     /// Set 0-based position.
-    pub fn set_pos(&mut self, pos: i32) {
+    pub fn set_pos(&mut self, pos: i64) {
         self.inner_mut().pos = pos;
     }
 
@@ -589,7 +589,7 @@ impl Record {
     }
 
     pub fn remove_alleles(&mut self, remove: &[bool]) -> Result<()> {
-        let rm_set = unsafe { htslib::kbs_init(remove.len()) };
+        let rm_set = unsafe { htslib::kbs_init(remove.len() as u64) };
 
         for (i, &r) in remove.iter().enumerate() {
             if r {

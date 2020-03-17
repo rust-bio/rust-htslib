@@ -86,7 +86,7 @@ impl RecordBuffer {
                 let to_remove = self
                     .inner
                     .iter()
-                    .take_while(|rec| rec.pos() < window_start as i32)
+                    .take_while(|rec| rec.pos() < window_start as i64)
                     .count();
                 for _ in 0..to_remove {
                     self.inner.pop_front();
@@ -111,7 +111,7 @@ impl RecordBuffer {
                     record.cache_cigar();
                 }
 
-                if pos >= end as i32 {
+                if pos >= end as i64 {
                     self.overflow = Some(record);
                     break;
                 } else {
