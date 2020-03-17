@@ -757,9 +757,9 @@ impl<'a> Info<'a> {
     /// Import `bcf::record::Numeric` for missing value handling.
     pub fn integer(&mut self) -> Result<Option<&'a [i32]>> {
         self.data(htslib::BCF_HT_INT).map(|data| {
-            data.map(|(n, _ret)| {
+            data.map(|(n, ret)| {
                 let values = unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) };
-                &values[..n as usize]
+                &values[..ret as usize]
             })
         })
     }
@@ -769,9 +769,9 @@ impl<'a> Info<'a> {
     /// Import `bcf::record::Numeric` for missing value handling.
     pub fn float(&mut self) -> Result<Option<&'a [f32]>> {
         self.data(htslib::BCF_HT_REAL).map(|data| {
-            data.map(|(n, _ret)| {
+            data.map(|(n, ret)| {
                 let values = unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) };
-                &values[..n as usize]
+                &values[..ret as usize]
             })
         })
     }
