@@ -309,7 +309,7 @@ impl Record {
     /// be recognized as missing QVs by `samtools`.
     pub fn set(&mut self, qname: &[u8], cigar: Option<&CigarString>, seq: &[u8], qual: &[u8]) {
         assert!(qname.len() < 255);
-        assert!(seq.len() == qual.len(), "seq.len() must equal qual.len()");
+        assert_eq!(seq.len(), qual.len(), "seq.len() must equal qual.len()");
 
         self.cigar = None;
 
