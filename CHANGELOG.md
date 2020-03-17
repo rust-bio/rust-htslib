@@ -2,7 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.27.0] - (TBD)
+## [0.27.0] - 2020-03-17
+## Changes
+- Updated to Htslib 1.10.2.
 - bam::Record.set() will panic if seq.len() != qual.len(). Previously, mismatched length would cause
   uninitialized memory to be written into the BAM file.
 - use `serde_bytes` to serialize .data section of bam::Record when using serde - large speed improvement.
@@ -11,6 +13,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - refactor native dependency into htslib-sys crate, for greater versioning flexibility
 - Record::from_sam require `&mut HeaderView`. Provide the appropriate accessor.
 - set() no longer invalidates tag data.
+- Various minor improvements.
 
 ## [0.26.1] - 2019-12-03
 ## Changes
