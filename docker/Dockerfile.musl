@@ -1,7 +1,41 @@
 FROM rustembedded/cross:x86_64-unknown-linux-musl
 
 ENV PKG_CONFIG_ALLOW_CROSS 1
-ENV OPENSSL_LIB_DIR /usr/lib/x86_64-linux-gnu
-ENV OPENSSL_INCLUDE_DIR /usr/include/openssl
+ENV LZMA_VERSION 5.2.4
+ENV ZLIB_VERSION 1.2.11
+ENV OPENSSL_VERSION 1.1.1d
+ENV CURL_VERSION 7.69.1
+
+# Install basics to locally compile htslib dependencies
 RUN apt-get update && \
-    apt-get install -y libssl-dev libcurl4-openssl-dev zlib1g-dev libbz2-dev liblzma-dev musl musl-dev musl-tools linux-libc-dev linux-headers-4.15.0-20-generic
+            apt-get install -y build-essential git wget
+
+# The default includes and packages from the Ubuntu distro that cross uses will generate all sorts of linux-headers related include errors, see:
+#   https://github.com/rust-bio/rust-htslib/pull/184#commitcomment-37496651
+# Those are the packages installed, hopefully someone will find a good way to use the distro ones instead of compiling everything under /usr/local :/
+#    apt-get install -y libssl-dev libcurl4-openssl-dev zlib1g-dev libbz2-dev liblzma-dev musl musl-dev musl-tools linux-libc-dev linux-headers-4.15.0-20-generic
+
+
+
+# For now we'll have to go nuts and not only build musl-1.2.0 from scratch but all the other libs too...
+WORKDIR /root
+
+# Updated musl-cross toolchain that does not fail on OpenSSL: https://github.com/openssl/openssl/issues/7207 
+RUN wget https://musl.libc.org/releases/musl-1.2.0.tar.gz && tar xvfz musl-1.2.0.tar.gz
+COPY config-musl-cross-make.mak config.mak
+WORKDIR /root/musl-1.2.0
+RUN ./configure && make && cd ..
+
+# Now we assume we have a properly configured musl-cross...
+ENV CC=/usr/local/musl/bin/x86_64-linux-musl-cc
+ENV CXX_x86_64_unknown_linux_musl=x86_64-linux-musl-g++
+
+# .. and carry on with the htslib deps
+RUN git clone git://sourceware.org/git/bzip2.git && cd bzip2 && make install && cd ..
+RUN wget https://tukaani.org/xz/xz-$LZMA_VERSION.tar.bz2 && tar xvfj xz-$LZMA_VERSION.tar.bz2 && cd xz-$LZMA_VERSION && ./configure && make install && cd ..
+RUN wget https://www.zlib.net/zlib-$ZLIB_VERSION.tar.gz && tar xvfz zlib-$ZLIB_VERSION.tar.gz && cd zlib-$ZLIB_VERSION && ./configure && make install && cd ..
+RUN wget https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz && tar xvfz openssl-$OPENSSL_VERSION.tar.gz && tar xvfz openssl-$OPENSSL_VERSION.tar.gz && cd openssl-$OPENSSL_VERSION
+RUN ./Configure --prefix=/usr/local/openssl linux-x86_64 no-shared && make && cd ..
+RUN wget https://curl.haxx.se/download/curl-$CURL_VERSION.tar.gz && tar xvfz curl-$CURL_VERSION.tar.gz && cd curl-$CURL_VERSION && ./configure --host --with-ssl=/usr/local/openssl && make install
+
+CMD ["bash"]
