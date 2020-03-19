@@ -65,4 +65,7 @@ RUN wget https://curl.haxx.se/download/curl-$CURL_VERSION.tar.gz && tar xvfz cur
         --disable-tftp --disable-ntlm && \
         make -j48 install
 
+# To cater Rust's openssl-sys needs...
+ENV OPENSSL_DIR /usr/local/openssl
+
 CMD ["bash"]
