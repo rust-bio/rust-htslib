@@ -1,6 +1,6 @@
 FROM rustembedded/cross:x86_64-unknown-linux-musl
 
-ENV MUSL_CROSS_MAKE_VERSION 0.9.9
+ENV MUSL_CROSS_VERSION 0.9.9
 ENV PKG_CONFIG_ALLOW_CROSS 1
 ENV LZMA_VERSION 5.2.4
 ENV ZLIB_VERSION 1.2.11
@@ -14,19 +14,19 @@ ENV CURL_VERSION 7.69.1
 
 # Install basics to locally compile htslib dependencies
 RUN apt-get update && \
-            apt-get install -y build-essential git wget vim
+            apt-get install -y build-essential git wget
 
-# Remove pre-installed musl, to avoid cross-musl-make interference
+# Remove pre-installed musl, to avoid cross-musl-make -j48  interference
 RUN apt-get remove -y musl
 
 # For now we'll have to go nuts and not only build musl-1.2.0 from scratch but all the other libs too...
 WORKDIR /root
 
 # Updated musl-cross toolchain that does not fail on OpenSSL: https://github.com/openssl/openssl/issues/7207
-RUN wget https://github.com/richfelker/musl-cross-make/archive/v$MUSL_CROSS_MAKE_VERSION.tar.gz && tar xvfz v$MUSL_CROSS_MAKE_VERSION.tar.gz
-WORKDIR /root/musl-cross-make-$MUSL_CROSS_MAKE_VERSION
+RUN wget https://github.com/richfelker/musl-cross-make/archive/v$MUSL_CROSS_VERSION.tar.gz && tar xvfz v$MUSL_CROSS_VERSION.tar.gz
+WORKDIR /root/musl-cross-make-$MUSL_CROSS_VERSION
 COPY config-musl-cross-make.mak config.mak
-RUN make install
+RUN make -j48 install
 
 # Now we assume we have a properly configured musl-cross...
 ENV PATH "/usr/local/musl/bin:$PATH"
@@ -41,28 +41,28 @@ ENV LDFLAGS "-L/usr/local/lib -static"
 
 # .. and carry on with the htslib deps
 WORKDIR /root
-RUN git clone git://sourceware.org/git/bzip2.git && cd bzip2 && make CC=$CC AR=$AR RANLIB=$RANLIB  bzip2 && make install
+RUN git clone git://sourceware.org/git/bzip2.git && cd bzip2 && make -j48  CC=$CC AR=$AR RANLIB=$RANLIB bzip2 && make -j48 install
 WORKDIR /root
-RUN wget https://tukaani.org/xz/xz-$LZMA_VERSION.tar.bz2 && tar xvfj xz-$LZMA_VERSION.tar.bz2 && cd xz-$LZMA_VERSION && ./configure --host x86_64-unknown-linux-musl && make  install
+RUN wget https://tukaani.org/xz/xz-$LZMA_VERSION.tar.bz2 && tar xvfj xz-$LZMA_VERSION.tar.bz2 && cd xz-$LZMA_VERSION && ./configure --host x86_64-unknown-linux-musl && make -j48   install
 WORKDIR /root
-RUN wget https://www.zlib.net/zlib-$ZLIB_VERSION.tar.gz && tar xvfz zlib-$ZLIB_VERSION.tar.gz && cd zlib-$ZLIB_VERSION && ./configure --static && make install
+RUN wget https://www.zlib.net/zlib-$ZLIB_VERSION.tar.gz && tar xvfz zlib-$ZLIB_VERSION.tar.gz && cd zlib-$ZLIB_VERSION && ./configure --static && make -j48 install
 WORKDIR /root
 # A few gems from: https://wiki.openssl.org/index.php/Compilation_and_Installation
 # "OpenSSL has been around a long time, and it carries around a lot of cruft"
 # "SSLv2 is completely broken, and you should disable it during configuration"
-# "You should specify both --prefix and --openssldir to ensure make install works as expected."
+# "You should specify both --prefix and --openssldir to ensure make -j48 install works as expected."
 RUN unset CC && unset AR && unset RANLIB && wget https://github.com/openssl/openssl/archive/OpenSSL_$OPENSSL_VERSION.tar.gz && \
                                             tar xvfz OpenSSL_$OPENSSL_VERSION.tar.gz && cd openssl-OpenSSL_$OPENSSL_VERSION && \
                                             ./Configure --prefix=/usr/local/openssl --openssldir=/usr/local/openssl/etc \
                                                         --with-zlib-lib=/root/zlib-$ZLIB_VERSION linux-x86_64 \
                                                         no-shared no-dso no-gost no-engine no-ssl2 no-srp no-srtp no-tests zlib \
-                                                        no-weak-ssl-ciphers && make && make install
+                                                        no-weak-ssl-ciphers && make -j48 && make -j48 install
 WORKDIR /root
 RUN wget https://curl.haxx.se/download/curl-$CURL_VERSION.tar.gz && tar xvfz curl-$CURL_VERSION.tar.gz && cd curl-$CURL_VERSION && \
         ./configure --host x86_64-linux-musl --with-ssl=/usr/local/openssl --enable-static \
         --disable-dict --disable-file --disable-ftp --disable-gopher --disable-imap \
         --disable-pop3 --disable-rtsp --disable-smb --disable-smtp --disable-telnet \
         --disable-tftp --disable-ntlm && \
-        make install
+        make -j48 install
 
 CMD ["bash"]
