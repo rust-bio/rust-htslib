@@ -36,7 +36,7 @@ ENV CC ${CROSS_COMPILE}cc
 ENV AR ${CROSS_COMPILE}ar
 ENV RANLIB ${CROSS_COMPILE}ranlib
 ENV CXX ${CROSS_COMPILE}g++
-ENV CPPFLAGS "-I/usr/local/include"
+ENV CPPFLAGS "-I/usr/local/include -I/usr/local/musl/x86_64-linux-musl/include/"
 ENV LDFLAGS "-L/usr/local/lib -static"
 
 # .. and carry on with the htslib deps
@@ -67,5 +67,9 @@ RUN wget https://curl.haxx.se/download/curl-$CURL_VERSION.tar.gz && tar xvfz cur
 
 # To cater Rust's openssl-sys needs...
 ENV OPENSSL_DIR /usr/local/openssl
+
+# XXX: Hack to force ld stick to musl on the hts-sys/build.rs side
+RUN rm /usr/bin/ld && ln -sf /usr/local/musl/bin/x86_64-linux-musl-ld /usr/bin/ld
+RUN apt-get install -y libclang1-9
 
 CMD ["bash"]
