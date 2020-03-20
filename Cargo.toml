@@ -1,6 +1,6 @@
 [package]
 name = "rust-htslib"
-version = "0.26.2-alpha.0"
+version = "0.27.1-alpha.0"
 authors = ["Christopher Schröder <christopher.schroeder@tu-dortmund.de>", "Johannes Köster <johannes.koester@tu-dortmund.de>"]
 description = "This library provides HTSlib bindings and a high level Rust API for reading and writing BAM files."
 readme = "README.md"
@@ -30,13 +30,15 @@ serde_base = { version = "^1", optional = true, package = "serde" }
 serde_bytes = { version = "0.11", optional = true }
 bio-types = ">=0.5.1"
 snafu = ">= 0.5.0, <= 0.6.0"
-hts-sys = { version = "^1.9", path = "hts-sys", default-features = false }
+hts-sys = { version = "^1.10", path = "hts-sys", default-features = false }
 
 [features]
-default = ["bzip2", "lzma", "bindgen"]
+default = ["bzip2", "lzma", "curl", "bindgen"]
 bzip2 = ["hts-sys/bzip2"]
 lzma = ["hts-sys/lzma"]
 bindgen = ["hts-sys/bindgen"]
+curl = ["hts-sys/curl"]
+openssl = ["hts-sys/openssl"]
 serde = ["serde_base", "serde_bytes"]
 
 [dev-dependencies]

@@ -26,7 +26,7 @@ use bio_types::sequence::SequenceRead;
 
 /// A macro creating methods for flag access.
 macro_rules! flag {
-    ($get:ident, $set:ident, $unset:ident, $bit:expr) => (
+    ($get:ident, $set:ident, $unset:ident, $bit:expr) => {
         pub fn $get(&self) -> bool {
             self.inner().core.flag & $bit != 0
         }
@@ -38,7 +38,7 @@ macro_rules! flag {
         pub fn $unset(&mut self) {
             self.inner_mut().core.flag &= !$bit;
         }
-    )
+    };
 }
 
 /// A BAM record.
@@ -141,8 +141,8 @@ impl Record {
 
         let mut sam_string = htslib::kstring_t {
             s: sam_copy.as_ptr() as *mut i8,
-            l: sam_copy.len() as usize,
-            m: sam_copy.len() as usize,
+            l: sam_copy.len() as u64,
+            m: sam_copy.len() as u64,
         };
 
         let succ = unsafe {
@@ -197,12 +197,12 @@ impl Record {
     }
 
     /// Get position (0-based).
-    pub fn pos(&self) -> i32 {
+    pub fn pos(&self) -> i64 {
         self.inner().core.pos
     }
 
     /// Set position (0-based).
-    pub fn set_pos(&mut self, pos: i32) {
+    pub fn set_pos(&mut self, pos: i64) {
         self.inner_mut().core.pos = pos;
     }
 
@@ -250,22 +250,22 @@ impl Record {
     }
 
     /// Get mate position.
-    pub fn mpos(&self) -> i32 {
+    pub fn mpos(&self) -> i64 {
         self.inner().core.mpos
     }
 
     /// Set mate position.
-    pub fn set_mpos(&mut self, mpos: i32) {
+    pub fn set_mpos(&mut self, mpos: i64) {
         self.inner_mut().core.mpos = mpos;
     }
 
     /// Get insert size.
-    pub fn insert_size(&self) -> i32 {
+    pub fn insert_size(&self) -> i64 {
         self.inner().core.isize
     }
 
     /// Set insert size.
-    pub fn set_insert_size(&mut self, insert_size: i32) {
+    pub fn set_insert_size(&mut self, insert_size: i64) {
         self.inner_mut().core.isize = insert_size;
     }
 
@@ -309,7 +309,7 @@ impl Record {
     /// be recognized as missing QVs by `samtools`.
     pub fn set(&mut self, qname: &[u8], cigar: Option<&CigarString>, seq: &[u8], qual: &[u8]) {
         assert!(qname.len() < 255);
-        assert!(seq.len() == qual.len(), "seq.len() must equal qual.len()");
+        assert_eq!(seq.len(), qual.len(), "seq.len() must equal qual.len()");
 
         self.cigar = None;
 
@@ -351,7 +351,7 @@ impl Record {
             data[qname.len() + i] = b'\0';
         }
         let mut i = q_len + extranul;
-        self.inner_mut().core.l_qname = i as u8;
+        self.inner_mut().core.l_qname = i as u16;
         self.inner_mut().core.l_extranul = extranul as u8;
 
         // cigar
@@ -434,7 +434,7 @@ impl Record {
         for i in 0..=extranul {
             data[new_q_len - i - 1] = b'\0';
         }
-        self.inner_mut().core.l_qname = new_q_len as u8;
+        self.inner_mut().core.l_qname = new_q_len as u16;
         self.inner_mut().core.l_extranul = extranul as u8;
     }
 
@@ -919,7 +919,7 @@ custom_derive! {
 
 impl CigarString {
     /// Create a `CigarStringView` from this CigarString at position `pos`
-    pub fn into_view(self, pos: i32) -> CigarStringView {
+    pub fn into_view(self, pos: i64) -> CigarStringView {
         CigarStringView::new(self, pos)
     }
 
@@ -1065,17 +1065,17 @@ impl fmt::Display for CigarString {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct CigarStringView {
     inner: CigarString,
-    pos: i32,
+    pos: i64,
 }
 
 impl CigarStringView {
     /// Construct a new CigarStringView from a CigarString at a position
-    pub fn new(c: CigarString, pos: i32) -> CigarStringView {
+    pub fn new(c: CigarString, pos: i64) -> CigarStringView {
         CigarStringView { inner: c, pos }
     }
 
     /// Get (exclusive) end position of alignment.
-    pub fn end_pos(&self) -> i32 {
+    pub fn end_pos(&self) -> i64 {
         let mut pos = self.pos;
         for c in self {
             match c {
@@ -1083,7 +1083,7 @@ impl CigarStringView {
                 | Cigar::RefSkip(l)
                 | Cigar::Del(l)
                 | Cigar::Equal(l)
-                | Cigar::Diff(l) => pos += *l as i32,
+                | Cigar::Diff(l) => pos += *l as i64,
                 // these don't add to end_pos on reference
                 Cigar::Ins(_) | Cigar::SoftClip(_) | Cigar::HardClip(_) | Cigar::Pad(_) => (),
             }
