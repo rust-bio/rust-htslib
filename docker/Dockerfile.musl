@@ -36,14 +36,14 @@ ENV CC ${CROSS_COMPILE}cc
 ENV AR ${CROSS_COMPILE}ar
 ENV RANLIB ${CROSS_COMPILE}ranlib
 ENV CXX ${CROSS_COMPILE}g++
-ENV CPPFLAGS "-I/usr/local/include -I/usr/local/musl/x86_64-linux-musl/include/"
-ENV LDFLAGS "-L/usr/local/lib -static"
+ENV CPPFLAGS "-I/usr/local/musl/x86_64-linux-musl/include -I/usr/local/include"
+ENV LDFLAGS "-L/usr/local/musl/x86_64-linux-musl/lib -L/usr/local/lib"
 
 # .. and carry on with the htslib deps
 WORKDIR /root
-RUN git clone git://sourceware.org/git/bzip2.git && cd bzip2 && make -j48  CC=$CC AR=$AR RANLIB=$RANLIB bzip2 && make -j48 install
+RUN git clone git://sourceware.org/git/bzip2.git && cd bzip2 && make -j48 CC=$CC AR=$AR RANLIB=$RANLIB CFLAGS=$CFLAGS bzip2 && make -j48 install
 WORKDIR /root
-RUN wget https://tukaani.org/xz/xz-$LZMA_VERSION.tar.bz2 && tar xvfj xz-$LZMA_VERSION.tar.bz2 && cd xz-$LZMA_VERSION && ./configure --host x86_64-unknown-linux-musl && make -j48   install
+RUN wget https://tukaani.org/xz/xz-$LZMA_VERSION.tar.bz2 && tar xvfj xz-$LZMA_VERSION.tar.bz2 && cd xz-$LZMA_VERSION && ./configure --host x86_64-unknown-linux-musl && make -j48 install
 WORKDIR /root
 RUN wget https://www.zlib.net/zlib-$ZLIB_VERSION.tar.gz && tar xvfz zlib-$ZLIB_VERSION.tar.gz && cd zlib-$ZLIB_VERSION && ./configure --static && make -j48 install
 WORKDIR /root
@@ -56,7 +56,7 @@ RUN unset CC && unset AR && unset RANLIB && wget https://github.com/openssl/open
                                             ./Configure --prefix=/usr/local/openssl --openssldir=/usr/local/openssl/etc \
                                                         --with-zlib-lib=/root/zlib-$ZLIB_VERSION linux-x86_64 \
                                                         no-shared no-dso no-gost no-engine no-ssl2 no-srp no-srtp no-tests zlib \
-                                                        no-weak-ssl-ciphers && make -j48 && make -j48 install
+                                                        no-weak-ssl-ciphers && make -j48 && make CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS" -j48 install
 WORKDIR /root
 RUN wget https://curl.haxx.se/download/curl-$CURL_VERSION.tar.gz && tar xvfz curl-$CURL_VERSION.tar.gz && cd curl-$CURL_VERSION && \
         ./configure --host x86_64-linux-musl --with-ssl=/usr/local/openssl --enable-static \
@@ -68,8 +68,11 @@ RUN wget https://curl.haxx.se/download/curl-$CURL_VERSION.tar.gz && tar xvfz cur
 # To cater Rust's openssl-sys needs...
 ENV OPENSSL_DIR /usr/local/openssl
 
-# XXX: Hack to force ld stick to musl on the hts-sys/build.rs side
+# Hack to force ld stick to musl on the hts-sys/build.rs side
 RUN rm /usr/bin/ld && ln -sf /usr/local/musl/bin/x86_64-linux-musl-ld /usr/bin/ld
 RUN apt-get install -y libclang1-9
+
+# Prepare rustup and toolchain locally for easy manual intervention in this container
+RUN wget https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init && chmod +x rustup-init && ./rustup-init -y && . $HOME/.cargo/env && rustup target add x86_64-unknown-linux-musl
 
 CMD ["bash"]
