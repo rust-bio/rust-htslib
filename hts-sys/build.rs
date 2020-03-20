@@ -108,12 +108,14 @@ fn main() {
     {
         fs::copy("osx_prebuilt_bindings.rs", out.join("bindings.rs"))
             .expect("couldn't copy prebuilt bindings");
+        println!("cargo:rerun-if-changed=osx_prebuilt_bindings.rs");
     }
 
     #[cfg(all(not(feature = "bindgen"), target_os="linux"))]
     {
         fs::copy("linux_prebuilt_bindings.rs", out.join("bindings.rs"))
             .expect("couldn't copy prebuilt bindings");
+        println!("cargo:rerun-if-changed=linux_prebuilt_bindings.rs");
     }
 
     let include = out.join("include");
