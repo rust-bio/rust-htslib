@@ -73,8 +73,8 @@ fn main() {
     let tool = cfg.get_compiler();
     let (cc_path, cflags_env) = (tool.path(), tool.cflags_env());
     let cc_cflags = cflags_env.to_string_lossy().replace("-O0", "");
-    let cppflags = env::var("CPPFLAGS").unwrap_or("".to_string());
-    let ldflags= env::var("CPPFLAGS").unwrap_or("".to_string());
+    let cppflags = env::var("CPPFLAGS").unwrap_or_default();
+    let ldflags= env::var("CPPFLAGS").unwrap_or_default();
     if !Command::new("make")
         .current_dir(out.join("htslib"))
         .arg(format!("CC={}", cc_path.display()))
