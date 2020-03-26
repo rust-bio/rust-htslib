@@ -16,7 +16,7 @@ pub enum Error {
     #[snafu(display("error setting threads for writing BCF/VCF file(s)"))]
     SetThreads,
     #[snafu(display("error seeking to {}:{} in indexed BCF/VCF file", contig, start))]
-    Seek { contig: String, start: u32 },
+    Seek { contig: String, start: u64 },
     #[snafu(display("error writing record to BCF/VCF file"))]
     Write,
     #[snafu(display("tag {} undefined in BCF/VCF header", tag))]

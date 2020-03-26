@@ -20,6 +20,7 @@ use std::ffi;
 use std::path::Path;
 use std::slice;
 use std::str;
+
 use url::Url;
 
 use crate::htslib;
@@ -268,7 +269,11 @@ impl Read for Reader {
             -1 => Ok(false),
             -2 => Err(Error::TruncatedRecord),
             -4 => Err(Error::InvalidRecord),
-            _ => Ok(true),
+            _ => {
+                record.set_header(self.header().clone());
+
+                Ok(true)
+            }
         }
     }
 
@@ -458,7 +463,11 @@ impl Read for IndexedReader {
                     -1 => Ok(false),
                     -2 => Err(Error::TruncatedRecord),
                     -4 => Err(Error::InvalidRecord),
-                    _ => Ok(true),
+                    _ => {
+                        record.set_header(self.header().clone());
+
+                        Ok(true)
+                    }
                 }
             }
             None => Ok(false),
@@ -860,6 +869,10 @@ impl HeaderView {
         } else {
             Some(tid as u32)
         }
+    }
+
+    pub fn tid2name(&self, tid: u32) -> &[u8] {
+        unsafe { ffi::CStr::from_ptr(htslib::sam_hdr_tid2name(self.inner, tid as i32)).to_bytes() }
     }
 
     pub fn target_count(&self) -> u32 {
