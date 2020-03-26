@@ -76,10 +76,10 @@ fn main() {
     let cppflags = env::var("CPPFLAGS").unwrap_or_default();
     let ldflags= env::var("CPPFLAGS").unwrap_or_default();
     // This ./configure step is necessary to include the htslib plugins in the resulting libhts.a (hfile_s3.o, hfile_s3_writer.o, etc...)
-    if !Command::new("autoreconf").status().unwrap().success() &&
-       !Command::new("./configure").status().unwrap().success()
+    if !Command::new("autoreconf").current_dir(out.join("htslib")).status().unwrap().success() &&
+       !Command::new("./configure").current_dir(out.join("htslib")).status().unwrap().success()
     {
-        panic!("could not configure htslib")
+        panic!("could not configure htslib nor any of its plugins")
     }
 
     if !Command::new("make")
