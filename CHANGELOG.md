@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.28.0] - 2020-03-26
+## Changes
+- Return u64 wherever htslib has migrated to using 64 bit.
+- Implement more bio-types (Interval, Locus, Strand).
+
 ## [0.27.0] - 2020-03-17
 ## Changes
 - Updated to Htslib 1.10.2.
