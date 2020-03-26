@@ -399,7 +399,7 @@ impl IndexedReader {
         }
     }
 
-    pub fn fetch(&mut self, tid: u32, beg: u32, end: u32) -> Result<()> {
+    pub fn fetch(&mut self, tid: u32, beg: u64, end: u64) -> Result<()> {
         if let Some(itr) = self.itr {
             unsafe { htslib::hts_itr_destroy(itr) }
         }
