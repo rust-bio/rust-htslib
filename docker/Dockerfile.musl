@@ -14,9 +14,9 @@ ENV CURL_VERSION 7.69.1
 
 # Install basics to locally compile htslib dependencies
 RUN apt-get update && \
-            apt-get install -y build-essential git wget
+            apt-get install -y build-essential autoconf automake autotools-dev git wget
 
-# Remove pre-installed musl, to avoid cross-musl-make -j48  interference
+# Remove pre-installed musl, to avoid cross-musl-make interference
 RUN apt-get remove -y musl
 
 # For now we'll have to go nuts and not only build musl-1.2.0 from scratch but all the other libs too...

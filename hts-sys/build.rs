@@ -75,6 +75,13 @@ fn main() {
     let cc_cflags = cflags_env.to_string_lossy().replace("-O0", "");
     let cppflags = env::var("CPPFLAGS").unwrap_or_default();
     let ldflags= env::var("CPPFLAGS").unwrap_or_default();
+    // This ./configure step is necessary to include the htslib plugins in the resulting libhts.a (hfile_s3.o, hfile_s3_writer.o, etc...)
+    if !Command::new("autoreconf").status().unwrap().success() &&
+       !Command::new("./configure").status().unwrap().success()
+    {
+        panic!("could not configure htslib")
+    }
+
     if !Command::new("make")
         .current_dir(out.join("htslib"))
         .arg(format!("CC={}", cc_path.display()))
