@@ -75,7 +75,10 @@ fn main() {
     let ldflags= env::var("CPPFLAGS").unwrap_or_default();
     // This ./configure step is necessary to include the htslib plugins in the resulting libhts.a (hfile_s3.o, hfile_s3_writer.o, etc...)
     if !Command::new("autoreconf").current_dir(out.join("htslib")).status().unwrap().success() &&
-       !Command::new("./configure").current_dir(out.join("htslib")).status().unwrap().success()
+       !Command::new("./configure")
+        .current_dir(out.join("htslib"))
+        .arg(format!("--host=x86_64-unknown-linux-musl"))
+        .status().unwrap().success()
     {
         panic!("could not configure htslib nor any of its plugins")
     }
@@ -102,7 +105,7 @@ fn main() {
         .generate_comments(false)
         .blacklist_function("strtold")
         .blacklist_type("max_align_t")
-        .clang_arg("-I/usr/local/musl/x86_64-linux-musl/include")
+        //.clang_arg("-I/usr/local/musl/x86_64-linux-musl/include")
         //.clang_arg(&cppflags)
         .generate()
         .expect("Unable to generate bindings.")
