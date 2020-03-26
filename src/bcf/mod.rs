@@ -746,7 +746,7 @@ mod tests {
             assert_eq!(record.sample_count(), 1);
 
             assert_eq!(record.rid().expect("Error reading rid."), 0);
-            assert_eq!(record.pos(), 10021 + i as u32);
+            assert_eq!(record.pos(), 10021 + i as i64);
             assert_eq!(record.qual(), 0f32);
             assert_eq!(
                 record
