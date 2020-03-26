@@ -2,13 +2,17 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.29.0] - 2020-03-26
+### Changes
+- Migrate buffer intervals to u64. 
+
 ## [0.28.0] - 2020-03-26
-## Changes
+### Changes
 - Return u64 wherever htslib has migrated to using 64 bit.
 - Implement more bio-types (Interval, Locus, Strand).
 
 ## [0.27.0] - 2020-03-17
-## Changes
+### Changes
 - Updated to Htslib 1.10.2.
 - bam::Record.set() will panic if seq.len() != qual.len(). Previously, mismatched length would cause
   uninitialized memory to be written into the BAM file.
@@ -21,15 +25,15 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Various minor improvements.
 
 ## [0.26.1] - 2019-12-03
-## Changes
+### Changes
 - Various bug fixes in CIGAR string handling, INFO tag reading and FORMAT tag reading.
 
 ## [0.26.0] - 2019-09-27
-## Changes
+### Changes
 - Allow caching of CIGAR in bam::RecordBuffer.
 
 ## [0.25.0] - 2019-09-27
-## Changes
+### Changes
 - Migrated error handling to the snafu crate: https://docs.rs/snafu.
 - Cleaned up and simplified API (including breaking changes).
 - Allow writing SAM files from the bam::Writer.
