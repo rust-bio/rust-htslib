@@ -1,0 +1,11 @@
+FROM alpine:edge
+
+RUN apk add --update wget git g++ build-base automake autoconf openssl openssl-dev curl-dev bzip2-dev xz-dev zlib-dev rustup && \
+    rm -rf /var/cache/apk/*
+
+WORKDIR /root
+#RUN git clone --recursive https://github.com/brainstorm/rust-htslib
+RUN rustup-init -y
+
+ENV PATH "/root/.cargo/bin:$PATH"
+RUN rustup target add x86_64-unknown-linux-musl
