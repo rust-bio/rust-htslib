@@ -889,12 +889,12 @@ impl HeaderView {
             .collect()
     }
 
-    pub fn target_len(&self, tid: u32) -> Option<u32> {
+    pub fn target_len(&self, tid: u32) -> Option<u64> {
         let inner = unsafe { *self.inner };
         if (tid as i32) < inner.n_targets {
             let l: &[u32] =
                 unsafe { slice::from_raw_parts(inner.target_len, inner.n_targets as usize) };
-            Some(l[tid as usize])
+            Some(l[tid as usize] as u64)
         } else {
             None
         }
