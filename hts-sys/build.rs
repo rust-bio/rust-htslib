@@ -71,6 +71,7 @@ fn main() {
     let tool = cfg.get_compiler();
     let (cc_path, cflags_env) = (tool.path(), tool.cflags_env());
     let cc_cflags = cflags_env.to_string_lossy().replace("-O0", "");
+    // Some other flags which can be critical for cross-compiling to targets like MUSL
     let cppflags = env::var("CPPFLAGS").unwrap_or_default();
     let ldflags= env::var("LDFLAGS").unwrap_or_default();
     let host = env::var("HOST").unwrap_or_default();
@@ -87,7 +88,7 @@ fn main() {
         .current_dir(out.join("htslib"))
         .arg(format!("CC={}", cc_path.display()))
         .arg(format!("CFLAGS={}", cc_cflags))
-        .arg(format!("CPPFLAGS=\"{}\"", &cppflags))
+        //.arg(format!("CPPFLAGS=\"{}\"", &cppflags))
         .arg(format!("LDFLAGS=\"{}\"", &ldflags))
         .arg("lib-static")
         .arg("-B")
