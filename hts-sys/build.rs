@@ -73,10 +73,11 @@ fn main() {
     let cc_cflags = cflags_env.to_string_lossy().replace("-O0", "");
     let cppflags = env::var("CPPFLAGS").unwrap_or_default();
     let ldflags= env::var("LDFLAGS").unwrap_or_default();
+    let host = env::var("HOST").unwrap_or_default();
     // This ./configure step is necessary to include the htslib plugins in the resulting libhts.a (hfile_s3.o, hfile_s3_writer.o, etc...)
     if !Command::new("autoreconf").current_dir(out.join("htslib")).status().unwrap().success() &&
        !Command::new("./configure").current_dir(out.join("htslib"))
-        .arg(format!("--host=x86_64-unknown-linux-musl"))
+        .arg(format!("--host={}", &host))
         .status().unwrap().success()
     {
         panic!("could not configure htslib nor any of its plugins")
