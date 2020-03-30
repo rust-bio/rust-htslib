@@ -73,7 +73,8 @@ pub struct Reader {
 }
 
 unsafe impl Send for Reader {}
-
+/// # Safety
+///
 /// Implementation for `Reader::set_threads()` and `Writer::set_threads`.
 pub unsafe fn set_threads(hts_file: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
     assert!(n_threads > 0, "n_threads must be > 0");

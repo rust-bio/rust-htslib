@@ -41,6 +41,8 @@ pub unsafe fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Re
     }
 }
 
+/// # Safety
+/// 
 /// Set the reference FAI index path in a `htslib::htsFile` struct for reading CRAM format.
 pub unsafe fn set_fai_filename<P: AsRef<Path>>(
     htsfile: *mut htslib::htsFile,
