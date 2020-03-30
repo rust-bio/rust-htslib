@@ -72,7 +72,7 @@ fn main() {
     let (cc_path, cflags_env) = (tool.path(), tool.cflags_env());
     let cc_cflags = cflags_env.to_string_lossy().replace("-O0", "");
     // Some other flags which can be critical for cross-compiling to targets like MUSL
-    let cppflags = env::var("CPPFLAGS").unwrap_or_default();
+    //let cppflags = env::var("CPPFLAGS").unwrap_or_default();
     let ldflags= env::var("LDFLAGS").unwrap_or_default();
     let host = env::var("HOST").unwrap_or_default();
     // This ./configure step is necessary to include the htslib plugins in the resulting libhts.a (hfile_s3.o, hfile_s3_writer.o, etc...)
