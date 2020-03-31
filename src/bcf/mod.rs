@@ -167,7 +167,7 @@ pub struct IndexedReader {
     header: Rc<HeaderView>,
 
     /// The position of the previous fetch, if any.
-    current_region: Option<(u32, u32, u32)>,
+    current_region: Option<(u32, u64, u64)>,
 }
 
 unsafe impl Send for IndexedReader {}
@@ -226,7 +226,7 @@ impl IndexedReader {
     ///           contig name to ID.
     /// * `start` - `0`-based start coordinate of region on reference.
     /// * `end` - `0`-based end coordinate of region on reference.
-    pub fn fetch(&mut self, rid: u32, start: u32, end: u32) -> Result<()> {
+    pub fn fetch(&mut self, rid: u32, start: u64, end: u64) -> Result<()> {
         let contig = self.header.rid2name(rid).unwrap();
         let contig = ffi::CString::new(contig).unwrap();
         if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i64) } != 0 {
@@ -270,7 +270,7 @@ impl Read for IndexedReader {
                     Some((rid, _start, end)) => {
                         if record.rid().is_some()
                             && rid == record.rid().unwrap()
-                            && record.pos() <= end
+                            && record.pos() as u64 <= end
                         {
                             Ok(true)
                         } else {
@@ -350,7 +350,7 @@ pub mod synced {
         headers: Vec<Rc<HeaderView>>,
 
         /// The position of the previous fetch, if any.
-        current_region: Option<(u32, u32, u32)>,
+        current_region: Option<(u32, u64, u64)>,
     }
 
     // TODO: add interface for setting threads, ensure that the pool is freed properly
@@ -501,7 +501,7 @@ pub mod synced {
         ///           contig name to ID.
         /// * `start` - `0`-based start coordinate of region on reference.
         /// * `end` - `0`-based end coordinate of region on reference.
-        pub fn fetch(&mut self, rid: u32, start: u32, end: u32) -> Result<()> {
+        pub fn fetch(&mut self, rid: u32, start: u64, end: u64) -> Result<()> {
             let contig = {
                 let contig = self.header(0).rid2name(rid).unwrap(); //.clone();
                 ffi::CString::new(contig).unwrap()
@@ -747,7 +747,7 @@ mod tests {
             assert_eq!(record.sample_count(), 1);
 
             assert_eq!(record.rid().expect("Error reading rid."), 0);
-            assert_eq!(record.pos(), 10021 + i as u32);
+            assert_eq!(record.pos(), 10021 + i as i64);
             assert_eq!(record.qual(), 0f32);
             assert_eq!(
                 record
