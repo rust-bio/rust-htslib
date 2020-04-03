@@ -8,6 +8,7 @@ use std::ffi;
 use std::fmt;
 use std::mem::{size_of, MaybeUninit};
 use std::ops;
+use std::rc::Rc;
 use std::slice;
 use std::str;
 use std::str::FromStr;
@@ -48,7 +49,7 @@ pub struct Record {
     pub inner: htslib::bam1_t,
     own: bool,
     cigar: Option<CigarStringView>,
-    header: Option<HeaderView>,
+    header: Option<Rc<HeaderView>>,
 }
 
 unsafe impl Send for Record {}
@@ -137,7 +138,7 @@ impl Record {
     }
 
     // Create a BAM record from a line SAM text. SAM slice need not be 0-terminated.
-    pub fn from_sam(header_view: &mut HeaderView, sam: &[u8]) -> Result<Record> {
+    pub fn from_sam(header_view: &HeaderView, sam: &[u8]) -> Result<Record> {
         let mut record = Self::new();
 
         let mut sam_copy = Vec::with_capacity(sam.len() + 1);
@@ -153,7 +154,7 @@ impl Record {
         let succ = unsafe {
             htslib::sam_parse1(
                 &mut sam_string,
-                header_view.inner_ptr_mut(),
+                header_view.inner_ptr() as *mut htslib::bam_hdr_t,
                 record.inner_ptr_mut(),
             )
         };
@@ -167,7 +168,7 @@ impl Record {
         }
     }
 
-    pub fn set_header(&mut self, header: HeaderView) {
+    pub fn set_header(&mut self, header: Rc<HeaderView>) {
         self.header = Some(header);
     }
 

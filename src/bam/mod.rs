@@ -18,6 +18,7 @@ pub mod record_serde;
 
 use std::ffi;
 use std::path::Path;
+use std::rc::Rc;
 use std::slice;
 use std::str;
 
@@ -93,9 +94,6 @@ pub trait Read: Sized {
     /// Return the header.
     fn header(&self) -> &HeaderView;
 
-    /// Return the header, mutable.
-    fn header_mut(&mut self) -> &mut HeaderView;
-
     /// Seek to the given virtual offset in the file
     fn seek(&mut self, offset: i64) -> Result<()> {
         let htsfile = unsafe { self.htsfile().as_ref() }.expect("bug: null pointer to htsFile");
@@ -158,7 +156,7 @@ fn path_as_bytes<'a, P: 'a + AsRef<Path>>(path: P, must_exist: bool) -> Result<V
 #[derive(Debug)]
 pub struct Reader {
     htsfile: *mut htslib::htsFile,
-    header: HeaderView,
+    header: Rc<HeaderView>,
 }
 
 unsafe impl Send for Reader {}
@@ -194,7 +192,7 @@ impl Reader {
         let header = unsafe { htslib::sam_hdr_read(htsfile) };
         Ok(Reader {
             htsfile,
-            header: HeaderView::new(header),
+            header: Rc::new(HeaderView::new(header)),
         })
     }
 
@@ -203,7 +201,13 @@ impl Reader {
         record: *mut htslib::bam1_t,
     ) -> i32 {
         let mut _self = unsafe { (data as *mut Self).as_mut().unwrap() };
-        unsafe { htslib::sam_read1(_self.htsfile(), _self.header_mut().inner_mut(), record) }
+        unsafe {
+            htslib::sam_read1(
+                _self.htsfile(),
+                _self.header().inner_ptr() as *mut hts_sys::sam_hdr_t,
+                record,
+            )
+        }
     }
 
     /// Iterator over the records between the (optional) virtual offsets `start` and `end`
@@ -262,7 +266,7 @@ impl Read for Reader {
         match unsafe {
             htslib::sam_read1(
                 self.htsfile,
-                self.header.inner_mut(),
+                self.header().inner_ptr() as *mut hts_sys::sam_hdr_t,
                 record.inner_ptr_mut(),
             )
         } {
@@ -270,7 +274,7 @@ impl Read for Reader {
             -2 => Err(Error::TruncatedRecord),
             -4 => Err(Error::InvalidRecord),
             _ => {
-                record.set_header(self.header().clone());
+                record.set_header(Rc::clone(&self.header));
 
                 Ok(true)
             }
@@ -303,10 +307,6 @@ impl Read for Reader {
     fn header(&self) -> &HeaderView {
         &self.header
     }
-
-    fn header_mut(&mut self) -> &mut HeaderView {
-        &mut self.header
-    }
 }
 
 impl Drop for Reader {
@@ -320,7 +320,7 @@ impl Drop for Reader {
 #[derive(Debug)]
 pub struct IndexedReader {
     htsfile: *mut htslib::htsFile,
-    header: HeaderView,
+    header: Rc<HeaderView>,
     idx: *mut htslib::hts_idx_t,
     itr: Option<*mut htslib::hts_itr_t>,
 }
@@ -365,7 +365,7 @@ impl IndexedReader {
         } else {
             Ok(IndexedReader {
                 htsfile,
-                header: HeaderView::new(header),
+                header: Rc::new(HeaderView::new(header)),
                 idx,
                 itr: None,
             })
@@ -392,7 +392,7 @@ impl IndexedReader {
         } else {
             Ok(IndexedReader {
                 htsfile,
-                header: HeaderView::new(header),
+                header: Rc::new(HeaderView::new(header)),
                 idx,
                 itr: None,
             })
@@ -424,7 +424,13 @@ impl IndexedReader {
         }
         let rstr = ffi::CString::new(region).unwrap();
         let rptr = rstr.as_ptr();
-        let itr = unsafe { htslib::sam_itr_querys(self.idx, self.header.inner_mut(), rptr) };
+        let itr = unsafe {
+            htslib::sam_itr_querys(
+                self.idx,
+                self.header().inner_ptr() as *mut hts_sys::sam_hdr_t,
+                rptr,
+            )
+        };
         if itr.is_null() {
             self.itr = None;
             Err(Error::Fetch)
@@ -441,7 +447,13 @@ impl IndexedReader {
         let _self = unsafe { (data as *mut Self).as_mut().unwrap() };
         match _self.itr {
             Some(itr) => itr_next(_self.htsfile, itr, record), // read fetched region
-            None => unsafe { htslib::sam_read1(_self.htsfile, _self.header.inner_mut(), record) }, // ordinary reading
+            None => unsafe {
+                htslib::sam_read1(
+                    _self.htsfile,
+                    _self.header().inner_ptr() as *mut hts_sys::sam_hdr_t,
+                    record,
+                )
+            }, // ordinary reading
         }
     }
 
@@ -464,7 +476,7 @@ impl Read for IndexedReader {
                     -2 => Err(Error::TruncatedRecord),
                     -4 => Err(Error::InvalidRecord),
                     _ => {
-                        record.set_header(self.header().clone());
+                        record.set_header(Rc::clone(&self.header));
 
                         Ok(true)
                     }
@@ -499,10 +511,6 @@ impl Read for IndexedReader {
 
     fn header(&self) -> &HeaderView {
         &self.header
-    }
-
-    fn header_mut(&mut self) -> &mut HeaderView {
-        &mut self.header
     }
 }
 
@@ -539,7 +547,7 @@ impl Format {
 #[derive(Debug)]
 pub struct Writer {
     f: *mut htslib::htsFile,
-    header: HeaderView,
+    header: Rc<HeaderView>,
 }
 
 unsafe impl Send for Writer {}
@@ -615,7 +623,7 @@ impl Writer {
 
         Ok(Writer {
             f,
-            header: HeaderView::new(header_record),
+            header: Rc::new(HeaderView::new(header_record)),
         })
     }
 
@@ -1544,7 +1552,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let sam_recs: Vec<Record> = sam
             .split(|x| *x == b'\n')
             .filter(|x| x.len() > 0 && x[0] != b'@')
-            .map(|line| Record::from_sam(rdr.header_mut(), line).unwrap())
+            .map(|line| Record::from_sam(rdr.header(), line).unwrap())
             .collect();
 
         for (b1, s1) in bam_recs.iter().zip(sam_recs.iter()) {

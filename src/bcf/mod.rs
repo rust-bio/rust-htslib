@@ -123,7 +123,7 @@ impl Read for Reader {
                     // Always unpack record.
                     htslib::bcf_unpack(record.inner_mut(), htslib::BCF_UN_ALL as i32);
                 }
-                record.set_header(self.header.clone());
+                record.set_header(Rc::clone(&self.header));
                 Ok(true)
             }
             -1 => Ok(false),
@@ -145,7 +145,7 @@ impl Read for Reader {
 
     /// Return empty record.  Can be reused multiple times.
     fn empty_record(&self) -> Record {
-        Record::new(self.header.clone())
+        Record::new(Rc::clone(&self.header))
     }
 }
 
@@ -263,7 +263,7 @@ impl Read for IndexedReader {
                     );
                 }
 
-                record.set_header(self.header.clone());
+                record.set_header(Rc::clone(&self.header));
 
                 match self.current_region {
                     Some((rid, _start, end)) => {
@@ -302,7 +302,7 @@ impl Read for IndexedReader {
     }
 
     fn empty_record(&self) -> Record {
-        Record::new(self.header.clone())
+        Record::new(Rc::clone(&self.header))
     }
 }
 
@@ -618,7 +618,7 @@ impl Writer {
     ///
     /// This record can then be reused multiple times.
     pub fn empty_record(&self) -> Record {
-        record::Record::new(self.header.clone())
+        record::Record::new(Rc::clone(&self.header))
     }
 
     /// Translate record to header of this writer.
@@ -630,7 +630,7 @@ impl Writer {
         unsafe {
             htslib::bcf_translate(self.header.inner, record.header().inner, record.inner);
         }
-        record.set_header(self.header.clone());
+        record.set_header(Rc::clone(&self.header));
     }
 
     /// Subset samples of record to match header of this writer.
