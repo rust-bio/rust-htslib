@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.30.0] - 2020-04-03
+### Changes
+- Removed `fn header_mut()` from `bam::Read` trait.
+- Fixed a major performance regression when reading bam files (issue #195).
+
 ## [0.29.0] - 2020-03-26
 ### Changes
 - Migrate buffer intervals to u64. 
