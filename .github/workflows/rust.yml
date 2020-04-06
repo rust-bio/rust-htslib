@@ -76,12 +76,12 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path-to-lcov: ./lcov.info
 
-#      - name: Test musl build without default features
-#        uses: actions-rs/cargo@v1
-#        with:
-#          use-cross: true
-#          command: build
-#          args: --target x86_64-unknown-linux-musl --no-default-features
+      - name: Test musl build without default features
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --target x86_64-unknown-linux-musl --no-default-features
 
       - name: Test musl build with all features
         uses: actions-rs/cargo@v1
