@@ -13,6 +13,7 @@ use std::rc::Rc;
 use std::slice;
 use std::str;
 
+use bio_types::genome;
 use ieee754::Ieee754;
 use itertools::Itertools;
 
@@ -160,8 +161,8 @@ impl Record {
     }
 
     // Return 0-based position.
-    pub fn pos(&self) -> u32 {
-        self.inner().pos as u32
+    pub fn pos(&self) -> i64 {
+        self.inner().pos
     }
 
     /// Set 0-based position.
@@ -619,6 +620,21 @@ impl Record {
             }
         }
         "".to_owned()
+    }
+}
+
+impl genome::AbstractLocus for Record {
+    fn contig(&self) -> &str {
+        str::from_utf8(
+            self.header()
+                .rid2name(self.rid().expect("rid not set"))
+                .expect("unable to find rid in header"),
+        )
+        .expect("unable to interpret contig name as UTF-8")
+    }
+
+    fn pos(&self) -> u64 {
+        self.pos() as u64
     }
 }
 
