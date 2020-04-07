@@ -18,15 +18,14 @@ tag-message = "Version {{version}} of Rust-HTSlib."
 
 [dependencies]
 libc = "0.2.68"
-libz-sys = { version = "1.0.25", optional = true }
+libz-sys = { version = "1.0.25", optional = false }
 bzip2-sys = { version = "0.1", optional = true }
 lzma-sys = { version = "0.1", optional = true }
 curl-sys = { version = "0.4.27", optional = true }
 openssl-sys = { version = "0.9.54", optional = true }
 
 [features]
-default = ["bzip2", "lzma", "curl", "libz"]
-libz = ["libz-sys"]
+default = ["bzip2", "lzma"]
 bzip2 = ["bzip2-sys"]
 lzma = ["lzma-sys"]
 openssl = ["openssl-sys"]
