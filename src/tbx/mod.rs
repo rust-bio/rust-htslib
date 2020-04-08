@@ -117,11 +117,11 @@ pub struct Reader {
     itr: Option<*mut htslib::hts_itr_t>,
 
     /// The currently fetch region's tid.
-    tid: i32,
+    tid: i64,
     /// The currently fetch region's 0-based begin pos.
-    start: i32,
+    start: i64,
     /// The currently fetch region's 0-based end pos.
-    end: i32,
+    end: i64,
 }
 
 unsafe impl Send for Reader {}
@@ -196,7 +196,7 @@ impl Reader {
     }
 
     /// Get sequence/target ID from sequence name.
-    pub fn tid(&self, name: &str) -> Result<u32> {
+    pub fn tid(&self, name: &str) -> Result<u64> {
         let name_cstr = ffi::CString::new(name.as_bytes()).unwrap();
         let res = unsafe { htslib::tbx_name2id(self.tbx, name_cstr.as_ptr()) };
         if res < 0 {
@@ -204,15 +204,15 @@ impl Reader {
                 sequence: name.to_owned(),
             })
         } else {
-            Ok(res as u32)
+            Ok(res as u64)
         }
     }
 
     /// Fetch region given by numeric sequence number and 0-based begin and end position.
-    pub fn fetch(&mut self, tid: u32, start: u32, end: u32) -> Result<()> {
-        self.tid = tid as i32;
-        self.start = start as i32;
-        self.end = end as i32;
+    pub fn fetch(&mut self, tid: u64, start: u64, end: u64) -> Result<()> {
+        self.tid = tid as i64;
+        self.start = start as i64;
+        self.end = end as i64;
 
         if let Some(itr) = self.itr {
             unsafe {
@@ -223,8 +223,8 @@ impl Reader {
             htslib::hts_itr_query(
                 (*self.tbx).idx,
                 tid as i32,
-                start as i32,
-                end as i32,
+                start as i64,
+                end as i64,
                 Some(htslib::tbx_readrec),
             )
         };
@@ -253,7 +253,7 @@ impl Reader {
             }
         }
         unsafe {
-            libc::free(seqs as (*mut libc::c_void));
+            libc::free(seqs as *mut libc::c_void);
         };
 
         result
@@ -278,7 +278,7 @@ impl Reader {
 }
 
 /// Return whether the two given genomic intervals overlap.
-fn overlap(tid1: i32, begin1: i32, end1: i32, tid2: i32, begin2: i32, end2: i32) -> bool {
+fn overlap(tid1: i64, begin1: i64, end1: i64, tid2: i64, begin2: i64, end2: i64) -> bool {
     (tid1 == tid2) && (begin1 < end2) && (begin2 < end1)
 }
 
@@ -293,7 +293,7 @@ impl Read for Reader {
                             htslib::hts_get_bgzfp(self.hts_file),
                             itr,
                             //mem::transmute(&mut self.buf),
-                            &mut self.buf as *mut htslib::__kstring_t as *mut libc::c_void,
+                            &mut self.buf as *mut htslib::kstring_t as *mut libc::c_void,
                             //mem::transmute(self.tbx),
                             self.tbx as *mut libc::c_void,
                         )
@@ -310,7 +310,8 @@ impl Read for Reader {
                     // returns `< 0`).
                     let (tid, start, end) =
                         unsafe { ((*itr).curr_tid, (*itr).curr_beg, (*itr).curr_end) };
-                    if overlap(self.tid, self.start, self.end, tid, start, end) {
+                    // XXX: Careful with this tid conversion!!!
+                    if overlap(self.tid, self.start, self.end, tid as i64, start, end) {
                         *record =
                             unsafe { Vec::from(ffi::CStr::from_ptr(self.buf.s).to_str().unwrap()) };
                         return Ok(true);
@@ -366,16 +367,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn bed_header() {
+    fn bed_basic() {
         let reader = Reader::from_path("test/test_bed3.bed.gz")
             .ok()
             .expect("Error opening file.");
-
-        // Check header lines.
-        assert_eq!(
-            reader.header,
-            vec![String::from("#foo"), String::from("#bar")]
-        );
 
         // Check sequence name vector.
         assert_eq!(

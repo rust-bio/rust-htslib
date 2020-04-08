@@ -13,6 +13,7 @@ use std::rc::Rc;
 use std::slice;
 use std::str;
 
+use bio_types::genome;
 use ieee754::Ieee754;
 use itertools::Itertools;
 
@@ -160,12 +161,12 @@ impl Record {
     }
 
     // Return 0-based position.
-    pub fn pos(&self) -> u32 {
-        self.inner().pos as u32
+    pub fn pos(&self) -> i64 {
+        self.inner().pos
     }
 
     /// Set 0-based position.
-    pub fn set_pos(&mut self, pos: i32) {
+    pub fn set_pos(&mut self, pos: i64) {
         self.inner_mut().pos = pos;
     }
 
@@ -589,7 +590,7 @@ impl Record {
     }
 
     pub fn remove_alleles(&mut self, remove: &[bool]) -> Result<()> {
-        let rm_set = unsafe { htslib::kbs_init(remove.len()) };
+        let rm_set = unsafe { htslib::kbs_init(remove.len() as u64) };
 
         for (i, &r) in remove.iter().enumerate() {
             if r {
@@ -619,6 +620,21 @@ impl Record {
             }
         }
         "".to_owned()
+    }
+}
+
+impl genome::AbstractLocus for Record {
+    fn contig(&self) -> &str {
+        str::from_utf8(
+            self.header()
+                .rid2name(self.rid().expect("rid not set"))
+                .expect("unable to find rid in header"),
+        )
+        .expect("unable to interpret contig name as UTF-8")
+    }
+
+    fn pos(&self) -> u64 {
+        self.pos() as u64
     }
 }
 
@@ -670,13 +686,13 @@ custom_derive! {
 impl fmt::Display for Genotype {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let &Genotype(ref alleles) = self;
-        r#try!(write!(f, "{}", alleles[0]));
+        write!(f, "{}", alleles[0])?;
         for a in &alleles[1..] {
             let sep = match a {
                 GenotypeAllele::Phased(_) | GenotypeAllele::PhasedMissing => '|',
                 GenotypeAllele::Unphased(_) | GenotypeAllele::UnphasedMissing => '/',
             };
-            r#try!(write!(f, "{}{}", sep, a));
+            write!(f, "{}{}", sep, a)?;
         }
         Ok(())
     }
@@ -757,8 +773,9 @@ impl<'a> Info<'a> {
     /// Import `bcf::record::Numeric` for missing value handling.
     pub fn integer(&mut self) -> Result<Option<&'a [i32]>> {
         self.data(htslib::BCF_HT_INT).map(|data| {
-            data.map(|(n, _)| {
-                trim_slice(unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) })
+            data.map(|(n, ret)| {
+                let values = unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) };
+                &values[..ret as usize]
             })
         })
     }
@@ -768,8 +785,9 @@ impl<'a> Info<'a> {
     /// Import `bcf::record::Numeric` for missing value handling.
     pub fn float(&mut self) -> Result<Option<&'a [f32]>> {
         self.data(htslib::BCF_HT_REAL).map(|data| {
-            data.map(|(n, _)| {
-                trim_slice(unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) })
+            data.map(|(n, ret)| {
+                let values = unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) };
+                &values[..ret as usize]
             })
         })
     }
