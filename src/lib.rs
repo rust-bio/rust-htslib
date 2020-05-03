@@ -91,7 +91,7 @@ extern crate snafu;
 
 pub mod bam;
 pub mod bcf;
-pub mod htslib;
 pub mod faidx;
+pub mod htslib;
 pub mod tbx;
 mod utils;

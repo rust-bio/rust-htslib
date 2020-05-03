@@ -11,4 +11,3 @@ pub enum Error {
     #[snafu(display("invalid (non-unique) characters in path"))]
     NonUnicodePath,
 }
- 
