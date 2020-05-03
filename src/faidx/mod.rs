@@ -86,3 +86,49 @@ impl Reader {
         cseq.to_str().unwrap().to_owned()
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	fn open_reader() -> Reader {
+		Reader::from_path(format!("{}/test/test_cram.fa", env!("CARGO_MANIFEST_DIR"))).ok().unwrap()
+	}
+
+	#[test]
+	fn faidx_open() {
+	}
+
+	#[test]
+	fn faidx_read_chr_first_base() {
+		let r = open_reader();
+		let seq = r.fetch_seq("chr1", 0 , 0);
+		assert_eq!(seq.len(), 1);
+		assert_eq!(seq, "G");
+	}
+
+	#[test]
+	fn faidx_read_chr_start() {
+		let r = open_reader();
+		let seq = r.fetch_seq("chr1", 0 , 9);
+		assert_eq!(seq.len(), 10);
+		assert_eq!(seq, "GGGCACAGCC");
+	}
+
+	#[test]
+	fn faidx_read_chr_between() {
+		let r = open_reader();
+		let seq = r.fetch_seq("chr1", 4 , 14);
+		assert_eq!(seq.len(), 11);
+		assert_eq!(seq, "ACAGCCTCACC");
+	}
+
+	#[test]
+	fn faidx_read_chr_end() {
+		let r = open_reader();
+		let seq = r.fetch_seq("chr1", 110, 120);
+		assert_eq!(seq.len(), 10);
+		assert_eq!(seq, "CCCCTCCGTG");
+	}
+}
