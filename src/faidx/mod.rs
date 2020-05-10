@@ -131,4 +131,16 @@ mod tests {
 		assert_eq!(seq.len(), 10);
 		assert_eq!(seq, "CCCCTCCGTG");
 	}
+
+	#[test]
+	fn faidx_read_twice() {
+		let r = open_reader();
+		let seq = r.fetch_seq("chr1", 110, 120);
+		assert_eq!(seq.len(), 10);
+		assert_eq!(seq, "CCCCTCCGTG");
+
+		let seq = r.fetch_seq("chr1", 5, 9);
+		assert_eq!(seq.len(), 5);
+		assert_eq!(seq, "CAGCC");
+	}
 }
