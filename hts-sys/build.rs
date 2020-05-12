@@ -70,10 +70,10 @@ fn main() {
 
     let tool = cfg.get_compiler();
     let (cc_path, cflags_env) = (tool.path(), tool.cflags_env());
-    let cc_cflags = cflags_env.to_string_lossy().replace("-O0", "");
+    let _cc_cflags = cflags_env.to_string_lossy().replace("-O0", "");
     // Some other flags which can be critical for cross-compiling to targets like MUSL
     //let cppflags = env::var("CPPFLAGS").unwrap_or_default();
-    let ldflags= env::var("LDFLAGS").unwrap_or_default();
+    let _ldflags= env::var("LDFLAGS").unwrap_or_default();
     let host = env::var("HOST").unwrap_or_default();
     // This ./configure step is necessary to include the htslib plugins in the resulting libhts.a (hfile_s3.o, hfile_s3_writer.o, etc...)
     if !Command::new("autoreconf").current_dir(out.join("htslib")).status().unwrap().success() &&
@@ -87,9 +87,9 @@ fn main() {
     if !Command::new("make")
         .current_dir(out.join("htslib"))
         .arg(format!("CC={}", cc_path.display()))
-        .arg(format!("CFLAGS={}", cc_cflags))
+        //.arg(format!("CFLAGS={}", cc_cflags))
         //.arg(format!("CPPFLAGS=\"{}\"", &cppflags))
-        .arg(format!("LDFLAGS=\"{}\"", &ldflags))
+        //.arg(format!("LDFLAGS=\"{}\"", &ldflags))
         .arg("lib-static")
         .arg("-B")
         .status()
@@ -106,7 +106,6 @@ fn main() {
         .generate_comments(false)
         .blacklist_function("strtold")
         .blacklist_type("max_align_t")
-        .clang_arg("-I/usr/local/musl/x86_64-linux-musl/include")
         .generate()
         .expect("Unable to generate bindings.")
         .write_to_file(out.join("bindings.rs"))
