@@ -17,11 +17,13 @@ pre-release-commit-message = "release version {{version}}"
 tag-message = "Version {{version}} of Rust-HTSlib."
 
 [dependencies]
-libc = "0.2.68"
-libz-sys = { version = "1.0.25", optional = false, features=["static"] }
-bzip2-sys = { version = "0.1", optional = true }
-lzma-sys = { version = "0.1", optional = true }
-curl-sys = { version = "0.4.27", optional = true }
+#libc = "0.2.68"
+libz-sys = { version = "1.0.25", features = ["static"] }
+# https://github.com/alexcrichton/bzip2-rs/issues/56
+bzip2-sys = { version = "0.1.8", optional = true }
+# https://github.com/alexcrichton/xz2-rs/issues/62
+lzma-sys = { version = "0.1.15", optional = true }
+curl-sys = { version = "0.4.27", optional = true, features = ["static-curl", "static-ssl"] }
 openssl-sys = { version = "0.9.54", optional = true }
 
 [features]

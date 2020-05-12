@@ -123,6 +123,7 @@ fn main() {
     println!("cargo:include={}", include.display());
     println!("cargo:libdir={}", out.display());
     println!("cargo:rustc-link-lib=static=hts");
+    println!("cargo:rustc-link-lib=static=z");
     println!("cargo:rerun-if-changed=wrapper.c");
     println!("cargo:rerun-if-changed=wrapper.h");
     for htsfile in glob("htslib/**/*").unwrap() {
