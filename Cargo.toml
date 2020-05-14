@@ -17,7 +17,7 @@ tag-message = "Version {{version}} of Rust-HTSlib."
 
 [dependencies]
 libc = "0.2"
-itertools = "0.8"
+itertools = "0.9.0"
 newtype_derive = "0.1"
 custom_derive = "0.1"
 url = "2.1"
@@ -39,6 +39,7 @@ lzma = ["hts-sys/lzma"]
 curl = ["hts-sys/curl"]
 openssl = ["hts-sys/openssl"]
 serde = ["serde_base", "serde_bytes"]
+static = []
 
 [dev-dependencies]
 tempdir = "0.3"

@@ -31,10 +31,18 @@ fn sed_htslib_makefile(out: &PathBuf, patterns: &[&str], feature: &str) {
 fn main() {
     let out = PathBuf::from(env::var("OUT_DIR").unwrap());
     let mut cfg = cc::Build::new();
-    cfg.warnings(false).static_flag(true).pic(true);
+    let want_static = cfg!(feature = "static") || env::var("HTS_STATIC").is_ok();
+
+    if want_static {
+        cfg.warnings(true).static_flag(true).pic(true);
+    } else {
+        cfg.warnings(true).static_flag(false).pic(true); 
+    }
 
     if let Ok(z_inc) = env::var("DEP_Z_INCLUDE") {
-        cfg.include(z_inc);
+        if !want_static {
+            cfg.include(z_inc);
+        }
     }
 
     if !out.join("htslib").exists() {
@@ -53,7 +61,7 @@ fn main() {
     }
 
     let use_lzma = env::var("CARGO_FEATURE_LZMA").is_ok();
-    if !use_lzma {
+    if !use_lzma && want_static {
         let lzma_patterns = vec!["s/ -llzma//", "/#define HAVE_LIBLZMA/d"];
         sed_htslib_makefile(&out, &lzma_patterns, "lzma");
     } else if let Ok(inc) = env::var("DEP_LZMA_INCLUDE").map(PathBuf::from) {
@@ -124,6 +132,7 @@ fn main() {
     println!("cargo:libdir={}", out.display());
     println!("cargo:rustc-link-lib=static=hts");
     println!("cargo:rustc-link-lib=static=z");
+    println!("cargo:rustc-link-lib=static=lzma");
     println!("cargo:rerun-if-changed=wrapper.c");
     println!("cargo:rerun-if-changed=wrapper.h");
     for htsfile in glob("htslib/**/*").unwrap() {
