@@ -29,7 +29,7 @@ linear-map = "1.2"
 serde_base = { version = "^1", optional = true, package = "serde" }
 serde_bytes = { version = "0.11", optional = true }
 bio-types = ">=0.6"
-snafu = ">= 0.5.0, <= 0.6.0"
+snafu = "0.6.8"
 hts-sys = { version = "^1.10", path = "hts-sys", default-features = false }
 
 [features]
@@ -37,7 +37,7 @@ default = ["bzip2", "lzma", "curl"]
 bzip2 = ["hts-sys/bzip2"]
 lzma = ["hts-sys/lzma"]
 curl = ["hts-sys/curl"]
-openssl = ["hts-sys/openssl"]
+#openssl = ["hts-sys/openssl"]
 serde = ["serde_base", "serde_bytes"]
 static = []
 
