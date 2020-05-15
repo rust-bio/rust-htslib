@@ -83,7 +83,7 @@ fn main() {
 
     let tool = cfg.get_compiler();
     let (cc_path, cflags_env) = (tool.path(), tool.cflags_env());
-    let cc_cflags = cflags_env.to_string_lossy().replace("-O0", "");
+    let _cc_cflags = cflags_env.to_string_lossy().replace("-O0", "");
     let extra_cc_cflags = "-g -Wall -O2 -fvisibility=hidden -fPIC".to_string();
     // Some other flags which can be critical for cross-compiling to targets like MUSL
     //let cppflags = env::var("CPPFLAGS").unwrap_or_default();
@@ -145,12 +145,7 @@ fn main() {
     println!("cargo:root={}", out.display());
     println!("cargo:include={}", include.display());
     println!("cargo:libdir={}", out.display());
-    // println!("cargo:rustc-link-lib=static=hts");
-    // println!("cargo:rustc-link-lib=static=z");
-    // println!("cargo:rustc-link-lib=static=lzma");
-    // println!("cargo:rustc-link-lib=static=ssl");
-    // println!("cargo:rustc-link-lib=static=crypto");
-    // println!("cargo:rustc-link-lib=static=curl");
+    println!("cargo:rustc-link-lib=static=hts"); // XXX: only for static
     println!("cargo:rerun-if-changed=wrapper.c");
     println!("cargo:rerun-if-changed=wrapper.h");
     for htsfile in glob("htslib/**/*").unwrap() {
