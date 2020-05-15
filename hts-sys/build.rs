@@ -11,22 +11,23 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
-// fn sed_htslib_makefile(out: &PathBuf, patterns: &[&str], feature: &str) {
-//     for pattern in patterns {
-//         if !Command::new("sed")
-//             .current_dir(out.join("htslib"))
-//             .arg("-i")
-//             .arg("-e")
-//             .arg(pattern)
-//             .arg("Makefile")
-//             .status()
-//             .unwrap()
-//             .success()
-//         {
-//             panic!("failed to strip {} support", feature);
-//         }
-//     }
-// }
+fn sed_htslib_makefile(out: &PathBuf, patterns: &[&str], feature: &str) {
+    println!("SUBSTITUTING THINGS!");
+    for pattern in patterns {
+        if !Command::new("sed")
+            .current_dir(out.join("htslib"))
+            .arg("-i")
+            .arg("-e")
+            .arg(pattern)
+            .arg("Makefile")
+            .status()
+            .unwrap()
+            .success()
+        {
+            panic!("failed to strip {} support", feature);
+        }
+    }
+}
 
 fn main() {
     let out = PathBuf::from(env::var("OUT_DIR").unwrap());
@@ -48,6 +49,10 @@ fn main() {
     if !out.join("htslib").exists() {
         copy_directory("htslib", &out).unwrap();
     }
+    
+    // Nice flags to have
+    let cflags_patterns = vec!["s/-g -Wall -O2 -fvisibility=hidden/-g -Wall -O2 -fvisibility=hidden -fPIC -pedantic -std=c90 -D_XOPEN_SOURCE=600/"];
+    sed_htslib_makefile(&out, &cflags_patterns, "cflags");
 
     // let use_bzip2 = env::var("CARGO_FEATURE_BZIP2").is_ok();
     // if !use_bzip2 {
@@ -78,7 +83,7 @@ fn main() {
 
     let tool = cfg.get_compiler();
     let (cc_path, cflags_env) = (tool.path(), tool.cflags_env());
-    let _cc_cflags = cflags_env.to_string_lossy().replace("-O0", "");
+    let cc_cflags = cflags_env.to_string_lossy().replace("-O0", "");
     // Some other flags which can be critical for cross-compiling to targets like MUSL
     //let cppflags = env::var("CPPFLAGS").unwrap_or_default();
     let _ldflags= env::var("LDFLAGS").unwrap_or_default();
@@ -95,11 +100,11 @@ fn main() {
     if !Command::new("make")
         .current_dir(out.join("htslib"))
         .arg(format!("CC={}", cc_path.display()))
-        //.arg(format!("CFLAGS={}", cc_cflags))
+        .arg(format!("CFLAGS={}", cc_cflags))
         //.arg(format!("CPPFLAGS=\"{}\"", &cppflags))
         //.arg(format!("LDFLAGS=\"{}\"", &ldflags))
         .arg("lib-static")
-        .arg("-B")
+        //.arg("-B")
         .status()
         .unwrap()
         .success()
@@ -130,12 +135,12 @@ fn main() {
     println!("cargo:root={}", out.display());
     println!("cargo:include={}", include.display());
     println!("cargo:libdir={}", out.display());
-    println!("cargo:rustc-link-lib=static=hts");
-    println!("cargo:rustc-link-lib=static=z");
-    println!("cargo:rustc-link-lib=static=lzma");
+    // println!("cargo:rustc-link-lib=static=hts");
+    // println!("cargo:rustc-link-lib=static=z");
+    // println!("cargo:rustc-link-lib=static=lzma");
     // println!("cargo:rustc-link-lib=static=ssl");
     // println!("cargo:rustc-link-lib=static=crypto");
-    println!("cargo:rustc-link-lib=static=curl");
+    // println!("cargo:rustc-link-lib=static=curl");
     println!("cargo:rerun-if-changed=wrapper.c");
     println!("cargo:rerun-if-changed=wrapper.h");
     for htsfile in glob("htslib/**/*").unwrap() {
