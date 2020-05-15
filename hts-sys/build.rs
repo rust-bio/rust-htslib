@@ -84,13 +84,22 @@ fn main() {
     let tool = cfg.get_compiler();
     let (cc_path, cflags_env) = (tool.path(), tool.cflags_env());
     let cc_cflags = cflags_env.to_string_lossy().replace("-O0", "");
+    let extra_cc_cflags = "-g -Wall -O2 -fvisibility=hidden -fPIC".to_string();
     // Some other flags which can be critical for cross-compiling to targets like MUSL
     //let cppflags = env::var("CPPFLAGS").unwrap_or_default();
     let _ldflags= env::var("LDFLAGS").unwrap_or_default();
     let host = env::var("HOST").unwrap_or_default();
     // Those two steps are necessary to include the htslib plugins in the resulting libhts.a (hfile_s3.o, hfile_s3_writer.o, etc...)
-    if !Command::new("autoreconf").current_dir(out.join("htslib")).status().unwrap().success() &&
-       !Command::new("./configure").current_dir(out.join("htslib"))
+    if !Command::new("autoreconf")
+        .current_dir(out.join("htslib"))
+        .env("CFLAGS", &extra_cc_cflags)
+        .status().unwrap().success()
+        
+        &&
+       
+        !Command::new("./configure")
+        .current_dir(out.join("htslib"))
+        .env("CFLAGS", &extra_cc_cflags)
         .arg(format!("--host={}", &host))
         .status().unwrap().success()
     {
@@ -100,10 +109,11 @@ fn main() {
     if !Command::new("make")
         .current_dir(out.join("htslib"))
         .arg(format!("CC={}", cc_path.display()))
-        .arg(format!("CFLAGS={}", cc_cflags))
+        .env("CFLAGS", &extra_cc_cflags)
         //.arg(format!("CPPFLAGS=\"{}\"", &cppflags))
         //.arg(format!("LDFLAGS=\"{}\"", &ldflags))
         .arg("lib-static")
+        .arg("-j40")
         //.arg("-B")
         .status()
         .unwrap()
