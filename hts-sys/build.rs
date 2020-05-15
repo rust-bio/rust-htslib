@@ -11,23 +11,22 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
-fn sed_htslib_makefile(out: &PathBuf, patterns: &[&str], feature: &str) {
-    println!("SUBSTITUTING THINGS!");
-    for pattern in patterns {
-        if !Command::new("sed")
-            .current_dir(out.join("htslib"))
-            .arg("-i")
-            .arg("-e")
-            .arg(pattern)
-            .arg("Makefile")
-            .status()
-            .unwrap()
-            .success()
-        {
-            panic!("failed to strip {} support", feature);
-        }
-    }
-}
+// fn sed_htslib_makefile(out: &PathBuf, patterns: &[&str], feature: &str) {
+//     for pattern in patterns {
+//         if !Command::new("sed")
+//             .current_dir(out.join("htslib"))
+//             .arg("-i")
+//             .arg("-e")
+//             .arg(pattern)
+//             .arg("Makefile")
+//             .status()
+//             .unwrap()
+//             .success()
+//         {
+//             panic!("failed to strip {} support", feature);
+//         }
+//     }
+// }
 
 fn main() {
     let out = PathBuf::from(env::var("OUT_DIR").unwrap());
@@ -50,10 +49,6 @@ fn main() {
         copy_directory("htslib", &out).unwrap();
     }
     
-    // Nice flags to have
-    let cflags_patterns = vec!["s/-g -Wall -O2 -fvisibility=hidden/-g -Wall -O2 -fvisibility=hidden -fPIC -pedantic -std=c90 -D_XOPEN_SOURCE=600/"];
-    sed_htslib_makefile(&out, &cflags_patterns, "cflags");
-
     // let use_bzip2 = env::var("CARGO_FEATURE_BZIP2").is_ok();
     // if !use_bzip2 {
     //     let bzip2_patterns = vec!["s/ -lbz2//", "/#define HAVE_LIBBZ2/d"];
