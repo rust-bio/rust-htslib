@@ -80,6 +80,7 @@ fn main() {
     let (cc_path, cflags_env) = (tool.path(), tool.cflags_env());
     let _cc_cflags = cflags_env.to_string_lossy().replace("-O0", "");
     let extra_cc_cflags = "-g -Wall -O2 -fvisibility=hidden -fPIC".to_string();
+    cfg.include("/usr/include");
     // Some other flags which can be critical for cross-compiling to targets like MUSL
     //let cppflags = env::var("CPPFLAGS").unwrap_or_default();
     let _ldflags= env::var("LDFLAGS").unwrap_or_default();

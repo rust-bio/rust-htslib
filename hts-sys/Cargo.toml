@@ -17,14 +17,11 @@ pre-release-commit-message = "release version {{version}}"
 tag-message = "Version {{version}} of Rust-HTSlib."
 
 [dependencies]
-#libc = "0.2.68"
 libz-sys = { version = "1.0.25", features = ["static"] }
 # https://github.com/alexcrichton/bzip2-rs/issues/56
 bzip2-sys = { version = "0.1.8", optional = true }
-# https://github.com/alexcrichton/xz2-rs/issues/62
-lzma-sys = { version = "0.1.15", optional = true, features = ["static"], git = "https://github.com/brainstorm/xz2-rs", branch = "static_feature_flag" }
+lzma-sys = { version = "0.1.16", optional = true, features = ["static"] }
 curl-sys = { version = "0.4.31", optional = true, features = ["static-curl", "static-ssl"] }
-#openssl-sys = { version = "0.9.56", optional = true, vendored = true}
 
 [features]
 default = ["bzip2", "lzma"]
@@ -36,6 +33,6 @@ static = []
 
 [build-dependencies]
 fs-utils = "1.1"
-bindgen = { version = "0.53.1", default-features = false, features = ["runtime"] }
+bindgen = { version = "0.53.2", default-features = false, features = ["runtime"] }
 cc = "1.0"
 glob = "0.3.0"
