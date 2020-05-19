@@ -40,9 +40,7 @@ fn main() {
     }
 
     // if let Ok(z_inc) = env::var("DEP_Z_INCLUDE") {
-    //     if !want_static {
-    //         cfg.include(z_inc);
-    //     }
+    //     cfg.include(z_inc);
     // }
 
     if !out.join("htslib").exists() {
