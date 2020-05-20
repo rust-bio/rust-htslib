@@ -77,7 +77,6 @@ fn main() {
     let tool = cfg.get_compiler();
     let (cc_path, cflags_env) = (tool.path(), tool.cflags_env());
     let cc_cflags = cflags_env.to_string_lossy().replace("-O0", "");
-    cfg.include("/usr/include");
     let host = env::var("HOST").unwrap_or_default();
     // Those two steps are necessary to include the htslib plugins in the resulting libhts.a (hfile_s3.o, hfile_s3_writer.o, etc...)
     if !Command::new("autoreconf")
@@ -100,6 +99,7 @@ fn main() {
         .current_dir(out.join("htslib"))
         .arg(format!("CC={}", cc_path.display()))
         .env("CFLAGS", &cc_cflags)
+        .env("CFLAGS_x86_64-unknown-linux-musl", "-I/usr/local/musl")
         .arg("lib-static")
         .arg("-j40")
         .status()

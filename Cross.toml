@@ -1,4 +1,4 @@
 [target.x86_64-unknown-linux-musl]
-image = "brainstorm/cross-x86_64-unknown-linux-musl:libcurl-openssl"
+image = "brainstorm/cross-x86_64-unknown-linux-musl:latest"
 [target.x86_64-unknown-linux-gnu]
 image = "brainstorm/cross-x86_64-unknown-linux-gnu:libcurl-openssl"
