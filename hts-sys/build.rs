@@ -11,22 +11,22 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
-// fn sed_htslib_makefile(out: &PathBuf, patterns: &[&str], feature: &str) {
-//     for pattern in patterns {
-//         if !Command::new("sed")
-//             .current_dir(out.join("htslib"))
-//             .arg("-i")
-//             .arg("-e")
-//             .arg(pattern)
-//             .arg("Makefile")
-//             .status()
-//             .unwrap()
-//             .success()
-//         {
-//             panic!("failed to strip {} support", feature);
-//         }
-//     }
-// }
+fn sed_htslib_makefile(out: &PathBuf, patterns: &[&str], feature: &str) {
+    for pattern in patterns {
+        if !Command::new("sed")
+            .current_dir(out.join("htslib"))
+            .arg("-i")
+            .arg("-e")
+            .arg(pattern)
+            .arg("Makefile")
+            .status()
+            .unwrap()
+            .success()
+        {
+            panic!("failed to strip {} support", feature);
+        }
+    }
+}
 
 fn main() {
     let out = PathBuf::from(env::var("OUT_DIR").unwrap());
@@ -47,32 +47,32 @@ fn main() {
         copy_directory("htslib", &out).unwrap();
     }
     
-    // let use_bzip2 = env::var("CARGO_FEATURE_BZIP2").is_ok();
-    // if !use_bzip2 {
-    //     let bzip2_patterns = vec!["s/ -lbz2//", "/#define HAVE_LIBBZ2/d"];
-    //     sed_htslib_makefile(&out, &bzip2_patterns, "bzip2");
-    // } else if let Ok(inc) = env::var("DEP_BZIP2_ROOT")
-    //     .map(PathBuf::from)
-    //     .map(|path| path.join("include"))
-    // {
-    //     cfg.include(inc);
-    // }
+    let use_bzip2 = env::var("CARGO_FEATURE_BZIP2").is_ok();
+    if !use_bzip2 {
+        let bzip2_patterns = vec!["s/ -lbz2//", "/#define HAVE_LIBBZ2/d"];
+        sed_htslib_makefile(&out, &bzip2_patterns, "bzip2");
+    } else if let Ok(inc) = env::var("DEP_BZIP2_ROOT")
+        .map(PathBuf::from)
+        .map(|path| path.join("include"))
+    {
+        cfg.include(inc);
+    }
 
-    // let use_lzma = env::var("CARGO_FEATURE_LZMA").is_ok();
-    // if !use_lzma && want_static {
-    //     let lzma_patterns = vec!["s/ -llzma//", "/#define HAVE_LIBLZMA/d"];
-    //     sed_htslib_makefile(&out, &lzma_patterns, "lzma");
-    // } else if let Ok(inc) = env::var("DEP_LZMA_INCLUDE").map(PathBuf::from) {
-    //     cfg.include(inc);
-    // }
+    let use_lzma = env::var("CARGO_FEATURE_LZMA").is_ok();
+    if !use_lzma && want_static {
+        let lzma_patterns = vec!["s/ -llzma//", "/#define HAVE_LIBLZMA/d"];
+        sed_htslib_makefile(&out, &lzma_patterns, "lzma");
+    } else if let Ok(inc) = env::var("DEP_LZMA_INCLUDE").map(PathBuf::from) {
+        cfg.include(inc);
+    }
 
-    // let use_curl = env::var("CARGO_FEATURE_CURL").is_ok();
-    // if !use_curl {
-    //     let curl_patterns = vec!["s/ -lcurl//", "/#define HAVE_LIBCURL/d"];
-    //     sed_htslib_makefile(&out, &curl_patterns, "curl");
-    // } else if let Ok(inc) = env::var("DEP_CURL_INCLUDE").map(PathBuf::from) {
-    //     cfg.include(inc);
-    // }
+    let use_curl = env::var("CARGO_FEATURE_CURL").is_ok();
+    if !use_curl {
+        let curl_patterns = vec!["s/ -lcurl//", "/#define HAVE_LIBCURL/d"];
+        sed_htslib_makefile(&out, &curl_patterns, "curl");
+    } else if let Ok(inc) = env::var("DEP_CURL_INCLUDE").map(PathBuf::from) {
+        cfg.include(inc);
+    }
 
     let tool = cfg.get_compiler();
     let (cc_path, cflags_env) = (tool.path(), tool.cflags_env());
@@ -98,8 +98,7 @@ fn main() {
     if !Command::new("make")
         .current_dir(out.join("htslib"))
         .arg(format!("CC={}", cc_path.display()))
-        .env("CFLAGS", &cc_cflags)
-        .env("CFLAGS_x86_64-unknown-linux-musl", "-I/usr/local/musl")
+        .arg(format!("CFLAGS={}", &cc_cflags))
         .arg("lib-static")
         .arg("-j40")
         .status()

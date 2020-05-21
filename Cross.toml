@@ -1,3 +1,11 @@
+[build.env]
+passthrough = [
+    "RUST_DEBUG",
+    "RUST_BACKTRACE",
+    "CFLAGS"
+]
+
+
 [target.x86_64-unknown-linux-musl]
 image = "brainstorm/cross-x86_64-unknown-linux-musl:latest"
 [target.x86_64-unknown-linux-gnu]

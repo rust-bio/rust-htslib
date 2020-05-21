@@ -107,9 +107,9 @@ RUN wget https://curl.haxx.se/download/curl-$CURL_VERSION.tar.gz \
 #ENV OPENSSL_DIR /usr/local/openssl
 ENV OPENSSL_DIR /usr/local/musl
 
-# Hack to force ld stick to musl on the hts-sys/build.rs side
-#RUN rm /usr/bin/ld && ln -sf /usr/local/musl/bin/x86_64-linux-musl-ld /usr/bin/ld
-#RUN apt-get install -y libclang1-9
+# Hack to force ld stick to musl on the hts-sys/build.rs side, otherwise:
+#   = note: /usr/bin/ld: /target/debug/deps/liblibloading-689161fea10b6234.rlib(global_static.o): unable to initialize decompress status for section .debug_info
+RUN rm /usr/bin/ld && ln -sf /usr/local/musl/bin/x86_64-linux-musl-ld /usr/bin/ld
 
 # Prepare rustup and toolchain locally for easy manual intervention in this container
 #RUN wget https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init \
