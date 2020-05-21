@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  Formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt
+      
+      - name: Check format
+        run: cargo fmt -- --check
+     
+  Linting:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Checkout submodules
+        uses: textbook/git-checkout-submodule-action@2.0.0
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: clippy
+
+      - name: Lint with clippy
+        uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+
+  Testing:
+    needs: Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Checkout submodules
+        uses: textbook/git-checkout-submodule-action@2.0.0
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install system dependencies
+        run: |
+            sudo apt-get install --yes zlib1g-dev libbz2-dev musl musl-dev musl-tools clang libc6-dev
+
+      - name: Run cargo-tarpaulin
+        uses: actions-rs/tarpaulin@v0.1
+        with:
+          args: '--out Lcov -- --test-threads 1'
+
+      - name: Upload coverage
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: ./lcov.info
+
+     - name: Test musl build without default features
+       uses: actions-rs/cargo@v1
+       with:
+         use-cross: true
+         command: build
+         args: --target x86_64-unknown-linux-musl --no-default-features
+
+     - name: Test musl build with all features
+       uses: actions-rs/cargo@v1
+       with:
+         use-cross: true  
+         command: build
+         args: --target x86_64-unknown-linux-musl --all-features
+
