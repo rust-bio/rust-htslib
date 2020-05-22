@@ -78,8 +78,18 @@ fn main() {
     let (cc_path, cflags_env) = (tool.path(), tool.cflags_env());
     let cc_cflags = cflags_env.to_string_lossy().replace("-O0", "");
     let host = env::var("HOST").unwrap_or_default();
-    // Those two steps are necessary to include the htslib plugins in the resulting libhts.a (hfile_s3.o, hfile_s3_writer.o, etc...)
-    if !Command::new("autoreconf")
+    // autoreconf & ./configure (with no args) steps are necessary to include the htslib plugins (hfile_s3.o, hfile_s3_writer.o, etc...)
+    if  // cleanup first
+        // TODO: Have top level "cargo clean" do this instead of in here, see:
+        // https://github.com/rust-lang/cargo/issues/572#issuecomment-632456478
+        !Command::new("make")
+        .current_dir(out.join("htslib"))
+        .arg("clean")
+        .status().unwrap().success()
+    
+        &&
+
+        !Command::new("autoreconf")
         .current_dir(out.join("htslib"))
         .env("CFLAGS", &cc_cflags)
         .status().unwrap().success()
