@@ -124,8 +124,14 @@ fn main() {
     println!("cargo:rustc-link-lib=static=hts");
     println!("cargo:rerun-if-changed=wrapper.c");
     println!("cargo:rerun-if-changed=wrapper.h");
-    for htsfile in glob("htslib/**/*").unwrap() {
-        let htsfile = htsfile.as_ref().unwrap().to_str().unwrap();
-        println!("cargo:rerun-if-changed={}", htsfile);
+    println!("cargo:rerun-if-changed=htslib/Makefile");
+    let globs = std::iter::empty()
+        .chain(glob("htslib/*.[ch]").unwrap())
+        .chain(glob("htslib/cram/*.[ch]").unwrap())
+        .chain(glob("htslib/htslib/*.h").unwrap())
+        .chain(glob("htslib/os/*.[ch]").unwrap())
+        .filter_map(Result::ok);
+    for htsfile in globs {
+        println!("cargo:rerun-if-changed={}", htsfile.display());
     }
 }
