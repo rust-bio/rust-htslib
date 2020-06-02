@@ -10,8 +10,8 @@ This library provides HTSlib bindings and a high level Rust API for reading and 
 
 To clone this repository, issue
 
-```
-git clone --recursive https://github.com/rust-bio/rust-htslib.git
+```shell
+$ git clone --recursive https://github.com/rust-bio/rust-htslib.git
 ```
 
 ensuring that the HTSlib submodule is fetched, too.
@@ -19,7 +19,21 @@ If you only want to use the library, there is no need to clone the repository. G
 
 ## Requirements
 
-To compile this crate you need the development headers of zlib, bzip2 and xz. For instance, in Debian systems one needs the following dependencies:
+To compile this crate you need docker and cross:
+
+```shell
+$ cargo install cross
+$ cross build 				              # will build with GNU toolchain
+```
+
+If you want to run rust-htslib code on AWS lambda, you'll need to statically compile it with MUSL as follows:
+
+```shell
+$ export CFLAGS="-I/usr/local/musl/include"
+$ cross build --target x86_64-unknown-linux-musl      # will build with MUSL toolchain
+```
+
+Alternatively, you can also install it locally by installing the development headers of zlib, bzip2 and xz. For instance, in Debian systems one needs the following dependencies:
 
 ```shell
 $ sudo apt-get install zlib1g-dev libbz2-dev liblzma-dev clang pkg-config
@@ -56,6 +70,10 @@ rust-htslib = { version = "*", features = ["serde"] }
 ```
 
 For more information, please see the [docs](https://docs.rs/rust-htslib).
+
+# Alternatives
+
+There's [noodles](https://github.com/zaeleus/noodles) by [Michael Macias](https://github.com/zaeleus) which implements a large part of htslib's C functionality in pure Rust (still experimental though).
 
 # Authors
 
