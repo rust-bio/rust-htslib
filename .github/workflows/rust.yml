@@ -78,7 +78,7 @@ jobs:
 
       - name: Test musl build without default features
         env:
-           CFLAGS: "$CFLAGS:-I/usr/local/musl/include"
+           CFLAGS: -I/usr/local/musl/include
         uses: actions-rs/cargo@v1
         with:
           use-cross: true
@@ -87,7 +87,7 @@ jobs:
 
       - name: Test musl build with all features
         env:
-           CFLAGS: "$CFLAGS:-I/usr/local/musl/include"
+           CFLAGS: -I/usr/local/musl/include
         uses: actions-rs/cargo@v1
         with:
           use-cross: true  
