@@ -71,6 +71,10 @@ rust-htslib = { version = "*", features = ["serde"] }
 
 For more information, please see the [docs](https://docs.rs/rust-htslib).
 
+# Alternatives
+
+There's [noodles](https://github.com/zaeleus/noodles) by [Michael Macias](https://github.com/zaeleus) which implements a large part of htslib's C functionality in pure Rust (still experimental though).
+
 # Authors
 
 * [Johannes Köster](https://github.com/johanneskoester)
