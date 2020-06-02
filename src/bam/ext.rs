@@ -96,7 +96,7 @@ impl BamRecordExtensions for bam::Record {
         let mut pos = self.pos();
         for entry in self.cigar().iter() {
             match entry {
-                Cigar::Match(len) => {
+                Cigar::Match(len) | Cigar::Equal(len) | Cigar::Diff(len) => {
                     result.push([pos, pos + *len as i64]);
                     pos += *len as i64;
                 }
@@ -113,7 +113,7 @@ impl BamRecordExtensions for bam::Record {
         let mut result = Vec::new();
         for entry in self.cigar().iter() {
             match entry {
-                Cigar::Match(len) | Cigar::Del(len) | Cigar::Equal(len) | Cigar::Diff(len) => {
+                Cigar::Match(len) | Cigar::Equal(len) | Cigar::Diff(len) | Cigar::Del(len) => {
                     base_position += *len as i64
                 }
                 Cigar::RefSkip(len) => {
