@@ -43,13 +43,13 @@ impl RecordBuffer {
     }
 
     /// Return start position of buffer
-    fn start(&self) -> Option<u32> {
-        self.inner.front().map(|rec| rec.pos() as u32)
+    fn start(&self) -> Option<u64> {
+        self.inner.front().map(|rec| rec.pos() as u64)
     }
 
     /// Return end position of buffer.
-    fn end(&self) -> Option<u32> {
-        self.inner.back().map(|rec| rec.pos() as u32)
+    fn end(&self) -> Option<u64> {
+        self.inner.back().map(|rec| rec.pos() as u64)
     }
 
     fn tid(&self) -> Option<i32> {
@@ -61,7 +61,7 @@ impl RecordBuffer {
     /// Coordinates are 0-based, and end is exclusive.
     /// Returns tuple with numbers of added and deleted records since the previous fetch.
     #[allow(unused_assignments)] // TODO this is needed because rustc thinks that deleted is unused
-    pub fn fetch(&mut self, chrom: &[u8], start: u32, end: u32) -> Result<(usize, usize)> {
+    pub fn fetch(&mut self, chrom: &[u8], start: u64, end: u64) -> Result<(usize, usize)> {
         let mut added = 0;
         // move overflow from last fetch into ringbuffer
         if self.overflow.is_some() {
@@ -86,7 +86,7 @@ impl RecordBuffer {
                 let to_remove = self
                     .inner
                     .iter()
-                    .take_while(|rec| rec.pos() < window_start as i32)
+                    .take_while(|rec| rec.pos() < window_start as i64)
                     .count();
                 for _ in 0..to_remove {
                     self.inner.pop_front();
@@ -111,7 +111,7 @@ impl RecordBuffer {
                     record.cache_cigar();
                 }
 
-                if pos >= end as i32 {
+                if pos >= end as i64 {
                     self.overflow = Some(record);
                     break;
                 } else {
@@ -140,6 +140,10 @@ impl RecordBuffer {
 
     pub fn len(&self) -> usize {
         self.inner.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 

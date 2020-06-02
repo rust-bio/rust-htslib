@@ -2,7 +2,7 @@
 [![Crates.io](https://img.shields.io/crates/v/rust-htslib.svg)](https://crates.io/crates/rust-htslib)
 [![Crates.io](https://img.shields.io/crates/l/rust-htslib.svg)](https://crates.io/crates/rust-htslib)
 [![docs.rs](https://docs.rs/rust-htslib/badge.svg)](https://docs.rs/rust-htslib)
-[![Travis](https://img.shields.io/travis/rust-bio/rust-htslib.svg)](https://travis-ci.org/rust-bio/rust-htslib)
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/rust-bio/rust-htslib/CI/master?label=tests)
 
 # HTSlib bindings for Rust
 
@@ -19,15 +19,40 @@ If you only want to use the library, there is no need to clone the repository. G
 
 ## Requirements
 
-To compile this crate you need the development headers of zlib, bzip2 and xz.
+To compile this crate you need the development headers of zlib, bzip2 and xz. For instance, in Debian systems one needs the following dependencies:
+
+```shell
+$ sudo apt-get install zlib1g-dev libbz2-dev liblzma-dev clang pkg-config
+```
+
+On OSX, this will take a significant amount of time due to musl cross compiling toolchain:
+
+```shell
+$ brew install FiloSottile/musl-cross/musl-cross
+$ brew install bzip2 zlib xz curl-openssl
+```
 
 ## Usage
 
 Add this to your `Cargo.toml`:
-
 ```toml
 [dependencies]
 rust-htslib = "*"
+```
+
+By default `rust-htslib` links to `bzip2-sys` and `lzma-sys` for full CRAM support. If you do not need CRAM support, or you do need to support CRAM files
+with these compression methods, you can deactivate these features to reduce you dependency count:
+
+```toml
+[dependencies]
+rust-htslib = { version = "*", default-features = false }
+```
+
+`rust-htslib` also has optional support for `serde`, to allow (de)serialization of `bam::Record` via any serde-supported format:
+
+```toml
+[dependencies]
+rust-htslib = { version = "*", features = ["serde"] }
 ```
 
 For more information, please see the [docs](https://docs.rs/rust-htslib).

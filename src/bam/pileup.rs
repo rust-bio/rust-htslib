@@ -156,6 +156,7 @@ impl<'a, R: bam::Read> Pileups<'a, R> {
 impl<'a, R: bam::Read> Iterator for Pileups<'a, R> {
     type Item = Result<Pileup>;
 
+    #[allow(clippy::match_bool)]
     fn next(&mut self) -> Option<Result<Pileup>> {
         let (mut tid, mut pos, mut depth) = (0i32, 0i32, 0i32);
         let inner = unsafe { htslib::bam_plp_auto(self.itr, &mut tid, &mut pos, &mut depth) };

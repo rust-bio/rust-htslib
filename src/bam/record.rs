@@ -3,9 +3,12 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::convert::TryFrom;
 use std::ffi;
 use std::fmt;
+use std::mem::{size_of, MaybeUninit};
 use std::ops;
+use std::rc::Rc;
 use std::slice;
 use std::str;
 use std::str::FromStr;
@@ -20,11 +23,13 @@ use crate::htslib;
 use crate::utils;
 
 use bio_types::alignment::{Alignment, AlignmentMode, AlignmentOperation};
+use bio_types::genome;
 use bio_types::sequence::SequenceRead;
+use bio_types::strand::ReqStrand;
 
 /// A macro creating methods for flag access.
 macro_rules! flag {
-    ($get:ident, $set:ident, $unset:ident, $bit:expr) => (
+    ($get:ident, $set:ident, $unset:ident, $bit:expr) => {
         pub fn $get(&self) -> bool {
             self.inner().core.flag & $bit != 0
         }
@@ -36,14 +41,15 @@ macro_rules! flag {
         pub fn $unset(&mut self) {
             self.inner_mut().core.flag &= !$bit;
         }
-    )
+    };
 }
 
 /// A BAM record.
 pub struct Record {
-    pub inner: *mut htslib::bam1_t,
+    pub inner: htslib::bam1_t,
     own: bool,
     cigar: Option<CigarStringView>,
+    header: Option<Rc<HeaderView>>,
 }
 
 unsafe impl Send for Record {}
@@ -51,8 +57,8 @@ unsafe impl Sync for Record {}
 
 impl Clone for Record {
     fn clone(&self) -> Self {
-        let copy = Record::new();
-        unsafe { htslib::bam_copy1(copy.inner, self.inner) };
+        let mut copy = Record::new();
+        unsafe { htslib::bam_copy1(copy.inner_ptr_mut(), self.inner_ptr()) };
         copy
     }
 }
@@ -90,30 +96,50 @@ impl Default for Record {
     }
 }
 
+#[inline]
+fn extranul_from_qname(qname: &[u8]) -> usize {
+    let qlen = qname.len() + 1;
+    if qlen % 4 != 0 {
+        4 - qlen % 4
+    } else {
+        0
+    }
+}
+
 impl Record {
     /// Create an empty BAM record.
     pub fn new() -> Self {
-        let inner = unsafe { htslib::bam_init1() };
-        let mut record = Record {
-            inner,
+        Record {
+            inner: unsafe { MaybeUninit::zeroed().assume_init() },
             own: true,
             cigar: None,
-        };
-        record.inner_mut().m_data = 0;
-        record
+            header: None,
+        }
     }
 
-    pub fn from_inner(inner: *mut htslib::bam1_t) -> Self {
+    pub fn from_inner(from: *mut htslib::bam1_t) -> Self {
         Record {
-            inner,
+            inner: {
+                #[allow(clippy::uninit_assumed_init)]
+                let mut inner = unsafe { MaybeUninit::uninit().assume_init() };
+                unsafe {
+                    ::libc::memcpy(
+                        &mut inner as *mut htslib::bam1_t as *mut ::libc::c_void,
+                        from as *const ::libc::c_void,
+                        size_of::<htslib::bam1_t>(),
+                    );
+                }
+                inner
+            },
             own: false,
             cigar: None,
+            header: None,
         }
     }
 
     // Create a BAM record from a line SAM text. SAM slice need not be 0-terminated.
     pub fn from_sam(header_view: &HeaderView, sam: &[u8]) -> Result<Record> {
-        let record = Self::new();
+        let mut record = Self::new();
 
         let mut sam_copy = Vec::with_capacity(sam.len() + 1);
         sam_copy.extend(sam);
@@ -121,12 +147,16 @@ impl Record {
 
         let mut sam_string = htslib::kstring_t {
             s: sam_copy.as_ptr() as *mut i8,
-            l: sam_copy.len() as usize,
-            m: sam_copy.len() as usize,
+            l: sam_copy.len() as u64,
+            m: sam_copy.len() as u64,
         };
 
         let succ = unsafe {
-            htslib::sam_parse1(&mut sam_string, header_view.inner_ptr_mut(), record.inner)
+            htslib::sam_parse1(
+                &mut sam_string,
+                header_view.inner_ptr() as *mut htslib::bam_hdr_t,
+                record.inner_ptr_mut(),
+            )
         };
 
         if succ == 0 {
@@ -138,18 +168,32 @@ impl Record {
         }
     }
 
+    pub fn set_header(&mut self, header: Rc<HeaderView>) {
+        self.header = Some(header);
+    }
+
     pub(super) fn data(&self) -> &[u8] {
         unsafe { slice::from_raw_parts(self.inner().data, self.inner().l_data as usize) }
     }
 
     #[inline]
     pub fn inner_mut(&mut self) -> &mut htslib::bam1_t {
-        unsafe { &mut *self.inner }
+        &mut self.inner
+    }
+
+    #[inline]
+    pub(super) fn inner_ptr_mut(&mut self) -> *mut htslib::bam1_t {
+        &mut self.inner as *mut htslib::bam1_t
     }
 
     #[inline]
     pub fn inner(&self) -> &htslib::bam1_t {
-        unsafe { &*self.inner }
+        &self.inner
+    }
+
+    #[inline]
+    pub(super) fn inner_ptr(&self) -> *const htslib::bam1_t {
+        &self.inner as *const htslib::bam1_t
     }
 
     /// Get target id.
@@ -163,12 +207,12 @@ impl Record {
     }
 
     /// Get position (0-based).
-    pub fn pos(&self) -> i32 {
+    pub fn pos(&self) -> i64 {
         self.inner().core.pos
     }
 
     /// Set position (0-based).
-    pub fn set_pos(&mut self, pos: i32) {
+    pub fn set_pos(&mut self, pos: i64) {
         self.inner_mut().core.pos = pos;
     }
 
@@ -188,6 +232,16 @@ impl Record {
     /// Set MAPQ.
     pub fn set_mapq(&mut self, mapq: u8) {
         self.inner_mut().core.qual = mapq;
+    }
+
+    /// Get strand information from record flags.
+    pub fn strand(&mut self) -> ReqStrand {
+        let reverse = self.flags() & 0x10 != 0;
+        if reverse {
+            ReqStrand::Reverse
+        } else {
+            ReqStrand::Forward
+        }
     }
 
     /// Get raw flags.
@@ -216,22 +270,22 @@ impl Record {
     }
 
     /// Get mate position.
-    pub fn mpos(&self) -> i32 {
+    pub fn mpos(&self) -> i64 {
         self.inner().core.mpos
     }
 
     /// Set mate position.
-    pub fn set_mpos(&mut self, mpos: i32) {
+    pub fn set_mpos(&mut self, mpos: i64) {
         self.inner_mut().core.mpos = mpos;
     }
 
     /// Get insert size.
-    pub fn insert_size(&self) -> i32 {
+    pub fn insert_size(&self) -> i64 {
         self.inner().core.isize
     }
 
     /// Set insert size.
-    pub fn set_insert_size(&mut self, insert_size: i32) {
+    pub fn set_insert_size(&mut self, insert_size: i64) {
         self.inner_mut().core.isize = insert_size;
     }
 
@@ -262,15 +316,21 @@ impl Record {
 
         // Copy new data into buffer
         let data =
-            unsafe { slice::from_raw_parts_mut((*self.inner).data, self.inner().l_data as usize) };
+            unsafe { slice::from_raw_parts_mut(self.inner.data, self.inner().l_data as usize) };
         utils::copy_memory(new_data, data);
     }
 
     /// Set variable length data (qname, cigar, seq, qual).
-    /// Note: Pre-existing aux data will be invalidated
-    /// if called on an existing record. For this
-    /// reason, never call push_aux() before set().
+    /// The aux data is left unchanged.
+    /// `qual` is Phred-scaled quality values, without any offset.
+    /// NOTE: seq.len() must equal qual.len() or this method
+    /// will panic. If you don't have quality values use
+    /// `let quals = vec![ 255 as u8; seq.len()];` as a placeholder that will
+    /// be recognized as missing QVs by `samtools`.
     pub fn set(&mut self, qname: &[u8], cigar: Option<&CigarString>, seq: &[u8], qual: &[u8]) {
+        assert!(qname.len() < 255);
+        assert_eq!(seq.len(), qual.len(), "seq.len() must equal qual.len()");
+
         self.cigar = None;
 
         let cigar_width = if let Some(cigar_string) = cigar {
@@ -279,34 +339,46 @@ impl Record {
             0
         } * 4;
         let q_len = qname.len() + 1;
-        let extranul = if q_len % 4 != 0 { 4 - q_len % 4 } else { 0 };
+        let extranul = extranul_from_qname(qname);
 
-        self.inner_mut().l_data = (q_len
-            + extranul
-            + cigar_width
-            + ((seq.len() as f32 / 2.0).ceil() as usize)
-            + qual.len()) as i32;
-
-        assert!(qname.len() <= 256);
-
+        let orig_aux_offset = self.qname_capacity()
+            + 4 * self.cigar_len()
+            + (self.seq_len() + 1) / 2
+            + self.seq_len();
+        let new_aux_offset = q_len + extranul + cigar_width + (seq.len() + 1) / 2 + qual.len();
+        assert!(orig_aux_offset <= self.inner.l_data as usize);
+        let aux_len = self.inner.l_data as usize - orig_aux_offset;
+        self.inner_mut().l_data = (new_aux_offset + aux_len) as i32;
         if (self.inner().m_data as i32) < self.inner().l_data {
             // Verbosity due to lexical borrowing
             let l_data = self.inner().l_data;
             self.realloc_var_data(l_data as usize);
         }
 
+        // Copy the aux data.
+        if aux_len > 0 && orig_aux_offset != new_aux_offset {
+            let data =
+                unsafe { slice::from_raw_parts_mut(self.inner.data, self.inner().m_data as usize) };
+            data.copy_within(orig_aux_offset..orig_aux_offset + aux_len, new_aux_offset);
+        }
+
         let data =
-            unsafe { slice::from_raw_parts_mut((*self.inner).data, self.inner().l_data as usize) };
+            unsafe { slice::from_raw_parts_mut(self.inner.data, self.inner().l_data as usize) };
+
         // qname
         utils::copy_memory(qname, data);
-        data[qname.len()] = b'\0';
+        for i in 0..=extranul {
+            data[qname.len() + i] = b'\0';
+        }
         let mut i = q_len + extranul;
-        self.inner_mut().core.l_qname = i as u8;
+        self.inner_mut().core.l_qname = i as u16;
         self.inner_mut().core.l_extranul = extranul as u8;
 
         // cigar
         if let Some(cigar_string) = cigar {
             let cigar_data = unsafe {
+                //cigar is always aligned to 4 bytes (see extranul above) - so this is safe
+                #[allow(clippy::cast_ptr_alignment)]
                 slice::from_raw_parts_mut(data[i..].as_ptr() as *mut u32, cigar_string.len())
             };
             for (i, c) in cigar_string.iter().enumerate() {
@@ -337,21 +409,14 @@ impl Record {
     }
 
     /// Replace current qname with a new one.
-    /// Unlike set(), this preserves all the variable length data including
-    /// the aux.
     pub fn set_qname(&mut self, new_qname: &[u8]) {
         // 251 + 1NUL is the max 32-bit aligned value that fits in u8
         assert!(new_qname.len() < 252);
 
         let old_q_len = self.qname_capacity();
         // We're going to add a terminal NUL
-        let new_q_len = 1 + new_qname.len();
-        let extranul = if new_q_len % 4 != 0 {
-            4 - new_q_len % 4
-        } else {
-            0
-        };
-        let new_q_len = new_q_len + extranul;
+        let extranul = extranul_from_qname(new_qname);
+        let new_q_len = new_qname.len() + 1 + extranul;
 
         // Length of data after qname
         let other_len = self.inner_mut().l_data - old_q_len as i32;
@@ -372,8 +437,7 @@ impl Record {
         if new_q_len != old_q_len {
             // Move other data to new location
             unsafe {
-                let data =
-                    slice::from_raw_parts_mut((*self.inner).data, self.inner().l_data as usize);
+                let data = slice::from_raw_parts_mut(self.inner.data, self.inner().l_data as usize);
 
                 ::libc::memmove(
                     data.as_mut_ptr().add(new_q_len) as *mut ::libc::c_void,
@@ -385,12 +449,12 @@ impl Record {
 
         // Copy qname data
         let data =
-            unsafe { slice::from_raw_parts_mut((*self.inner).data, self.inner().l_data as usize) };
+            unsafe { slice::from_raw_parts_mut(self.inner.data, self.inner().l_data as usize) };
         utils::copy_memory(new_qname, data);
         for i in 0..=extranul {
             data[new_q_len - i - 1] = b'\0';
         }
-        self.inner_mut().core.l_qname = new_q_len as u8;
+        self.inner_mut().core.l_qname = new_q_len as u16;
         self.inner_mut().core.l_extranul = extranul as u8;
     }
 
@@ -414,6 +478,9 @@ impl Record {
         // a successful allocation.
         self.inner_mut().m_data = new_request;
         self.inner_mut().data = ptr;
+
+        // we now own inner.data
+        self.own = true;
     }
 
     pub fn cigar_len(&self) -> usize {
@@ -423,6 +490,8 @@ impl Record {
     /// Get reference to raw cigar string representation (as stored in BAM file).
     /// Usually, the method `Record::cigar` should be used instead.
     pub fn raw_cigar(&self) -> &[u32] {
+        //cigar is always aligned to 4 bytes - so this is safe
+        #[allow(clippy::cast_ptr_alignment)]
         unsafe {
             slice::from_raw_parts(
                 self.data()[self.qname_capacity()..].as_ptr() as *const u32,
@@ -501,10 +570,11 @@ impl Record {
 
     /// Get auxiliary data (tags).
     pub fn aux(&self, tag: &[u8]) -> Option<Aux<'_>> {
+        let c_str = ffi::CString::new(tag).unwrap();
         let aux = unsafe {
             htslib::bam_aux_get(
-                self.inner,
-                ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
+                &self.inner as *const htslib::bam1_t,
+                c_str.as_ptr() as *mut i8,
             )
         };
 
@@ -529,39 +599,41 @@ impl Record {
     }
 
     /// Add auxiliary data.
-    /// push_aux() should never be called before set().
     pub fn push_aux(&mut self, tag: &[u8], value: &Aux<'_>) {
         let ctag = tag.as_ptr() as *mut i8;
         let ret = unsafe {
             match *value {
                 Aux::Integer(v) => htslib::bam_aux_append(
-                    self.inner,
+                    self.inner_ptr_mut(),
                     ctag,
                     b'i' as i8,
                     4,
                     [v].as_mut_ptr() as *mut u8,
                 ),
                 Aux::Float(v) => htslib::bam_aux_append(
-                    self.inner,
+                    self.inner_ptr_mut(),
                     ctag,
                     b'f' as i8,
                     4,
                     [v].as_mut_ptr() as *mut u8,
                 ),
                 Aux::Char(v) => htslib::bam_aux_append(
-                    self.inner,
+                    self.inner_ptr_mut(),
                     ctag,
                     b'A' as i8,
                     1,
                     [v].as_mut_ptr() as *mut u8,
                 ),
-                Aux::String(v) => htslib::bam_aux_append(
-                    self.inner,
-                    ctag,
-                    b'Z' as i8,
-                    (v.len() + 1) as i32,
-                    ffi::CString::new(v).unwrap().as_ptr() as *mut u8,
-                ),
+                Aux::String(v) => {
+                    let c_str = ffi::CString::new(v).unwrap();
+                    htslib::bam_aux_append(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'Z' as i8,
+                        (v.len() + 1) as i32,
+                        c_str.as_ptr() as *mut u8,
+                    )
+                }
             }
         };
 
@@ -571,18 +643,19 @@ impl Record {
     }
 
     // Delete auxiliary tag.
-    pub fn remove_aux(&self, tag: &[u8]) -> bool {
+    pub fn remove_aux(&mut self, tag: &[u8]) -> bool {
+        let c_str = ffi::CString::new(tag).unwrap();
         let aux = unsafe {
             htslib::bam_aux_get(
-                self.inner,
-                ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
+                &self.inner as *const htslib::bam1_t,
+                c_str.as_ptr() as *mut i8,
             )
         };
         unsafe {
             if aux.is_null() {
                 false
             } else {
-                htslib::bam_aux_del(self.inner, aux);
+                htslib::bam_aux_del(self.inner_ptr_mut(), aux);
                 true
             }
         }
@@ -630,7 +703,7 @@ impl Record {
 impl Drop for Record {
     fn drop(&mut self) {
         if self.own {
-            unsafe { htslib::bam_destroy1(self.inner) };
+            unsafe { ::libc::free(self.inner.data as *mut ::libc::c_void) }
         }
     }
 }
@@ -650,6 +723,39 @@ impl SequenceRead for Record {
 
     fn len(&self) -> usize {
         self.seq_len()
+    }
+}
+
+impl genome::AbstractInterval for Record {
+    /// Return contig name. Panics if record does not know its header (which happens if it has not been read from a file).
+    fn contig(&self) -> &str {
+        let tid = self.tid();
+        if tid < 0 {
+            panic!("invalid tid, must be at least zero");
+        }
+        str::from_utf8(
+            self.header
+                .as_ref()
+                .expect(
+                    "header must be set (this is the case if the record has been read from a file)",
+                )
+                .tid2name(tid as u32),
+        )
+        .expect("unable to interpret contig name as UTF-8")
+    }
+
+    /// Return genomic range covered by alignment. Panics if `Record::cache_cigar()` has not been called first or `Record::pos()` is less than zero.
+    fn range(&self) -> ops::Range<genome::Position> {
+        let end_pos = self
+            .cigar_cached()
+            .expect("cigar has not been cached yet, call cache_cigar() first")
+            .end_pos() as u64;
+
+        if self.pos() < 0 {
+            panic!("invalid position, must be positive")
+        }
+
+        self.pos() as u64..end_pos
     }
 }
 
@@ -696,7 +802,7 @@ impl<'a> Aux<'a> {
 unsafe impl<'a> Send for Aux<'a> {}
 unsafe impl<'a> Sync for Aux<'a> {}
 
-static DECODE_BASE: &'static [u8] = b"=ACMGRSVTWYHKDBN";
+static DECODE_BASE: &[u8] = b"=ACMGRSVTWYHKDBN";
 static ENCODE_BASE: [u8; 256] = [
     15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
     15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
@@ -742,6 +848,10 @@ impl<'a> Seq<'a> {
     pub fn len(&self) -> usize {
         self.len
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 impl<'a> ops::Index<usize> for Seq<'a> {
@@ -770,9 +880,9 @@ pub enum Cigar {
 }
 
 impl Cigar {
-    fn encode(&self) -> u32 {
-        match *self {
-            Cigar::Match(len) => len << 4 | 0,
+    fn encode(self) -> u32 {
+        match self {
+            Cigar::Match(len) => len << 4, // | 0,
             Cigar::Ins(len) => len << 4 | 1,
             Cigar::Del(len) => len << 4 | 2,
             Cigar::RefSkip(len) => len << 4 | 3,
@@ -785,8 +895,8 @@ impl Cigar {
     }
 
     /// Return the length of the CIGAR.
-    pub fn len(&self) -> u32 {
-        match *self {
+    pub fn len(self) -> u32 {
+        match self {
             Cigar::Match(len) => len,
             Cigar::Ins(len) => len,
             Cigar::Del(len) => len,
@@ -799,9 +909,13 @@ impl Cigar {
         }
     }
 
+    pub fn is_empty(self) -> bool {
+        self.len() == 0
+    }
+
     /// Return the character representing the CIGAR.
-    pub fn char(&self) -> char {
-        match *self {
+    pub fn char(self) -> char {
+        match self {
             Cigar::Match(_) => 'M',
             Cigar::Ins(_) => 'I',
             Cigar::Del(_) => 'D',
@@ -858,7 +972,7 @@ custom_derive! {
 
 impl CigarString {
     /// Create a `CigarStringView` from this CigarString at position `pos`
-    pub fn into_view(self, pos: i32) -> CigarStringView {
+    pub fn into_view(self, pos: i64) -> CigarStringView {
         CigarStringView::new(self, pos)
     }
 
@@ -918,16 +1032,24 @@ impl CigarString {
 
         CigarString(cigar)
     }
+}
+
+impl TryFrom<&[u8]> for CigarString {
+    type Error = Error;
 
     /// Create a CigarString from given bytes.
-    pub fn from_bytes(text: &[u8]) -> Result<Self> {
-        Self::from_str(str::from_utf8(text).map_err(|_| Error::ParseCigar {
+    fn try_from(text: &[u8]) -> Result<Self> {
+        Self::try_from(str::from_utf8(text).map_err(|_| Error::ParseCigar {
             msg: "unable to parse as UTF8".to_owned(),
         })?)
     }
+}
+
+impl TryFrom<&str> for CigarString {
+    type Error = Error;
 
     /// Create a CigarString from given str.
-    pub fn from_str(text: &str) -> Result<Self> {
+    fn try_from(text: &str) -> Result<Self> {
         lazy_static! {
             // regex for a cigar string operation
             static ref OP_RE: Regex = Regex::new("^(?P<n>[0-9]+)(?P<op>[MIDNSHP=X])").unwrap();
@@ -967,10 +1089,6 @@ impl CigarString {
 
         Ok(CigarString(inner))
     }
-
-    pub fn to_string(&self) -> String {
-        format!("{}", self)
-    }
 }
 
 impl<'a> CigarString {
@@ -1000,17 +1118,17 @@ impl fmt::Display for CigarString {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct CigarStringView {
     inner: CigarString,
-    pos: i32,
+    pos: i64,
 }
 
 impl CigarStringView {
     /// Construct a new CigarStringView from a CigarString at a position
-    pub fn new(c: CigarString, pos: i32) -> CigarStringView {
+    pub fn new(c: CigarString, pos: i64) -> CigarStringView {
         CigarStringView { inner: c, pos }
     }
 
     /// Get (exclusive) end position of alignment.
-    pub fn end_pos(&self) -> i32 {
+    pub fn end_pos(&self) -> i64 {
         let mut pos = self.pos;
         for c in self {
             match c {
@@ -1018,12 +1136,34 @@ impl CigarStringView {
                 | Cigar::RefSkip(l)
                 | Cigar::Del(l)
                 | Cigar::Equal(l)
-                | Cigar::Diff(l) => pos += *l as i32,
+                | Cigar::Diff(l) => pos += *l as i64,
                 // these don't add to end_pos on reference
                 Cigar::Ins(_) | Cigar::SoftClip(_) | Cigar::HardClip(_) | Cigar::Pad(_) => (),
             }
         }
         pos
+    }
+
+    /// Get number of bases softclipped at the beginning of the alignment.
+    pub fn leading_softclips(&self) -> i64 {
+        self.first().map_or(0, |cigar| {
+            if let Cigar::SoftClip(s) = cigar {
+                *s as i64
+            } else {
+                0
+            }
+        })
+    }
+
+    /// Get number of bases softclipped at the end of the alignment.
+    pub fn trailing_softclips(&self) -> i64 {
+        self.last().map_or(0, |cigar| {
+            if let Cigar::SoftClip(s) = cigar {
+                *s as i64
+            } else {
+                0
+            }
+        })
     }
 
     /// For a given position in the reference, get corresponding position within read.
@@ -1417,7 +1557,7 @@ mod tests {
     #[test]
     fn test_cigar_parse() {
         let cigar = "1S20M1D2I3X1=2H";
-        let parsed = CigarString::from_str(cigar).unwrap();
+        let parsed = CigarString::try_from(cigar).unwrap();
         assert_eq!(parsed.to_string(), cigar);
     }
 }

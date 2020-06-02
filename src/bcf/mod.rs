@@ -75,10 +75,10 @@ pub struct Reader {
 unsafe impl Send for Reader {}
 
 /// Implementation for `Reader::set_threads()` and `Writer::set_threads`.
-pub fn set_threads(hts_file: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
+pub unsafe fn set_threads(hts_file: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
     assert!(n_threads > 0, "n_threads must be > 0");
 
-    let r = unsafe { htslib::hts_set_threads(hts_file, n_threads as i32) };
+    let r = htslib::hts_set_threads(hts_file, n_threads as i32);
     if r != 0 {
         Err(Error::SetThreads)
     } else {
@@ -123,7 +123,7 @@ impl Read for Reader {
                     // Always unpack record.
                     htslib::bcf_unpack(record.inner_mut(), htslib::BCF_UN_ALL as i32);
                 }
-                record.set_header(self.header.clone());
+                record.set_header(Rc::clone(&self.header));
                 Ok(true)
             }
             -1 => Ok(false),
@@ -136,7 +136,7 @@ impl Read for Reader {
     }
 
     fn set_threads(&mut self, n_threads: usize) -> Result<()> {
-        set_threads(self.inner, n_threads)
+        unsafe { set_threads(self.inner, n_threads) }
     }
 
     fn header(&self) -> &HeaderView {
@@ -145,7 +145,7 @@ impl Read for Reader {
 
     /// Return empty record.  Can be reused multiple times.
     fn empty_record(&self) -> Record {
-        Record::new(self.header.clone())
+        Record::new(Rc::clone(&self.header))
     }
 }
 
@@ -166,7 +166,7 @@ pub struct IndexedReader {
     header: Rc<HeaderView>,
 
     /// The position of the previous fetch, if any.
-    current_region: Option<(u32, u32, u32)>,
+    current_region: Option<(u32, u64, u64)>,
 }
 
 unsafe impl Send for IndexedReader {}
@@ -179,9 +179,7 @@ impl IndexedReader {
     /// * `path` - the path to open.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         match path.as_ref().to_str() {
-            Some(p) if path.as_ref().exists() => {
-                Ok(r#try!(Self::new(&ffi::CString::new(p).unwrap())))
-            }
+            Some(p) if path.as_ref().exists() => Ok(Self::new(&ffi::CString::new(p).unwrap())?),
             _ => Err(Error::NonUnicodePath),
         }
     }
@@ -227,10 +225,10 @@ impl IndexedReader {
     ///           contig name to ID.
     /// * `start` - `0`-based start coordinate of region on reference.
     /// * `end` - `0`-based end coordinate of region on reference.
-    pub fn fetch(&mut self, rid: u32, start: u32, end: u32) -> Result<()> {
+    pub fn fetch(&mut self, rid: u32, start: u64, end: u64) -> Result<()> {
         let contig = self.header.rid2name(rid).unwrap();
         let contig = ffi::CString::new(contig).unwrap();
-        if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i32) } != 0 {
+        if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i64) } != 0 {
             Err(Error::Seek {
                 contig: contig.to_str().unwrap().to_owned(),
                 start,
@@ -265,13 +263,13 @@ impl Read for IndexedReader {
                     );
                 }
 
-                record.set_header(self.header.clone());
+                record.set_header(Rc::clone(&self.header));
 
                 match self.current_region {
                     Some((rid, _start, end)) => {
                         if record.rid().is_some()
                             && rid == record.rid().unwrap()
-                            && record.pos() <= end
+                            && record.pos() as u64 <= end
                         {
                             Ok(true)
                         } else {
@@ -304,7 +302,7 @@ impl Read for IndexedReader {
     }
 
     fn empty_record(&self) -> Record {
-        Record::new(self.header.clone())
+        Record::new(Rc::clone(&self.header))
     }
 }
 
@@ -351,7 +349,7 @@ pub mod synced {
         headers: Vec<Rc<HeaderView>>,
 
         /// The position of the previous fetch, if any.
-        current_region: Option<(u32, u32, u32)>,
+        current_region: Option<(u32, u64, u64)>,
     }
 
     // TODO: add interface for setting threads, ensure that the pool is freed properly
@@ -445,7 +443,7 @@ pub mod synced {
                                 let record = *(*(*self.inner).readers.offset(idx as isize))
                                     .buffer
                                     .offset(0);
-                                if (*record).rid != (rid as i32) || (*record).pos >= (end as i32) {
+                                if (*record).rid != (rid as i32) || (*record).pos >= (end as i64) {
                                     return Ok(0);
                                 }
                             }
@@ -502,12 +500,12 @@ pub mod synced {
         ///           contig name to ID.
         /// * `start` - `0`-based start coordinate of region on reference.
         /// * `end` - `0`-based end coordinate of region on reference.
-        pub fn fetch(&mut self, rid: u32, start: u32, end: u32) -> Result<()> {
+        pub fn fetch(&mut self, rid: u32, start: u64, end: u64) -> Result<()> {
             let contig = {
-                let contig = self.header(0).rid2name(rid).unwrap().clone();
+                let contig = self.header(0).rid2name(rid).unwrap(); //.clone();
                 ffi::CString::new(contig).unwrap()
             };
-            if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i32) } != 0 {
+            if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i64) } != 0 {
                 Err(Error::Seek {
                     contig: contig.to_str().unwrap().to_owned(),
                     start,
@@ -596,7 +594,7 @@ impl Writer {
         let mode: &[u8] = match (uncompressed, format) {
             (true, Format::VCF) => b"w",
             (false, Format::VCF) => b"wz",
-            (true, Format::BCF) => b"wu",
+            (true, Format::BCF) => b"wbu",
             (false, Format::BCF) => b"wb",
         };
 
@@ -620,7 +618,7 @@ impl Writer {
     ///
     /// This record can then be reused multiple times.
     pub fn empty_record(&self) -> Record {
-        record::Record::new(self.header.clone())
+        record::Record::new(Rc::clone(&self.header))
     }
 
     /// Translate record to header of this writer.
@@ -632,7 +630,7 @@ impl Writer {
         unsafe {
             htslib::bcf_translate(self.header.inner, record.header().inner, record.inner);
         }
-        record.set_header(self.header.clone());
+        record.set_header(Rc::clone(&self.header));
     }
 
     /// Subset samples of record to match header of this writer.
@@ -673,7 +671,7 @@ impl Writer {
     ///
     /// * `n_threads` - number of extra background writer threads to use, must be `> 0`.
     pub fn set_threads(&mut self, n_threads: usize) -> Result<()> {
-        set_threads(self.inner, n_threads)
+        unsafe { set_threads(self.inner, n_threads) }
     }
 }
 
@@ -706,7 +704,8 @@ impl<'a, R: Read> Iterator for Records<'a, R> {
 /// Wrapper for opening a BCF file.
 fn bcf_open(target: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
     let p = ffi::CString::new(target).unwrap();
-    let ret = unsafe { htslib::hts_open(p.as_ptr(), ffi::CString::new(mode).unwrap().as_ptr()) };
+    let c_str = ffi::CString::new(mode).unwrap();
+    let ret = unsafe { htslib::hts_open(p.as_ptr(), c_str.as_ptr()) };
 
     ensure!(
         !ret.is_null(),
@@ -747,7 +746,7 @@ mod tests {
             assert_eq!(record.sample_count(), 1);
 
             assert_eq!(record.rid().expect("Error reading rid."), 0);
-            assert_eq!(record.pos(), 10021 + i as u32);
+            assert_eq!(record.pos(), 10021 + i as i64);
             assert_eq!(record.qual(), 0f32);
             assert_eq!(
                 record
@@ -954,7 +953,7 @@ mod tests {
             .ok()
             .expect("Error opening file.");
         let expected = ["./1", "1|1", "0/1", "0|1", "1|.", "1/1"];
-        for (rec, exp_gt) in vcf.records().zip(expected.into_iter()) {
+        for (rec, exp_gt) in vcf.records().zip(expected.iter()) {
             let mut rec = rec.expect("Error reading record.");
             let genotypes = rec.genotypes().expect("Error reading genotypes");
             assert_eq!(&format!("{}", genotypes.get(0)), exp_gt);
@@ -1156,7 +1155,7 @@ mod tests {
             // Setup empty record, filled below.
             let mut record = writer.empty_record();
 
-            record.set_rid(&Some(0));
+            record.set_rid(Some(0));
             assert_eq!(record.rid().unwrap(), 0);
 
             record.set_pos(12);
@@ -1220,7 +1219,7 @@ mod tests {
         let tmp = tempdir::TempDir::new("rust-htslib")
             .ok()
             .expect("Cannot create temp dir");
-        let bcfpath = tmp.path().join("test.vcf");
+        let vcfpath = tmp.path().join("test.vcf");
         let mut header = Header::from_template(&vcf.header);
         header
             .remove_contig(b"contig2")
@@ -1230,14 +1229,14 @@ mod tests {
             .remove_structured(b"Foo2")
             .remove_generic(b"Bar2");
         {
-            let mut _writer = Writer::from_path(&bcfpath, &header, true, Format::BCF)
+            let mut _writer = Writer::from_path(&vcfpath, &header, true, Format::VCF)
                 .ok()
                 .expect("Error opening output file.");
             // Note that we don't need to write anything, we are just looking at the header.
         }
 
         let expected = read_all("test/test_headers.out.vcf");
-        let actual = read_all(&bcfpath);
+        let actual = read_all(&vcfpath);
         assert_eq!(expected, actual);
     }
 
@@ -1322,5 +1321,23 @@ mod tests {
     fn test_fails_on_non_existiant() {
         let reader = Reader::from_path("test/no_such_file");
         assert!(reader.is_err());
+    }
+
+    #[test]
+    fn test_multi_string_info_tag() {
+        let mut reader = Reader::from_path("test/test-info-multi-string.vcf").unwrap();
+        let mut rec = reader.empty_record();
+        let _ = reader.read(&mut rec);
+
+        assert_eq!(rec.info(b"ANN").string().unwrap().unwrap().len(), 14);
+    }
+
+    #[test]
+    fn test_multi_string_info_tag_number_a() {
+        let mut reader = Reader::from_path("test/test-info-multi-string-number=A.vcf").unwrap();
+        let mut rec = reader.empty_record();
+        let _ = reader.read(&mut rec);
+
+        assert_eq!(rec.info(b"X").string().unwrap().unwrap().len(), 2);
     }
 }

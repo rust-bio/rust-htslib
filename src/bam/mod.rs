@@ -16,7 +16,6 @@ pub mod record;
 #[cfg(feature = "serde")]
 pub mod record_serde;
 
-use libc;
 use std::ffi;
 use std::path::Path;
 use std::rc::Rc;
@@ -31,12 +30,13 @@ pub use crate::bam::buffer::RecordBuffer;
 pub use crate::bam::errors::{Error, Result};
 pub use crate::bam::header::Header;
 pub use crate::bam::record::Record;
+use std::convert::TryInto;
 
 /// Implementation for `Read::set_threads` and `Writer::set_threads`.
-pub fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
+pub unsafe fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
     assert!(n_threads != 0, "n_threads must be > 0");
 
-    if unsafe { htslib::hts_set_threads(htsfile, n_threads as i32) } != 0 {
+    if htslib::hts_set_threads(htsfile, n_threads as i32) != 0 {
         Err(Error::SetThreads)
     } else {
         Ok(())
@@ -44,7 +44,7 @@ pub fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Result<()
 }
 
 /// Set the reference FAI index path in a `htslib::htsFile` struct for reading CRAM format.
-pub fn set_fai_filename<P: AsRef<Path>>(
+pub unsafe fn set_fai_filename<P: AsRef<Path>>(
     htsfile: *mut htslib::htsFile,
     fasta_path: P,
 ) -> Result<()> {
@@ -56,15 +56,8 @@ pub fn set_fai_filename<P: AsRef<Path>>(
         fasta_path.as_ref().with_extension(".fai")
     };
     let p: &Path = path.as_ref();
-    if unsafe {
-        htslib::hts_set_fai_filename(
-            htsfile,
-            ffi::CString::new(p.to_str().unwrap().as_bytes())
-                .unwrap()
-                .as_ptr(),
-        )
-    } == 0
-    {
+    let c_str = ffi::CString::new(p.to_str().unwrap().as_bytes()).unwrap();
+    if htslib::hts_set_fai_filename(htsfile, c_str.as_ptr()) == 0 {
         Ok(())
     } else {
         Err(Error::InvalidReferencePath { path: p.to_owned() })
@@ -152,7 +145,7 @@ pub trait Read: Sized {
     ///
     /// * `n_threads` - number of extra background writer threads to use, must be `> 0`.
     fn set_threads(&mut self, n_threads: usize) -> Result<()> {
-        set_threads(self.htsfile(), n_threads)
+        unsafe { set_threads(self.htsfile(), n_threads) }
     }
 }
 
@@ -175,7 +168,7 @@ fn path_as_bytes<'a, P: 'a + AsRef<Path>>(path: P, must_exist: bool) -> Result<V
 #[derive(Debug)]
 pub struct Reader {
     htsfile: *mut htslib::htsFile,
-    header: HeaderView,
+    header: Rc<HeaderView>,
 }
 
 unsafe impl Send for Reader {}
@@ -211,7 +204,7 @@ impl Reader {
         let header = unsafe { htslib::sam_hdr_read(htsfile) };
         Ok(Reader {
             htsfile,
-            header: HeaderView::new(header),
+            header: Rc::new(HeaderView::new(header)),
         })
     }
 
@@ -219,8 +212,14 @@ impl Reader {
         data: *mut ::std::os::raw::c_void,
         record: *mut htslib::bam1_t,
     ) -> i32 {
-        let _self = unsafe { &*(data as *mut Self) };
-        unsafe { htslib::sam_read1(_self.htsfile(), &mut _self.header().inner(), record) }
+        let mut _self = unsafe { (data as *mut Self).as_mut().unwrap() };
+        unsafe {
+            htslib::sam_read1(
+                _self.htsfile(),
+                _self.header().inner_ptr() as *mut hts_sys::sam_hdr_t,
+                record,
+            )
+        }
     }
 
     /// Iterator over the records between the (optional) virtual offsets `start` and `end`
@@ -246,17 +245,51 @@ impl Reader {
     ///
     /// * `path` - path to the FASTA reference
     pub fn set_reference<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
-        set_fai_filename(self.htsfile, path)
+        unsafe { set_fai_filename(self.htsfile, path) }
     }
 }
 
 impl Read for Reader {
+    /// Read the next BAM record into the given `Record`.
+    /// Returns a true result if a record was read, or false if there are no more records.
+    ///
+    /// This method is useful if you want to read records as fast as possible as the
+    /// `Record` can be reused. A more ergonomic approach is to use the [records](Reader::records)
+    /// iterator.
+    ///
+    /// # Errors
+    /// If there are any issues with reading the next record an error will be returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rust_htslib::bam::{Error, Read, Reader, Record};
+    ///
+    /// let mut bam = Reader::from_path(&"test/test.bam")?;
+    /// let mut record = Record::new();
+    ///
+    /// // Print the TID of each record
+    /// while bam.read(&mut record)? {
+    ///    println!("TID: {}", record.tid())
+    /// }
+    /// # Ok::<(), Error>(())
+    /// ```
     fn read(&mut self, record: &mut record::Record) -> Result<bool> {
-        match unsafe { htslib::sam_read1(self.htsfile, &mut self.header.inner(), record.inner) } {
+        match unsafe {
+            htslib::sam_read1(
+                self.htsfile,
+                self.header().inner_ptr() as *mut hts_sys::sam_hdr_t,
+                record.inner_ptr_mut(),
+            )
+        } {
             -1 => Ok(false),
             -2 => Err(Error::TruncatedRecord),
             -4 => Err(Error::InvalidRecord),
-            _ => Ok(true),
+            _ => {
+                record.set_header(Rc::clone(&self.header));
+
+                Ok(true)
+            }
         }
     }
 
@@ -310,7 +343,7 @@ impl Drop for Reader {
 #[derive(Debug)]
 pub struct IndexedReader {
     htsfile: *mut htslib::htsFile,
-    header: HeaderView,
+    header: Rc<HeaderView>,
     idx: *mut htslib::hts_idx_t,
     itr: Option<*mut htslib::hts_itr_t>,
     path: Vec<u8>,
@@ -393,8 +426,8 @@ impl IndexedReader {
     fn new(path: &[u8]) -> Result<Self> {
         let htsfile = hts_open(path, b"r")?;
         let header = unsafe { htslib::sam_hdr_read(htsfile) };
-        let idx =
-            unsafe { htslib::sam_index_load(htsfile, ffi::CString::new(path).unwrap().as_ptr()) };
+        let c_str = ffi::CString::new(path).unwrap();
+        let idx = unsafe { htslib::sam_index_load(htsfile, c_str.as_ptr()) };
         if idx.is_null() {
             Err(Error::InvalidIndex {
                 target: str::from_utf8(path).unwrap().to_owned(),
@@ -402,7 +435,7 @@ impl IndexedReader {
         } else {
             Ok(IndexedReader {
                 htsfile,
-                header: HeaderView::new(header),
+                header: Rc::new(HeaderView::new(header)),
                 idx,
                 itr: None,
                 path: path.to_vec(),
@@ -419,12 +452,10 @@ impl IndexedReader {
     fn new_with_index_path(path: &[u8], index_path: &[u8]) -> Result<Self> {
         let htsfile = hts_open(path, b"r")?;
         let header = unsafe { htslib::sam_hdr_read(htsfile) };
+        let c_str_path = ffi::CString::new(path).unwrap();
+        let c_str_index_path = ffi::CString::new(index_path).unwrap();
         let idx = unsafe {
-            htslib::sam_index_load2(
-                htsfile,
-                ffi::CString::new(path).unwrap().as_ptr(),
-                ffi::CString::new(index_path).unwrap().as_ptr(),
-            )
+            htslib::sam_index_load2(htsfile, c_str_path.as_ptr(), c_str_index_path.as_ptr())
         };
         if idx.is_null() {
             Err(Error::InvalidIndex {
@@ -433,7 +464,7 @@ impl IndexedReader {
         } else {
             Ok(IndexedReader {
                 htsfile,
-                header: HeaderView::new(header),
+                header: Rc::new(HeaderView::new(header)),
                 idx,
                 itr: None,
                 path: path.to_vec(),
@@ -508,11 +539,12 @@ impl IndexedReader {
         Ok(self.rc_records())
     }
 
-    pub fn fetch(&mut self, tid: u32, beg: u32, end: u32) -> Result<()> {
+    pub fn fetch(&mut self, tid: u32, beg: u64, end: u64) -> Result<()> {
+
         if let Some(itr) = self.itr {
             unsafe { htslib::hts_itr_destroy(itr) }
         }
-        let itr = unsafe { htslib::sam_itr_queryi(self.idx, tid as i32, beg as i32, end as i32) };
+        let itr = unsafe { htslib::sam_itr_queryi(self.idx, tid as i32, beg as i64, end as i64) };
         if itr.is_null() {
             self.itr = None;
             Err(Error::Fetch)
@@ -533,7 +565,13 @@ impl IndexedReader {
         }
         let rstr = ffi::CString::new(region).unwrap();
         let rptr = rstr.as_ptr();
-        let itr = unsafe { htslib::sam_itr_querys(self.idx, &mut self.header.inner(), rptr) };
+        let itr = unsafe {
+            htslib::sam_itr_querys(
+                self.idx,
+                self.header().inner_ptr() as *mut hts_sys::sam_hdr_t,
+                rptr,
+            )
+        };
         if itr.is_null() {
             self.itr = None;
             Err(Error::Fetch)
@@ -547,10 +585,16 @@ impl IndexedReader {
         data: *mut ::std::os::raw::c_void,
         record: *mut htslib::bam1_t,
     ) -> i32 {
-        let _self = unsafe { &*(data as *mut Self) };
+        let _self = unsafe { (data as *mut Self).as_mut().unwrap() };
         match _self.itr {
             Some(itr) => itr_next(_self.htsfile, itr, record), // read fetched region
-            None => unsafe { htslib::sam_read1(_self.htsfile, &mut _self.header.inner(), record) }, // ordinary reading
+            None => unsafe {
+                htslib::sam_read1(
+                    _self.htsfile,
+                    _self.header().inner_ptr() as *mut hts_sys::sam_hdr_t,
+                    record,
+                )
+            }, // ordinary reading
         }
     }
 
@@ -560,7 +604,7 @@ impl IndexedReader {
     ///
     /// * `path` - path to the FASTA reference
     pub fn set_reference<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
-        set_fai_filename(self.htsfile, path)
+        unsafe { set_fai_filename(self.htsfile, path) }
     }
 }
 
@@ -636,11 +680,11 @@ pub enum Format {
 }
 
 impl Format {
-    fn write_mode(&self) -> &'static [u8] {
+    fn write_mode(self) -> &'static [u8] {
         match self {
-            &Format::SAM => b"w",
-            &Format::BAM => b"wb",
-            &Format::CRAM => b"wc",
+            Format::SAM => b"w",
+            Format::BAM => b"wb",
+            Format::CRAM => b"wc",
         }
     }
 }
@@ -649,7 +693,7 @@ impl Format {
 #[derive(Debug)]
 pub struct Writer {
     f: *mut htslib::htsFile,
-    header: HeaderView,
+    header: Rc<HeaderView>,
 }
 
 unsafe impl Send for Writer {}
@@ -709,10 +753,13 @@ impl Writer {
             );
 
             //println!("{}", str::from_utf8(&header_string).unwrap());
-            let rec = htslib::sam_hdr_parse((l_text + 1) as i32, text as *const i8);
+            let rec = htslib::sam_hdr_parse(
+                ((l_text + 1) as usize).try_into().unwrap(),
+                text as *const i8,
+            );
 
             (*rec).text = text as *mut i8;
-            (*rec).l_text = l_text as u32;
+            (*rec).l_text = l_text as u64;
             rec
         };
 
@@ -722,7 +769,7 @@ impl Writer {
 
         Ok(Writer {
             f,
-            header: HeaderView::new(header_record),
+            header: Rc::new(HeaderView::new(header_record)),
         })
     }
 
@@ -733,7 +780,7 @@ impl Writer {
     ///
     /// * `n_threads` - number of extra background writer threads to use, must be `> 0`.
     pub fn set_threads(&mut self, n_threads: usize) -> Result<()> {
-        set_threads(self.f, n_threads)
+        unsafe { set_threads(self.f, n_threads) }
     }
 
     /// Write record to BAM.
@@ -742,7 +789,7 @@ impl Writer {
     ///
     /// * `record` - the record to write
     pub fn write(&mut self, record: &record::Record) -> Result<()> {
-        if unsafe { htslib::sam_write1(self.f, &self.header.inner(), record.inner) } == -1 {
+        if unsafe { htslib::sam_write1(self.f, self.header.inner(), record.inner_ptr()) } == -1 {
             Err(Error::Write)
         } else {
             Ok(())
@@ -760,7 +807,7 @@ impl Writer {
     ///
     /// * `path` - path to the FASTA reference
     pub fn set_reference<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
-        set_fai_filename(self.f, path)
+        unsafe { set_fai_filename(self.f, path) }
     }
 
     /// Set the compression level for writing BAM/CRAM files.
@@ -801,12 +848,10 @@ impl CompressionLevel {
     // Convert and check the variants of the `CompressionLevel` enum to a numeric level
     fn convert(self) -> Result<u32> {
         match self {
-            CompressionLevel::Uncompressed => Ok(htslib::Z_NO_COMPRESSION),
-            CompressionLevel::Fastest => Ok(htslib::Z_BEST_SPEED),
-            CompressionLevel::Maximum => Ok(htslib::Z_BEST_COMPRESSION),
-            CompressionLevel::Level(i @ htslib::Z_NO_COMPRESSION..=htslib::Z_BEST_COMPRESSION) => {
-                Ok(i)
-            }
+            CompressionLevel::Uncompressed => Ok(0),
+            CompressionLevel::Fastest => Ok(1),
+            CompressionLevel::Maximum => Ok(9),
+            CompressionLevel::Level(i @ 0..=9) => Ok(i),
             CompressionLevel::Level(i) => Err(Error::InvalidCompressionLevel { level: i }),
         }
     }
@@ -933,8 +978,8 @@ impl<'a, R: Read> Iterator for ChunkIterator<'a, R> {
 fn hts_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
     let cpath = ffi::CString::new(path).unwrap();
     let path = str::from_utf8(path).unwrap();
-    let ret =
-        unsafe { htslib::hts_open(cpath.as_ptr(), ffi::CString::new(mode).unwrap().as_ptr()) };
+    let c_str = ffi::CString::new(mode).unwrap();
+    let ret = unsafe { htslib::hts_open(cpath.as_ptr(), c_str.as_ptr()) };
     if ret.is_null() {
         Err(Error::Open {
             target: path.to_owned(),
@@ -1001,9 +1046,9 @@ impl HeaderView {
                 header_string.len(),
             );
 
-            let rec = htslib::sam_hdr_parse((l_text + 1) as i32, text as *const i8);
+            let rec = htslib::sam_hdr_parse((l_text + 1) as u64, text as *const i8);
             (*rec).text = text as *mut i8;
-            (*rec).l_text = l_text as u32;
+            (*rec).l_text = l_text as u64;
             rec
         };
 
@@ -1016,8 +1061,8 @@ impl HeaderView {
     }
 
     #[inline]
-    pub fn inner(&self) -> htslib::bam_hdr_t {
-        unsafe { (*self.inner) }
+    pub fn inner(&self) -> &htslib::bam_hdr_t {
+        unsafe { self.inner.as_ref().unwrap() }
     }
 
     #[inline]
@@ -1027,25 +1072,28 @@ impl HeaderView {
     }
 
     #[inline]
+    pub fn inner_mut(&mut self) -> &mut htslib::bam_hdr_t {
+        unsafe { self.inner.as_mut().unwrap() }
+    }
+
+    #[inline]
     // Mutable pointer to bam_hdr_t struct
-    pub fn inner_ptr_mut(&self) -> *mut htslib::bam_hdr_t {
+    pub fn inner_ptr_mut(&mut self) -> *mut htslib::bam_hdr_t {
         self.inner
     }
 
     pub fn tid(&self, name: &[u8]) -> Option<u32> {
-        let tid = unsafe {
-            htslib::bam_name2id(
-                self.inner,
-                ffi::CString::new(name)
-                    .expect("Expected valid name.")
-                    .as_ptr(),
-            )
-        };
+        let c_str = ffi::CString::new(name).expect("Expected valid name.");
+        let tid = unsafe { htslib::sam_hdr_name2tid(self.inner, c_str.as_ptr()) };
         if tid < 0 {
             None
         } else {
             Some(tid as u32)
         }
+    }
+
+    pub fn tid2name(&self, tid: u32) -> &[u8] {
+        unsafe { ffi::CStr::from_ptr(htslib::sam_hdr_tid2name(self.inner, tid as i32)).to_bytes() }
     }
 
     pub fn target_count(&self) -> u32 {
@@ -1062,12 +1110,12 @@ impl HeaderView {
             .collect()
     }
 
-    pub fn target_len(&self, tid: u32) -> Option<u32> {
+    pub fn target_len(&self, tid: u32) -> Option<u64> {
         let inner = unsafe { *self.inner };
         if (tid as i32) < inner.n_targets {
             let l: &[u32] =
                 unsafe { slice::from_raw_parts(inner.target_len, inner.n_targets as usize) };
-            Some(l[tid as usize])
+            Some(l[tid as usize] as u64)
         } else {
             None
         }
@@ -1082,7 +1130,7 @@ impl HeaderView {
 impl Clone for HeaderView {
     fn clone(&self) -> Self {
         HeaderView {
-            inner: unsafe { htslib::bam_hdr_dup(self.inner) },
+            inner: unsafe { htslib::sam_hdr_dup(self.inner) },
             owned: true,
         }
     }
@@ -1092,7 +1140,7 @@ impl Drop for HeaderView {
     fn drop(&mut self) {
         if self.owned {
             unsafe {
-                htslib::bam_hdr_destroy(self.inner);
+                htslib::sam_hdr_destroy(self.inner);
             }
         }
     }
@@ -1162,6 +1210,28 @@ CCCCCCCCCCCCCCCCCCC"[..],
             CigarString(vec![Cigar::Match(27), Cigar::Del(100000), Cigar::Match(73)]),
         ];
         (names, flags, seqs, quals, cigars)
+    }
+
+    fn compare_inner_bam_cram_records(cram_records: &Vec<Record>, bam_records: &Vec<Record>) {
+        // Selectively compares bam1_t struct fields from BAM and CRAM
+        for (c1, b1) in cram_records.iter().zip(bam_records.iter()) {
+            // CRAM vs BAM l_data is off by 3, see: https://github.com/rust-bio/rust-htslib/pull/184#issuecomment-590133544
+            // The rest of the fields should be identical:
+            assert_eq!(c1.cigar(), b1.cigar());
+            assert_eq!(c1.inner().core.pos, b1.inner().core.pos);
+            assert_eq!(c1.inner().core.mpos, b1.inner().core.mpos);
+            assert_eq!(c1.inner().core.mtid, b1.inner().core.mtid);
+            assert_eq!(c1.inner().core.tid, b1.inner().core.tid);
+            assert_eq!(c1.inner().core.bin, b1.inner().core.bin);
+            assert_eq!(c1.inner().core.qual, b1.inner().core.qual);
+            assert_eq!(c1.inner().core.l_extranul, b1.inner().core.l_extranul);
+            assert_eq!(c1.inner().core.flag, b1.inner().core.flag);
+            assert_eq!(c1.inner().core.l_qname, b1.inner().core.l_qname);
+            assert_eq!(c1.inner().core.n_cigar, b1.inner().core.n_cigar);
+            assert_eq!(c1.inner().core.l_qseq, b1.inner().core.l_qseq);
+            assert_eq!(c1.inner().core.isize, b1.inner().core.isize);
+            //... except m_data
+        }
     }
 
     #[test]
@@ -1238,11 +1308,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .ok()
             .expect("Error opening file.");
 
-        let true_header =
-            "@SQ\tSN:CHROMOSOME_I\tLN:15072423\n@SQ\tSN:CHROMOSOME_II\tLN:15279345\
+        let true_header = "@SQ\tSN:CHROMOSOME_I\tLN:15072423\n@SQ\tSN:CHROMOSOME_II\tLN:15279345\
              \n@SQ\tSN:CHROMOSOME_III\tLN:13783700\n@SQ\tSN:CHROMOSOME_IV\tLN:17493793\n@SQ\t\
              SN:CHROMOSOME_V\tLN:20924149\n"
-                .to_string();
+            .to_string();
         let header_text = String::from_utf8(bam.header.as_bytes().to_owned()).unwrap();
         assert_eq!(header_text, true_header);
     }
@@ -1353,6 +1422,44 @@ CCCCCCCCCCCCCCCCCCC"[..],
     }
 
     #[test]
+    fn test_set_repeated() {
+        let mut rec = Record::new();
+        rec.set(
+            b"123",
+            Some(&CigarString(vec![Cigar::Match(3)])),
+            b"AAA",
+            b"III",
+        );
+        rec.push_aux(b"AS", &Aux::Integer(12345));
+        assert_eq!(rec.qname(), b"123");
+        assert_eq!(rec.seq().as_bytes(), b"AAA");
+        assert_eq!(rec.qual(), b"III");
+        assert_eq!(rec.aux(b"AS").unwrap(), Aux::Integer(12345));
+
+        rec.set(
+            b"1234",
+            Some(&CigarString(vec![Cigar::SoftClip(1), Cigar::Match(3)])),
+            b"AAAA",
+            b"IIII",
+        );
+        assert_eq!(rec.qname(), b"1234");
+        assert_eq!(rec.seq().as_bytes(), b"AAAA");
+        assert_eq!(rec.qual(), b"IIII");
+        assert_eq!(rec.aux(b"AS").unwrap(), Aux::Integer(12345));
+
+        rec.set(
+            b"12",
+            Some(&CigarString(vec![Cigar::Match(2)])),
+            b"AA",
+            b"II",
+        );
+        assert_eq!(rec.qname(), b"12");
+        assert_eq!(rec.seq().as_bytes(), b"AA");
+        assert_eq!(rec.qual(), b"II");
+        assert_eq!(rec.aux(b"AS").unwrap(), Aux::Integer(12345));
+    }
+
+    #[test]
     fn test_set_qname() {
         let (names, _, seqs, quals, cigars) = gold();
 
@@ -1415,12 +1522,12 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 .push_tag(b"SN", &"1")
                 .push_tag(b"LN", &10000000),
         );
-        let header = HeaderView::from_header(&_header);
+        let mut header = HeaderView::from_header(&_header);
 
         let line =
             b"blah1	0	1	1	255	1M	*	0	0	A	F	CB:Z:AAAA-1	UR:Z:AAAA	UB:Z:AAAA	GX:Z:G1	xf:i:1	fx:Z:G1\tli:i:0\ttf:Z:cC";
 
-        let mut rec = Record::from_sam(&header, line).unwrap();
+        let mut rec = Record::from_sam(&mut header, line).unwrap();
         assert_eq!(rec.qname(), b"blah1");
         rec.set_qname(b"r0");
         assert_eq!(rec.qname(), b"r0");
@@ -1433,7 +1540,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .expect("Error opening file.");
 
         for record in bam.records() {
-            let rec = record.expect("Expected valid record");
+            let mut rec = record.expect("Expected valid record");
 
             if rec.aux(b"XS").is_some() {
                 rec.remove_aux(b"XS");
@@ -1529,7 +1636,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 let idx = i % names.len();
                 rec.set(names[idx], Some(&cigars[idx]), seqs[idx], quals[idx]);
                 rec.push_aux(b"NM", &Aux::Integer(15));
-                rec.set_pos(i as i32);
+                rec.set_pos(i as i64);
 
                 bam.write(&mut rec).expect("Failed to write record.");
             }
@@ -1545,7 +1652,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
                 let rec = _rec.expect("Failed to read record.");
 
-                assert_eq!(rec.pos(), i as i32);
+                assert_eq!(rec.pos(), i as i64);
                 assert_eq!(rec.qname(), names[idx]);
                 assert_eq!(*rec.cigar(), cigars[idx]);
                 assert_eq!(rec.seq().as_bytes(), seqs[idx]);
@@ -1709,10 +1816,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let mut bam_reader = Reader::from_path(bam_path).unwrap();
         let bam_records: Vec<Record> = bam_reader.records().map(|v| v.unwrap()).collect();
 
-        // Compare CRAM records to BAM records
-        for (c1, b1) in cram_records.iter().zip(bam_records.iter()) {
-            assert!(c1 == b1);
-        }
+        compare_inner_bam_cram_records(&cram_records, &bam_records);
     }
 
     #[test]
@@ -1781,9 +1885,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             let cram_records: Vec<Record> = cram_reader.records().map(|v| v.unwrap()).collect();
 
             // Compare CRAM records to BAM records
-            for (c1, b1) in cram_records.iter().zip(bam_records.iter()) {
-                assert!(c1 == b1);
-            }
+            compare_inner_bam_cram_records(&cram_records, &bam_records);
         }
 
         tmp.close().expect("Failed to delete temp dir");

@@ -13,6 +13,7 @@ use std::rc::Rc;
 use std::slice;
 use std::str;
 
+use bio_types::genome;
 use ieee754::Ieee754;
 use itertools::Itertools;
 
@@ -152,20 +153,20 @@ impl Record {
     }
 
     // Update the internal reference ID number.
-    pub fn set_rid(&mut self, rid: &Option<u32>) {
+    pub fn set_rid(&mut self, rid: Option<u32>) {
         match rid {
-            Some(rid) => self.inner_mut().rid = *rid as i32,
+            Some(rid) => self.inner_mut().rid = rid as i32,
             None => self.inner_mut().rid = -1,
         }
     }
 
     // Return 0-based position.
-    pub fn pos(&self) -> u32 {
-        self.inner().pos as u32
+    pub fn pos(&self) -> i64 {
+        self.inner().pos
     }
 
     /// Set 0-based position.
-    pub fn set_pos(&mut self, pos: i32) {
+    pub fn set_pos(&mut self, pos: i64) {
         self.inner_mut().pos = pos;
     }
 
@@ -183,12 +184,9 @@ impl Record {
 
     /// Update the ID string to the given value.
     pub fn set_id(&mut self, id: &[u8]) -> Result<()> {
+        let c_str = ffi::CString::new(id).unwrap();
         if unsafe {
-            htslib::bcf_update_id(
-                self.header().inner,
-                self.inner,
-                ffi::CString::new(id).unwrap().as_ptr() as *mut i8,
-            )
+            htslib::bcf_update_id(self.header().inner, self.inner, c_str.as_ptr() as *mut i8)
         } == 0
         {
             Ok(())
@@ -199,12 +197,9 @@ impl Record {
 
     /// Clear the ID column (set it to `"."`).
     pub fn clear_id(&mut self) -> Result<()> {
+        let c_str = ffi::CString::new(&b"."[..]).unwrap();
         if unsafe {
-            htslib::bcf_update_id(
-                self.header().inner,
-                self.inner,
-                ffi::CString::new(".".as_bytes()).unwrap().as_ptr() as *mut i8,
-            )
+            htslib::bcf_update_id(self.header().inner, self.inner, c_str.as_ptr() as *mut i8)
         } == 0
         {
             Ok(())
@@ -215,13 +210,9 @@ impl Record {
 
     /// Add the ID string (the ID field is semicolon-separated), checking for duplicates.
     pub fn push_id(&mut self, id: &[u8]) -> Result<()> {
-        if unsafe {
-            htslib::bcf_add_id(
-                self.header().inner,
-                self.inner,
-                ffi::CString::new(id).unwrap().as_ptr() as *mut i8,
-            )
-        } == 0
+        let c_str = ffi::CString::new(id).unwrap();
+        if unsafe { htslib::bcf_add_id(self.header().inner, self.inner, c_str.as_ptr() as *mut i8) }
+            == 0
         {
             Ok(())
         } else {
@@ -241,12 +232,12 @@ impl Record {
     /// # Arguments
     ///
     /// - `flt_id` - The filter ID to query for.
-    pub fn has_filter(&self, flt_id: &Id) -> bool {
-        if **flt_id == 0 && self.inner().d.n_flt == 0 {
+    pub fn has_filter(&self, flt_id: Id) -> bool {
+        if *flt_id == 0 && self.inner().d.n_flt == 0 {
             return true;
         }
         for i in 0..(self.inner().d.n_flt as isize) {
-            if unsafe { *self.inner().d.flt.offset(i) } == **flt_id as i32 {
+            if unsafe { *self.inner().d.flt.offset(i) } == *flt_id as i32 {
                 return true;
             }
         }
@@ -428,11 +419,12 @@ impl Record {
     /// Add a format tag. Data is a flattened two-dimensional array.
     /// The first dimension contains one array for each sample.
     fn push_format<T>(&mut self, tag: &[u8], data: &[T], ht: u32) -> Result<()> {
+        let tag_c_str = ffi::CString::new(tag).unwrap();
         unsafe {
             if htslib::bcf_update_format(
                 self.header().inner,
                 self.inner,
-                ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
+                tag_c_str.as_ptr() as *mut i8,
                 data.as_ptr() as *const ::std::os::raw::c_void,
                 data.len() as i32,
                 ht as i32,
@@ -473,11 +465,12 @@ impl Record {
             .iter()
             .map(|s| s.as_ptr() as *mut i8)
             .collect::<Vec<*mut i8>>();
+        let tag_c_str = ffi::CString::new(tag).unwrap();
         unsafe {
             if htslib::bcf_update_format_string(
                 self.header().inner,
                 self.inner,
-                ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
+                tag_c_str.as_ptr() as *mut i8,
                 c_ptrs.as_slice().as_ptr() as *mut *const i8,
                 data.len() as i32,
             ) == 0
@@ -513,11 +506,12 @@ impl Record {
 
     /// Add/replace an INFO tag.
     fn push_info<T>(&mut self, tag: &[u8], data: &[T], ht: u32) -> Result<()> {
+        let tag_c_str = ffi::CString::new(tag).unwrap();
         unsafe {
             if htslib::bcf_update_info(
                 self.header().inner,
                 self.inner,
-                ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
+                tag_c_str.as_ptr() as *mut i8,
                 data.as_ptr() as *const ::std::os::raw::c_void,
                 data.len() as i32,
                 ht as i32,
@@ -534,7 +528,7 @@ impl Record {
 
     /// Set flag into the INFO column.
     pub fn push_info_flag(&mut self, tag: &[u8]) -> Result<()> {
-        self.push_info_string_impl(tag, &["".as_bytes()], htslib::BCF_HT_FLAG)
+        self.push_info_string_impl(tag, &[b""], htslib::BCF_HT_FLAG)
     }
 
     /// Remove the flag from the INFO column.
@@ -567,11 +561,12 @@ impl Record {
         } else {
             c_str.to_bytes().len()
         };
+        let tag_c_str = ffi::CString::new(tag).unwrap();
         unsafe {
             if htslib::bcf_update_info(
                 self.header().inner,
                 self.inner,
-                ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
+                tag_c_str.as_ptr() as *mut i8,
                 c_str.as_ptr() as *const ::std::os::raw::c_void,
                 len as i32,
                 ht as i32,
@@ -595,7 +590,7 @@ impl Record {
     }
 
     pub fn remove_alleles(&mut self, remove: &[bool]) -> Result<()> {
-        let rm_set = unsafe { htslib::kbs_init(remove.len()) };
+        let rm_set = unsafe { htslib::kbs_init(remove.len() as u64) };
 
         for (i, &r) in remove.iter().enumerate() {
             if r {
@@ -628,6 +623,21 @@ impl Record {
     }
 }
 
+impl genome::AbstractLocus for Record {
+    fn contig(&self) -> &str {
+        str::from_utf8(
+            self.header()
+                .rid2name(self.rid().expect("rid not set"))
+                .expect("unable to find rid in header"),
+        )
+        .expect("unable to interpret contig name as UTF-8")
+    }
+
+    fn pos(&self) -> u64 {
+        self.pos() as u64
+    }
+}
+
 /// Phased or unphased alleles, represented as indices.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GenotypeAllele {
@@ -650,9 +660,9 @@ impl GenotypeAllele {
     }
 
     /// Get the index into the list of alleles.
-    pub fn index(&self) -> Option<u32> {
+    pub fn index(self) -> Option<u32> {
         match self {
-            GenotypeAllele::Unphased(i) | GenotypeAllele::Phased(i) => Some(*i as u32),
+            GenotypeAllele::Unphased(i) | GenotypeAllele::Phased(i) => Some(i as u32),
             GenotypeAllele::UnphasedMissing | GenotypeAllele::PhasedMissing => None,
         }
     }
@@ -676,13 +686,13 @@ custom_derive! {
 impl fmt::Display for Genotype {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let &Genotype(ref alleles) = self;
-        r#try!(write!(f, "{}", alleles[0]));
+        write!(f, "{}", alleles[0])?;
         for a in &alleles[1..] {
             let sep = match a {
                 GenotypeAllele::Phased(_) | GenotypeAllele::PhasedMissing => '|',
                 GenotypeAllele::Unphased(_) | GenotypeAllele::UnphasedMissing => '/',
             };
-            r#try!(write!(f, "{}{}", sep, a));
+            write!(f, "{}{}", sep, a)?;
         }
         Ok(())
     }
@@ -737,11 +747,12 @@ impl<'a> Info<'a> {
 
     fn data(&mut self, data_type: u32) -> Result<Option<(usize, i32)>> {
         let mut n: i32 = self.record.buffer_len;
+        let c_str = ffi::CString::new(self.tag).unwrap();
         let ret = unsafe {
             htslib::bcf_get_info_values(
                 self.record.header().inner,
                 self.record.inner,
-                ffi::CString::new(self.tag).unwrap().as_ptr() as *mut i8,
+                c_str.as_ptr() as *mut i8,
                 &mut self.record.buffer,
                 &mut n,
                 data_type as i32,
@@ -762,8 +773,9 @@ impl<'a> Info<'a> {
     /// Import `bcf::record::Numeric` for missing value handling.
     pub fn integer(&mut self) -> Result<Option<&'a [i32]>> {
         self.data(htslib::BCF_HT_INT).map(|data| {
-            data.map(|(n, _)| {
-                trim_slice(unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) })
+            data.map(|(n, ret)| {
+                let values = unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) };
+                &values[..ret as usize]
             })
         })
     }
@@ -773,8 +785,9 @@ impl<'a> Info<'a> {
     /// Import `bcf::record::Numeric` for missing value handling.
     pub fn float(&mut self) -> Result<Option<&'a [f32]>> {
         self.data(htslib::BCF_HT_REAL).map(|data| {
-            data.map(|(n, _)| {
-                trim_slice(unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) })
+            data.map(|(n, ret)| {
+                let values = unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) };
+                &values[..ret as usize]
             })
         })
     }
@@ -790,9 +803,9 @@ impl<'a> Info<'a> {
     /// Get strings from tag. `None` if tag not present in record.
     pub fn string(&mut self) -> Result<Option<Vec<&'a [u8]>>> {
         self.data(htslib::BCF_HT_STR).map(|data| {
-            data.map(|(n, ret)| {
+            data.map(|(_, ret)| {
                 unsafe { slice::from_raw_parts(self.record.buffer as *const u8, ret as usize) }
-                    .chunks(n)
+                    .split(|c| *c == b',')
                     .map(|s| {
                         // stop at zero character
                         s.split(|c| *c == 0u8)
@@ -825,11 +838,12 @@ pub struct Format<'a> {
 impl<'a> Format<'a> {
     /// Create new format data in a given record.
     fn new(record: &'a mut Record, tag: &'a [u8]) -> Format<'a> {
+        let c_str = ffi::CString::new(tag).unwrap();
         let inner = unsafe {
             htslib::bcf_get_fmt(
                 record.header().inner,
                 record.inner,
-                ffi::CString::new(tag).unwrap().as_ptr() as *mut i8,
+                c_str.as_ptr() as *mut i8,
             )
         };
         Format { record, tag, inner }
@@ -855,11 +869,12 @@ impl<'a> Format<'a> {
     /// Read and decode format data into a given type.
     fn data(&mut self, data_type: u32) -> Result<(usize, i32)> {
         let mut n: i32 = self.record.buffer_len;
+        let c_str = ffi::CString::new(self.tag).unwrap();
         let ret = unsafe {
             htslib::bcf_get_format_values(
                 self.record.header().inner,
                 self.record.inner,
-                ffi::CString::new(self.tag).unwrap().as_ptr() as *mut i8,
+                c_str.as_ptr() as *mut i8,
                 &mut self.record.buffer,
                 &mut n,
                 data_type as i32,

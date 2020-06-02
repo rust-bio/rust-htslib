@@ -74,7 +74,9 @@ extern crate libc;
 extern crate newtype_derive;
 
 #[cfg(feature = "serde")]
-extern crate serde;
+extern crate serde_base;
+#[cfg(feature = "serde")]
+extern crate serde_bytes;
 
 #[cfg(all(test, feature = "serde"))]
 extern crate bincode;
@@ -84,13 +86,6 @@ extern crate bincode;
 extern crate pretty_assertions;
 #[cfg(all(test, feature = "serde"))]
 extern crate serde_json;
-
-extern crate libz_sys;
-
-#[cfg(feature = "bzip2")]
-extern crate bzip2_sys;
-#[cfg(feature = "lzma")]
-extern crate lzma_sys;
 
 extern crate snafu;
 

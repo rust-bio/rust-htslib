@@ -52,14 +52,14 @@ impl RecordBuffer {
         self.ringbuffer2.clear();
     }
 
-    fn drain_left(&mut self, rid: u32, window_start: u32) -> usize {
+    fn drain_left(&mut self, rid: u32, window_start: u64) -> usize {
         // remove records too far left or from wrong rid
         // rec.rid() will always yield Some(), because otherwise we won't put the rec into the
         // buffer.
         let to_remove = self
             .ringbuffer
             .iter()
-            .take_while(|rec| rec.pos() < window_start || rec.rid().unwrap() != rid)
+            .take_while(|rec| (rec.pos() as u64) < window_start || rec.rid().unwrap() != rid)
             .count();
         self.ringbuffer.drain(..to_remove);
         to_remove
@@ -69,7 +69,7 @@ impl RecordBuffer {
     /// the start coordinate of any previous `fill` operation.
     /// Coordinates are 0-based, and end is exclusive.
     /// Returns tuple with numbers of added and deleted records compared to previous fetch.
-    pub fn fetch(&mut self, chrom: &[u8], start: u32, end: u32) -> Result<(usize, usize)> {
+    pub fn fetch(&mut self, chrom: &[u8], start: u64, end: u64) -> Result<(usize, usize)> {
         // TODO panic if start is left of previous start or we have moved past the given chrom
         // before.
         let rid = self.reader.header.name2rid(chrom)?;
@@ -107,7 +107,7 @@ impl RecordBuffer {
 
         // move overflow from last fill into ringbuffer
         if self.overflow.is_some() {
-            let pos = self.overflow.as_ref().unwrap().pos();
+            let pos = self.overflow.as_ref().unwrap().pos() as u64;
             if pos >= start {
                 if pos <= end {
                     self.ringbuffer.push_back(self.overflow.take().unwrap());
@@ -129,7 +129,7 @@ impl RecordBuffer {
                 // EOF
                 break;
             }
-            let pos = rec.pos();
+            let pos = rec.pos() as u64;
             if let Some(rec_rid) = rec.rid() {
                 if rec_rid == rid {
                     if pos >= end {
@@ -173,6 +173,10 @@ impl RecordBuffer {
 
     pub fn len(&self) -> usize {
         self.ringbuffer.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 
