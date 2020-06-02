@@ -123,7 +123,7 @@ impl Read for Reader {
                     // Always unpack record.
                     htslib::bcf_unpack(record.inner_mut(), htslib::BCF_UN_ALL as i32);
                 }
-                record.set_header(self.header.clone());
+                record.set_header(Rc::clone(&self.header));
                 Ok(true)
             }
             -1 => Ok(false),
@@ -145,7 +145,7 @@ impl Read for Reader {
 
     /// Return empty record.  Can be reused multiple times.
     fn empty_record(&self) -> Record {
-        Record::new(self.header.clone())
+        Record::new(Rc::clone(&self.header))
     }
 }
 
@@ -166,7 +166,7 @@ pub struct IndexedReader {
     header: Rc<HeaderView>,
 
     /// The position of the previous fetch, if any.
-    current_region: Option<(u32, u32, u32)>,
+    current_region: Option<(u32, u64, u64)>,
 }
 
 unsafe impl Send for IndexedReader {}
@@ -225,7 +225,7 @@ impl IndexedReader {
     ///           contig name to ID.
     /// * `start` - `0`-based start coordinate of region on reference.
     /// * `end` - `0`-based end coordinate of region on reference.
-    pub fn fetch(&mut self, rid: u32, start: u32, end: u32) -> Result<()> {
+    pub fn fetch(&mut self, rid: u32, start: u64, end: u64) -> Result<()> {
         let contig = self.header.rid2name(rid).unwrap();
         let contig = ffi::CString::new(contig).unwrap();
         if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i64) } != 0 {
@@ -263,13 +263,13 @@ impl Read for IndexedReader {
                     );
                 }
 
-                record.set_header(self.header.clone());
+                record.set_header(Rc::clone(&self.header));
 
                 match self.current_region {
                     Some((rid, _start, end)) => {
                         if record.rid().is_some()
                             && rid == record.rid().unwrap()
-                            && record.pos() <= end
+                            && record.pos() as u64 <= end
                         {
                             Ok(true)
                         } else {
@@ -302,7 +302,7 @@ impl Read for IndexedReader {
     }
 
     fn empty_record(&self) -> Record {
-        Record::new(self.header.clone())
+        Record::new(Rc::clone(&self.header))
     }
 }
 
@@ -349,7 +349,7 @@ pub mod synced {
         headers: Vec<Rc<HeaderView>>,
 
         /// The position of the previous fetch, if any.
-        current_region: Option<(u32, u32, u32)>,
+        current_region: Option<(u32, u64, u64)>,
     }
 
     // TODO: add interface for setting threads, ensure that the pool is freed properly
@@ -500,7 +500,7 @@ pub mod synced {
         ///           contig name to ID.
         /// * `start` - `0`-based start coordinate of region on reference.
         /// * `end` - `0`-based end coordinate of region on reference.
-        pub fn fetch(&mut self, rid: u32, start: u32, end: u32) -> Result<()> {
+        pub fn fetch(&mut self, rid: u32, start: u64, end: u64) -> Result<()> {
             let contig = {
                 let contig = self.header(0).rid2name(rid).unwrap(); //.clone();
                 ffi::CString::new(contig).unwrap()
@@ -618,7 +618,7 @@ impl Writer {
     ///
     /// This record can then be reused multiple times.
     pub fn empty_record(&self) -> Record {
-        record::Record::new(self.header.clone())
+        record::Record::new(Rc::clone(&self.header))
     }
 
     /// Translate record to header of this writer.
@@ -630,7 +630,7 @@ impl Writer {
         unsafe {
             htslib::bcf_translate(self.header.inner, record.header().inner, record.inner);
         }
-        record.set_header(self.header.clone());
+        record.set_header(Rc::clone(&self.header));
     }
 
     /// Subset samples of record to match header of this writer.
@@ -746,7 +746,7 @@ mod tests {
             assert_eq!(record.sample_count(), 1);
 
             assert_eq!(record.rid().expect("Error reading rid."), 0);
-            assert_eq!(record.pos(), 10021 + i as u32);
+            assert_eq!(record.pos(), 10021 + i as i64);
             assert_eq!(record.qual(), 0f32);
             assert_eq!(
                 record

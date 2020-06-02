@@ -8,6 +8,7 @@ use std::ffi;
 use std::fmt;
 use std::mem::{size_of, MaybeUninit};
 use std::ops;
+use std::rc::Rc;
 use std::slice;
 use std::str;
 use std::str::FromStr;
@@ -22,7 +23,9 @@ use crate::htslib;
 use crate::utils;
 
 use bio_types::alignment::{Alignment, AlignmentMode, AlignmentOperation};
+use bio_types::genome;
 use bio_types::sequence::SequenceRead;
+use bio_types::strand::ReqStrand;
 
 /// A macro creating methods for flag access.
 macro_rules! flag {
@@ -46,6 +49,7 @@ pub struct Record {
     pub inner: htslib::bam1_t,
     own: bool,
     cigar: Option<CigarStringView>,
+    header: Option<Rc<HeaderView>>,
 }
 
 unsafe impl Send for Record {}
@@ -109,6 +113,7 @@ impl Record {
             inner: unsafe { MaybeUninit::zeroed().assume_init() },
             own: true,
             cigar: None,
+            header: None,
         }
     }
 
@@ -128,11 +133,12 @@ impl Record {
             },
             own: false,
             cigar: None,
+            header: None,
         }
     }
 
     // Create a BAM record from a line SAM text. SAM slice need not be 0-terminated.
-    pub fn from_sam(header_view: &mut HeaderView, sam: &[u8]) -> Result<Record> {
+    pub fn from_sam(header_view: &HeaderView, sam: &[u8]) -> Result<Record> {
         let mut record = Self::new();
 
         let mut sam_copy = Vec::with_capacity(sam.len() + 1);
@@ -148,7 +154,7 @@ impl Record {
         let succ = unsafe {
             htslib::sam_parse1(
                 &mut sam_string,
-                header_view.inner_ptr_mut(),
+                header_view.inner_ptr() as *mut htslib::bam_hdr_t,
                 record.inner_ptr_mut(),
             )
         };
@@ -160,6 +166,10 @@ impl Record {
                 rec: str::from_utf8(&sam_copy).unwrap().to_owned(),
             })
         }
+    }
+
+    pub fn set_header(&mut self, header: Rc<HeaderView>) {
+        self.header = Some(header);
     }
 
     pub(super) fn data(&self) -> &[u8] {
@@ -222,6 +232,16 @@ impl Record {
     /// Set MAPQ.
     pub fn set_mapq(&mut self, mapq: u8) {
         self.inner_mut().core.qual = mapq;
+    }
+
+    /// Get strand information from record flags.
+    pub fn strand(&mut self) -> ReqStrand {
+        let reverse = self.flags() & 0x10 != 0;
+        if reverse {
+            ReqStrand::Reverse
+        } else {
+            ReqStrand::Forward
+        }
     }
 
     /// Get raw flags.
@@ -706,6 +726,39 @@ impl SequenceRead for Record {
     }
 }
 
+impl genome::AbstractInterval for Record {
+    /// Return contig name. Panics if record does not know its header (which happens if it has not been read from a file).
+    fn contig(&self) -> &str {
+        let tid = self.tid();
+        if tid < 0 {
+            panic!("invalid tid, must be at least zero");
+        }
+        str::from_utf8(
+            self.header
+                .as_ref()
+                .expect(
+                    "header must be set (this is the case if the record has been read from a file)",
+                )
+                .tid2name(tid as u32),
+        )
+        .expect("unable to interpret contig name as UTF-8")
+    }
+
+    /// Return genomic range covered by alignment. Panics if `Record::cache_cigar()` has not been called first or `Record::pos()` is less than zero.
+    fn range(&self) -> ops::Range<genome::Position> {
+        let end_pos = self
+            .cigar_cached()
+            .expect("cigar has not been cached yet, call cache_cigar() first")
+            .end_pos() as u64;
+
+        if self.pos() < 0 {
+            panic!("invalid position, must be positive")
+        }
+
+        self.pos() as u64..end_pos
+    }
+}
+
 /// Auxiliary record data.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Aux<'a> {
@@ -1089,6 +1142,28 @@ impl CigarStringView {
             }
         }
         pos
+    }
+
+    /// Get number of bases softclipped at the beginning of the alignment.
+    pub fn leading_softclips(&self) -> i64 {
+        self.first().map_or(0, |cigar| {
+            if let Cigar::SoftClip(s) = cigar {
+                *s as i64
+            } else {
+                0
+            }
+        })
+    }
+
+    /// Get number of bases softclipped at the end of the alignment.
+    pub fn trailing_softclips(&self) -> i64 {
+        self.last().map_or(0, |cigar| {
+            if let Cigar::SoftClip(s) = cigar {
+                *s as i64
+            } else {
+                0
+            }
+        })
     }
 
     /// For a given position in the reference, get corresponding position within read.

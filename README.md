@@ -22,7 +22,7 @@ If you only want to use the library, there is no need to clone the repository. G
 To compile this crate you need the development headers of zlib, bzip2 and xz. For instance, in Debian systems one needs the following dependencies:
 
 ```shell
-$ sudo apt-get install zlib1g-dev libbz2-dev liblzma-dev clang
+$ sudo apt-get install zlib1g-dev libbz2-dev liblzma-dev clang pkg-config
 ```
 
 On OSX, this will take a significant amount of time due to musl cross compiling toolchain:
