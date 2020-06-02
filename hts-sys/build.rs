@@ -34,7 +34,13 @@ fn sed_htslib_makefile(out: &PathBuf, patterns: &[&str], feature: &str) {
 fn main() {
     let out = PathBuf::from(env::var("OUT_DIR").unwrap());
     let mut cfg = cc::Build::new();
-    cfg.warnings(false).static_flag(true).pic(true);
+    let want_static = cfg!(feature = "static") || env::var("HTS_STATIC").is_ok();
+
+    if want_static {
+        cfg.warnings(true).static_flag(true).pic(true);
+    } else {
+        cfg.warnings(true).static_flag(false).pic(true); 
+    }
 
     if let Ok(z_inc) = env::var("DEP_Z_INCLUDE") {
         cfg.include(z_inc);
@@ -43,7 +49,7 @@ fn main() {
     if !out.join("htslib").exists() {
         copy_directory("htslib", &out).unwrap();
     }
-
+    
     let use_bzip2 = env::var("CARGO_FEATURE_BZIP2").is_ok();
     if !use_bzip2 {
         let bzip2_patterns = vec!["s/ -lbz2//", "/#define HAVE_LIBBZ2/d"];
@@ -56,7 +62,7 @@ fn main() {
     }
 
     let use_lzma = env::var("CARGO_FEATURE_LZMA").is_ok();
-    if !use_lzma {
+    if !use_lzma && want_static {
         let lzma_patterns = vec!["s/ -llzma//", "/#define HAVE_LIBLZMA/d"];
         sed_htslib_makefile(&out, &lzma_patterns, "lzma");
     } else if let Ok(inc) = env::var("DEP_LZMA_INCLUDE").map(PathBuf::from) {
@@ -74,12 +80,39 @@ fn main() {
     let tool = cfg.get_compiler();
     let (cc_path, cflags_env) = (tool.path(), tool.cflags_env());
     let cc_cflags = cflags_env.to_string_lossy().replace("-O0", "");
+    let host = env::var("HOST").unwrap_or_default();
+    // autoreconf & ./configure (with no args) steps are necessary to include the htslib plugins (hfile_s3.o, hfile_s3_writer.o, etc...)
+    if  // cleanup first
+        // TODO: Have top level "cargo clean" do this instead of in here, see:
+        // https://github.com/rust-lang/cargo/issues/572#issuecomment-632456478
+        !Command::new("make")
+        .current_dir(out.join("htslib"))
+        .arg("clean")
+        .status().unwrap().success()
+    
+        &&
+
+        !Command::new("autoreconf")
+        .current_dir(out.join("htslib"))
+        .env("CFLAGS", &cc_cflags)
+        .status().unwrap().success()
+        
+        &&
+       
+        !Command::new("./configure")
+        .current_dir(out.join("htslib"))
+        .env("CFLAGS", &cc_cflags)
+        .arg(format!("--host={}", &host))
+        .status().unwrap().success()
+    {
+        panic!("could not configure htslib nor any of its plugins")
+    }
+
     if !Command::new("make")
         .current_dir(out.join("htslib"))
         .arg(format!("CC={}", cc_path.display()))
-        .arg(format!("CFLAGS={}", cc_cflags))
+        .arg(format!("CFLAGS={}", &cc_cflags))
         .arg("lib-static")
-        .arg("-B")
         .status()
         .unwrap()
         .success()
@@ -129,7 +162,7 @@ fn main() {
     println!("cargo:root={}", out.display());
     println!("cargo:include={}", include.display());
     println!("cargo:libdir={}", out.display());
-    println!("cargo:rustc-link-lib=static=hts");
+    println!("cargo:rustc-link-lib=static=hts"); // XXX: only for static, adapt for dynamic?
     println!("cargo:rerun-if-changed=wrapper.c");
     println!("cargo:rerun-if-changed=wrapper.h");
     println!("cargo:rerun-if-changed=htslib/Makefile");

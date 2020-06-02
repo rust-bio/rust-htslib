@@ -32,6 +32,8 @@ pub use crate::bam::header::Header;
 pub use crate::bam::record::Record;
 use std::convert::TryInto;
 
+/// # Safety
+///
 /// Implementation for `Read::set_threads` and `Writer::set_threads`.
 pub unsafe fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
     assert!(n_threads != 0, "n_threads must be > 0");
@@ -43,6 +45,8 @@ pub unsafe fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Re
     }
 }
 
+/// # Safety
+///
 /// Set the reference FAI index path in a `htslib::htsFile` struct for reading CRAM format.
 pub unsafe fn set_fai_filename<P: AsRef<Path>>(
     htsfile: *mut htslib::htsFile,
