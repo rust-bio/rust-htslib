@@ -39,9 +39,9 @@ fn main() {
         cfg.warnings(true).static_flag(false).pic(true); 
     }
 
-    // if let Ok(z_inc) = env::var("DEP_Z_INCLUDE") {
-    //     cfg.include(z_inc);
-    // }
+    if let Ok(z_inc) = env::var("DEP_Z_INCLUDE") {
+        cfg.include(z_inc);
+    }
 
     if !out.join("htslib").exists() {
         copy_directory("htslib", &out).unwrap();
@@ -110,7 +110,6 @@ fn main() {
         .arg(format!("CC={}", cc_path.display()))
         .arg(format!("CFLAGS={}", &cc_cflags))
         .arg("lib-static")
-        .arg("-j40")
         .status()
         .unwrap()
         .success()
@@ -141,7 +140,7 @@ fn main() {
     println!("cargo:root={}", out.display());
     println!("cargo:include={}", include.display());
     println!("cargo:libdir={}", out.display());
-    println!("cargo:rustc-link-lib=static=hts"); // XXX: only for static
+    println!("cargo:rustc-link-lib=static=hts"); // XXX: only for static, adapt for dynamic?
     println!("cargo:rerun-if-changed=wrapper.c");
     println!("cargo:rerun-if-changed=wrapper.h");
     println!("cargo:rerun-if-changed=htslib/Makefile");
