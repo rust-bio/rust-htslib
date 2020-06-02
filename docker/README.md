@@ -10,7 +10,7 @@ $ docker build -t brainstorm/cross-x86_64-unknown-linux-musl:libcurl-openssl . -
 $ docker build -t brainstorm/cross-x86_64-unknown-linux-gnu:libcurl-openssl . -f Dockerfile.gnu
 ```
 
-Then to build and test rust-htslib with the above containers, proceed as you would with `cargo`, using `cross` instead, i.e:
+Then, to build and test rust-htslib with the above containers, proceed as you would with `cargo`, using `cross` instead, i.e:
 
 ```shell
 $ cross build --target x86_64-unknown-linux-musl 
