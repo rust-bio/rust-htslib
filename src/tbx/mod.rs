@@ -41,7 +41,6 @@
 //! }
 //! ```
 
-use libc;
 use std::ffi;
 use std::path::Path;
 use std::ptr;
