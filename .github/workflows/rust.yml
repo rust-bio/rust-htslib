@@ -76,6 +76,12 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path-to-lcov: ./lcov.info
 
+      - name: Test standard build without default features
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --no-default-features
+
       - name: Test musl build without default features
         env:
            CFLAGS: -I/usr/local/musl/include
