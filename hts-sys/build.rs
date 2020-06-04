@@ -49,7 +49,7 @@ fn main() {
     if !out.join("htslib").exists() {
         copy_directory("htslib", &out).unwrap();
     }
-    
+
     let use_bzip2 = env::var("CARGO_FEATURE_BZIP2").is_ok();
     if !use_bzip2 {
         let bzip2_patterns = vec!["s/ -lbz2//", "/#define HAVE_LIBBZ2/d"];
