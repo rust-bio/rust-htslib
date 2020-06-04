@@ -39,7 +39,7 @@ Alternatively, you can also install it locally by installing the development hea
 $ sudo apt-get install zlib1g-dev libbz2-dev liblzma-dev clang pkg-config
 ```
 
-On OSX, this will take a significant amount of time due to musl cross compiling toolchain:
+On OSX:
 
 ```shell
 $ brew install FiloSottile/musl-cross/musl-cross
