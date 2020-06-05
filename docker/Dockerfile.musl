@@ -68,7 +68,7 @@ RUN git clone https://github.com/cloudflare/zlib cloudflare-zlib && \
 #    && make -j40 install
 RUN git clone git://sourceware.org/git/bzip2 \
     && cd bzip2 \
-    #&& make -j40 CC=$CC AR=$AR RANLIB=$RANLIB CFLAGS=$CFLAGS bzip2 \
+    && make -j40 CC=$CC AR=$AR RANLIB=$RANLIB CFLAGS=$CFLAGS bzip2 \
     && make PREFIX=/usr/local/musl -j40 bzip2 \
     && make -j40 install && cd .. && rm -rf bzip2
 RUN wget https://tukaani.org/xz/xz-$LZMA_VERSION.tar.bz2 \
@@ -109,7 +109,7 @@ RUN wget https://curl.haxx.se/download/curl-$CURL_VERSION.tar.gz \
         --disable-dict --disable-ftp --disable-gopher --disable-imap \
         --disable-pop3 --disable-rtsp --disable-smb --disable-smtp --disable-telnet \
         --disable-tftp --disable-ntlm --disable-ldap \
-        && make -j40 install \
+        && make -j40 install && cd .. \
 	&& rm -rf curl-$CURL_VERSION.tar.gz curl-$CURL_VERSION
 
 # To cater Rust's openssl-sys needs...
