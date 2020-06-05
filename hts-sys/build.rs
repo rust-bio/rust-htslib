@@ -132,16 +132,6 @@ fn main() {
         panic!("failed to build htslib");
     }
 
-    if !Command::new("make")
-        .current_dir(out.join("htslib"))
-        .arg("install")
-        .status()
-        .unwrap()
-        .success()
-    {
-        panic!("failed to build htslib");
-    }
-
     cfg.file("wrapper.c").compile("wrapper");
 
     bindgen::Builder::default()
