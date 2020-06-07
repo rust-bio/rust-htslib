@@ -1732,7 +1732,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         println!("testing compression leves: {:?}", levels_to_test);
         println!("got compressed sizes: {:?}", file_sizes);
 
-        // libdeflater comes out with a slightly bigger file on Max compression 
+        // libdeflater comes out with a slightly bigger file on Max compression
         // than on Level(6), so skip that check
         #[cfg(feature = "libdeflater")]
         assert!(file_sizes[1..].windows(2).all(|size| size[0] <= size[1]));
