@@ -21,7 +21,7 @@ libz-sys = { version = "1.0.25", features = ["static"] }
 bzip2-sys = { version = "0.1.8", optional = true }
 lzma-sys = { version = "0.1.16", optional = true, features = ["static"] }
 curl-sys = { version = "0.4.31", optional = true, features = ["static-curl", "static-ssl"] }
-libdeflater = { path = "../../libdeflater", optional = true }
+libdeflater = { git = "https://github.com/pmarks/libdeflater.git", rev = "afb139ee9e9b1d9d1349e5fbf0a54b3079bc5259", optional = true }
 
 [features]
 default = ["bzip2", "lzma", "curl", "bindgen"]
