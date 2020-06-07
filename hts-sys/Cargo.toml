@@ -18,10 +18,10 @@ tag-message = "Version {{version}} of Rust-HTSlib."
 
 [dependencies]
 libz-sys = { version = "1.0.25", features = ["static"] }
-# https://github.com/alexcrichton/bzip2-rs/issues/56
 bzip2-sys = { version = "0.1.8", optional = true }
 lzma-sys = { version = "0.1.16", optional = true, features = ["static"] }
 curl-sys = { version = "0.4.31", optional = true, features = ["static-curl", "static-ssl"] }
+libdeflater = { path = "../../libdeflater", optional = true }
 
 [features]
 default = ["bzip2", "lzma", "curl", "bindgen"]

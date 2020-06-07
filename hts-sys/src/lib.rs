@@ -8,6 +8,8 @@
 extern crate libz_sys;
 #[cfg(feature = "bzip2")]
 extern crate bzip2_sys;
+#[cfg(feature = "libdeflater")]
+extern crate libdeflater;
 #[cfg(feature = "lzma")]
 extern crate lzma_sys;
 #[cfg(feature = "curl")]

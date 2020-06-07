@@ -58,16 +58,21 @@ const FILES: &[&str] = &[
 
 fn main() {
 
-
     let out = PathBuf::from(env::var("OUT_DIR").unwrap());
+    if !out.join("htslib").exists() {
+        println!("copying...");
+        copy_directory("htslib", &out).unwrap();
+    }
+    
     let mut cfg = cc::Build::new();
     
     // default files
+    let out_htslib = out.join("htslib");
     let htslib = PathBuf::from("htslib");
     for f in FILES {
-        let c_file = htslib.join(f);
+        let c_file = out_htslib.join(f);
         cfg.file(&c_file);
-        println!("cargo:rerun-if-changed={:?}", c_file);
+        println!("cargo:rerun-if-changed={}", htslib.join(f).display());
     }
 
     cfg.include(out.join("htslib"));
@@ -84,9 +89,6 @@ fn main() {
         cfg.include(z_inc);
     }
 
-    if !out.join("htslib").exists() {
-        copy_directory("htslib", &out).unwrap();
-    }
 
     // We build a config.h ourselves, rather than rely on Makefile or ./configure
     let mut config_lines = vec![
@@ -105,12 +107,15 @@ fn main() {
         }
     }
 
-    /*
     let use_libdeflater = env::var("CARGO_FEATURE_LIBDEFLATER").is_ok();
     if use_libdeflater {
-        // WIP
+        if let Ok(inc) = env::var("DEP_LIBDEFLATE_INCLUDE").map(PathBuf::from) {
+            cfg.include(inc);
+            config_lines.push("#define HAVE_LIBDEFLATE 1");
+        } else {
+            panic!("no DEP_LIBDEFLATE_INCLUDE");
+        }
     }
-    */
 
     let use_lzma = env::var("CARGO_FEATURE_LZMA").is_ok();
     if use_lzma {
@@ -192,5 +197,7 @@ fn main() {
     println!("cargo:libdir={}", out.display());
     println!("cargo:rerun-if-changed=wrapper.c");
     println!("cargo:rerun-if-changed=wrapper.h");
-    println!("cargo:rerun-if-changed=htslib/config.h");
+    // Note: config.h is a function of the cargo features. Any feature change will 
+    // cause build.rs to re-run, so don't re-run on that change.
+    //println!("cargo:rerun-if-changed=htslib/config.h");
 }
