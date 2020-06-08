@@ -91,20 +91,6 @@ fn main() {
 
         &&    
 
-        !Command::new("autoconf")
-        .current_dir(out.join("htslib"))
-        .status().unwrap().success()
-
-        &&
-
-        !Command::new("./configure")
-        .current_dir(out.join("htslib"))
-        .env("CFLAGS", &cc_cflags)
-        .arg(format!("--host={}", &host))
-        .status().unwrap().success()
-
-        &&
-
         !Command::new("autoreconf")
         .current_dir(out.join("htslib"))
         .env("CFLAGS", &cc_cflags)
@@ -114,6 +100,8 @@ fn main() {
        
         !Command::new("./configure")
         .current_dir(out.join("htslib"))
+        .env("CFLAGS", &cc_cflags)
+        .arg(format!("--host={}", &host)) 
         .arg(format!("--prefix={}/local", home_dir().unwrap().into_os_string().into_string().unwrap()))
         .status().unwrap().success()
     {
