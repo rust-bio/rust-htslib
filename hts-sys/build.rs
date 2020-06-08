@@ -182,9 +182,13 @@ fn main() {
     
     // write out version.h
     {
+        let version = std::process::Command::new(out.join("htslib").join("version.sh"))
+                             .output()
+                             .expect("failed to execute process");
+        let version_str = std::str::from_utf8(&version.stdout).unwrap().trim();
+
         let mut f = std::fs::File::create(out.join("htslib").join("version.h")).unwrap();
-        // FIXME - get version somehow.
-        writeln!(&mut f, "#define HTS_VERSION_TEXT \"1.0\"").unwrap();
+        writeln!(&mut f, "#define HTS_VERSION_TEXT \"{}\"", version_str).unwrap();
     }
 
     cfg.file("wrapper.c");
