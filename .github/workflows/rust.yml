@@ -68,7 +68,7 @@ jobs:
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
-          args: '--out Lcov -- --test-threads 1'
+          args: '--out Lcov -- --test-threads 1 --exclude-files hts-sys/osx_prebuilt_bindings.rs'
 
       - name: Upload coverage
         uses: coverallsapp/github-action@master
@@ -76,11 +76,17 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path-to-lcov: ./lcov.info
 
-      - name: Test Prebuilt Bindings
+      - name: Test standard build without default features
         uses: actions-rs/cargo@v1
         with:
           command: test
           args: --no-default-features
+
+      - name: Test standard build with all features
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --all-features
 
       - name: Test musl build without default features
         env:

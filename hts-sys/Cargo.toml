@@ -28,7 +28,8 @@ default = ["bzip2", "lzma", "curl", "bindgen"]
 bzip2 = ["bzip2-sys"]
 lzma = ["lzma-sys"]
 curl = ["curl-sys"]
-static = []
+gcs = ["curl"] # Google Cloud Storage support
+s3 = ["curl"] # Amazon S3 support
 
 [build-dependencies]
 fs-utils = "1.1"

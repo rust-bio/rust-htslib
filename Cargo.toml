@@ -39,9 +39,9 @@ lzma = ["hts-sys/lzma"]
 bindgen = ["hts-sys/bindgen"]
 curl = ["hts-sys/curl"]
 libdeflater = ["hts-sys/libdeflater"]
-#openssl = ["hts-sys/openssl"]
+s3 = ["hts-sys/s3"]
+gcs = ["hts-sys/gcs"]
 serde = ["serde_base", "serde_bytes"]
-static = []
 
 [dev-dependencies]
 tempdir = "0.3"

@@ -135,8 +135,42 @@ fn main() {
             config_lines.push("#define HAVE_LIBCURL 1");
             cfg.file("htslib/hfile_libcurl.c");
             println!("cargo:rerun-if-changed=htslib/hfile_libcurl.c");
+
+            #[cfg(target_os="macos")]
+            {
+                // Use builtin MacOS CommonCrypto HMAC
+                config_lines.push("#define HAVE_COMMONCRYPTO 1");
+            }
+
+            #[cfg(not(target_os="macos"))]
+            {
+                if let Ok(inc) = env::var("DEP_OPENSSL_INCLUDE").map(PathBuf::from) {
+                    // Must use hmac from libcrypto in openssl
+                    cfg.include(inc);
+                    config_lines.push("#define HAVE_HMAC 1");
+                } else {
+                    panic!("No OpenSSL dependency -- need OpenSSL includes");
+                }
+            }
         }
     }
+
+    let use_gcs = env::var("CARGO_FEATURE_GCS").is_ok();
+    if use_gcs {
+        config_lines.push("#define ENABLE_GCS 1");
+        cfg.file("htslib/hfile_gcs.c");
+        println!("cargo:rerun-if-changed=htslib/hfile_gcs.c");
+    }
+
+    let use_s3 = env::var("CARGO_FEATURE_S3").is_ok();
+    if use_s3 {
+        config_lines.push("#define ENABLE_S3 1");
+        cfg.file("htslib/hfile_s3.c");
+        println!("cargo:rerun-if-changed=htslib/hfile_s3.c");
+        cfg.file("htslib/hfile_s3_write.c");
+        println!("cargo:rerun-if-changed=htslib/hfile_s3_write.c");
+    }
+
 
     // write out config.h which controls the options htslib will use
     {
