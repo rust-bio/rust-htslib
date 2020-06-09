@@ -7,6 +7,7 @@
 use bindgen;
 use cc;
 use fs_utils::copy::copy_directory;
+use glob::glob;
 
 use std::env;
 use std::fs;
@@ -235,6 +236,17 @@ fn main() {
     println!("cargo:libdir={}", out.display());
     println!("cargo:rerun-if-changed=wrapper.c");
     println!("cargo:rerun-if-changed=wrapper.h");
+
+    let globs = std::iter::empty()
+        .chain(glob("htslib/*.[h]").unwrap())
+        .chain(glob("htslib/cram/*.[h]").unwrap())
+        .chain(glob("htslib/htslib/*.h").unwrap())
+        .chain(glob("htslib/os/*.[h]").unwrap())
+        .filter_map(Result::ok);
+    for htsfile in globs {
+        println!("cargo:rerun-if-changed={}", htsfile.display());
+    }
+
     // Note: config.h is a function of the cargo features. Any feature change will 
     // cause build.rs to re-run, so don't re-run on that change.
     //println!("cargo:rerun-if-changed=htslib/config.h");
