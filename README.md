@@ -23,7 +23,7 @@ To compile this crate you need docker and cross:
 
 ```shell
 $ cargo install cross
-$ cross build 				              # will build with GNU toolchain
+$ cross build 				              # will build with GNU GCC or LLVM toolchains
 ```
 
 If you want to run rust-htslib code on AWS lambda, you'll need to statically compile it with MUSL as follows:

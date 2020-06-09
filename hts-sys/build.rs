@@ -73,6 +73,7 @@ fn main() {
     } else if let Ok(inc) = env::var("DEP_CURL_INCLUDE").map(PathBuf::from) {
         cfg.include(inc);
     }
+    
 
     let tool = cfg.get_compiler();
     let (cc_path, cflags_env) = (tool.path(), tool.cflags_env());
