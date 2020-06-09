@@ -27,7 +27,6 @@ curl-sys = { version = "0.4.31", optional = true, features = ["static-curl", "st
 default = ["bzip2", "lzma"]
 bzip2 = ["bzip2-sys"]
 lzma = ["lzma-sys"]
-#openssl = ["openssl-sys"]
 curl = ["curl-sys"]
 static = []
 

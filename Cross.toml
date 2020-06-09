@@ -7,6 +7,6 @@ passthrough = [
 
 
 [target.x86_64-unknown-linux-musl]
-image = "brainstorm/cross-x86_64-unknown-linux-musl:latest"
+image = "brainstorm/cross-x86_64-unknown-linux-musl:1.0.0"
 [target.x86_64-unknown-linux-gnu]
-image = "brainstorm/cross-x86_64-unknown-linux-gnu:libcurl-openssl"
+image = "brainstorm/cross-x86_64-unknown-linux-gnu:1.0.0"
