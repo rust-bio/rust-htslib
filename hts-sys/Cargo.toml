@@ -33,6 +33,7 @@ lzma = ["lzma-sys"]
 curl = ["curl-sys", "openssl-sys"]
 gcs = ["curl"] # Google Cloud Storage support
 s3 = ["curl"] # Amazon S3 support
+static = [] # Don't dynamically link to other libraries
 
 [build-dependencies]
 fs-utils = "1.1"
