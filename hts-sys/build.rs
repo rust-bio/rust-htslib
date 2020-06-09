@@ -74,13 +74,6 @@ fn main() {
         cfg.include(inc);
     }
     
-//    let use_libdeflate = env::var("CARGO_FEATURE_LIBDEFLATE").is_ok();
-//    if !use_libdeflate {
-//        let libdeflate_patterns = vec!["s/ -llibdeflate//", "/#define HAVE_LIBDEFLATE/d"];
-//        sed_htslib_makefile(&out, &libdeflate_patterns, "libdeflate");
-//    } else if let Ok(inc) = env::var("DEP_LIBDEFLATE_INCLUDE").map(PathBuf::from) {
-//        cfg.include(inc);
-//    }
 
     let tool = cfg.get_compiler();
     let (cc_path, cflags_env) = (tool.path(), tool.cflags_env());
@@ -108,7 +101,6 @@ fn main() {
         .current_dir(out.join("htslib"))
         .env("CFLAGS", &cc_cflags)
         .arg(format!("--host={}", &host))
-        .arg("--with-libdeflate") // TODO: Make it optional?
         .status().unwrap().success()
     {
         panic!("could not configure htslib nor any of its plugins")

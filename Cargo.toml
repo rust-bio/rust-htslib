@@ -37,8 +37,6 @@ default = ["bzip2", "lzma", "curl"]
 bzip2 = ["hts-sys/bzip2"]
 lzma = ["hts-sys/lzma"]
 curl = ["hts-sys/curl"]
-libdeflate = ["hts-sys/libdeflate"]
-#openssl = ["hts-sys/openssl"]
 serde = ["serde_base", "serde_bytes"]
 static = []
 
