@@ -1809,4 +1809,16 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .is_ok());
         assert_eq!(expected, written);
     }
+
+    #[cfg(feature = "s3")]
+    #[test]
+    fn test_s3_connect() {
+
+        // currently failing -- need credentials
+        let url: Url = Url::parse("s3://test-bucket/test.bam").unwrap();
+        let r = Reader::from_url(&url);
+        println!("{:#?}", r);
+
+        let r = r.unwrap();
+    }
 }

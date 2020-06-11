@@ -20,7 +20,7 @@ tag-message = "Version {{version}} of Rust-HTSlib."
 libz-sys = { version = "1.0.25", features = ["static"] }
 bzip2-sys = { version = "0.1.8", optional = true }
 lzma-sys = { version = "0.1.16", optional = true, features = ["static"] }
-curl-sys = { version = "0.4.31", optional = true, features = ["static-curl", "static-ssl"] }
+curl-sys = { version = "0.4.31", optional = true, features = ["static-curl", "static-ssl", "protocol-ftp"] }
 libdeflate-sys = { version = "0.5", optional = true }
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
