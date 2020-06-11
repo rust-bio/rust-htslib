@@ -946,7 +946,6 @@ mod tests {
     use std::fs;
     use std::path::Path;
     use std::str;
-    use tempdir;
 
     fn gold() -> (
         [&'static [u8]; 6],

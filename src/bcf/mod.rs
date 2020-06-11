@@ -736,7 +736,6 @@ mod tests {
     use std::io::prelude::Read as IoRead;
     use std::path::Path;
     use std::str;
-    use tempdir;
 
     fn _test_read<P: AsRef<Path>>(path: &P) {
         let mut bcf = Reader::from_path(path).expect("Error opening file.");
