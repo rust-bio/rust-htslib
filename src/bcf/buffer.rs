@@ -184,7 +184,6 @@ impl RecordBuffer {
 mod tests {
     use super::*;
     use crate::bcf;
-    use itertools::Itertools;
 
     #[test]
     fn test_buffer() {
@@ -193,7 +192,7 @@ mod tests {
 
         buffer.fetch(b"1", 100, 10023).unwrap();
         {
-            let records = buffer.iter().collect_vec();
+            let records: Vec<_> = buffer.iter().collect();
             assert_eq!(records.len(), 2);
             assert_eq!(records[0].pos(), 10021);
             assert_eq!(records[1].pos(), 10022);
@@ -201,7 +200,7 @@ mod tests {
 
         buffer.fetch(b"1", 10023, 10024).unwrap();
         {
-            let records = buffer.iter().collect_vec();
+            let records: Vec<_> = buffer.iter().collect();
             assert_eq!(records.len(), 1);
             assert_eq!(records[0].pos(), 10023);
         }
