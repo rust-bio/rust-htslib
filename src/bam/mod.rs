@@ -1254,7 +1254,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
 
             // Equal length qname
-            assert!(rec.qname()[0] != 'X' as u8);
+            assert!(rec.qname()[0] != b'X');
             rec.set_qname(b"X");
             assert_eq!(rec.qname(), b"X");
 
