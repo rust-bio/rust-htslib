@@ -753,7 +753,6 @@ mod tests {
                 record
                     .info(b"MQ0F")
                     .float()
-                    .ok()
                     .expect("Error reading info.")
                     .expect("Missing tag"),
                 [1.0]
@@ -763,7 +762,6 @@ mod tests {
                     record
                         .info(b"SGB")
                         .float()
-                        .ok()
                         .expect("Error reading info.")
                         .expect("Missing tag"),
                     [-0.379885]
@@ -798,25 +796,19 @@ mod tests {
     #[test]
     fn test_writer_set_threads() {
         let path = &"test/test.bcf";
-        let tmp = tempdir::TempDir::new("rust-htslib")
-            .ok()
-            .expect("Cannot create temp dir");
+        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
         let bcfpath = tmp.path().join("test.bcf");
         let bcf = Reader::from_path(path).expect("Error opening file.");
         let header = Header::from_template_subset(&bcf.header, &[b"NA12878.subsample-0.25-0"])
-            .ok()
             .expect("Error subsetting samples.");
-        let mut writer = Writer::from_path(&bcfpath, &header, false, Format::BCF)
-            .ok()
-            .expect("Error opening file.");
+        let mut writer =
+            Writer::from_path(&bcfpath, &header, false, Format::BCF).expect("Error opening file.");
         writer.set_threads(2).unwrap();
     }
 
     #[test]
     fn test_fetch() {
-        let mut bcf = IndexedReader::from_path(&"test/test.bcf")
-            .ok()
-            .expect("Error opening file.");
+        let mut bcf = IndexedReader::from_path(&"test/test.bcf").expect("Error opening file.");
         bcf.set_threads(2).unwrap();
         let rid = bcf
             .header()
@@ -828,20 +820,14 @@ mod tests {
 
     #[test]
     fn test_write() {
-        let mut bcf = Reader::from_path(&"test/test_multi.bcf")
-            .ok()
-            .expect("Error opening file.");
-        let tmp = tempdir::TempDir::new("rust-htslib")
-            .ok()
-            .expect("Cannot create temp dir");
+        let mut bcf = Reader::from_path(&"test/test_multi.bcf").expect("Error opening file.");
+        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
         let bcfpath = tmp.path().join("test.bcf");
         println!("{:?}", bcfpath);
         {
             let header = Header::from_template_subset(&bcf.header, &[b"NA12878.subsample-0.25-0"])
-                .ok()
                 .expect("Error subsetting samples.");
             let mut writer = Writer::from_path(&bcfpath, &header, false, Format::BCF)
-                .ok()
                 .expect("Error opening file.");
             for rec in bcf.records() {
                 let mut record = rec.expect("Error reading record.");
@@ -859,9 +845,7 @@ mod tests {
 
     #[test]
     fn test_strings() {
-        let mut vcf = Reader::from_path(&"test/test_string.vcf")
-            .ok()
-            .expect("Error opening file.");
+        let mut vcf = Reader::from_path(&"test/test_string.vcf").expect("Error opening file.");
         let fs1 = [
             &b"LongString1"[..],
             &b"LongString2"[..],
@@ -877,7 +861,6 @@ mod tests {
                 record
                     .info(b"S1")
                     .string()
-                    .ok()
                     .expect("Error reading string.")
                     .expect("Missing tag")[0],
                 format!("string{}", i + 1).as_bytes()
@@ -888,7 +871,6 @@ mod tests {
                     record
                         .format(b"FS1")
                         .string()
-                        .ok()
                         .expect("Error reading string.")[0]
                 )
             );
@@ -896,7 +878,6 @@ mod tests {
                 record
                     .format(b"FS1")
                     .string()
-                    .ok()
                     .expect("Error reading string.")[0],
                 fs1[i]
             );
@@ -905,9 +886,7 @@ mod tests {
 
     #[test]
     fn test_missing() {
-        let mut vcf = Reader::from_path(&"test/test_missing.vcf")
-            .ok()
-            .expect("Error opening file.");
+        let mut vcf = Reader::from_path(&"test/test_missing.vcf").expect("Error opening file.");
         let fn4 = [
             &[
                 i32::missing(),
@@ -924,7 +903,6 @@ mod tests {
                 record
                     .info(b"F1")
                     .float()
-                    .ok()
                     .expect("Error reading float.")
                     .expect("Missing tag")[0]
                     .is_nan(),
@@ -934,25 +912,20 @@ mod tests {
                 record
                     .format(b"FN4")
                     .integer()
-                    .ok()
                     .expect("Error reading integer.")[1],
                 fn4[i]
             );
-            assert!(record
-                .format(b"FF4")
-                .float()
-                .ok()
-                .expect("Error reading float.")[1]
-                .iter()
-                .all(|&v| v.is_missing()));
+            assert!(
+                record.format(b"FF4").float().expect("Error reading float.")[1]
+                    .iter()
+                    .all(|&v| v.is_missing())
+            );
         }
     }
 
     #[test]
     fn test_genotypes() {
-        let mut vcf = Reader::from_path(&"test/test_string.vcf")
-            .ok()
-            .expect("Error opening file.");
+        let mut vcf = Reader::from_path(&"test/test_string.vcf").expect("Error opening file.");
         let expected = ["./1", "1|1", "0/1", "0|1", "1|.", "1/1"];
         for (rec, exp_gt) in vcf.records().zip(expected.iter()) {
             let mut rec = rec.expect("Error reading record.");
@@ -963,9 +936,7 @@ mod tests {
 
     #[test]
     fn test_header_ids() {
-        let vcf = Reader::from_path(&"test/test_string.vcf")
-            .ok()
-            .expect("Error opening file.");
+        let vcf = Reader::from_path(&"test/test_string.vcf").expect("Error opening file.");
         let header = &vcf.header();
         use crate::bcf::header::Id;
 
@@ -976,9 +947,7 @@ mod tests {
 
     #[test]
     fn test_header_samples() {
-        let vcf = Reader::from_path(&"test/test_string.vcf")
-            .ok()
-            .expect("Error opening file.");
+        let vcf = Reader::from_path(&"test/test_string.vcf").expect("Error opening file.");
         let header = &vcf.header();
 
         assert_eq!(header.id_to_sample(Id(0)), b"one");
@@ -990,9 +959,7 @@ mod tests {
 
     #[test]
     fn test_header_contigs() {
-        let vcf = Reader::from_path(&"test/test_multi.bcf")
-            .ok()
-            .expect("Error opening file.");
+        let vcf = Reader::from_path(&"test/test_multi.bcf").expect("Error opening file.");
         let header = &vcf.header();
 
         assert_eq!(header.contig_count(), 86);
@@ -1011,9 +978,7 @@ mod tests {
 
     #[test]
     fn test_header_records() {
-        let vcf = Reader::from_path(&"test/test_string.vcf")
-            .ok()
-            .expect("Error opening file.");
+        let vcf = Reader::from_path(&"test/test_string.vcf").expect("Error opening file.");
         let records = vcf.header().header_records();
         assert_eq!(records.len(), 10);
 
@@ -1132,14 +1097,10 @@ mod tests {
     #[test]
     fn test_write_various() {
         // Open reader, then create writer.
-        let tmp = tempdir::TempDir::new("rust-htslib")
-            .ok()
-            .expect("Cannot create temp dir");
+        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
         let out_path = tmp.path().join("test_various.out.vcf");
 
-        let vcf = Reader::from_path(&"test/test_various.vcf")
-            .ok()
-            .expect("Error opening file.");
+        let vcf = Reader::from_path(&"test/test_various.vcf").expect("Error opening file.");
         // The writer goes into its own block so we can ensure that the file is closed and
         // all data is written below.
         {
@@ -1149,7 +1110,6 @@ mod tests {
                 true,
                 Format::VCF,
             )
-            .ok()
             .expect("Error opening file.");
             let header = writer.header().clone();
 
@@ -1162,14 +1122,14 @@ mod tests {
             record.set_pos(12);
             assert_eq!(record.pos(), 12);
 
-            assert_eq!(str::from_utf8(record.id().as_ref()).ok().unwrap(), ".");
+            assert_eq!(str::from_utf8(record.id().as_ref()).unwrap(), ".");
             record.set_id("to_be_cleared".as_bytes()).unwrap();
             assert_eq!(
-                str::from_utf8(record.id().as_ref()).ok().unwrap(),
+                str::from_utf8(record.id().as_ref()).unwrap(),
                 "to_be_cleared"
             );
             record.clear_id().unwrap();
-            assert_eq!(str::from_utf8(record.id().as_ref()).ok().unwrap(), ".");
+            assert_eq!(str::from_utf8(record.id().as_ref()).unwrap(), ".");
             record.set_id("first_id".as_bytes()).unwrap();
             record.push_id("second_id".as_bytes()).unwrap();
             record.push_id("first_id".as_bytes()).unwrap();
@@ -1214,12 +1174,8 @@ mod tests {
 
     #[test]
     fn test_remove_headers() {
-        let vcf = Reader::from_path(&"test/test_headers.vcf")
-            .ok()
-            .expect("Error opening file.");
-        let tmp = tempdir::TempDir::new("rust-htslib")
-            .ok()
-            .expect("Cannot create temp dir");
+        let vcf = Reader::from_path(&"test/test_headers.vcf").expect("Error opening file.");
+        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
         let vcfpath = tmp.path().join("test.vcf");
         let mut header = Header::from_template(&vcf.header);
         header
@@ -1231,7 +1187,6 @@ mod tests {
             .remove_generic(b"Bar2");
         {
             let mut _writer = Writer::from_path(&vcfpath, &header, true, Format::VCF)
-                .ok()
                 .expect("Error opening output file.");
             // Note that we don't need to write anything, we are just looking at the header.
         }

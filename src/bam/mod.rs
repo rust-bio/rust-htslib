@@ -1033,7 +1033,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
         for (i, record) in bam.records().enumerate() {
             let rec = record.expect("Expected valid record");
-            println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
+            println!("{}", str::from_utf8(rec.qname()).unwrap());
             assert_eq!(rec.qname(), names[i]);
             assert_eq!(rec.flags(), flags[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
@@ -1066,9 +1066,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     #[test]
     fn test_seek() {
-        let mut bam = Reader::from_path(&Path::new("test/test.bam"))
-            .ok()
-            .expect("Error opening file.");
+        let mut bam = Reader::from_path(&Path::new("test/test.bam")).expect("Error opening file.");
 
         let mut names_by_voffset = HashMap::new();
 
@@ -1088,16 +1086,14 @@ CCCCCCCCCCCCCCCCCCC"[..],
             println!("{} {}", offset, qname);
             bam.seek(*offset).unwrap();
             bam.read(&mut rec).unwrap();
-            let rec_qname = str::from_utf8(rec.qname()).ok().unwrap().to_string();
+            let rec_qname = str::from_utf8(rec.qname()).unwrap().to_string();
             assert_eq!(qname, &rec_qname);
         }
     }
 
     #[test]
     fn test_read_sam_header() {
-        let bam = Reader::from_path(&"test/test.bam")
-            .ok()
-            .expect("Error opening file.");
+        let bam = Reader::from_path(&"test/test.bam").expect("Error opening file.");
 
         let true_header = "@SQ\tSN:CHROMOSOME_I\tLN:15072423\n@SQ\tSN:CHROMOSOME_II\tLN:15279345\
              \n@SQ\tSN:CHROMOSOME_III\tLN:13783700\n@SQ\tSN:CHROMOSOME_IV\tLN:17493793\n@SQ\t\
@@ -1116,19 +1112,15 @@ CCCCCCCCCCCCCCCCCCC"[..],
         assert!(bam.header.target_len(tid_1).expect("Expected target len.") == 15072423);
 
         // fetch to position containing reads
-        bam.fetch(tid_1, 0, 2)
-            .ok()
-            .expect("Expected successful fetch.");
+        bam.fetch(tid_1, 0, 2).expect("Expected successful fetch.");
         assert!(bam.records().count() == 6);
 
         // compare reads
-        bam.fetch(tid_1, 0, 2)
-            .ok()
-            .expect("Expected successful fetch.");
+        bam.fetch(tid_1, 0, 2).expect("Expected successful fetch.");
         for (i, record) in bam.records().enumerate() {
             let rec = record.expect("Expected valid record");
 
-            println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
+            println!("{}", str::from_utf8(rec.qname()).unwrap());
             assert_eq!(rec.qname(), names[i]);
             assert_eq!(rec.flags(), flags[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
@@ -1147,18 +1139,16 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
         // fetch to position containing reads
         bam.fetch_str(format!("{}:{}-{}", str::from_utf8(sq_1).unwrap(), 0, 2).as_bytes())
-            .ok()
             .expect("Expected successful fetch.");
         assert!(bam.records().count() == 6);
 
         // compare reads
         bam.fetch_str(format!("{}:{}-{}", str::from_utf8(sq_1).unwrap(), 0, 2).as_bytes())
-            .ok()
             .expect("Expected successful fetch.");
         for (i, record) in bam.records().enumerate() {
             let rec = record.expect("Expected valid record");
 
-            println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
+            println!("{}", str::from_utf8(rec.qname()).unwrap());
             assert_eq!(rec.qname(), names[i]);
             assert_eq!(rec.flags(), flags[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
@@ -1177,9 +1167,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     #[test]
     fn test_read_indexed() {
-        let bam = IndexedReader::from_path(&"test/test.bam")
-            .ok()
-            .expect("Expected valid index.");
+        let bam = IndexedReader::from_path(&"test/test.bam").expect("Expected valid index.");
         _test_read_indexed_common(bam);
     }
     #[test]
@@ -1188,7 +1176,6 @@ CCCCCCCCCCCCCCCCCCC"[..],
             &"test/test_different_index_name.bam",
             &"test/test.bam.bai",
         )
-        .ok()
         .expect("Expected valid index.");
         _test_read_indexed_common(bam);
     }
@@ -1326,9 +1313,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     #[test]
     fn test_remove_aux() {
-        let mut bam = Reader::from_path(&Path::new("test/test.bam"))
-            .ok()
-            .expect("Error opening file.");
+        let mut bam = Reader::from_path(&Path::new("test/test.bam")).expect("Error opening file.");
 
         for record in bam.records() {
             let mut rec = record.expect("Expected valid record");
@@ -1352,9 +1337,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
     fn test_write() {
         let (names, _, seqs, quals, cigars) = gold();
 
-        let tmp = tempdir::TempDir::new("rust-htslib")
-            .ok()
-            .expect("Cannot create temp dir");
+        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
         let bampath = tmp.path().join("test.bam");
         println!("{:?}", bampath);
         {
@@ -1367,7 +1350,6 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 ),
                 Format::BAM,
             )
-            .ok()
             .expect("Error opening file.");
 
             for i in 0..names.len() {
@@ -1380,9 +1362,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         }
 
         {
-            let mut bam = Reader::from_path(&bampath)
-                .ok()
-                .expect("Error opening file.");
+            let mut bam = Reader::from_path(&bampath).expect("Error opening file.");
 
             for i in 0..names.len() {
                 let mut rec = record::Record::new();
@@ -1403,9 +1383,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
     fn test_write_threaded() {
         let (names, _, seqs, quals, cigars) = gold();
 
-        let tmp = tempdir::TempDir::new("rust-htslib")
-            .ok()
-            .expect("Cannot create temp dir");
+        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
         let bampath = tmp.path().join("test.bam");
         println!("{:?}", bampath);
         {
@@ -1418,7 +1396,6 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 ),
                 Format::BAM,
             )
-            .ok()
             .expect("Error opening file.");
             bam.set_threads(4).unwrap();
 
@@ -1434,9 +1411,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         }
 
         {
-            let mut bam = Reader::from_path(&bampath)
-                .ok()
-                .expect("Error opening file.");
+            let mut bam = Reader::from_path(&bampath).expect("Error opening file.");
 
             for (i, _rec) in bam.records().enumerate() {
                 let idx = i % names.len();
@@ -1460,15 +1435,11 @@ CCCCCCCCCCCCCCCCCCC"[..],
         // Verify that BAM headers are transmitted correctly when using an existing BAM as a
         // template for headers.
 
-        let tmp = tempdir::TempDir::new("rust-htslib")
-            .ok()
-            .expect("Cannot create temp dir");
+        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
         let bampath = tmp.path().join("test.bam");
         println!("{:?}", bampath);
 
-        let mut input_bam = Reader::from_path(&"test/test.bam")
-            .ok()
-            .expect("Error opening file.");
+        let mut input_bam = Reader::from_path(&"test/test.bam").expect("Error opening file.");
 
         {
             let mut bam = Writer::from_path(
@@ -1476,20 +1447,15 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 &Header::from_template(&input_bam.header()),
                 Format::BAM,
             )
-            .ok()
             .expect("Error opening file.");
 
             for rec in input_bam.records() {
-                bam.write(&rec.unwrap())
-                    .ok()
-                    .expect("Failed to write record.");
+                bam.write(&rec.unwrap()).expect("Failed to write record.");
             }
         }
 
         {
-            let copy_bam = Reader::from_path(&bampath)
-                .ok()
-                .expect("Error opening file.");
+            let copy_bam = Reader::from_path(&bampath).expect("Error opening file.");
 
             // Verify that the header came across correctly
             assert_eq!(input_bam.header().as_bytes(), copy_bam.header().as_bytes());
@@ -1502,9 +1468,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
     fn test_pileup() {
         let (_, _, seqs, quals, _) = gold();
 
-        let mut bam = Reader::from_path(&"test/test.bam")
-            .ok()
-            .expect("Error opening file.");
+        let mut bam = Reader::from_path(&"test/test.bam").expect("Error opening file.");
         let pileups = bam.pileup();
         for pileup in pileups.take(26) {
             let _pileup = pileup.expect("Expected successful pileup.");
@@ -1523,9 +1487,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     #[test]
     fn test_idx_pileup() {
-        let mut bam = IndexedReader::from_path(&"test/test.bam")
-            .ok()
-            .expect("Error opening file.");
+        let mut bam = IndexedReader::from_path(&"test/test.bam").expect("Error opening file.");
         // read without fetch
         for pileup in bam.pileup() {
             pileup.unwrap();
@@ -1569,9 +1531,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         // test the cached and uncached ways of getting the cigar string.
 
         let (_, _, _, _, cigars) = gold();
-        let mut bam = Reader::from_path(&Path::new("test/test.bam"))
-            .ok()
-            .expect("Error opening file.");
+        let mut bam = Reader::from_path(&Path::new("test/test.bam")).expect("Error opening file.");
 
         for (i, record) in bam.records().enumerate() {
             let rec = record.expect("Expected valid record");
@@ -1619,9 +1579,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let bam_records: Vec<Record> = bam_reader.records().map(|v| v.unwrap()).collect();
 
         // New CRAM file
-        let tmp = tempdir::TempDir::new("rust-htslib")
-            .ok()
-            .expect("Cannot create temp dir");
+        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
         let cram_path = tmp.path().join("test.cram");
 
         // Write BAM records to new CRAM file
@@ -1655,7 +1613,6 @@ CCCCCCCCCCCCCCCCCCC"[..],
             );
 
             let mut cram_writer = Writer::from_path(&cram_path, &header, Format::CRAM)
-                .ok()
                 .expect("Error opening CRAM file.");
             cram_writer.set_reference(ref_path).unwrap();
 
@@ -1663,7 +1620,6 @@ CCCCCCCCCCCCCCCCCCC"[..],
             for rec in bam_records.iter() {
                 cram_writer
                     .write(&rec)
-                    .ok()
                     .expect("Faied to write record to CRAM.");
             }
         }
