@@ -1122,16 +1122,16 @@ mod tests {
             assert_eq!(record.pos(), 12);
 
             assert_eq!(str::from_utf8(record.id().as_ref()).unwrap(), ".");
-            record.set_id("to_be_cleared".as_bytes()).unwrap();
+            record.set_id(b"to_be_cleared").unwrap();
             assert_eq!(
                 str::from_utf8(record.id().as_ref()).unwrap(),
                 "to_be_cleared"
             );
             record.clear_id().unwrap();
             assert_eq!(str::from_utf8(record.id().as_ref()).unwrap(), ".");
-            record.set_id("first_id".as_bytes()).unwrap();
-            record.push_id("second_id".as_bytes()).unwrap();
-            record.push_id("first_id".as_bytes()).unwrap();
+            record.set_id(b"first_id").unwrap();
+            record.push_id(b"second_id").unwrap();
+            record.push_id(b"first_id").unwrap();
 
             assert!(record.filters().next().is_none());
             record.set_filters(&[header.name_to_id(b"q10").unwrap()]);
@@ -1140,7 +1140,7 @@ mod tests {
             record.push_filter(header.name_to_id(b"q10").unwrap());
 
             record
-                .set_alleles(&["C".as_bytes(), "T".as_bytes(), "G".as_bytes()])
+                .set_alleles(&[b"C", b"T", b"G"])
                 .unwrap();
 
             record.set_qual(10.0);
@@ -1148,7 +1148,7 @@ mod tests {
             record.push_info_integer(b"N1", &[32]).unwrap();
             record.push_info_float(b"F1", &[33.0]).unwrap();
             record
-                .push_info_string(b"S1", &["fourtytwo".as_bytes()])
+                .push_info_string(b"S1", &[b"fourtytwo"])
                 .unwrap();
             record.push_info_flag(b"X1").unwrap();
 
