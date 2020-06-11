@@ -1711,7 +1711,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     #[test]
     fn test_sam_writer_example() {
-        fn from_bam_with_filter<'a, 'b, F>(bamfile: &'a str, samfile: &'b str, f: F) -> bool
+        fn from_bam_with_filter<F>(bamfile: &str, samfile: &str, f: F) -> bool
         where
             F: Fn(&record::Record) -> Option<bool>,
         {
