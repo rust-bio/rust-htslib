@@ -40,6 +40,7 @@ curl = ["hts-sys/curl"]
 libdeflate = ["hts-sys/libdeflate-sys"]
 s3 = ["hts-sys/s3"]
 gcs = ["hts-sys/gcs"]
+static = ["hts-sys/static"]
 serde = ["serde_base", "serde_bytes"]
 
 [dev-dependencies]
