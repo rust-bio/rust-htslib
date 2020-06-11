@@ -1002,7 +1002,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         (names, flags, seqs, quals, cigars)
     }
 
-    fn compare_inner_bam_cram_records(cram_records: &Vec<Record>, bam_records: &Vec<Record>) {
+    fn compare_inner_bam_cram_records(cram_records: &[Record], bam_records: &[Record]) {
         // Selectively compares bam1_t struct fields from BAM and CRAM
         for (c1, b1) in cram_records.iter().zip(bam_records.iter()) {
             // CRAM vs BAM l_data is off by 3, see: https://github.com/rust-bio/rust-htslib/pull/184#issuecomment-590133544

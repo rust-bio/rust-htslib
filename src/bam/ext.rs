@@ -4304,10 +4304,10 @@ mod tests {
 
         //
         //for the rest, we just verify that they have the expected amount of None in each position
-        fn some_count(pairs: &Vec<[Option<i64>; 2]>, pos: usize) -> i64 {
+        fn some_count(pairs: &[[Option<i64>; 2]], pos: usize) -> i64 {
             pairs.iter().filter(|x| x[pos].is_some()).count() as i64
         }
-        fn none_count(pairs: &Vec<[Option<i64>; 2]>, pos: usize) -> i64 {
+        fn none_count(pairs: &[[Option<i64>; 2]], pos: usize) -> i64 {
             pairs.iter().filter(|x| x[pos].is_none()).count() as i64
         }
 
