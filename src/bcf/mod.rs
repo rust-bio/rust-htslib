@@ -981,8 +981,8 @@ mod tests {
         let records = vcf.header().header_records();
         assert_eq!(records.len(), 10);
 
-        match &records[1] {
-            &HeaderRecord::Filter {
+        match records[1] {
+            HeaderRecord::Filter {
                 ref key,
                 ref values,
             } => {

@@ -1299,12 +1299,12 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 .push_tag(b"SN", &"1")
                 .push_tag(b"LN", &10000000),
         );
-        let mut header = HeaderView::from_header(&_header);
+        let header = HeaderView::from_header(&_header);
 
         let line =
             b"blah1	0	1	1	255	1M	*	0	0	A	F	CB:Z:AAAA-1	UR:Z:AAAA	UB:Z:AAAA	GX:Z:G1	xf:i:1	fx:Z:G1\tli:i:0\ttf:Z:cC";
 
-        let mut rec = Record::from_sam(&mut header, line).unwrap();
+        let mut rec = Record::from_sam(&header, line).unwrap();
         assert_eq!(rec.qname(), b"blah1");
         rec.set_qname(b"r0");
         assert_eq!(rec.qname(), b"r0");
@@ -1356,7 +1356,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 rec.set(names[i], Some(&cigars[i]), seqs[i], quals[i]);
                 rec.push_aux(b"NM", &Aux::Integer(15));
 
-                bam.write(&mut rec).expect("Failed to write record.");
+                bam.write(&rec).expect("Failed to write record.");
             }
         }
 
@@ -1405,7 +1405,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 rec.push_aux(b"NM", &Aux::Integer(15));
                 rec.set_pos(i as i64);
 
-                bam.write(&mut rec).expect("Failed to write record.");
+                bam.write(&rec).expect("Failed to write record.");
             }
         }
 
@@ -1516,7 +1516,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
         let sam_recs: Vec<Record> = sam
             .split(|x| *x == b'\n')
-            .filter(|x| x.len() > 0 && x[0] != b'@')
+            .filter(|x| !x.is_empty() && x[0] != b'@')
             .map(|line| Record::from_sam(rdr.header(), line).unwrap())
             .collect();
 
@@ -1727,7 +1727,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                     None => return true,
                     Some(false) => {}
                     Some(true) => {
-                        if let Err(_) = sam_writer.write(&parsed) {
+                        if sam_writer.write(&parsed).is_err() {
                             return false;
                         }
                     }
