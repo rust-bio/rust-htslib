@@ -26,7 +26,8 @@ RUN apt-get install -y wget gnupg lsb-release software-properties-common apt-tra
 # Autodetect and fetch latest LLVM repos for the current distro, avoids LLVM warnings and other issues, might generate slower builds for now though, see:
 # https://www.phoronix.com/scan.php?page=news_item&px=Rust-Hurt-On-LLVM-10
 RUN bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
-#RUN apt-get install -y libssl-dev libcurl4-openssl-dev zlib1g-dev libbz2-dev liblzma-dev musl musl-dev musl-tools # htslib deps
+#RUN apt-get install -y libssl-dev libcurl4-openssl-dev zlib1g-dev \
+#			libbz2-dev liblzma-dev musl musl-dev musl-tools # htslib deps
 
 # Remove pre-installed musl, to avoid cross-musl-make interference
 RUN apt-get remove -y musl
@@ -38,7 +39,8 @@ RUN wget https://github.com/richfelker/musl-cross-make/archive/v$MUSL_CROSS_MAKE
     && tar xvfz v$MUSL_CROSS_MAKE_VERSION.tar.gz
 WORKDIR /root/musl-cross-make-$MUSL_CROSS_MAKE_VERSION
 COPY config-musl-cross-make.mak config.mak
-RUN make -j40 install
+RUN make -j40 install && cd .. && rm v$MUSL_CROSS_MAKE_VERSION.tar.gz
+			       #&& rm -rf musl-cross-make-*
 
 # Now we assume we have a properly configured musl-cross...
 ENV PATH "/usr/local/musl/bin:$PATH"
@@ -52,24 +54,30 @@ ENV CPPFLAGS "-I/usr/local/musl/include -I/usr/local/include"
 ENV LDFLAGS "-L/usr/local/musl/lib -L/usr/local/lib"
 
 # .. and carry on with the htslib deps
-RUN wget https://www.zlib.net/zlib-$ZLIB_VERSION.tar.gz \
-    && tar xvfz zlib-$ZLIB_VERSION.tar.gz \
-    && cd zlib-$ZLIB_VERSION \
-    && ./configure --static --prefix=/usr/local/musl \
-    && make -j40 install
 WORKDIR /root
+RUN git clone --depth 1 https://github.com/ebiggers/libdeflate.git && \
+    cd libdeflate && make -j40 CFLAGS="-fPIC -O3" PREFIX="/usr/local/musl" install && \
+    cd .. && rm -rf libdeflate
+RUN git clone https://github.com/cloudflare/zlib cloudflare-zlib && \
+    cd cloudflare-zlib && ./configure --static --prefix=/usr/local/musl && \
+    make install && cd .. && rm -rf cloudflare-zlib
+#RUN wget https://www.zlib.net/zlib-$ZLIB_VERSION.tar.gz \
+#    && tar xvfz zlib-$ZLIB_VERSION.tar.gz \
+#    && cd zlib-$ZLIB_VERSION \
+#    && ./configure --static --prefix=/usr/local/musl \
+#    && make -j40 install
 RUN git clone git://sourceware.org/git/bzip2 \
     && cd bzip2 \
-    #&& make -j40 CC=$CC AR=$AR RANLIB=$RANLIB CFLAGS=$CFLAGS bzip2 \
+    && make -j40 CC=$CC AR=$AR RANLIB=$RANLIB CFLAGS=$CFLAGS bzip2 \
     && make PREFIX=/usr/local/musl -j40 bzip2 \
-    && make -j40 install
-WORKDIR /root
+    && make -j40 install && cd .. && rm -rf bzip2
 RUN wget https://tukaani.org/xz/xz-$LZMA_VERSION.tar.bz2 \
     && tar xvfj xz-$LZMA_VERSION.tar.bz2 \
     && cd xz-$LZMA_VERSION \
-    && ./configure --prefix=/usr/local/musl --enable-static --disable-shared --host x86_64-unknown-linux-musl \
-    && make -j40 install
-WORKDIR /root
+    && ./configure --prefix=/usr/local/musl \
+	--enable-static --disable-shared \
+	--host x86_64-unknown-linux-musl \
+    && make -j40 install && cd .. && rm -rf xz-$LZMA_VERSION xz-$LZMA_VERSION.tar.bz2
 
 # A few gems from: https://wiki.openssl.org/index.php/Compilation_and_Installation
 # "OpenSSL has been around a long time, and it carries around a lot of cruft"
@@ -91,20 +99,20 @@ RUN wget https://github.com/openssl/openssl/archive/OpenSSL_$OPENSSL_VERSION.tar
     && make AR=x86_64-linux-musl-ar \
             CC=x86_64-linux-musl-cc \
             -j40 \
-    && make RANLIB=x86_64-linux-musl-ranlib -j40 install
+    && make RANLIB=x86_64-linux-musl-ranlib -j40 install && cd .. \
+    && rm -rf OpenSSL_$OPENSSL_VERSION.tar.gz openssl-OpenSSL_$OPENSSL_VERSION
 
-WORKDIR /root
 RUN wget https://curl.haxx.se/download/curl-$CURL_VERSION.tar.gz \
     && tar xvfz curl-$CURL_VERSION.tar.gz && cd curl-$CURL_VERSION \
     && ./configure --prefix=/usr/local/musl --host x86_64-linux-musl \
         --with-ssl=/usr/local/musl --with-zlib=/usr/local/musl --enable-static \
-        --disable-dict --disable-file --disable-ftp --disable-gopher --disable-imap \
+        --disable-dict --disable-ftp --disable-gopher --disable-imap \
         --disable-pop3 --disable-rtsp --disable-smb --disable-smtp --disable-telnet \
         --disable-tftp --disable-ntlm --disable-ldap \
-        && make -j40 install
+        && make -j40 install && cd .. \
+	&& rm -rf curl-$CURL_VERSION.tar.gz curl-$CURL_VERSION
 
 # To cater Rust's openssl-sys needs...
-#ENV OPENSSL_DIR /usr/local/openssl
 ENV OPENSSL_DIR /usr/local/musl
 
 # Hack to force ld stick to musl on the hts-sys/build.rs side, otherwise:
