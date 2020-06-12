@@ -1816,7 +1816,8 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
         // currently failing -- need credentials
 	// XXX: unsure if we want an actual external S3 request in this testsuite
-        let url: Url = Url::parse("s3://1000genomes/1000G_2504_high_coverage/additional_698_related/data/ERR3989458/NA20358.final.cram").unwrap();
+	//let url: Url = Url::parse("s3://1000genomes/1000G_2504_high_coverage/additional_698_related/data/ERR3989458/NA20358.final.cram").unwrap();
+        let url: Url = Url::parse("s3://gatk-test-data/wgs_bam/NA12878_24RG_hg38/NA12878_24RG_small.hg38.bam").unwrap();
         let r = Reader::from_url(&url);
         println!("{:#?}", r);
 
