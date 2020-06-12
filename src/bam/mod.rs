@@ -1810,17 +1810,26 @@ CCCCCCCCCCCCCCCCCCC"[..],
         assert_eq!(expected, written);
     }
 
+    #[cfg(feature = "curl")]
+    #[test]
+    fn test_http_connect() {
+        let url: Url = Url::parse("http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/HG00096/exome_alignment/HG00096.chrom11.ILLUMINA.bwa.GBR.exome.20120522.bam").unwrap();
+        let r = Reader::from_url(&url);
+        println!("{:#?}", r);
+        let r = r.unwrap();
+
+        assert_eq!(r.header().target_names()[0], b"1");
+    }
     #[cfg(feature = "s3")]
     #[test]
     fn test_s3_connect() {
-
-        // currently failing -- need credentials
 	// XXX: unsure if we want an actual external S3 request in this testsuite
 	//let url: Url = Url::parse("s3://1000genomes/1000G_2504_high_coverage/additional_698_related/data/ERR3989458/NA20358.final.cram").unwrap();
         let url: Url = Url::parse("s3://gatk-test-data/wgs_bam/NA12878_24RG_hg38/NA12878_24RG_small.hg38.bam").unwrap();
         let r = Reader::from_url(&url);
         println!("{:#?}", r);
+        let r = r.unwrap();
 
-        let _r = r.unwrap();
+        assert_eq!(r.header().target_names()[0], b"1");
     }
 }

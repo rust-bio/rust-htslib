@@ -32,7 +32,7 @@ snafu = "0.6.8"
 hts-sys = { version = "^1.10", path = "hts-sys", default-features = false }
 
 [features]
-default = ["bzip2", "lzma", "curl", "bindgen"]
+default = ["bzip2", "lzma", "curl"]
 bzip2 = ["hts-sys/bzip2"]
 lzma = ["hts-sys/lzma"]
 bindgen = ["hts-sys/bindgen"]
