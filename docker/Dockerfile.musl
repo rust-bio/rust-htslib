@@ -9,6 +9,7 @@ ENV CURL_VERSION 7.70.0
 
 ENV LIBCLANG_PATH /usr/lib/llvm-10/lib
 ENV LLVM_CONFIG_PATH /usr/bin
+ENV LIBDIR /usr/local/musl/lib
 
 
 # The default includes and packages from the Ubuntu distro that cross uses will generate all sorts of linux-headers related include errors, see:
@@ -38,9 +39,14 @@ WORKDIR /root
 RUN wget https://github.com/richfelker/musl-cross-make/archive/v$MUSL_CROSS_MAKE_VERSION.tar.gz \
     && tar xvfz v$MUSL_CROSS_MAKE_VERSION.tar.gz
 WORKDIR /root/musl-cross-make-$MUSL_CROSS_MAKE_VERSION
-COPY config-musl-cross-make.mak config.mak
+COPY conf/config-musl-cross-make.mak config.mak
 RUN make -j40 install && cd .. && rm v$MUSL_CROSS_MAKE_VERSION.tar.gz
 			       #&& rm -rf musl-cross-make-*
+
+# Make sure the linker finds the object it needs
+RUN rm /etc/ld.so.conf.d/*
+COPY conf/x86_64-linux-musl.conf /etc/ld.so.conf.d/x86_64-linux-musl.conf
+RUN ln -sf /etc/ld.so.conf.d/x86_64-linux-musl.conf /etc/ld.so.conf.d/x86_64-unknown-linux-musl.conf && ldconfig
 
 # Now we assume we have a properly configured musl-cross...
 ENV PATH "/usr/local/musl/bin:$PATH"
@@ -68,9 +74,8 @@ RUN git clone https://github.com/cloudflare/zlib cloudflare-zlib && \
 #    && make -j40 install
 RUN git clone git://sourceware.org/git/bzip2 \
     && cd bzip2 \
-    && make -j40 CC=$CC AR=$AR RANLIB=$RANLIB CFLAGS=$CFLAGS bzip2 \
-    && make PREFIX=/usr/local/musl -j40 bzip2 \
-    && make -j40 install && cd .. && rm -rf bzip2
+    && make bzip2 -j40 \
+    && make PREFIX=/usr/local/musl install -j40 && cd .. && rm -rf bzip2
 RUN wget https://tukaani.org/xz/xz-$LZMA_VERSION.tar.bz2 \
     && tar xvfj xz-$LZMA_VERSION.tar.bz2 \
     && cd xz-$LZMA_VERSION \
@@ -106,7 +111,7 @@ RUN wget https://curl.haxx.se/download/curl-$CURL_VERSION.tar.gz \
     && tar xvfz curl-$CURL_VERSION.tar.gz && cd curl-$CURL_VERSION \
     && ./configure --prefix=/usr/local/musl --host x86_64-linux-musl \
         --with-ssl=/usr/local/musl --with-zlib=/usr/local/musl --enable-static \
-        --disable-dict --disable-ftp --disable-gopher --disable-imap \
+        --disable-dict --disable-gopher --disable-imap \
         --disable-pop3 --disable-rtsp --disable-smb --disable-smtp --disable-telnet \
         --disable-tftp --disable-ntlm --disable-ldap \
         && make -j40 install && cd .. \
@@ -117,7 +122,7 @@ ENV OPENSSL_DIR /usr/local/musl
 
 # Hack to force ld stick to musl on the hts-sys/build.rs side, otherwise:
 #   = note: /usr/bin/ld: /target/debug/deps/liblibloading-689161fea10b6234.rlib(global_static.o): unable to initialize decompress status for section .debug_info
-RUN rm /usr/bin/ld && ln -sf /usr/local/musl/bin/x86_64-linux-musl-ld /usr/bin/ld
+#RUN rm /usr/bin/ld && ln -sf /usr/local/musl/bin/x86_64-linux-musl-ld /usr/bin/ld
 
 # Prepare rustup and toolchain locally for easy manual intervention in this container
 #RUN wget https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init \

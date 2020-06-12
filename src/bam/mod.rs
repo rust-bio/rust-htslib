@@ -1815,10 +1815,11 @@ CCCCCCCCCCCCCCCCCCC"[..],
     fn test_s3_connect() {
 
         // currently failing -- need credentials
-        let url: Url = Url::parse("s3://test-bucket/test.bam").unwrap();
+	// XXX: unsure if we want an actual external S3 request in this testsuite
+        let url: Url = Url::parse("s3://1000genomes/1000G_2504_high_coverage/additional_698_related/data/ERR3989458/NA20358.final.cram").unwrap();
         let r = Reader::from_url(&url);
         println!("{:#?}", r);
 
-        let r = r.unwrap();
+        let _r = r.unwrap();
     }
 }
