@@ -747,23 +747,27 @@ mod tests {
 
             assert_eq!(record.rid().expect("Error reading rid."), 0);
             assert_eq!(record.pos(), 10021 + i as i64);
-            assert_eq!(record.qual(), 0f32);
-            assert_eq!(
-                record
+            assert!((record.qual() - 0f32).abs() < f32::EPSILON);
+            assert!(
+                (record
                     .info(b"MQ0F")
                     .float()
                     .expect("Error reading info.")
-                    .expect("Missing tag"),
-                [1.0]
+                    .expect("Missing tag")[0]
+                    - 1.0)
+                    .abs()
+                    < f32::EPSILON
             );
             if i == 59 {
-                assert_eq!(
-                    record
+                assert!(
+                    (record
                         .info(b"SGB")
                         .float()
                         .expect("Error reading info.")
-                        .expect("Missing tag"),
-                    [-0.379885]
+                        .expect("Missing tag")[0]
+                        - -0.379885)
+                        .abs()
+                        < f32::EPSILON
                 );
             }
             // the artificial "not observed" allele is present in each record.
@@ -990,7 +994,7 @@ mod tests {
                 assert_eq!(values["ID"], "PASS");
             }
             _ => {
-                assert!(false);
+                panic!("Invalid HeaderRecord");
             }
         }
     }
@@ -1083,10 +1087,10 @@ mod tests {
     // Helper function reading full file into string.
     fn read_all<P: AsRef<Path>>(path: P) -> String {
         let mut file = File::open(path.as_ref())
-            .expect(&format!("Unable to open the file: {:?}", path.as_ref()));
+            .unwrap_or_else(|_| panic!("Unable to open the file: {:?}", path.as_ref()));
         let mut contents = String::new();
         file.read_to_string(&mut contents)
-            .expect(&format!("Unable to read the file: {:?}", path.as_ref()));
+            .unwrap_or_else(|_| panic!("Unable to read the file: {:?}", path.as_ref()));
         contents
     }
 
@@ -1139,17 +1143,13 @@ mod tests {
             record.remove_filter(header.name_to_id(b"q10").unwrap(), true);
             record.push_filter(header.name_to_id(b"q10").unwrap());
 
-            record
-                .set_alleles(&[b"C", b"T", b"G"])
-                .unwrap();
+            record.set_alleles(&[b"C", b"T", b"G"]).unwrap();
 
             record.set_qual(10.0);
 
             record.push_info_integer(b"N1", &[32]).unwrap();
             record.push_info_float(b"F1", &[33.0]).unwrap();
-            record
-                .push_info_string(b"S1", &[b"fourtytwo"])
-                .unwrap();
+            record.push_info_string(b"S1", &[b"fourtytwo"]).unwrap();
             record.push_info_flag(b"X1").unwrap();
 
             record

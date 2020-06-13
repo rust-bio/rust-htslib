@@ -9132,7 +9132,7 @@ mod tests {
         }
 
         let mut read = bam::Record::new();
-        for (input_cigar, supposed_length_wo_hard_clip, supposed_length_with_hard_clip) in vec![
+        for (input_cigar, supposed_length_wo_hard_clip, supposed_length_with_hard_clip) in &[
             ("40M", 40, 40),
             ("40=", 40, 40),
             ("40X", 40, 40),
@@ -9146,13 +9146,16 @@ mod tests {
         ] {
             read.set(
                 b"test",
-                Some(&CigarString::try_from(input_cigar).unwrap()),
+                Some(&CigarString::try_from(*input_cigar).unwrap()),
                 b"agtc",
                 b"BBBB",
             );
-            assert_eq!(read.seq_len_from_cigar(false), supposed_length_wo_hard_clip);
             assert_eq!(
-                read.seq_len_from_cigar(true),
+                &read.seq_len_from_cigar(false),
+                supposed_length_wo_hard_clip
+            );
+            assert_eq!(
+                &read.seq_len_from_cigar(true),
                 supposed_length_with_hard_clip
             );
         }
