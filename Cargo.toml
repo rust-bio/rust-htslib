@@ -22,7 +22,6 @@ custom_derive = "0.1"
 url = "2.1"
 ieee754 = "0.2"
 lazy_static = "1.4"
-bitflags = "1.2"
 regex = "1.3"
 linear-map = "1.2"
 serde_base = { version = "^1", optional = true, package = "serde" }
