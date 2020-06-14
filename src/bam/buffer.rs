@@ -151,7 +151,6 @@ impl RecordBuffer {
 mod tests {
     use super::*;
     use crate::bam;
-    use itertools::Itertools;
 
     #[test]
     fn test_buffer() {
@@ -161,7 +160,7 @@ mod tests {
 
         buffer.fetch(b"CHROMOSOME_I", 1, 5).unwrap();
         {
-            let records = buffer.iter().collect_vec();
+            let records: Vec<_> = buffer.iter().collect();
             assert_eq!(records.len(), 6);
             assert_eq!(records[0].pos(), 1);
             assert_eq!(records[1].pos(), 1);
