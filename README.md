@@ -19,11 +19,15 @@ If you only want to use the library, there is no need to clone the repository. G
 
 ## Requirements
 
-To compile this crate you need docker and cross:
+rust-htslib comes with pre-built bindings to htslib for Mac and Linux. You will need a C toolchain compatible with the `cc` crate. The build script for this crate will automatically build a link htslib.
+
+
+### MUSL build
+To compile this for MUSL crate you need docker and cross:
 
 ```shell
 $ cargo install cross
-$ cross build 				              # will build with GNU toolchain
+$ cross build 				              # will build with GNU GCC or LLVM toolchains
 ```
 
 If you want to run rust-htslib code on AWS lambda, you'll need to statically compile it with MUSL as follows:
@@ -39,7 +43,7 @@ Alternatively, you can also install it locally by installing the development hea
 $ sudo apt-get install zlib1g-dev libbz2-dev liblzma-dev clang pkg-config
 ```
 
-On OSX, this will take a significant amount of time due to musl cross compiling toolchain:
+On OSX:
 
 ```shell
 $ brew install FiloSottile/musl-cross/musl-cross
@@ -62,7 +66,16 @@ with these compression methods, you can deactivate these features to reduce you 
 rust-htslib = { version = "*", default-features = false }
 ```
 
-`rust-htslib` also has optional support for `serde`, to allow (de)serialization of `bam::Record` via any serde-supported format:
+`rust-htslib` has optional support for `serde`, to allow (de)serialization of `bam::Record` via any serde-supported format.
+
+Http access to files is available with the `curl` feature.
+
+Beta-level S3 and Google Cloud Storge support is available with the `s3` and `gcs` features.
+
+`rust-htslib` can optionally use `bindgen` to generate bindings to htslib. This can slow down the build substantially. Enabling the `bindgen` feature will 
+cause `hts-sys` to use a create a binding file for your architecture. Pre-built bindings are supplied for Mac and Linux. The `bindgen` feature on Windows is untested - please file a bug if you need help.
+
+
 
 ```toml
 [dependencies]
