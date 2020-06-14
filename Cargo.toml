@@ -35,9 +35,13 @@ hts-sys = { version = "^1.10", path = "hts-sys", default-features = false }
 default = ["bzip2", "lzma", "curl"]
 bzip2 = ["hts-sys/bzip2"]
 lzma = ["hts-sys/lzma"]
+bindgen = ["hts-sys/bindgen"]
 curl = ["hts-sys/curl"]
+libdeflate = ["hts-sys/libdeflate-sys"]
+s3 = ["hts-sys/s3"]
+gcs = ["hts-sys/gcs"]
+static = ["hts-sys/static"]
 serde = ["serde_base", "serde_bytes"]
-static = []
 
 [dev-dependencies]
 tempdir = "0.3"
