@@ -37,7 +37,7 @@ pub struct Reader {
 }
 
 impl Reader {
-    /// Create a new Reader from path.
+    /// Create a new Reader from a path.
     ///
     /// # Arguments
     ///
@@ -46,7 +46,7 @@ impl Reader {
         Self::new(&path_as_bytes(path, true)?)
     }
 
-    /// Create a new Reader from URL.
+    /// Create a new Reader from an URL.
     ///
     /// # Arguments
     ///
@@ -55,24 +55,25 @@ impl Reader {
         Self::new(url.as_str().as_bytes())
     }
 
-    /// Create a new Reader.
+    /// Internal function to create a Reader from some sort of path (could be file path but also URL).
+    /// The path or URL will be handled by the c-implementation transparently.
     ///
     /// # Arguments
     ///
-    /// * `path` - the path to open
+    /// * `path` - the path or URL to open
     fn new(path: &[u8]) -> Result<Self, Error> {
         let cpath = ffi::CString::new(path).unwrap();
         let inner = unsafe { htslib::fai_load(cpath.as_ptr()) };
         Ok(Self { inner })
     }
 
-    /// Fetches the sequence and returns it
+    /// Fetches the sequence and returns it.
     ///
     /// # Arguments
     ///
     /// * `name` - the name of the template sequence (e.g., "chr1")
     /// * `begin` - the offset within the template sequence (starting with 0)
-    /// * `end` - the end position to return
+    /// * `end` - the end position to return (if smaller than `begin`, the behavior is undefined).
     pub fn fetch_seq<N: AsRef<str>>(&self, name: N, begin: usize, end: usize) -> String {
         let cname = ffi::CString::new(name.as_ref().as_bytes()).unwrap();
         let len_out: i32 = 0;
