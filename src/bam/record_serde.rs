@@ -319,9 +319,7 @@ mod tests {
 
     #[test]
     fn test_bincode() {
-        let mut bam = Reader::from_path(&Path::new("test/test.bam"))
-            .ok()
-            .expect("Error opening file.");
+        let mut bam = Reader::from_path(&Path::new("test/test.bam")).expect("Error opening file.");
 
         let mut recs = Vec::new();
         for record in bam.records() {
@@ -335,9 +333,7 @@ mod tests {
 
     #[test]
     fn test_serde_json() {
-        let mut bam = Reader::from_path(&Path::new("test/test.bam"))
-            .ok()
-            .expect("Error opening file.");
+        let mut bam = Reader::from_path(&Path::new("test/test.bam")).expect("Error opening file.");
 
         let mut recs = Vec::new();
         for record in bam.records() {
