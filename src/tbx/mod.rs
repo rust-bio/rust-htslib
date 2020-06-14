@@ -367,9 +367,7 @@ mod tests {
 
     #[test]
     fn bed_basic() {
-        let reader = Reader::from_path("test/test_bed3.bed.gz")
-            .ok()
-            .expect("Error opening file.");
+        let reader = Reader::from_path("test/test_bed3.bed.gz").expect("Error opening file.");
 
         // Check sequence name vector.
         assert_eq!(
@@ -385,9 +383,7 @@ mod tests {
 
     #[test]
     fn bed_fetch_from_chr1_read_api() {
-        let mut reader = Reader::from_path("test/test_bed3.bed.gz")
-            .ok()
-            .expect("Error opening file.");
+        let mut reader = Reader::from_path("test/test_bed3.bed.gz").expect("Error opening file.");
 
         let chr1_id = reader.tid("chr1").unwrap();
         assert!(reader.fetch(chr1_id, 1000, 1003).is_ok());
@@ -400,9 +396,7 @@ mod tests {
 
     #[test]
     fn bed_fetch_from_chr1_iterator_api() {
-        let mut reader = Reader::from_path("test/test_bed3.bed.gz")
-            .ok()
-            .expect("Error opening file.");
+        let mut reader = Reader::from_path("test/test_bed3.bed.gz").expect("Error opening file.");
 
         let chr1_id = reader.tid("chr1").unwrap();
         assert!(reader.fetch(chr1_id, 1000, 1003).is_ok());
