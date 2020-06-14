@@ -101,6 +101,10 @@ mod tests {
             .ok()
             .unwrap()
     }
+    #[test]
+    fn faidx_open() {
+        open_reader();
+    }
 
     #[test]
     fn faidx_read_chr_first_base() {
