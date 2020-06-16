@@ -11239,6 +11239,158 @@ fn bindgen_test_layout_kbitset_iter_t() {
         )
     );
 }
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct __faidx_t {
+    _unused: [u8; 0],
+}
+pub type faidx_t = __faidx_t;
+pub const fai_format_options_FAI_NONE: fai_format_options = 0;
+pub const fai_format_options_FAI_FASTA: fai_format_options = 1;
+pub const fai_format_options_FAI_FASTQ: fai_format_options = 2;
+pub type fai_format_options = u32;
+extern "C" {
+    pub fn fai_build3(
+        fn_: *const ::std::os::raw::c_char,
+        fnfai: *const ::std::os::raw::c_char,
+        fngzi: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn fai_build(fn_: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn fai_destroy(fai: *mut faidx_t);
+}
+pub const fai_load_options_FAI_CREATE: fai_load_options = 1;
+pub type fai_load_options = u32;
+extern "C" {
+    pub fn fai_load3(
+        fn_: *const ::std::os::raw::c_char,
+        fnfai: *const ::std::os::raw::c_char,
+        fngzi: *const ::std::os::raw::c_char,
+        flags: ::std::os::raw::c_int,
+    ) -> *mut faidx_t;
+}
+extern "C" {
+    pub fn fai_load(fn_: *const ::std::os::raw::c_char) -> *mut faidx_t;
+}
+extern "C" {
+    pub fn fai_load3_format(
+        fn_: *const ::std::os::raw::c_char,
+        fnfai: *const ::std::os::raw::c_char,
+        fngzi: *const ::std::os::raw::c_char,
+        flags: ::std::os::raw::c_int,
+        format: fai_format_options,
+    ) -> *mut faidx_t;
+}
+extern "C" {
+    pub fn fai_load_format(
+        fn_: *const ::std::os::raw::c_char,
+        format: fai_format_options,
+    ) -> *mut faidx_t;
+}
+extern "C" {
+    pub fn fai_fetch(
+        fai: *const faidx_t,
+        reg: *const ::std::os::raw::c_char,
+        len: *mut ::std::os::raw::c_int,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn fai_fetch64(
+        fai: *const faidx_t,
+        reg: *const ::std::os::raw::c_char,
+        len: *mut hts_pos_t,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn fai_fetchqual(
+        fai: *const faidx_t,
+        reg: *const ::std::os::raw::c_char,
+        len: *mut ::std::os::raw::c_int,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn fai_fetchqual64(
+        fai: *const faidx_t,
+        reg: *const ::std::os::raw::c_char,
+        len: *mut hts_pos_t,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn faidx_fetch_nseq(fai: *const faidx_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn faidx_fetch_seq(
+        fai: *const faidx_t,
+        c_name: *const ::std::os::raw::c_char,
+        p_beg_i: ::std::os::raw::c_int,
+        p_end_i: ::std::os::raw::c_int,
+        len: *mut ::std::os::raw::c_int,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn faidx_fetch_seq64(
+        fai: *const faidx_t,
+        c_name: *const ::std::os::raw::c_char,
+        p_beg_i: hts_pos_t,
+        p_end_i: hts_pos_t,
+        len: *mut hts_pos_t,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn faidx_fetch_qual(
+        fai: *const faidx_t,
+        c_name: *const ::std::os::raw::c_char,
+        p_beg_i: ::std::os::raw::c_int,
+        p_end_i: ::std::os::raw::c_int,
+        len: *mut ::std::os::raw::c_int,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn faidx_fetch_qual64(
+        fai: *const faidx_t,
+        c_name: *const ::std::os::raw::c_char,
+        p_beg_i: hts_pos_t,
+        p_end_i: hts_pos_t,
+        len: *mut hts_pos_t,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn faidx_has_seq(
+        fai: *const faidx_t,
+        seq: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn faidx_nseq(fai: *const faidx_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn faidx_iseq(
+        fai: *const faidx_t,
+        i: ::std::os::raw::c_int,
+    ) -> *const ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn faidx_seq_len(
+        fai: *const faidx_t,
+        seq: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn fai_parse_region(
+        fai: *const faidx_t,
+        s: *const ::std::os::raw::c_char,
+        tid: *mut ::std::os::raw::c_int,
+        beg: *mut hts_pos_t,
+        end: *mut hts_pos_t,
+        flags: ::std::os::raw::c_int,
+    ) -> *const ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn fai_set_cache_size(fai: *mut faidx_t, cache_size: ::std::os::raw::c_int);
+}
 extern "C" {
     #[link_name = "\u{1}wrap_kbs_init2"]
     pub fn kbs_init2(ni: size_t, fill: ::std::os::raw::c_int) -> *mut kbitset_t;
