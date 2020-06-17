@@ -711,21 +711,20 @@ fn bcf_open(target: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
     let c_str = ffi::CString::new(mode).unwrap();
     let ret = unsafe { htslib::hts_open(p.as_ptr(), c_str.as_ptr()) };
 
-    ensure!(
-        !ret.is_null(),
-        errors::Error::Open {
-            target: str::from_utf8(target).unwrap().to_owned()
-        }
-    );
+    if ret.is_null() {
+        return Err(errors::Error::Open {
+            target: str::from_utf8(target).unwrap().to_owned(),
+        });
+    }
 
     unsafe {
-        ensure!(
-            mode.contains(&b'w')
-                || (*ret).format.category == htslib::htsFormatCategory_variant_data,
-            errors::Error::Open {
-                target: str::from_utf8(target).unwrap().to_owned()
-            }
-        );
+        if !(mode.contains(&b'w')
+            || (*ret).format.category == htslib::htsFormatCategory_variant_data)
+        {
+            return Err(errors::Error::Open {
+                target: str::from_utf8(target).unwrap().to_owned(),
+            });
+        }
     }
     Ok(ret)
 }
