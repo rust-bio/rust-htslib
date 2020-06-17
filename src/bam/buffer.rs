@@ -130,12 +130,12 @@ impl RecordBuffer {
     }
 
     /// Iterate over records that have been fetched with `fetch`.
-    pub fn iter(&self) -> vec_deque::Iter<'_, Rc<bam::Record>> {
+    pub fn iter<'a>(&'a self) -> vec_deque::Iter<'a, Rc<bam::Record>> {
         self.inner.iter()
     }
 
     /// Iterate over mutable references to records that have been fetched with `fetch`.
-    pub fn iter_mut(&mut self) -> vec_deque::IterMut<'_, Rc<bam::Record>> {
+    pub fn iter_mut<'a>(&'a mut self) -> vec_deque::IterMut<'a, Rc<bam::Record>> {
         self.inner.iter_mut()
     }
 
