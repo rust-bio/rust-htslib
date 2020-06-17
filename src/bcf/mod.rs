@@ -16,7 +16,6 @@ use std::path::Path;
 use std::rc::Rc;
 use std::str;
 
-use snafu::ensure;
 use url::Url;
 
 pub mod buffer;
@@ -358,7 +357,9 @@ pub mod synced {
     impl SyncedReader {
         pub fn new() -> Result<Self> {
             let inner = unsafe { crate::htslib::bcf_sr_init() };
-            ensure!(!inner.is_null(), errors::Error::AllocationError);
+            if inner.is_null() {
+                return Err(errors::Error::AllocationError);
+            }
 
             Ok(SyncedReader {
                 inner,
@@ -390,12 +391,11 @@ pub mod synced {
                     let res =
                         unsafe { crate::htslib::bcf_sr_add_reader(self.inner, p_cstring.as_ptr()) };
 
-                    ensure!(
-                        res != 0,
-                        errors::Error::Open {
-                            target: p.to_owned()
-                        }
-                    );
+                    if res == 0 {
+                        return Err(errors::Error::Open {
+                            target: p.to_owned(),
+                        });
+                    }
 
                     let i = (self.reader_count() - 1) as isize;
                     let header = Rc::new(HeaderView::new(unsafe {
@@ -430,10 +430,9 @@ pub mod synced {
             let num = unsafe { crate::htslib::bcf_sr_next_line(self.inner) as u32 };
 
             if num == 0 {
-                ensure!(
-                    unsafe { (*self.inner).errnum } == 0,
-                    errors::Error::InvalidRecord
-                );
+                if unsafe { (*self.inner).errnum } != 0 {
+                    return Err(errors::Error::InvalidRecord);
+                }
                 Ok(0)
             } else {
                 assert!(num > 0, "num returned by htslib must not be negative");
