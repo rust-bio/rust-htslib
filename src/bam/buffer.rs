@@ -4,8 +4,8 @@
 // except according to those terms.
 
 use std::collections::{vec_deque, VecDeque};
-use std::str;
 use std::rc::Rc;
+use std::str;
 
 use crate::bam;
 use crate::bam::errors::{Error, Result};

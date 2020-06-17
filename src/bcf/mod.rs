@@ -358,7 +358,7 @@ pub mod synced {
     impl SyncedReader {
         pub fn new() -> Result<Self> {
             let inner = unsafe { crate::htslib::bcf_sr_init() };
-            ensure!(!inner.is_null(), errors::AllocationError);
+            ensure!(!inner.is_null(), errors::Error::AllocationError);
 
             Ok(SyncedReader {
                 inner,
@@ -392,7 +392,7 @@ pub mod synced {
 
                     ensure!(
                         res != 0,
-                        errors::Open {
+                        errors::Error::Open {
                             target: p.to_owned()
                         }
                     );
@@ -430,7 +430,10 @@ pub mod synced {
             let num = unsafe { crate::htslib::bcf_sr_next_line(self.inner) as u32 };
 
             if num == 0 {
-                ensure!(unsafe { (*self.inner).errnum } == 0, errors::InvalidRecord);
+                ensure!(
+                    unsafe { (*self.inner).errnum } == 0,
+                    errors::Error::InvalidRecord
+                );
                 Ok(0)
             } else {
                 assert!(num > 0, "num returned by htslib must not be negative");
@@ -710,7 +713,7 @@ fn bcf_open(target: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
 
     ensure!(
         !ret.is_null(),
-        errors::Open {
+        errors::Error::Open {
             target: str::from_utf8(target).unwrap().to_owned()
         }
     );
@@ -719,7 +722,7 @@ fn bcf_open(target: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
         ensure!(
             mode.contains(&b'w')
                 || (*ret).format.category == htslib::htsFormatCategory_variant_data,
-            errors::Open {
+            errors::Error::Open {
                 target: str::from_utf8(target).unwrap().to_owned()
             }
         );
