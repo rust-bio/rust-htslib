@@ -5,6 +5,7 @@
 
 use std::collections::{vec_deque, VecDeque};
 use std::str;
+use std::rc::Rc;
 
 use crate::bam;
 use crate::bam::errors::{Error, Result};
@@ -18,8 +19,8 @@ use crate::bam::Read;
 #[derive(Debug)]
 pub struct RecordBuffer {
     reader: bam::IndexedReader,
-    inner: VecDeque<bam::Record>,
-    overflow: Option<bam::Record>,
+    inner: VecDeque<Rc<bam::Record>>,
+    overflow: Option<Rc<bam::Record>>,
     cache_cigar: bool,
 }
 
@@ -96,8 +97,8 @@ impl RecordBuffer {
 
             // extend to the right
             loop {
-                let mut record = bam::Record::new();
-                if !self.reader.read(&mut record)? {
+                let mut record = Rc::new(bam::Record::new());
+                if !self.reader.read(Rc::get_mut(&mut record).unwrap())? {
                     break;
                 }
 
@@ -108,7 +109,7 @@ impl RecordBuffer {
                 let pos = record.pos();
 
                 if self.cache_cigar {
-                    record.cache_cigar();
+                    Rc::get_mut(&mut record).unwrap().cache_cigar();
                 }
 
                 if pos >= end as i64 {
@@ -129,12 +130,12 @@ impl RecordBuffer {
     }
 
     /// Iterate over records that have been fetched with `fetch`.
-    pub fn iter(&self) -> vec_deque::Iter<'_, bam::Record> {
+    pub fn iter(&self) -> vec_deque::Iter<'_, Rc<bam::Record>> {
         self.inner.iter()
     }
 
     /// Iterate over mutable references to records that have been fetched with `fetch`.
-    pub fn iter_mut(&mut self) -> vec_deque::IterMut<'_, bam::Record> {
+    pub fn iter_mut(&mut self) -> vec_deque::IterMut<'_, Rc<bam::Record>> {
         self.inner.iter_mut()
     }
 
