@@ -108,8 +108,8 @@ fn main() {
         }
     }
 
-    let use_libdeflater = env::var("CARGO_FEATURE_LIBDEFLATER").is_ok();
-    if use_libdeflater {
+    let use_libdeflate = env::var("CARGO_FEATURE_LIBDEFLATE").is_ok();
+    if use_libdeflate {
         if let Ok(inc) = env::var("DEP_LIBDEFLATE_INCLUDE").map(PathBuf::from) {
             cfg.include(inc);
             config_lines.push("#define HAVE_LIBDEFLATE 1");
