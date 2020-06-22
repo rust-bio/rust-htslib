@@ -1166,6 +1166,28 @@ impl CigarStringView {
         })
     }
 
+    /// Get number of bases hardclipped at the beginning of the alignment.
+    pub fn leading_hardclips(&self) -> i64 {
+        self.first().map_or(0, |cigar| {
+            if let Cigar::HardClip(s) = cigar {
+                *s as i64
+            } else {
+                0
+            }
+        })
+    }
+
+    /// Get number of bases hardclipped at the end of the alignment.
+    pub fn trailing_hardclips(&self) -> i64 {
+        self.last().map_or(0, |cigar| {
+            if let Cigar::HardClip(s) = cigar {
+                *s as i64
+            } else {
+                0
+            }
+        })
+    }
+
     /// For a given position in the reference, get corresponding position within read.
     /// If reference position is outside of the read alignment, return None.
     ///

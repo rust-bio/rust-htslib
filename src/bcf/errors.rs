@@ -1,46 +1,43 @@
-use snafu::Snafu;
+use thiserror::Error;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Snafu, Debug, PartialEq)]
-#[snafu(visibility = "pub")]
+#[derive(Error, Debug)]
 pub enum Error {
-    #[snafu(display(
-        "error allocating internal data structure for BCF/VCF reader (out of memory?)"
-    ))]
+    #[error("error allocating internal data structure for BCF/VCF reader (out of memory?)")]
     AllocationError,
-    #[snafu(display("failed to open BCF/VCF from {}", target))]
+    #[error("failed to open BCF/VCF from {target:?}")]
     Open { target: String },
-    #[snafu(display("invalid record in BCF/VCF file"))]
+    #[error("invalid record in BCF/VCF file")]
     InvalidRecord,
-    #[snafu(display("error setting threads for writing BCF/VCF file(s)"))]
+    #[error("error setting threads for writing BCF/VCF file(s)")]
     SetThreads,
-    #[snafu(display("error seeking to {}:{} in indexed BCF/VCF file", contig, start))]
+    #[error("error seeking to {contig:?}:{start} in indexed BCF/VCF file")]
     Seek { contig: String, start: u64 },
-    #[snafu(display("error writing record to BCF/VCF file"))]
+    #[error("error writing record to BCF/VCF file")]
     Write,
-    #[snafu(display("tag {} undefined in BCF/VCF header", tag))]
+    #[error("tag {tag} undefined in BCF/VCF header")]
     UndefinedTag { tag: String },
-    #[snafu(display("unexpected type for tag {} BCF/VCF file", tag))]
+    #[error("unexpected type for tag {tag} BCF/VCF file")]
     UnexpectedType { tag: String },
-    #[snafu(display("tag {} missing from record {} in BCF/VCF file", tag, record))]
+    #[error("tag {tag} missing from record {record} in BCF/VCF file")]
     MissingTag { tag: String, record: String },
-    #[snafu(display("error setting tag {} in BCF/VCF record (out of memory?)", tag))]
+    #[error("error setting tag {tag} in BCF/VCF record (out of memory?)")]
     SetTag { tag: String },
-    #[snafu(display("ID {} not found in BCF/VCF header", rid))]
+    #[error("ID {rid} not found in BCF/VCF header")]
     UnknownRID { rid: u32 },
-    #[snafu(display("contig {} not found in BCF/VCF header", contig))]
+    #[error("contig {contig} not found in BCF/VCF header")]
     UnknownContig { contig: String },
-    #[snafu(display("ID {} not found in BCF/VCF header", id))]
+    #[error("ID {id} not found in BCF/VCF header")]
     UnknownID { id: String },
-    #[snafu(display("sample {} not found in BCF/VCF header", name))]
+    #[error("sample {name} not found in BCF/VCF header")]
     UnknownSample { name: String },
-    #[snafu(display("duplicate sample names given for subsetting BCF/VCF"))]
+    #[error("duplicate sample names given for subsetting BCF/VCF")]
     DuplicateSampleNames,
-    #[snafu(display("invalid (non-unique) characters in path"))]
+    #[error("invalid (non-unique) characters in path")]
     NonUnicodePath,
-    #[snafu(display("failed to set values in BCF/VCF record (out of memory?)"))]
+    #[error("failed to set values in BCF/VCF record (out of memory?)")]
     SetValues,
-    #[snafu(display("failed to remove alleles in BCF/VCF record"))]
+    #[error("failed to remove alleles in BCF/VCF record")]
     RemoveAlleles,
 }
