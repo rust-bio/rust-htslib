@@ -28,7 +28,7 @@ serde_base = { version = "^1", optional = true, package = "serde" }
 serde_bytes = { version = "0.11", optional = true }
 bio-types = ">=0.6"
 thiserror = "1"
-hts-sys = { version = "^1.10", path = "hts-sys", default-features = false }
+hts-sys = { version = "1.10.2.1", path = "hts-sys", default-features = false }
 
 [features]
 default = ["bzip2", "lzma", "curl"]
