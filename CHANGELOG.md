@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.31.0] - 2020-06-22
+### Changes
+- Bam record buffer now returns reference counted (Rc) objects. This makes the API more ergonomic to use.
+- Switched to thiserror instead of snafu for error handling.
+- Various cleanups and little fixes.
+
 ## [0.30.0] - 2020-04-03
 ### Changes
 - Removed `fn header_mut()` from `bam::Read` trait.
