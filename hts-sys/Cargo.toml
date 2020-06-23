@@ -21,7 +21,7 @@ libz-sys = { version = "1.0.25", features = ["static"] }
 bzip2-sys = { version = "0.1.8", optional = true }
 lzma-sys = { version = "0.1.16", optional = true, features = ["static"] }
 curl-sys = { version = "0.4.31", optional = true, features = ["static-curl", "static-ssl", "protocol-ftp"] }
-libdeflate-sys = { version = "0.5", optional = true }
+libdeflate-sys = { version = "0.5.0", optional = true }
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
 openssl-sys = { version = "0.9", optional = true }
@@ -31,6 +31,7 @@ default = ["bzip2", "lzma", "curl"]
 bzip2 = ["bzip2-sys"]
 lzma = ["lzma-sys"]
 curl = ["curl-sys", "openssl-sys"]
+libdeflate = ["libdeflate-sys"]
 gcs = ["curl"] # Google Cloud Storage support
 s3 = ["curl"] # Amazon S3 support
 static = [] # Don't dynamically link to other libraries
