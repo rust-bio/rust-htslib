@@ -1,13 +1,12 @@
-use snafu::Snafu;
+use thiserror::Error;
 use std::path::PathBuf;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Snafu, Debug, PartialEq)]
-#[snafu(visibility = "pub")]
+#[derive(Error, Debug, PartialEq)]
 pub enum Error {
-    #[snafu(display("file not found: {}", path.display()))]
+    #[error("file not found: {path}")]
     FileNotFound { path: PathBuf },
-    #[snafu(display("invalid (non-unicode) characters in path"))]
+    #[error("invalid (non-unicode) characters in path")]
     NonUnicodePath,
 }
