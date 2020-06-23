@@ -748,7 +748,7 @@ mod tests {
 
             assert_eq!(record.rid().expect("Error reading rid."), 0);
             assert_eq!(record.pos(), 10021 + i as i64);
-            assert!((record.qual() - 0f32).abs() < f32::EPSILON);
+            assert!((record.qual() - 0f32).abs() < std::f32::EPSILON);
             assert!(
                 (record
                     .info(b"MQ0F")
@@ -757,7 +757,7 @@ mod tests {
                     .expect("Missing tag")[0]
                     - 1.0)
                     .abs()
-                    < f32::EPSILON
+                    < std::f32::EPSILON
             );
             if i == 59 {
                 assert!(
@@ -768,7 +768,7 @@ mod tests {
                         .expect("Missing tag")[0]
                         - -0.379885)
                         .abs()
-                        < f32::EPSILON
+                        < std::f32::EPSILON
                 );
             }
             // the artificial "not observed" allele is present in each record.
