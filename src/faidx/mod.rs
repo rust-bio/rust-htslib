@@ -1,4 +1,4 @@
-// Copyright 2019 Manuel Landesfeind, Evotec International GmbH
+// Copyright 2020 Manuel Landesfeind, Evotec International GmbH
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
@@ -67,28 +67,40 @@ impl Reader {
         Ok(Self { inner })
     }
 
-    /// Fetches the sequence and returns it.
+    /// Fetch the sequence as a byte array.
     ///
     /// # Arguments
     ///
     /// * `name` - the name of the template sequence (e.g., "chr1")
     /// * `begin` - the offset within the template sequence (starting with 0)
     /// * `end` - the end position to return (if smaller than `begin`, the behavior is undefined).
-    pub fn fetch_seq<N: AsRef<str>>(&self, name: N, begin: usize, end: usize) -> String {
+    pub fn fetch_seq<N: AsRef<str>>(&self, name: N, begin: i64, end: i64) -> &[u8] {
         let cname = ffi::CString::new(name.as_ref().as_bytes()).unwrap();
-        let len_out: i32 = 0;
+        let len_out: i64 = 0;
         let cseq = unsafe {
-            let ptr = htslib::faidx_fetch_seq(
-                self.inner,                              //*const faidx_t,
-                cname.as_ptr(),                          // c_name
-                begin as ::std::os::raw::c_int,          // p_beg_i
-                end as ::std::os::raw::c_int,            // p_end_i
-                &mut (len_out as ::std::os::raw::c_int), //len
+            let ptr = htslib::faidx_fetch_seq64(
+                self.inner,                          //*const faidx_t,
+                cname.as_ptr(),                      // c_name
+                begin as htslib::hts_pos_t,          // p_beg_i
+                end as htslib::hts_pos_t,            // p_end_i
+                &mut (len_out as htslib::hts_pos_t), //len
             );
             ffi::CStr::from_ptr(ptr)
         };
 
-        cseq.to_str().unwrap().to_owned()
+        cseq.to_bytes()
+    }
+
+    /// Fetches the sequence and returns it as string.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - the name of the template sequence (e.g., "chr1")
+    /// * `begin` - the offset within the template sequence (starting with 0)
+    /// * `end` - the end position to return (if smaller than `begin`, the behavior is undefined).
+    pub fn fetch_seq_string<N: AsRef<str>>(&self, name: N, begin: i64, end: i64) -> String {
+        let bytes = self.fetch_seq(name, begin, end);
+        std::str::from_utf8(bytes).unwrap().to_owned()
     }
 }
 
@@ -109,7 +121,12 @@ mod tests {
     #[test]
     fn faidx_read_chr_first_base() {
         let r = open_reader();
-        let seq = r.fetch_seq("chr1", 0, 0);
+
+        let bseq = r.fetch_seq("chr1", 0, 0);
+        assert_eq!(bseq.len(), 1);
+        assert_eq!(bseq, b"G");
+
+        let seq = r.fetch_seq_string("chr1", 0, 0);
         assert_eq!(seq.len(), 1);
         assert_eq!(seq, "G");
     }
@@ -117,7 +134,12 @@ mod tests {
     #[test]
     fn faidx_read_chr_start() {
         let r = open_reader();
-        let seq = r.fetch_seq("chr1", 0, 9);
+
+        let bseq = r.fetch_seq("chr1", 0, 9);
+        assert_eq!(bseq.len(), 10);
+        assert_eq!(bseq, b"GGGCACAGCC");
+
+        let seq = r.fetch_seq_string("chr1", 0, 9);
         assert_eq!(seq.len(), 10);
         assert_eq!(seq, "GGGCACAGCC");
     }
@@ -125,7 +147,12 @@ mod tests {
     #[test]
     fn faidx_read_chr_between() {
         let r = open_reader();
-        let seq = r.fetch_seq("chr1", 4, 14);
+
+        let bseq = r.fetch_seq("chr1", 4, 14);
+        assert_eq!(bseq.len(), 11);
+        assert_eq!(bseq, b"ACAGCCTCACC");
+
+        let seq = r.fetch_seq_string("chr1", 4, 14);
         assert_eq!(seq.len(), 11);
         assert_eq!(seq, "ACAGCCTCACC");
     }
@@ -133,20 +160,37 @@ mod tests {
     #[test]
     fn faidx_read_chr_end() {
         let r = open_reader();
-        let seq = r.fetch_seq("chr1", 110, 120);
+
+        let bseq = r.fetch_seq("chr1", 110, 120);
+        assert_eq!(bseq.len(), 10);
+        assert_eq!(bseq, b"CCCCTCCGTG");
+
+        let seq = r.fetch_seq_string("chr1", 110, 120);
         assert_eq!(seq.len(), 10);
         assert_eq!(seq, "CCCCTCCGTG");
     }
 
     #[test]
-    fn faidx_read_twice() {
+    fn faidx_read_twice_string() {
         let r = open_reader();
-        let seq = r.fetch_seq("chr1", 110, 120);
+        let seq = r.fetch_seq_string("chr1", 110, 120);
         assert_eq!(seq.len(), 10);
         assert_eq!(seq, "CCCCTCCGTG");
 
-        let seq = r.fetch_seq("chr1", 5, 9);
+        let seq = r.fetch_seq_string("chr1", 5, 9);
         assert_eq!(seq.len(), 5);
         assert_eq!(seq, "CAGCC");
+    }
+
+    #[test]
+    fn faidx_read_twice_bytes() {
+        let r = open_reader();
+        let seq = r.fetch_seq("chr1", 110, 120);
+        assert_eq!(seq.len(), 10);
+        assert_eq!(seq, b"CCCCTCCGTG");
+
+        let seq = r.fetch_seq("chr1", 5, 9);
+        assert_eq!(seq.len(), 5);
+        assert_eq!(seq, b"CAGCC");
     }
 }
