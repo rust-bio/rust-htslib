@@ -543,7 +543,7 @@ impl Record {
         .into_view(self.pos())
     }
 
-    fn seq_len(&self) -> usize {
+    pub fn seq_len(&self) -> usize {
         self.inner().core.l_qseq as usize
     }
 
