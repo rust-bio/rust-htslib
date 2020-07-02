@@ -67,8 +67,6 @@
 
 #[macro_use]
 extern crate custom_derive;
-#[macro_use]
-extern crate lazy_static;
 extern crate libc;
 #[macro_use]
 extern crate newtype_derive;

@@ -14,6 +14,7 @@ use std::str;
 use std::str::FromStr;
 use std::u32;
 
+use lazy_static::lazy_static;
 use regex::Regex;
 
 use crate::bam::errors::Result;
@@ -543,7 +544,7 @@ impl Record {
         .into_view(self.pos())
     }
 
-    fn seq_len(&self) -> usize {
+    pub fn seq_len(&self) -> usize {
         self.inner().core.l_qseq as usize
     }
 
