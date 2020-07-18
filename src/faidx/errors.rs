@@ -9,4 +9,6 @@ pub enum Error {
     FileNotFound { path: PathBuf },
     #[error("invalid (non-unicode) characters in path")]
     NonUnicodePath,
+    #[error("The given position is to large to be converted to i64")]
+    PositionTooLarge,
 }
