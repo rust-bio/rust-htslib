@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.32.0] - 2020-07-09
+### Changes
+- Method `seq_len()` of `bam::Record` is now public.
+- Speedup when parsing BAM headers (thanks to @juliangehring).
+- Compatibility fixes for older rust versions (thanks to @pmarks and @brainstorm).
+
 ## [0.31.0] - 2020-06-22
 ### Changes
 - Bam record buffer now returns reference counted (Rc) objects. This makes the API more ergonomic to use.
