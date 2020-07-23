@@ -151,12 +151,15 @@ impl Reader {
         let path = ffi::CString::new(path).unwrap();
         let c_str = ffi::CString::new("r").unwrap();
         let hts_file = unsafe { htslib::hts_open(path.as_ptr(), c_str.as_ptr()) };
-        unsafe {
-            if (*hts_file).format.category != htslib::htsFormatCategory_region_list
-                && (*hts_file).format.format != htslib::htsExactFormat_sam
-            {
-                return Err(Error::InvalidIndex);
-            }
+        let file_format = unsafe { (*hts_file).format.format };
+        let format_category = unsafe { (*hts_file).format.category };
+        match (format_category, file_format) {
+            (htslib::htsFormatCategory_region_list, _) => (),
+            (_, htslib::htsExactFormat_sam) => (),
+            // A workaround for htsLib's failure to correctly recognize the format of a
+            // simple BED file with a header line. See #194
+            (htslib::htsFormatCategory_unknown_category, htslib::htsExactFormat_text_format) => (),
+            _ => return Err(Error::InvalidIndex),
         }
 
         let hts_format = unsafe { (*htslib::hts_get_format(hts_file)).format };
@@ -421,5 +424,17 @@ mod tests {
     fn test_fails_on_vcf() {
         let reader = Reader::from_path("test/test_left.vcf");
         assert!(reader.is_err());
+    }
+
+    #[test]
+    fn test_bed_headered() {
+        // This file has chromosome, start, and end positions with a header line.
+        Reader::from_path("test/test_bed4.bed.gz").expect("Error opening file.");
+        // This file has chromosome and position with a header line, indexed with
+        // `tabix -b2 -e2 <file>`.
+        Reader::from_path("test/test_bed5.bed.gz").expect("Error opening file.");
+        // This is a duplicate of the above file but the index file is nonsense text.
+        Reader::from_path("test/test_bed_bad_index.bed.gz")
+            .expect_err("Invalid index file should fail.");
     }
 }
