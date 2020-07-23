@@ -164,6 +164,9 @@ impl Reader {
 
         let hts_format = unsafe { (*htslib::hts_get_format(hts_file)).format };
         let tbx = unsafe { htslib::tbx_index_load(path.as_ptr()) };
+        if tbx.is_null() {
+            return Err(Error::InvalidIndex);
+        }
         let mut header = Vec::new();
         let mut buf = htslib::kstring_t {
             l: 0,
@@ -180,21 +183,17 @@ impl Reader {
             }
         }
 
-        if tbx.is_null() {
-            Err(Error::InvalidIndex)
-        } else {
-            Ok(Reader {
-                header,
-                hts_file,
-                hts_format,
-                tbx,
-                buf,
-                itr: None,
-                tid: -1,
-                start: -1,
-                end: -1,
-            })
-        }
+        Ok(Reader {
+            header,
+            hts_file,
+            hts_format,
+            tbx,
+            buf,
+            itr: None,
+            tid: -1,
+            start: -1,
+            end: -1,
+        })
     }
 
     /// Get sequence/target ID from sequence name.
