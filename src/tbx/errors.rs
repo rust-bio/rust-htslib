@@ -1,25 +1,24 @@
-use snafu::Snafu;
 use std::path::PathBuf;
+use thiserror::Error;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Snafu, Debug, PartialEq)]
-#[snafu(visibility = "pub")]
+#[derive(Error, Debug, PartialEq)]
 pub enum Error {
-    #[snafu(display("previous iterator generation failed"))]
+    #[error("previous iterator generation failed")]
     NoIter,
-    #[snafu(display("truncated tabix record"))]
+    #[error("truncated tabix record")]
     TruncatedRecord,
-    #[snafu(display("invalid tabix index"))]
+    #[error("invalid tabix index")]
     InvalidIndex,
-    #[snafu(display("file not found: {}", path.display()))]
+    #[error("file not found: {path}")]
     FileNotFound { path: PathBuf },
-    #[snafu(display("invalid (non-unique) characters in path"))]
+    #[error("invalid (non-unique) characters in path")]
     NonUnicodePath,
-    #[snafu(display("sequence {} not found in tabix index", sequence))]
+    #[error("sequence {sequence} not found in tabix index")]
     UnknownSequence { sequence: String },
-    #[snafu(display("failed to fetch region in tabix index"))]
+    #[error("failed to fetch region in tabix index")]
     Fetch,
-    #[snafu(display("error setting threads for for tabix file reading"))]
+    #[error("error setting threads for for tabix file reading")]
     SetThreads,
 }

@@ -96,7 +96,7 @@ impl BamRecordExtensions for bam::Record {
         let mut pos = self.pos();
         for entry in self.cigar().iter() {
             match entry {
-                Cigar::Match(len) => {
+                Cigar::Match(len) | Cigar::Equal(len) | Cigar::Diff(len) => {
                     result.push([pos, pos + *len as i64]);
                     pos += *len as i64;
                 }
@@ -113,7 +113,7 @@ impl BamRecordExtensions for bam::Record {
         let mut result = Vec::new();
         for entry in self.cigar().iter() {
             match entry {
-                Cigar::Match(len) | Cigar::Del(len) | Cigar::Equal(len) | Cigar::Diff(len) => {
+                Cigar::Match(len) | Cigar::Equal(len) | Cigar::Diff(len) | Cigar::Del(len) => {
                     base_position += *len as i64
                 }
                 Cigar::RefSkip(len) => {
@@ -4304,10 +4304,10 @@ mod tests {
 
         //
         //for the rest, we just verify that they have the expected amount of None in each position
-        fn some_count(pairs: &Vec<[Option<i64>; 2]>, pos: usize) -> i64 {
+        fn some_count(pairs: &[[Option<i64>; 2]], pos: usize) -> i64 {
             pairs.iter().filter(|x| x[pos].is_some()).count() as i64
         }
-        fn none_count(pairs: &Vec<[Option<i64>; 2]>, pos: usize) -> i64 {
+        fn none_count(pairs: &[[Option<i64>; 2]], pos: usize) -> i64 {
             pairs.iter().filter(|x| x[pos].is_none()).count() as i64
         }
 
@@ -9132,7 +9132,7 @@ mod tests {
         }
 
         let mut read = bam::Record::new();
-        for (input_cigar, supposed_length_wo_hard_clip, supposed_length_with_hard_clip) in vec![
+        for (input_cigar, supposed_length_wo_hard_clip, supposed_length_with_hard_clip) in &[
             ("40M", 40, 40),
             ("40=", 40, 40),
             ("40X", 40, 40),
@@ -9146,13 +9146,16 @@ mod tests {
         ] {
             read.set(
                 b"test",
-                Some(&CigarString::try_from(input_cigar).unwrap()),
+                Some(&CigarString::try_from(*input_cigar).unwrap()),
                 b"agtc",
                 b"BBBB",
             );
-            assert_eq!(read.seq_len_from_cigar(false), supposed_length_wo_hard_clip);
             assert_eq!(
-                read.seq_len_from_cigar(true),
+                &read.seq_len_from_cigar(false),
+                supposed_length_wo_hard_clip
+            );
+            assert_eq!(
+                &read.seq_len_from_cigar(true),
                 supposed_length_with_hard_clip
             );
         }

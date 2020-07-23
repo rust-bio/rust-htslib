@@ -67,8 +67,6 @@
 
 #[macro_use]
 extern crate custom_derive;
-#[macro_use]
-extern crate lazy_static;
 extern crate libc;
 #[macro_use]
 extern crate newtype_derive;
@@ -86,8 +84,6 @@ extern crate bincode;
 extern crate pretty_assertions;
 #[cfg(all(test, feature = "serde"))]
 extern crate serde_json;
-
-extern crate snafu;
 
 pub mod bam;
 pub mod bcf;

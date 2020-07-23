@@ -4,6 +4,7 @@
 // except according to those terms.
 
 use std::collections::{vec_deque, VecDeque};
+use std::rc::Rc;
 use std::str;
 
 use crate::bam;
@@ -18,8 +19,8 @@ use crate::bam::Read;
 #[derive(Debug)]
 pub struct RecordBuffer {
     reader: bam::IndexedReader,
-    inner: VecDeque<bam::Record>,
-    overflow: Option<bam::Record>,
+    inner: VecDeque<Rc<bam::Record>>,
+    overflow: Option<Rc<bam::Record>>,
     cache_cigar: bool,
 }
 
@@ -96,8 +97,8 @@ impl RecordBuffer {
 
             // extend to the right
             loop {
-                let mut record = bam::Record::new();
-                if !self.reader.read(&mut record)? {
+                let mut record = Rc::new(bam::Record::new());
+                if !self.reader.read(Rc::get_mut(&mut record).unwrap())? {
                     break;
                 }
 
@@ -108,7 +109,7 @@ impl RecordBuffer {
                 let pos = record.pos();
 
                 if self.cache_cigar {
-                    record.cache_cigar();
+                    Rc::get_mut(&mut record).unwrap().cache_cigar();
                 }
 
                 if pos >= end as i64 {
@@ -129,12 +130,12 @@ impl RecordBuffer {
     }
 
     /// Iterate over records that have been fetched with `fetch`.
-    pub fn iter(&self) -> vec_deque::Iter<'_, bam::Record> {
+    pub fn iter<'a>(&'a self) -> vec_deque::Iter<'a, Rc<bam::Record>> {
         self.inner.iter()
     }
 
     /// Iterate over mutable references to records that have been fetched with `fetch`.
-    pub fn iter_mut(&mut self) -> vec_deque::IterMut<'_, bam::Record> {
+    pub fn iter_mut<'a>(&'a mut self) -> vec_deque::IterMut<'a, Rc<bam::Record>> {
         self.inner.iter_mut()
     }
 
@@ -151,7 +152,6 @@ impl RecordBuffer {
 mod tests {
     use super::*;
     use crate::bam;
-    use itertools::Itertools;
 
     #[test]
     fn test_buffer() {
@@ -161,7 +161,7 @@ mod tests {
 
         buffer.fetch(b"CHROMOSOME_I", 1, 5).unwrap();
         {
-            let records = buffer.iter().collect_vec();
+            let records: Vec<_> = buffer.iter().collect();
             assert_eq!(records.len(), 6);
             assert_eq!(records[0].pos(), 1);
             assert_eq!(records[1].pos(), 1);

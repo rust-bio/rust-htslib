@@ -15,7 +15,7 @@ use std::str;
 
 use bio_types::genome;
 use ieee754::Ieee754;
-use itertools::Itertools;
+use lazy_static::lazy_static;
 
 use crate::bcf::errors::Result;
 use crate::bcf::header::{HeaderView, Id};
@@ -715,7 +715,7 @@ impl<'a> Genotypes<'a> {
         Genotype(
             igt.iter()
                 .map(|&e| GenotypeAllele::from_encoded(e))
-                .collect_vec(),
+                .collect(),
         )
     }
 }
