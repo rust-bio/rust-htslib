@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 use thiserror::Error;
 
+/// Generic result type for functions in this crate with
+/// a global error class.
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Error, Debug, PartialEq)]

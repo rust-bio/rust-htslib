@@ -13,8 +13,7 @@ use url::Url;
 
 use crate::htslib;
 
-pub mod errors;
-pub use errors::{Error, Result};
+use crate::error::{Error, Result};
 
 fn path_as_bytes<'a, P: 'a + AsRef<Path>>(path: P, must_exist: bool) -> Result<Vec<u8>> {
     if path.as_ref().exists() || !must_exist {
