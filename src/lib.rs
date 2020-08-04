@@ -87,6 +87,7 @@ extern crate serde_json;
 
 pub mod bam;
 pub mod bcf;
+pub mod faidx;
 pub mod htslib;
 pub mod tbx;
 pub mod utils;
