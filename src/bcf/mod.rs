@@ -16,7 +16,6 @@ use std::path::Path;
 use std::rc::Rc;
 use std::str;
 
-use snafu::ensure;
 use url::Url;
 
 pub mod buffer;
@@ -358,7 +357,9 @@ pub mod synced {
     impl SyncedReader {
         pub fn new() -> Result<Self> {
             let inner = unsafe { crate::htslib::bcf_sr_init() };
-            ensure!(!inner.is_null(), errors::AllocationError);
+            if inner.is_null() {
+                return Err(errors::Error::AllocationError);
+            }
 
             Ok(SyncedReader {
                 inner,
@@ -390,12 +391,11 @@ pub mod synced {
                     let res =
                         unsafe { crate::htslib::bcf_sr_add_reader(self.inner, p_cstring.as_ptr()) };
 
-                    ensure!(
-                        res != 0,
-                        errors::Open {
-                            target: p.to_owned()
-                        }
-                    );
+                    if res == 0 {
+                        return Err(errors::Error::Open {
+                            target: p.to_owned(),
+                        });
+                    }
 
                     let i = (self.reader_count() - 1) as isize;
                     let header = Rc::new(HeaderView::new(unsafe {
@@ -430,7 +430,9 @@ pub mod synced {
             let num = unsafe { crate::htslib::bcf_sr_next_line(self.inner) as u32 };
 
             if num == 0 {
-                ensure!(unsafe { (*self.inner).errnum } == 0, errors::InvalidRecord);
+                if unsafe { (*self.inner).errnum } != 0 {
+                    return Err(errors::Error::InvalidRecord);
+                }
                 Ok(0)
             } else {
                 assert!(num > 0, "num returned by htslib must not be negative");
@@ -708,21 +710,20 @@ fn bcf_open(target: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
     let c_str = ffi::CString::new(mode).unwrap();
     let ret = unsafe { htslib::hts_open(p.as_ptr(), c_str.as_ptr()) };
 
-    ensure!(
-        !ret.is_null(),
-        errors::Open {
-            target: str::from_utf8(target).unwrap().to_owned()
-        }
-    );
+    if ret.is_null() {
+        return Err(errors::Error::Open {
+            target: str::from_utf8(target).unwrap().to_owned(),
+        });
+    }
 
     unsafe {
-        ensure!(
-            mode.contains(&b'w')
-                || (*ret).format.category == htslib::htsFormatCategory_variant_data,
-            errors::Open {
-                target: str::from_utf8(target).unwrap().to_owned()
-            }
-        );
+        if !(mode.contains(&b'w')
+            || (*ret).format.category == htslib::htsFormatCategory_variant_data)
+        {
+            return Err(errors::Error::Open {
+                target: str::from_utf8(target).unwrap().to_owned(),
+            });
+        }
     }
     Ok(ret)
 }
@@ -747,7 +748,7 @@ mod tests {
 
             assert_eq!(record.rid().expect("Error reading rid."), 0);
             assert_eq!(record.pos(), 10021 + i as i64);
-            assert!((record.qual() - 0f32).abs() < f32::EPSILON);
+            assert!((record.qual() - 0f32).abs() < std::f32::EPSILON);
             assert!(
                 (record
                     .info(b"MQ0F")
@@ -756,7 +757,7 @@ mod tests {
                     .expect("Missing tag")[0]
                     - 1.0)
                     .abs()
-                    < f32::EPSILON
+                    < std::f32::EPSILON
             );
             if i == 59 {
                 assert!(
@@ -767,7 +768,7 @@ mod tests {
                         .expect("Missing tag")[0]
                         - -0.379885)
                         .abs()
-                        < f32::EPSILON
+                        < std::f32::EPSILON
                 );
             }
             // the artificial "not observed" allele is present in each record.
