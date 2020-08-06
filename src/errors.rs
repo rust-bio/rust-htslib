@@ -18,6 +18,8 @@ pub enum Error {
     Seek,
     #[error("sequence {sequence} not found in index")]
     UnknownSequence { sequence: String },
+    #[error("error setting threads for for file reading")]
+    SetThreads,
 
 		// Errors for faidx
     #[error("The given position is too large to be converted to i64")]
@@ -30,8 +32,6 @@ pub enum Error {
     TabixTruncatedRecord,
     #[error("invTabixalid tabix index")]
     TabixInvalidIndex,
-    #[error("error setting threads for for file reading")]
-    SetThreads,
 
 		// Errors for BAM
     #[error("error parsing CIGAR string: {msg}")]
