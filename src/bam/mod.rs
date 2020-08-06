@@ -6,7 +6,6 @@
 //! Module for working with SAM, BAM, and CRAM files.
 
 pub mod buffer;
-pub mod errors;
 pub mod ext;
 pub mod header;
 pub mod index;
@@ -25,9 +24,9 @@ use std::str;
 use url::Url;
 
 use crate::htslib;
+use crate::errors::*;
 
 pub use crate::bam::buffer::RecordBuffer;
-pub use crate::bam::errors::{Error, Result};
 pub use crate::bam::header::Header;
 pub use crate::bam::record::Record;
 use std::convert::TryInto;
@@ -275,8 +274,8 @@ impl Read for Reader {
             )
         } {
             -1 => Ok(false),
-            -2 => Err(Error::TruncatedRecord),
-            -4 => Err(Error::InvalidRecord),
+            -2 => Err(Error::BamTruncatedRecord),
+            -4 => Err(Error::BamInvalidRecord),
             _ => {
                 record.set_header(Rc::clone(&self.header));
 
@@ -363,7 +362,7 @@ impl IndexedReader {
         let c_str = ffi::CString::new(path).unwrap();
         let idx = unsafe { htslib::sam_index_load(htsfile, c_str.as_ptr()) };
         if idx.is_null() {
-            Err(Error::InvalidIndex {
+            Err(Error::BamInvalidIndex {
                 target: str::from_utf8(path).unwrap().to_owned(),
             })
         } else {
@@ -390,7 +389,7 @@ impl IndexedReader {
             htslib::sam_index_load2(htsfile, c_str_path.as_ptr(), c_str_index_path.as_ptr())
         };
         if idx.is_null() {
-            Err(Error::InvalidIndex {
+            Err(Error::BamInvalidIndex {
                 target: str::from_utf8(path).unwrap().to_owned(),
             })
         } else {
@@ -477,8 +476,8 @@ impl Read for IndexedReader {
             Some(itr) => {
                 match itr_next(self.htsfile, itr, &mut record.inner as *mut htslib::bam1_t) {
                     -1 => Ok(false),
-                    -2 => Err(Error::TruncatedRecord),
-                    -4 => Err(Error::InvalidRecord),
+                    -2 => Err(Error::BamTruncatedRecord),
+                    -4 => Err(Error::BamInvalidRecord),
                     _ => {
                         record.set_header(Rc::clone(&self.header));
 
@@ -772,7 +771,7 @@ fn hts_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
     let c_str = ffi::CString::new(mode).unwrap();
     let ret = unsafe { htslib::hts_open(cpath.as_ptr(), c_str.as_ptr()) };
     if ret.is_null() {
-        Err(Error::Open {
+        Err(Error::BamOpen {
             target: path.to_owned(),
         })
     } else {
@@ -783,7 +782,7 @@ fn hts_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
                 if (*ret).format.format != htslib::htsExactFormat_bam
                     && (*ret).format.format != htslib::htsExactFormat_cram
                 {
-                    return Err(Error::Open {
+                    return Err(Error::BamOpen {
                         target: path.to_owned(),
                     });
                 }

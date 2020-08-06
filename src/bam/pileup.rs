@@ -10,7 +10,7 @@ use std::slice;
 use crate::htslib;
 
 use crate::bam;
-use crate::bam::errors::{Error, Result};
+use crate::errors::{Error, Result};
 use crate::bam::record;
 
 /// Iterator over alignments of a pileup.
