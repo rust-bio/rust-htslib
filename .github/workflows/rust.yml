@@ -89,8 +89,6 @@ jobs:
           args: --all-features
 
       - name: Test musl build without default features
-        env:
-           CFLAGS: -I/usr/local/musl/include
         uses: actions-rs/cargo@v1
         with:
           use-cross: true
@@ -98,8 +96,6 @@ jobs:
           args: --target x86_64-unknown-linux-musl --no-default-features
 
       - name: Test musl build with all features
-        env:
-           CFLAGS: -I/usr/local/musl/include
         uses: actions-rs/cargo@v1
         with:
           use-cross: true  

@@ -32,3 +32,4 @@ pub fn path_to_cstring<P: AsRef<Path>>(path: &P) -> Option<ffi::CString> {
         .to_str()
         .and_then(|p| ffi::CString::new(p).ok())
 }
+
