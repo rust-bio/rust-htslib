@@ -11,7 +11,7 @@ use crate::htslib;
 
 use linear_map::LinearMap;
 
-use crate::bcf::{errors::Error, Result};
+use crate::errors::{Error, Result};
 
 pub type SampleSubset = Vec<i32>;
 

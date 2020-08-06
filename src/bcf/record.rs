@@ -17,7 +17,7 @@ use bio_types::genome;
 use ieee754::Ieee754;
 use lazy_static::lazy_static;
 
-use crate::bcf::errors::Result;
+use crate::errors::Result;
 use crate::bcf::header::{HeaderView, Id};
 use crate::bcf::Error;
 use crate::htslib;

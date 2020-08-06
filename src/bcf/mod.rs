@@ -19,15 +19,13 @@ use std::str;
 use url::Url;
 
 pub mod buffer;
-pub mod errors;
 pub mod header;
 pub mod record;
 
 use crate::bcf::header::{HeaderView, SampleSubset};
 use crate::htslib;
+use crate::errors::{Error, Result};
 
-pub use crate::bcf::errors::Error;
-pub use crate::bcf::errors::Result;
 pub use crate::bcf::header::{Header, HeaderRecord};
 pub use crate::bcf::record::Record;
 
@@ -91,7 +89,7 @@ impl Reader {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         match path.as_ref().to_str() {
             Some(p) if path.as_ref().exists() => Ok(Self::new(p.as_bytes())?),
-            _ => Err(errors::Error::NonUnicodePath),
+            _ => Err(Error::NonUnicodePath),
         }
     }
 
@@ -229,7 +227,7 @@ impl IndexedReader {
         let contig = self.header.rid2name(rid).unwrap();
         let contig = ffi::CString::new(contig).unwrap();
         if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i64) } != 0 {
-            Err(Error::Seek {
+            Err(Error::BcfSeek {
                 contig: contig.to_str().unwrap().to_owned(),
                 start,
             })
@@ -353,12 +351,11 @@ pub mod synced {
     }
 
     // TODO: add interface for setting threads, ensure that the pool is freed properly
-
     impl SyncedReader {
         pub fn new() -> Result<Self> {
             let inner = unsafe { crate::htslib::bcf_sr_init() };
             if inner.is_null() {
-                return Err(errors::Error::AllocationError);
+                return Err(Error::AllocationError);
             }
 
             Ok(SyncedReader {
@@ -392,7 +389,7 @@ pub mod synced {
                         unsafe { crate::htslib::bcf_sr_add_reader(self.inner, p_cstring.as_ptr()) };
 
                     if res == 0 {
-                        return Err(errors::Error::Open {
+                        return Err(Error::Open {
                             target: p.to_owned(),
                         });
                     }
@@ -404,7 +401,7 @@ pub mod synced {
                     self.headers.push(header);
                     Ok(())
                 }
-                _ => Err(errors::Error::NonUnicodePath),
+                _ => Err(Error::NonUnicodePath),
             }
         }
 
@@ -431,7 +428,7 @@ pub mod synced {
 
             if num == 0 {
                 if unsafe { (*self.inner).errnum } != 0 {
-                    return Err(errors::Error::InvalidRecord);
+                    return Err(Error::InvalidRecord);
                 }
                 Ok(0)
             } else {
@@ -509,7 +506,7 @@ pub mod synced {
                 ffi::CString::new(contig).unwrap()
             };
             if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i64) } != 0 {
-                Err(Error::Seek {
+                Err(Error::BcfSeek {
                     contig: contig.to_str().unwrap().to_owned(),
                     start,
                 })
@@ -561,7 +558,7 @@ impl Writer {
         if let Some(p) = path.as_ref().to_str() {
             Ok(Self::new(p.as_bytes(), header, uncompressed, format)?)
         } else {
-            Err(errors::Error::NonUnicodePath)
+            Err(Error::NonUnicodePath)
         }
     }
 
@@ -711,7 +708,7 @@ fn bcf_open(target: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
     let ret = unsafe { htslib::hts_open(p.as_ptr(), c_str.as_ptr()) };
 
     if ret.is_null() {
-        return Err(errors::Error::Open {
+        return Err(Error::Open {
             target: str::from_utf8(target).unwrap().to_owned(),
         });
     }
@@ -720,7 +717,7 @@ fn bcf_open(target: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
         if !(mode.contains(&b'w')
             || (*ret).format.category == htslib::htsFormatCategory_variant_data)
         {
-            return Err(errors::Error::Open {
+            return Err(Error::Open {
                 target: str::from_utf8(target).unwrap().to_owned(),
             });
         }
