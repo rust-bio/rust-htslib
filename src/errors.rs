@@ -73,7 +73,7 @@ pub enum Error {
     InvalidRecord,
     #[error("tag {tag} undefined in BCF/VCF header")]
     UndefinedTag { tag: String },
-    #[error("unexpected type for tag {tag} BCF/VCF file")]
+    #[error("unexpected type for tag {tag} in BCF/VCF file")]
     UnexpectedType { tag: String },
     #[error("tag {tag} missing from record {record} in BCF/VCF file")]
     MissingTag { tag: String, record: String },
