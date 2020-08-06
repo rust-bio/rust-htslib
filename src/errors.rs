@@ -13,4 +13,16 @@ pub enum Error {
     NonUnicodePath,
     #[error("The given position is too large to be converted to i64")]
     PositionTooLarge,
+    #[error("sequence {sequence} not found in index")]
+    UnknownSequence { sequence: String },
+    #[error("previous iterator generation failed")]
+    NoIter,
+    #[error("truncated tabix record")]
+    TabixTruncatedRecord,
+    #[error("invTabixalid tabix index")]
+    TabixInvalidIndex,
+    #[error("failed to fetch region in index")]
+    Fetch,
+    #[error("error setting threads for for file reading")]
+    SetThreads,
 }

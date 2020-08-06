@@ -46,10 +46,8 @@ use std::path::Path;
 use std::ptr;
 use url::Url;
 
-pub mod errors;
-
 use crate::htslib;
-use crate::tbx::errors::{Error, Result};
+use crate::errors::{Error, Result};
 
 fn path_as_bytes<'a, P: 'a + AsRef<Path>>(path: P, must_exist: bool) -> Result<Vec<u8>> {
     if path.as_ref().exists() || !must_exist {
@@ -155,7 +153,7 @@ impl Reader {
             if (*hts_file).format.category != htslib::htsFormatCategory_region_list
                 && (*hts_file).format.format != htslib::htsExactFormat_sam
             {
-                return Err(Error::InvalidIndex);
+                return Err(Error::TabixInvalidIndex);
             }
         }
 
@@ -178,7 +176,7 @@ impl Reader {
         }
 
         if tbx.is_null() {
-            Err(Error::InvalidIndex)
+            Err(Error::TabixInvalidIndex)
         } else {
             Ok(Reader {
                 header,
@@ -301,7 +299,7 @@ impl Read for Reader {
                     if ret == -1 {
                         return Ok(false);
                     } else if ret == -2 {
-                        return Err(Error::TruncatedRecord);
+                        return Err(Error::TabixTruncatedRecord);
                     } else if ret < 0 {
                         panic!("Return value should not be <0 but was: {}", ret);
                     }
