@@ -100,4 +100,4 @@ jobs:
         with:
           use-cross: true  
           command: build
-          args: --target x86_64-unknown-linux-musl --all-features
+          args: --target x86_64-unknown-linux-musl --all-features --verbose
