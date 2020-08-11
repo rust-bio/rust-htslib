@@ -93,11 +93,11 @@ jobs:
         with:
           use-cross: true
           command: build
-          args: --target x86_64-unknown-linux-musl --no-default-features
+          args: --release --target x86_64-unknown-linux-musl --no-default-features
 
       - name: Test musl build with all features
         uses: actions-rs/cargo@v1
         with:
-          use-cross: true  
+          use-cross: true 
           command: build
-          args: --target x86_64-unknown-linux-musl --all-features --verbose
+          args: --release --target x86_64-unknown-linux-musl --all-features --verbose
