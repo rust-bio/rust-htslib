@@ -1,50 +1,50 @@
-use snafu::Snafu;
 use std::path::PathBuf;
+
+use thiserror::Error;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Snafu, Debug, PartialEq)]
-#[snafu(visibility = "pub")]
+#[derive(Error, Debug)]
 pub enum Error {
-    #[snafu(display("error parsing CIGAR string: {}", msg))]
+    #[error("error parsing CIGAR string: {msg}")]
     ParseCigar { msg: String },
-    #[snafu(display("unexpected CIGAR operation: {}", msg))]
+    #[error("unexpected CIGAR operation: {msg}")]
     UnexpectedCigarOperation { msg: String },
-    #[snafu(display("error parsing SAM record: {}", rec))]
+    #[error("error parsing SAM record: {rec}")]
     ParseSAM { rec: String },
-    #[snafu(display("error setting threads for writing SAM/BAM/CRAM file(s)"))]
+    #[error("error setting threads for writing SAM/BAM/CRAM file(s)")]
     SetThreads,
-    #[snafu(display("invalid reference path {}", path.display()))]
+    #[error("invalid reference path {path}")]
     InvalidReferencePath { path: PathBuf },
-    #[snafu(display("invalid compression level {}", level))]
+    #[error("invalid compression level {level}")]
     InvalidCompressionLevel { level: u32 },
-    #[snafu(display("file not found: {}", path.display()))]
+    #[error("file not found: {path}")]
     FileNotFound { path: PathBuf },
-    #[snafu(display("invalid (non-unique) characters in path"))]
+    #[error("invalid (non-unique) characters in path")]
     NonUnicodePath,
-    #[snafu(display("unable to open SAM/BAM/CRAM file at {}", target))]
+    #[error("unable to open SAM/BAM/CRAM file at {target}")]
     Open { target: String },
-    #[snafu(display("unable to open SAM/BAM/CRAM index for {}", target))]
+    #[error("unable to open SAM/BAM/CRAM index for {target}")]
     InvalidIndex { target: String },
-    #[snafu(display("failed to write SAM/BAM/CRAM record (out of disk space?)"))]
+    #[error("failed to write SAM/BAM/CRAM record (out of disk space?)")]
     Write,
-    #[snafu(display("invalid record in SAM/BAM/CRAM file"))]
+    #[error("invalid record in SAM/BAM/CRAM file")]
     InvalidRecord,
-    #[snafu(display("truncated record in SAM/BAM/CRAM file"))]
+    #[error("truncated record in SAM/BAM/CRAM file")]
     TruncatedRecord,
-    #[snafu(display("error fetching region in SAM/BAM/CRAM file"))]
+    #[error("error fetching region in SAM/BAM/CRAM file")]
     Fetch,
-    #[snafu(display("error seeking to offset in SAM/BAM/CRAM file"))]
+    #[error("error seeking to offset in SAM/BAM/CRAM file")]
     Seek,
-    #[snafu(display("sequence {} not found in SAM/BAM/CRAM file header", sequence))]
+    #[error("sequence {sequence} not found in SAM/BAM/CRAM file header")]
     UnknownSequence { sequence: String },
-    #[snafu(display("format of SAM files are not indexable"))]
+    #[error("format of SAM files are not indexable")]
     NotIndexable,
-    #[snafu(display("failed to write BAM/CRAM index (out of disk space?)"))]
+    #[error("failed to write BAM/CRAM index (out of disk space?)")]
     WriteIndex,
-    #[snafu(display("failed to build BAM/CRAM index"))]
+    #[error("failed to build BAM/CRAM index")]
     BuildIndex,
-    #[snafu(display("failed to create SAM/BAM/CRAM pileup"))]
+    #[error("failed to create SAM/BAM/CRAM pileup")]
     Pileup,
     #[snafu(display("fetch was not performed prior to reading from BAM/CRAM"))]
     FetchFirst,
