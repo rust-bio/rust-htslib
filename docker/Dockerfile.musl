@@ -1,15 +1,17 @@
-FROM rustembedded/cross:x86_64-unknown-linux-musl
+FROM brainstorm/cross-x86_64-unknown-linux-musl:upstream
 
+ENV DEBIAN_FRONTEND noninteractive
 ENV MUSL_CROSS_MAKE_VERSION 0.9.9
 ENV PKG_CONFIG_ALLOW_CROSS 1
 ENV LZMA_VERSION 5.2.5
 ENV ZLIB_VERSION 1.2.11
 ENV OPENSSL_VERSION 1_1_1g
-ENV CURL_VERSION 7.70.0
+ENV CURL_VERSION 7.71.1
 
 ENV LIBCLANG_PATH /usr/lib/llvm-10/lib
 ENV LLVM_CONFIG_PATH /usr/bin
 
+WORKDIR /root
 
 # The default includes and packages from the Ubuntu distro that cross uses will generate all sorts of linux-headers related include errors, see:
 #   https://github.com/rust-bio/rust-htslib/pull/184#commitcomment-37496651
@@ -26,21 +28,6 @@ RUN apt-get install -y wget gnupg lsb-release software-properties-common apt-tra
 # Autodetect and fetch latest LLVM repos for the current distro, avoids LLVM warnings and other issues, might generate slower builds for now though, see:
 # https://www.phoronix.com/scan.php?page=news_item&px=Rust-Hurt-On-LLVM-10
 RUN bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
-#RUN apt-get install -y libssl-dev libcurl4-openssl-dev zlib1g-dev \
-#			libbz2-dev liblzma-dev musl musl-dev musl-tools # htslib deps
-
-# Remove pre-installed musl, to avoid cross-musl-make interference
-RUN apt-get remove -y musl
-
-# For now we'll have to go nuts and not only build musl-1.2.0 from scratch but all the other libs too...
-# Updated musl-cross toolchain that does not fail on OpenSSL: https://github.com/openssl/openssl/issues/7207
-WORKDIR /root
-RUN wget https://github.com/richfelker/musl-cross-make/archive/v$MUSL_CROSS_MAKE_VERSION.tar.gz \
-    && tar xvfz v$MUSL_CROSS_MAKE_VERSION.tar.gz
-WORKDIR /root/musl-cross-make-$MUSL_CROSS_MAKE_VERSION
-COPY config-musl-cross-make.mak config.mak
-RUN make -j40 install && cd .. && rm v$MUSL_CROSS_MAKE_VERSION.tar.gz
-			       #&& rm -rf musl-cross-make-*
 
 # Now we assume we have a properly configured musl-cross...
 ENV PATH "/usr/local/musl/bin:$PATH"
@@ -58,9 +45,11 @@ WORKDIR /root
 RUN git clone --depth 1 https://github.com/ebiggers/libdeflate.git && \
     cd libdeflate && make -j40 CFLAGS="-fPIC -O3" PREFIX="/usr/local/musl" install && \
     cd .. && rm -rf libdeflate
+# Cloudflare optimised zlib: https://blog.cloudflare.com/cloudflare-fights-cancer/
 RUN git clone https://github.com/cloudflare/zlib cloudflare-zlib && \
     cd cloudflare-zlib && ./configure --static --prefix=/usr/local/musl && \
     make install && cd .. && rm -rf cloudflare-zlib
+# Regular zlib:
 #RUN wget https://www.zlib.net/zlib-$ZLIB_VERSION.tar.gz \
 #    && tar xvfz zlib-$ZLIB_VERSION.tar.gz \
 #    && cd zlib-$ZLIB_VERSION \
@@ -114,10 +103,6 @@ RUN wget https://curl.haxx.se/download/curl-$CURL_VERSION.tar.gz \
 
 # To cater Rust's openssl-sys needs...
 ENV OPENSSL_DIR /usr/local/musl
-
-# Hack to force ld stick to musl on the hts-sys/build.rs side, otherwise:
-#   = note: /usr/bin/ld: /target/debug/deps/liblibloading-689161fea10b6234.rlib(global_static.o): unable to initialize decompress status for section .debug_info
-RUN rm /usr/bin/ld && ln -sf /usr/local/musl/bin/x86_64-linux-musl-ld /usr/bin/ld
 
 # Prepare rustup and toolchain locally for easy manual intervention in this container
 #RUN wget https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init \
