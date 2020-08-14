@@ -26,7 +26,7 @@ regex = "1.3"
 linear-map = "1.2"
 serde_base = { version = "^1", optional = true, package = "serde" }
 serde_bytes = { version = "0.11", optional = true }
-bio-types = ">=0.6"
+bio-types = { version = ">=0.6", optional = true }
 thiserror = "1"
 hts-sys = { version = "1.10.3", path = "hts-sys", default-features = false }
 
@@ -41,6 +41,7 @@ s3 = ["hts-sys/s3"]
 gcs = ["hts-sys/gcs"]
 static = ["hts-sys/static"]
 serde = ["serde_base", "serde_bytes"]
+biotypes = ["bio-types"]
 
 [dev-dependencies]
 tempdir = "0.3"

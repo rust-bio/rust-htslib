@@ -13,7 +13,9 @@ use std::rc::Rc;
 use std::slice;
 use std::str;
 
+#[cfg(feature = "biotypes")]
 use bio_types::genome;
+
 use ieee754::Ieee754;
 use lazy_static::lazy_static;
 
@@ -623,6 +625,7 @@ impl Record {
     }
 }
 
+#[cfg(feature = "biotypes")]
 impl genome::AbstractLocus for Record {
     fn contig(&self) -> &str {
         str::from_utf8(
