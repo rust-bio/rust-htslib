@@ -23,7 +23,7 @@ use crate::bam::HeaderView;
 use crate::htslib;
 use crate::utils;
 
-#[cfg(feature = "biotypes")]
+#[cfg(feature = "bio-types")]
 use bio_types::{
     alignment::{Alignment, AlignmentMode, AlignmentOperation},
     genome,
@@ -239,7 +239,7 @@ impl Record {
     }
 
     /// Get strand information from record flags.
-    #[cfg(feature = "biotypes")]
+    #[cfg(feature = "bio-types")]
     pub fn strand(&mut self) -> ReqStrand {
         let reverse = self.flags() & 0x10 != 0;
         if reverse {
@@ -713,7 +713,7 @@ impl Drop for Record {
     }
 }
 
-#[cfg(feature = "biotypes")]
+#[cfg(feature = "bio-types")]
 impl SequenceRead for Record {
     fn name(&self) -> &[u8] {
         self.qname()
@@ -732,7 +732,7 @@ impl SequenceRead for Record {
     }
 }
 
-#[cfg(feature = "biotypes")]
+#[cfg(feature = "bio-types")]
 impl genome::AbstractInterval for Record {
     /// Return contig name. Panics if record does not know its header (which happens if it has not been read from a file).
     fn contig(&self) -> &str {
@@ -828,7 +828,7 @@ fn encoded_base(encoded_seq: &[u8], i: usize) -> u8 {
     (encoded_seq[i / 2] >> ((!i & 1) << 2)) & 0b1111
 }
 
-#[cfg(feature = "biotypes")]
+#[cfg(feature = "bio-types")]
 fn decode_base(base: u8) -> u8 {
     DECODE_BASE[base as usize]
 }
@@ -988,7 +988,7 @@ impl CigarString {
     /// and y is the reference. `hard_clip` controls how unaligned read bases are encoded in the
     /// cigar string. Set to true to use the hard clip (`H`) code, or false to use soft clip
     /// (`S`) code. See the [SAM spec](https://samtools.github.io/hts-specs/SAMv1.pdf) for more details.
-    #[cfg(feature = "biotypes")]
+    #[cfg(feature = "bio-types")]
     pub fn from_alignment(alignment: &Alignment, hard_clip: bool) -> Self {
         match alignment.mode {
             AlignmentMode::Global => {
@@ -1593,7 +1593,7 @@ mod tests {
     }
 }
 
-#[cfg(all(test, feature = "biotypes"))]
+#[cfg(all(test, feature = "bio-types"))]
 mod alignment_cigar_tests {
     use super::*;
     use bio_types::alignment::AlignmentOperation::{Del, Ins, Match, Subst, Xclip, Yclip};

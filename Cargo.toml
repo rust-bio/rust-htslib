@@ -31,7 +31,7 @@ thiserror = "1"
 hts-sys = { version = "1.10.3", path = "hts-sys", default-features = false }
 
 [features]
-default = ["bzip2", "lzma", "curl"]
+default = ["bzip2", "lzma", "curl", "bio-types"]
 bzip2 = ["hts-sys/bzip2"]
 lzma = ["hts-sys/lzma"]
 bindgen = ["hts-sys/bindgen"]
@@ -41,7 +41,6 @@ s3 = ["hts-sys/s3"]
 gcs = ["hts-sys/gcs"]
 static = ["hts-sys/static"]
 serde = ["serde_base", "serde_bytes"]
-biotypes = ["bio-types"]
 
 [dev-dependencies]
 tempdir = "0.3"

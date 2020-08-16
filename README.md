@@ -76,7 +76,7 @@ Beta-level S3 and Google Cloud Storge support is available with the `s3` and `gc
 `rust-htslib` can optionally use `bindgen` to generate bindings to htslib. This can slow down the build substantially. Enabling the `bindgen` feature will 
 cause `hts-sys` to use a create a binding file for your architecture. Pre-built bindings are supplied for Mac and Linux. The `bindgen` feature on Windows is untested - please file a bug if you need help.
 
-The `biotypes` feature offers integation of `rust-htslib` with the `bio-types` crate.
+The `bio-types` feature offers integation of `rust-htslib` with the `bio-types` crate.
 
 
 ```toml
