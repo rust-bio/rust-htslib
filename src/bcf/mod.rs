@@ -115,6 +115,9 @@ impl Reader {
     }
 }
 
+unsafe impl Sync for Reader {}
+unsafe impl Send for Reader {}
+
 impl Read for Reader {
     fn read(&mut self, record: &mut record::Record) -> Result<bool> {
         match unsafe { htslib::bcf_read(self.inner, self.header.inner, record.inner) } {
@@ -239,6 +242,9 @@ impl IndexedReader {
         }
     }
 }
+
+unsafe impl Sync for IndexedReader {}
+unsafe impl Send for IndexedReader {}
 
 impl Read for IndexedReader {
     fn read(&mut self, record: &mut record::Record) -> Result<bool> {
@@ -542,6 +548,7 @@ pub struct Writer {
 }
 
 unsafe impl Send for Writer {}
+unsafe impl Sync for Writer {}
 
 impl Writer {
     /// Create a new writer that writes to the given path.
