@@ -68,7 +68,7 @@ jobs:
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
-          args: '--out Lcov --exclude-files hts-sys/*_prebuilt_bindings.rs -- --test-threads 1'
+          args: '--all-features --out Lcov --exclude-files hts-sys/*_prebuilt_bindings.rs -- --test-threads 1'
 
       - name: Upload coverage
         uses: coverallsapp/github-action@master
@@ -101,3 +101,10 @@ jobs:
           use-cross: true 
           command: build
           args: --release --target x86_64-unknown-linux-musl --all-features --verbose
+      
+      - name: Test musl build with all features and debug symbols (non --release)
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true 
+          command: build
+          args: --target x86_64-unknown-linux-musl --all-features --verbose
