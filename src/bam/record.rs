@@ -868,7 +868,7 @@ impl<'a> ops::Index<usize> for Seq<'a> {
 unsafe impl<'a> Send for Seq<'a> {}
 unsafe impl<'a> Sync for Seq<'a> {}
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy, Hash, PartialOrd)]
+#[derive(PartialEq, PartialOrd, Eq, Debug, Clone, Copy, Hash, Serialize, Deserialize)]
 pub enum Cigar {
     Match(u32),    // M
     Ins(u32),      // I
@@ -968,8 +968,6 @@ custom_derive! {
              NewtypeDebug,
              Clone,
              Hash,
-             Serialize,
-             Deserialize
     )]
     pub struct CigarString(pub Vec<Cigar>);
 }
