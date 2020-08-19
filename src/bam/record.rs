@@ -3,6 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::ffi;
 use std::fmt;
@@ -13,7 +14,6 @@ use std::slice;
 use std::str;
 use std::str::FromStr;
 use std::u32;
-use serde::{Serialize, Deserialize}
 
 use lazy_static::lazy_static;
 use regex::Regex;
