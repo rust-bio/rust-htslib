@@ -868,7 +868,7 @@ impl<'a> ops::Index<usize> for Seq<'a> {
 unsafe impl<'a> Send for Seq<'a> {}
 unsafe impl<'a> Sync for Seq<'a> {}
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy, Hash)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy, Hash, PartialOrd)]
 pub enum Cigar {
     Match(u32),    // M
     Ins(u32),      // I
@@ -964,7 +964,6 @@ custom_derive! {
              NewtypeIndexMut(usize),
              NewtypeFrom,
              PartialEq,
-             PartialOrd,
              Eq,
              NewtypeDebug,
              Clone,
