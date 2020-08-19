@@ -5,7 +5,6 @@
 
 #[cfg(feature = "serde")]
 use bindgen;
-use cc;
 use fs_utils::copy::copy_directory;
 use glob::glob;
 
