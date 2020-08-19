@@ -13,6 +13,7 @@ use std::slice;
 use std::str;
 use std::str::FromStr;
 use std::u32;
+use serde::{Serialize, Deserialize}
 
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -966,7 +967,9 @@ custom_derive! {
              Eq,
              NewtypeDebug,
              Clone,
-             Hash
+             Hash,
+             Serialize,
+             Deserialize
     )]
     pub struct CigarString(pub Vec<Cigar>);
 }
