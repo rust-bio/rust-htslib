@@ -16,9 +16,6 @@ use std::str;
 #[cfg(feature = "bio-types")]
 use bio_types::genome;
 
-use ieee754::Ieee754;
-use lazy_static::lazy_static;
-
 use crate::bcf::errors::Result;
 use crate::bcf::header::{HeaderView, Id};
 use crate::bcf::Error;
@@ -26,10 +23,9 @@ use crate::htslib;
 
 const MISSING_INTEGER: i32 = i32::MIN;
 const VECTOR_END_INTEGER: i32 = i32::MIN + 1;
-lazy_static! {
-    static ref MISSING_FLOAT: f32 = Ieee754::from_bits(0x7F80_0001);
-    static ref VECTOR_END_FLOAT: f32 = Ieee754::from_bits(0x7F80_0002);
-}
+
+const MISSING_FLOAT: u32 = 0x7F80_0001;
+const VECTOR_END_FLOAT: u32 = 0x7F80_0002;
 
 /// Common methods for numeric INFO and FORMAT entries
 pub trait Numeric {
@@ -42,11 +38,11 @@ pub trait Numeric {
 
 impl Numeric for f32 {
     fn is_missing(&self) -> bool {
-        self.bits() == MISSING_FLOAT.bits()
+        self.to_bits() == MISSING_FLOAT
     }
 
     fn missing() -> f32 {
-        *MISSING_FLOAT
+        MISSING_FLOAT as f32
     }
 }
 
@@ -67,7 +63,7 @@ trait NumericUtils {
 
 impl NumericUtils for f32 {
     fn is_vector_end(&self) -> bool {
-        self.bits() == VECTOR_END_FLOAT.bits()
+        self.to_bits() == VECTOR_END_FLOAT
     }
 }
 
