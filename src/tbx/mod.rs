@@ -151,14 +151,10 @@ impl Reader {
         let path = ffi::CString::new(path).unwrap();
         let c_str = ffi::CString::new("r").unwrap();
         let hts_file = unsafe { htslib::hts_open(path.as_ptr(), c_str.as_ptr()) };
-        let file_format: *const hts_sys::htsFormat = unsafe { htslib::hts_get_format(hts_file) };
-        let hts_format: u32 = unsafe { (*file_format).format };
-        let format_category: u32 = unsafe { (*file_format).category };
-        match (format_category, hts_format) {
-            (htslib::htsFormatCategory_region_list, _) => (),
-            (_, htslib::htsExactFormat_text_format) => (),
-            _ => return Err(Error::InvalidIndex),
-        }
+        let hts_format: u32 = unsafe {
+            let file_format: *const hts_sys::htsFormat = htslib::hts_get_format(hts_file);
+            (*file_format).format
+        };
 
         let tbx = unsafe { htslib::tbx_index_load(path.as_ptr()) };
         if tbx.is_null() {
