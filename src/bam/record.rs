@@ -16,15 +16,13 @@ use std::u32;
 
 use lazy_static::lazy_static;
 use regex::Regex;
+use serde_derive::{Deserialize, Serialize};
 
 use crate::bam::errors::Result;
 use crate::bam::Error;
 use crate::bam::HeaderView;
 use crate::htslib;
 use crate::utils;
-
-use serde_base::de::Deserialize;
-use serde_base::Serialize;
 
 use bio_types::alignment::{Alignment, AlignmentMode, AlignmentOperation};
 use bio_types::genome;
@@ -870,7 +868,7 @@ impl<'a> ops::Index<usize> for Seq<'a> {
 unsafe impl<'a> Send for Seq<'a> {}
 unsafe impl<'a> Sync for Seq<'a> {}
 
-#[derive(PartialEq, PartialOrd, Eq, Debug, Clone, Copy, Hash, Serialize, Deserialize)]
+#[derive(PartialEq, PartialOrd, Eq, Debug, Clone, Copy, Hash, Deserialize, Serialize)]
 pub enum Cigar {
     Match(u32),    // M
     Ins(u32),      // I
