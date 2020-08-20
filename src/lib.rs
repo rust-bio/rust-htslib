@@ -71,9 +71,9 @@ extern crate libc;
 #[macro_use]
 extern crate newtype_derive;
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "serde_f")]
 extern crate serde_base;
-#[cfg(feature = "serde")]
+#[cfg(feature = "serde_f")]
 extern crate serde_bytes;
 
 #[cfg(all(test, feature = "serde"))]
@@ -82,11 +82,11 @@ extern crate bincode;
 #[cfg(test)] // <-- not needed in examples + integration tests
 #[macro_use]
 extern crate pretty_assertions;
-#[cfg(all(test, feature = "serde"))]
+#[cfg(all(test, feature = "serde_f"))]
 extern crate serde_json;
 
 #[macro_use]
-extern crate serde_derive;
+extern crate serde;
 
 pub mod bam;
 pub mod bcf;

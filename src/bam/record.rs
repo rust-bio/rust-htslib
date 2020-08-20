@@ -16,7 +16,6 @@ use std::u32;
 
 use lazy_static::lazy_static;
 use regex::Regex;
-use serde_derive::{Deserialize, Serialize};
 
 use crate::bam::errors::Result;
 use crate::bam::Error;
