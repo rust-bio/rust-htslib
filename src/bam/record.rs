@@ -3,7 +3,6 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use serde_base::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::ffi;
 use std::fmt;
@@ -23,6 +22,9 @@ use crate::bam::Error;
 use crate::bam::HeaderView;
 use crate::htslib;
 use crate::utils;
+
+use serde_base::de::Deserialize;
+use serde_base::Serialize;
 
 use bio_types::alignment::{Alignment, AlignmentMode, AlignmentOperation};
 use bio_types::genome;
