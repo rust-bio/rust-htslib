@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use serde::{Deserialize, Serialize};
+use serde_base::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::ffi;
 use std::fmt;
