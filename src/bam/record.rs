@@ -966,7 +966,7 @@ custom_derive! {
              Eq,
              NewtypeDebug,
              Clone,
-             Hash,
+             Hash
     )]
     pub struct CigarString(pub Vec<Cigar>);
 }

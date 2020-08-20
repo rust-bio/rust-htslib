@@ -40,7 +40,7 @@ libdeflate = ["hts-sys/libdeflate"]
 s3 = ["hts-sys/s3"]
 gcs = ["hts-sys/gcs"]
 static = ["hts-sys/static"]
-serde_f = ["serde_base", "serde_bytes"]
+serde_features = ["serde_base", "serde_bytes"]
 
 [dev-dependencies]
 tempdir = "0.3"
