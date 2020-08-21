@@ -13,7 +13,7 @@ pub mod index;
 pub mod pileup;
 pub mod record;
 
-#[cfg(feature = "serde_f")]
+#[cfg(feature = "serde")]
 pub mod record_serde;
 
 use std::ffi;
