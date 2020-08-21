@@ -867,7 +867,8 @@ impl<'a> ops::Index<usize> for Seq<'a> {
 unsafe impl<'a> Send for Seq<'a> {}
 unsafe impl<'a> Sync for Seq<'a> {}
 
-#[derive(PartialEq, PartialOrd, Eq, Debug, Clone, Copy, Hash, Deserialize, Serialize)]
+#[cfg_attr(feature = "serde_derive", derive(Serialize, Deserialize))]
+#[derive(PartialEq, PartialOrd, Eq, Debug, Clone, Copy, Hash)]
 pub enum Cigar {
     Match(u32),    // M
     Ins(u32),      // I
