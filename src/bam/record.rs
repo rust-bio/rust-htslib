@@ -17,6 +17,9 @@ use std::u32;
 use lazy_static::lazy_static;
 use regex::Regex;
 
+#[cfg(feature = "serde_feature")]
+use serde::{self, Deserialize, Serialize};
+
 use crate::bam::errors::Result;
 use crate::bam::Error;
 use crate::bam::HeaderView;
@@ -867,7 +870,7 @@ impl<'a> ops::Index<usize> for Seq<'a> {
 unsafe impl<'a> Send for Seq<'a> {}
 unsafe impl<'a> Sync for Seq<'a> {}
 
-#[cfg_attr(feature = "serde_derive", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde_feature", derive(Serialize, Deserialize))]
 #[derive(PartialEq, PartialOrd, Eq, Debug, Clone, Copy, Hash)]
 pub enum Cigar {
     Match(u32),    // M
