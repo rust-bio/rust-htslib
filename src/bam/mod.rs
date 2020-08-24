@@ -50,7 +50,7 @@ pub unsafe fn set_thread_pool(htsfile: *mut htslib::htsFile, tpool: &ThreadPool)
     let mut b = tpool.handle.borrow_mut();
 
     if htslib::hts_set_thread_pool(htsfile, &mut b.inner as *mut _) != 0 {
-        Err(Error::SetThreads)
+        Err(Error::ThreadPool)
     } else {
         Ok(())
     }
@@ -1533,10 +1533,13 @@ CCCCCCCCCCCCCCCCCCC"[..],
         }
 
         {
+            let pool = crate::tpool::ThreadPool::new(2).unwrap();
+
             for p in vec![bampath1, bampath2] {
                 let mut bam = Reader::from_path(&p).expect("Error opening file.");
+                bam.set_thread_pool(&pool).unwrap();
 
-                for (i, _rec) in bam.records().enumerate() {
+                for (i, _rec) in bam.iter_chunk(None, None).enumerate() {
                     let idx = i % names.len();
 
                     let rec = _rec.expect("Failed to read record.");
