@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub use crate::bam::errors::{Error, Result};
 use crate::htslib;
@@ -11,7 +11,7 @@ use crate::htslib;
 /// explicitly manage the lifetime of the `ThreadPool`.
 #[derive(Clone, Debug)]
 pub struct ThreadPool {
-    pub(crate) handle: Rc<RefCell<InnerThreadPool>>,
+    pub(crate) handle: Arc<RefCell<InnerThreadPool>>,
 }
 
 impl ThreadPool {
@@ -29,7 +29,7 @@ impl ThreadPool {
             };
             let inner = InnerThreadPool { inner };
 
-            let handle = Rc::new(RefCell::new(inner));
+            let handle = Arc::new(RefCell::new(inner));
             Ok(ThreadPool { handle })
         }
     }
