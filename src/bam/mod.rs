@@ -47,7 +47,6 @@ pub unsafe fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Re
 }
 
 pub unsafe fn set_thread_pool(htsfile: *mut htslib::htsFile, tpool: &ThreadPool) -> Result<()> {
-    
     let mut b = tpool.handle.borrow_mut();
 
     if htslib::hts_set_thread_pool(htsfile, &mut b.inner as *mut _) != 0 {
@@ -56,7 +55,6 @@ pub unsafe fn set_thread_pool(htsfile: *mut htslib::htsFile, tpool: &ThreadPool)
         Ok(())
     }
 }
-
 
 /// # Safety
 ///
@@ -183,7 +181,7 @@ fn path_as_bytes<'a, P: 'a + AsRef<Path>>(path: P, must_exist: bool) -> Result<V
 pub struct Reader {
     htsfile: *mut htslib::htsFile,
     header: Rc<HeaderView>,
-    tpool: Option<ThreadPool>
+    tpool: Option<ThreadPool>,
 }
 
 unsafe impl Send for Reader {}
@@ -668,13 +666,13 @@ impl Writer {
         Ok(Writer {
             f,
             header: Rc::new(HeaderView::new(header_record)),
-            tpool: None
+            tpool: None,
         })
     }
 
     /// Activate multi-threaded BAM write support in htslib. This should permit faster
     /// writing of large BAM files.
-    /// 
+    ///
     /// # Arguments
     ///
     /// * `n_threads` - number of extra background writer threads to use, must be `> 0`.
@@ -1483,7 +1481,6 @@ CCCCCCCCCCCCCCCCCCC"[..],
         tmp.close().expect("Failed to delete temp dir");
     }
 
-
     #[test]
     fn test_write_shared_tpool() {
         let (names, _, seqs, quals, cigars) = gold();
@@ -1491,7 +1488,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
         let bampath1 = tmp.path().join("test1.bam");
         let bampath2 = tmp.path().join("test2.bam");
-     
+
         {
             let (mut bam1, mut bam2) = {
                 let pool = crate::tpool::ThreadPool::new(4).unwrap();
@@ -1556,7 +1553,6 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
         tmp.close().expect("Failed to delete temp dir");
     }
-
 
     #[test]
     fn test_copy_template() {
