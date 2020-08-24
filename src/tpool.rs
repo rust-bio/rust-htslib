@@ -5,7 +5,7 @@ pub use crate::bam::errors::{Error, Result};
 use crate::htslib;
 
 /// An HTSlib thread pool. Create a thread pool and use `set_thread_pool()` methods
-/// to share a thread pool across multiple BAM readers & writier.
+/// to share a thread pool across multiple BAM readers & writers.
 /// The Rust wrapper holds the htslib thread pool behind a Rc, and a Rc reference
 /// to the thread pool is held by each reader / writer so you don't need to
 /// explicitly manage the lifetime of the `ThreadPool`.
