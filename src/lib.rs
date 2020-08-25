@@ -90,4 +90,5 @@ pub mod bcf;
 pub mod faidx;
 pub mod htslib;
 pub mod tbx;
+pub mod tpool;
 pub mod utils;
