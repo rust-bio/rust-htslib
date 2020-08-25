@@ -18,14 +18,15 @@ impl ThreadPool {
     /// Create a new thread pool with `n_threads` threads.
     pub fn new(n_threads: u32) -> Result<ThreadPool> {
         let ret = unsafe { htslib::hts_tpool_init(n_threads as i32) };
-        println!("got ptr: {:?}", ret);
 
         if ret.is_null() {
             Err(Error::ThreadPool)
         } else {
             let inner = htslib::htsThreadPool {
                 pool: ret,
-                qsize: n_threads as i32 * 1,
+                // this matches the default size
+                // used in hts_set_threads.
+                qsize: n_threads as i32 * 2,
             };
             let inner = InnerThreadPool { inner };
 
