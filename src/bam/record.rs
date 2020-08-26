@@ -962,6 +962,7 @@ custom_derive! {
     ///    println!("{}", op);
     /// }
     /// ```
+    #[cfg_attr(feature = "serde_feature", derive(Serialize, Deserialize))]
     #[derive(NewtypeDeref,
              NewtypeIndex(usize),
              NewtypeIndexMut(usize),
