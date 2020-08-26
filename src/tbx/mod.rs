@@ -362,7 +362,8 @@ mod tests {
 
     #[test]
     fn bed_basic() {
-        let reader = Reader::from_path("test/test_bed3.bed.gz").expect("Error opening file.");
+        let reader =
+            Reader::from_path("test/tabix_reader/test_bed3.bed.gz").expect("Error opening file.");
 
         // Check sequence name vector.
         assert_eq!(
@@ -378,7 +379,8 @@ mod tests {
 
     #[test]
     fn bed_fetch_from_chr1_read_api() {
-        let mut reader = Reader::from_path("test/test_bed3.bed.gz").expect("Error opening file.");
+        let mut reader =
+            Reader::from_path("test/tabix_reader/test_bed3.bed.gz").expect("Error opening file.");
 
         let chr1_id = reader.tid("chr1").unwrap();
         assert!(reader.fetch(chr1_id, 1000, 1003).is_ok());
@@ -391,7 +393,8 @@ mod tests {
 
     #[test]
     fn bed_fetch_from_chr1_iterator_api() {
-        let mut reader = Reader::from_path("test/test_bed3.bed.gz").expect("Error opening file.");
+        let mut reader =
+            Reader::from_path("test/tabix_reader/test_bed3.bed.gz").expect("Error opening file.");
 
         let chr1_id = reader.tid("chr1").unwrap();
         assert!(reader.fetch(chr1_id, 1000, 1003).is_ok());
@@ -419,14 +422,24 @@ mod tests {
     }
 
     #[test]
-    fn test_bed_headered() {
+    fn test_text_header_regions() {
         // This file has chromosome, start, and end positions with a header line.
-        Reader::from_path("test/test_bed4.bed.gz").expect("Error opening file.");
+        Reader::from_path("test/tabix_reader/genomic_regions_header.txt.gz")
+            .expect("Error opening file.");
+    }
+
+    #[test]
+    fn test_text_header_positions() {
         // This file has chromosome and position with a header line, indexed with
         // `tabix -b2 -e2 <file>`.
-        Reader::from_path("test/test_bed5.bed.gz").expect("Error opening file.");
+        Reader::from_path("test/tabix_reader/genomic_positions_header.txt.gz")
+            .expect("Error opening file.");
+    }
+
+    #[test]
+    fn test_text_bad_header() {
         // This is a duplicate of the above file but the index file is nonsense text.
-        Reader::from_path("test/test_bed_bad_index.bed.gz")
+        Reader::from_path("test/tabix_reader/bad_header.txt.gz")
             .expect_err("Invalid index file should fail.");
     }
 }
