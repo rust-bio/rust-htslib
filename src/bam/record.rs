@@ -968,6 +968,7 @@ custom_derive! {
              NewtypeIndexMut(usize),
              NewtypeFrom,
              PartialEq,
+             PartialOrd,
              Eq,
              NewtypeDebug,
              Clone,
