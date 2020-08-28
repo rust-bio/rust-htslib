@@ -80,7 +80,7 @@ cause `hts-sys` to use a create a binding file for your architecture. Pre-built 
 
 ```toml
 [dependencies]
-rust-htslib = { version = "*", features = ["serde"] }
+rust-htslib = { version = "*", features = ["serde_feature"] }
 ```
 
 For more information, please see the [docs](https://docs.rs/rust-htslib).
