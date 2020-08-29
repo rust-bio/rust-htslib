@@ -3,6 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/l/rust-htslib.svg)](https://crates.io/crates/rust-htslib)
 [![docs.rs](https://docs.rs/rust-htslib/badge.svg)](https://docs.rs/rust-htslib)
 ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/rust-bio/rust-htslib/CI/master?label=tests)
+[![Coverage Status](https://coveralls.io/repos/github/rust-bio/rust-htslib/badge.svg?branch=master)](https://coveralls.io/github/rust-bio/rust-htslib?branch=master)
 
 # HTSlib bindings for Rust
 
@@ -79,7 +80,7 @@ cause `hts-sys` to use a create a binding file for your architecture. Pre-built 
 
 ```toml
 [dependencies]
-rust-htslib = { version = "*", features = ["serde"] }
+rust-htslib = { version = "*", features = ["serde_feature"] }
 ```
 
 For more information, please see the [docs](https://docs.rs/rust-htslib).

@@ -8,7 +8,7 @@
 #include "htslib/htslib/synced_bcf_reader.h"
 #include "htslib/htslib/kbitset.h"
 #include "htslib/htslib/faidx.h"
-
+#include "htslib/htslib/thread_pool.h"
 
 // The following functions have to be wrapped here because they are inline in htslib.
 

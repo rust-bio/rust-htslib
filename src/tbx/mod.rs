@@ -149,16 +149,15 @@ impl Reader {
         let path = ffi::CString::new(path).unwrap();
         let c_str = ffi::CString::new("r").unwrap();
         let hts_file = unsafe { htslib::hts_open(path.as_ptr(), c_str.as_ptr()) };
-        unsafe {
-            if (*hts_file).format.category != htslib::htsFormatCategory_region_list
-                && (*hts_file).format.format != htslib::htsExactFormat_sam
-            {
-                return Err(Error::TabixInvalidIndex);
-            }
-        }
+        let hts_format: u32 = unsafe {
+            let file_format: *const hts_sys::htsFormat = htslib::hts_get_format(hts_file);
+            (*file_format).format
+        };
 
-        let hts_format = unsafe { (*htslib::hts_get_format(hts_file)).format };
         let tbx = unsafe { htslib::tbx_index_load(path.as_ptr()) };
+        if tbx.is_null() {
+            return Err(Error::TabixInvalidIndex);
+        }
         let mut header = Vec::new();
         let mut buf = htslib::kstring_t {
             l: 0,
@@ -175,21 +174,17 @@ impl Reader {
             }
         }
 
-        if tbx.is_null() {
-            Err(Error::TabixInvalidIndex)
-        } else {
-            Ok(Reader {
-                header,
-                hts_file,
-                hts_format,
-                tbx,
-                buf,
-                itr: None,
-                tid: -1,
-                start: -1,
-                end: -1,
-            })
-        }
+        Ok(Reader {
+            header,
+            hts_file,
+            hts_format,
+            tbx,
+            buf,
+            itr: None,
+            tid: -1,
+            start: -1,
+            end: -1,
+        })
     }
 
     /// Get sequence/target ID from sequence name.
@@ -365,7 +360,8 @@ mod tests {
 
     #[test]
     fn bed_basic() {
-        let reader = Reader::from_path("test/test_bed3.bed.gz").expect("Error opening file.");
+        let reader =
+            Reader::from_path("test/tabix_reader/test_bed3.bed.gz").expect("Error opening file.");
 
         // Check sequence name vector.
         assert_eq!(
@@ -381,7 +377,8 @@ mod tests {
 
     #[test]
     fn bed_fetch_from_chr1_read_api() {
-        let mut reader = Reader::from_path("test/test_bed3.bed.gz").expect("Error opening file.");
+        let mut reader =
+            Reader::from_path("test/tabix_reader/test_bed3.bed.gz").expect("Error opening file.");
 
         let chr1_id = reader.tid("chr1").unwrap();
         assert!(reader.fetch(chr1_id, 1000, 1003).is_ok());
@@ -394,7 +391,8 @@ mod tests {
 
     #[test]
     fn bed_fetch_from_chr1_iterator_api() {
-        let mut reader = Reader::from_path("test/test_bed3.bed.gz").expect("Error opening file.");
+        let mut reader =
+            Reader::from_path("test/tabix_reader/test_bed3.bed.gz").expect("Error opening file.");
 
         let chr1_id = reader.tid("chr1").unwrap();
         assert!(reader.fetch(chr1_id, 1000, 1003).is_ok());
@@ -419,5 +417,27 @@ mod tests {
     fn test_fails_on_vcf() {
         let reader = Reader::from_path("test/test_left.vcf");
         assert!(reader.is_err());
+    }
+
+    #[test]
+    fn test_text_header_regions() {
+        // This file has chromosome, start, and end positions with a header line.
+        Reader::from_path("test/tabix_reader/genomic_regions_header.txt.gz")
+            .expect("Error opening file.");
+    }
+
+    #[test]
+    fn test_text_header_positions() {
+        // This file has chromosome and position with a header line, indexed with
+        // `tabix -b2 -e2 <file>`.
+        Reader::from_path("test/tabix_reader/genomic_positions_header.txt.gz")
+            .expect("Error opening file.");
+    }
+
+    #[test]
+    fn test_text_bad_header() {
+        // This is a duplicate of the above file but the index file is nonsense text.
+        Reader::from_path("test/tabix_reader/bad_header.txt.gz")
+            .expect_err("Invalid index file should fail.");
     }
 }

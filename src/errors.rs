@@ -94,4 +94,7 @@ pub enum Error {
     SetValues,
     #[error("failed to remove alleles in BCF/VCF record")]
     RemoveAlleles,
+
+		#[error("failed to create htslib thread pool")]
+    ThreadPool,
 }
