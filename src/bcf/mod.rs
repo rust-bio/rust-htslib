@@ -227,7 +227,7 @@ impl IndexedReader {
         let contig = self.header.rid2name(rid).unwrap();
         let contig = ffi::CString::new(contig).unwrap();
         if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i64) } != 0 {
-            Err(Error::BcfSeek {
+            Err(Error::GenomicSeek {
                 contig: contig.to_str().unwrap().to_owned(),
                 start,
             })
@@ -506,7 +506,7 @@ pub mod synced {
                 ffi::CString::new(contig).unwrap()
             };
             if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i64) } != 0 {
-                Err(Error::BcfSeek {
+                Err(Error::GenomicSeek {
                     contig: contig.to_str().unwrap().to_owned(),
                     start,
                 })

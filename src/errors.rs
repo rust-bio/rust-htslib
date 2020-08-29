@@ -14,8 +14,10 @@ pub enum Error {
     NonUnicodePath,
     #[error("failed to fetch region")]
     Fetch,
-    #[error("error seeking to offset")]
-    Seek,
+    #[error("error seeking to file offset")]
+    FileSeek,
+    #[error("error seeking to {contig:?}:{start} in indexed file")]
+    GenomicSeek { contig: String, start: u64 },
     #[error("sequence {sequence} not found in index")]
     UnknownSequence { sequence: String },
     #[error("error setting threads for for file reading")]
@@ -93,6 +95,4 @@ pub enum Error {
     SetValues,
     #[error("failed to remove alleles in BCF/VCF record")]
     RemoveAlleles,
-    #[error("error seeking to {contig:?}:{start} in indexed BCF/VCF file")]
-    BcfSeek { contig: String, start: u64 }
 }

@@ -114,7 +114,7 @@ pub trait Read: Sized {
         if ret == 0 {
             Ok(())
         } else {
-            Err(Error::Seek)
+            Err(Error::FileSeek)
         }
     }
 
