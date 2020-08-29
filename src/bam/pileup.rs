@@ -10,8 +10,8 @@ use std::slice;
 use crate::htslib;
 
 use crate::bam;
-use crate::errors::{Error, Result};
 use crate::bam::record;
+use crate::errors::{Error, Result};
 
 /// Iterator over alignments of a pileup.
 pub type Alignments<'a> = iter::Map<

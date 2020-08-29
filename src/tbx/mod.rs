@@ -46,8 +46,8 @@ use std::path::Path;
 use std::ptr;
 use url::Url;
 
-use crate::htslib;
 use crate::errors::{Error, Result};
+use crate::htslib;
 
 fn path_as_bytes<'a, P: 'a + AsRef<Path>>(path: P, must_exist: bool) -> Result<Vec<u8>> {
     if path.as_ref().exists() || !must_exist {

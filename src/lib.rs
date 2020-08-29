@@ -85,9 +85,9 @@ extern crate pretty_assertions;
 #[cfg(all(test, feature = "serde"))]
 extern crate serde_json;
 
-pub mod errors;
 pub mod bam;
 pub mod bcf;
+pub mod errors;
 pub mod faidx;
 pub mod htslib;
 pub mod tbx;

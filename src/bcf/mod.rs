@@ -23,8 +23,8 @@ pub mod header;
 pub mod record;
 
 use crate::bcf::header::{HeaderView, SampleSubset};
-use crate::htslib;
 use crate::errors::{Error, Result};
+use crate::htslib;
 
 pub use crate::bcf::header::{Header, HeaderRecord};
 pub use crate::bcf::record::Record;

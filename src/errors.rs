@@ -7,7 +7,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum Error {
-		// General errors
+    // General errors
     #[error("file not found: {path}")]
     FileNotFound { path: PathBuf },
     #[error("invalid (non-unicode) characters in path")]
@@ -23,11 +23,11 @@ pub enum Error {
     #[error("error setting threads for for file reading")]
     SetThreads,
 
-		// Errors for faidx
+    // Errors for faidx
     #[error("The given position is too large to be converted to i64")]
     PositionTooLarge,
 
-		// Errors for Tbx
+    // Errors for Tbx
     #[error("previous iterator generation failed")]
     NoIter,
     #[error("truncated tabix record")]
@@ -35,7 +35,7 @@ pub enum Error {
     #[error("invTabixalid tabix index")]
     TabixInvalidIndex,
 
-		// Errors for BAM
+    // Errors for BAM
     #[error("error parsing CIGAR string: {msg}")]
     ParseCigar { msg: String },
     #[error("unexpected CIGAR operation: {msg}")]
@@ -65,8 +65,7 @@ pub enum Error {
     #[error("failed to create SAM/BAM/CRAM pileup")]
     Pileup,
 
-
-		// Errors for BCF
+    // Errors for BCF
     #[error("error allocating internal data structure for BCF/VCF reader (out of memory?)")]
     AllocationError,
     #[error("failed to open BCF/VCF from {target:?}")]

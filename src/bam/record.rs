@@ -17,9 +17,9 @@ use std::u32;
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::errors::Result;
 use crate::bam::Error;
 use crate::bam::HeaderView;
+use crate::errors::Result;
 use crate::htslib;
 use crate::utils;
 

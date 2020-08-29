@@ -8,8 +8,8 @@ use std::rc::Rc;
 use std::str;
 
 use crate::bam;
-use crate::errors::{Error, Result};
 use crate::bam::Read;
+use crate::errors::{Error, Result};
 
 /// A buffer for BAM records. This allows access regions in a sorted BAM file while iterating
 /// over it in a single pass.

@@ -23,8 +23,8 @@ use std::str;
 
 use url::Url;
 
-use crate::htslib;
 use crate::errors::*;
+use crate::htslib;
 
 pub use crate::bam::buffer::RecordBuffer;
 pub use crate::bam::header::Header;
