@@ -14,21 +14,8 @@ use url::Url;
 use crate::htslib;
 
 use crate::errors::{Error, Result};
+use crate::utils::path_as_bytes;
 
-fn path_as_bytes<'a, P: 'a + AsRef<Path>>(path: P, must_exist: bool) -> Result<Vec<u8>> {
-    if path.as_ref().exists() || !must_exist {
-        Ok(path
-            .as_ref()
-            .to_str()
-            .ok_or(Error::NonUnicodePath)?
-            .as_bytes()
-            .to_owned())
-    } else {
-        Err(Error::FileNotFound {
-            path: path.as_ref().to_owned(),
-        })
-    }
-}
 /// A Fasta reader.
 #[derive(Debug)]
 pub struct Reader {
