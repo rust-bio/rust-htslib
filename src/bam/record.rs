@@ -17,13 +17,13 @@ use std::u32;
 use lazy_static::lazy_static;
 use regex::Regex;
 
-#[cfg(feature = "serde_feature")]
-use serde::{self, Deserialize, Serialize};
 use crate::bam::Error;
 use crate::bam::HeaderView;
 use crate::errors::Result;
 use crate::htslib;
 use crate::utils;
+#[cfg(feature = "serde_feature")]
+use serde::{self, Deserialize, Serialize};
 
 use bio_types::alignment::{Alignment, AlignmentMode, AlignmentOperation};
 use bio_types::genome;

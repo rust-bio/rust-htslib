@@ -95,6 +95,6 @@ pub enum Error {
     #[error("failed to remove alleles in BCF/VCF record")]
     RemoveAlleles,
 
-		#[error("failed to create htslib thread pool")]
+    #[error("failed to create htslib thread pool")]
     ThreadPool,
 }
