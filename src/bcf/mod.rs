@@ -263,6 +263,11 @@ impl Read for IndexedReader {
                     );
                 }
 
+                unsafe {
+                    // Always unpack record.
+                    htslib::bcf_unpack(record.inner_mut(), htslib::BCF_UN_ALL as i32);
+                }
+
                 record.set_header(Rc::clone(&self.header));
 
                 match self.current_region {

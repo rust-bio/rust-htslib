@@ -4,6 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [next]
 - BREAKING: Rename feature 'serde' as 'serde_feature' (for technical reasons)
+- Making `bcf::IndexedReader` always unpack records to reflect the behaviour of `bcf::Reader`.
 
 ## [0.32.0] - 2020-07-09
 ### Changes
