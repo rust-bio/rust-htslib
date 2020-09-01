@@ -34,7 +34,6 @@ $ cross build 				              # will build with GNU GCC or LLVM toolchains
 If you want to run rust-htslib code on AWS lambda, you'll need to statically compile it with MUSL as follows:
 
 ```shell
-$ export CFLAGS="-I/usr/local/musl/include"
 $ cross build --target x86_64-unknown-linux-musl      # will build with MUSL toolchain
 ```
 
