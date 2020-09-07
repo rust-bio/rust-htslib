@@ -1893,17 +1893,17 @@ CCCCCCCCCCCCCCCCCCC"[..],
         assert_eq!(expected, written);
     }
 
-    #[cfg(feature = "curl")]
-    #[test]
-    fn test_http_connect() {
-        let url: Url = Url::parse(
-            "https://raw.githubusercontent.com/brainstorm/tiny-test-data/master/wgs/mt.bam",
-        )
-        .unwrap();
-        let r = Reader::from_url(&url);
-        println!("{:#?}", r);
-        let r = r.unwrap();
+    // #[cfg(feature = "curl")]
+    // #[test]
+    // fn test_http_connect() {
+    //     let url: Url = Url::parse(
+    //         "https://raw.githubusercontent.com/brainstorm/tiny-test-data/master/wgs/mt.bam",
+    //     )
+    //     .unwrap();
+    //     let r = Reader::from_url(&url);
+    //     println!("{:#?}", r);
+    //     let r = r.unwrap();
 
-        assert_eq!(r.header().target_names()[0], b"chr1");
-    }
+    //     assert_eq!(r.header().target_names()[0], b"chr1");
+    // }
 }
