@@ -1896,7 +1896,6 @@ CCCCCCCCCCCCCCCCCCC"[..],
     #[cfg(feature = "curl")]
     #[test]
     fn test_http_connect() {
-        // currently failing -- need credentials
         let url: Url = Url::parse(
             "https://raw.githubusercontent.com/brainstorm/tiny-test-data/master/wgs/mt.bam",
         )
@@ -1905,6 +1904,6 @@ CCCCCCCCCCCCCCCCCCC"[..],
         println!("{:#?}", r);
         let r = r.unwrap();
 
-        assert_eq!(r.header().target_names()[0], b"1");
+        assert_eq!(r.header().target_names()[0], b"chr1");
     }
 }
