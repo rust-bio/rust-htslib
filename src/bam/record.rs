@@ -14,7 +14,11 @@ use std::str;
 use std::str::FromStr;
 use std::u32;
 
+use lazy_static::lazy_static;
 use regex::Regex;
+
+#[cfg(feature = "serde_feature")]
+use serde::{self, Deserialize, Serialize};
 
 use crate::bam::errors::Result;
 use crate::bam::Error;
@@ -543,7 +547,7 @@ impl Record {
         .into_view(self.pos())
     }
 
-    fn seq_len(&self) -> usize {
+    pub fn seq_len(&self) -> usize {
         self.inner().core.l_qseq as usize
     }
 
@@ -866,7 +870,8 @@ impl<'a> ops::Index<usize> for Seq<'a> {
 unsafe impl<'a> Send for Seq<'a> {}
 unsafe impl<'a> Sync for Seq<'a> {}
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy, Hash)]
+#[cfg_attr(feature = "serde_feature", derive(Serialize, Deserialize))]
+#[derive(PartialEq, PartialOrd, Eq, Debug, Clone, Copy, Hash)]
 pub enum Cigar {
     Match(u32),    // M
     Ins(u32),      // I
@@ -957,11 +962,13 @@ custom_derive! {
     ///    println!("{}", op);
     /// }
     /// ```
+    #[cfg_attr(feature = "serde_feature", derive(Serialize, Deserialize))]
     #[derive(NewtypeDeref,
              NewtypeIndex(usize),
              NewtypeIndexMut(usize),
              NewtypeFrom,
              PartialEq,
+             PartialOrd,
              Eq,
              NewtypeDebug,
              Clone,
@@ -1159,6 +1166,28 @@ impl CigarStringView {
     pub fn trailing_softclips(&self) -> i64 {
         self.last().map_or(0, |cigar| {
             if let Cigar::SoftClip(s) = cigar {
+                *s as i64
+            } else {
+                0
+            }
+        })
+    }
+
+    /// Get number of bases hardclipped at the beginning of the alignment.
+    pub fn leading_hardclips(&self) -> i64 {
+        self.first().map_or(0, |cigar| {
+            if let Cigar::HardClip(s) = cigar {
+                *s as i64
+            } else {
+                0
+            }
+        })
+    }
+
+    /// Get number of bases hardclipped at the end of the alignment.
+    pub fn trailing_hardclips(&self) -> i64 {
+        self.last().map_or(0, |cigar| {
+            if let Cigar::HardClip(s) = cigar {
                 *s as i64
             } else {
                 0

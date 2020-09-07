@@ -6,9 +6,10 @@
 //! This module exposes the raw Htslib bindings.
 
 extern crate libz_sys;
-
 #[cfg(feature = "bzip2")]
 extern crate bzip2_sys;
+#[cfg(feature = "libdeflate")]
+extern crate libdeflate_sys;
 #[cfg(feature = "lzma")]
 extern crate lzma_sys;
 #[cfg(feature = "curl")]

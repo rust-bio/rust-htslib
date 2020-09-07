@@ -1,6 +1,6 @@
 [package]
 name = "hts-sys"
-version = "1.10.2"
+version = "1.10.3"
 authors = ["Christopher Schröder <christopher.schroeder@tu-dortmund.de>", "Johannes Köster <johannes.koester@tu-dortmund.de>"]
 build = "build.rs"
 links = "hts"
@@ -17,22 +17,27 @@ pre-release-commit-message = "release version {{version}}"
 tag-message = "Version {{version}} of Rust-HTSlib."
 
 [dependencies]
-libc = "0.2"
-libz-sys = "1.0"
-bzip2-sys = { version = "0.1", optional = true }
-lzma-sys = { version = "0.1", optional = true }
-curl-sys = { version = "0.4.26", optional = true }
-openssl-sys = { version = "0.9.54", optional = true }
+libz-sys = { version = "1.0.25", features = ["static"] }
+bzip2-sys = { version = "0.1.8", optional = true }
+lzma-sys = { version = "0.1.16", optional = true, features = ["static"] }
+curl-sys = { version = "0.4.33+curl-7.71.1", optional = true, features = ["static-curl", "static-ssl", "protocol-ftp"] }
+libdeflate-sys = { version = "0.5.0", optional = true }
+
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
+openssl-sys = { version = "0.9", optional = true }
 
 [features]
 default = ["bzip2", "lzma", "curl"]
 bzip2 = ["bzip2-sys"]
 lzma = ["lzma-sys"]
-openssl = ["openssl-sys"]
-curl = ["curl-sys"]
+curl = ["curl-sys", "openssl-sys"]
+libdeflate = ["libdeflate-sys"]
+gcs = ["curl"] # Google Cloud Storage support
+s3 = ["curl"] # Amazon S3 support
+static = [] # Don't dynamically link to other libraries
 
 [build-dependencies]
 fs-utils = "1.1"
-bindgen = { version = "0.53.1", default-features = false, features = ["runtime"] }
-cc = "1.0"
+bindgen = { version = "0.53.2", default-features = false, features = ["runtime"], optional = true }
+cc = { version = "1.0", features = ["parallel"] }
 glob = "0.3.0"
