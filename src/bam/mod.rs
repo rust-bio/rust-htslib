@@ -1897,7 +1897,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
     #[test]
     fn test_http_connect() {
         // currently failing -- need credentials
-        let url: Url = Url::parse("http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/HG00096/exome_alignment/HG00096.chrom11.ILLUMINA.bwa.GBR.exome.20120522.bam").unwrap();
+        let url: Url = Url::parse("https://raw.githubusercontent.com/brainstorm/tiny-test-data/master/wgs/mt.bam").unwrap();
         let r = Reader::from_url(&url);
         println!("{:#?}", r);
         let r = r.unwrap();
