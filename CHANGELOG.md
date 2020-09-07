@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [next]
+- BREAKING: Rename feature 'serde' as 'serde_feature' (for technical reasons)
+
 ## [0.32.0] - 2020-07-09
 ### Changes
 - Method `seq_len()` of `bam::Record` is now public.

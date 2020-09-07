@@ -13,7 +13,7 @@ pub mod index;
 pub mod pileup;
 pub mod record;
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "serde_feature")]
 pub mod record_serde;
 
 use std::ffi;
@@ -25,6 +25,7 @@ use std::str;
 use url::Url;
 
 use crate::htslib;
+use crate::tpool::ThreadPool;
 
 pub use crate::bam::buffer::RecordBuffer;
 pub use crate::bam::errors::{Error, Result};
@@ -40,6 +41,16 @@ pub unsafe fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Re
 
     if htslib::hts_set_threads(htsfile, n_threads as i32) != 0 {
         Err(Error::SetThreads)
+    } else {
+        Ok(())
+    }
+}
+
+pub unsafe fn set_thread_pool(htsfile: *mut htslib::htsFile, tpool: &ThreadPool) -> Result<()> {
+    let mut b = tpool.handle.borrow_mut();
+
+    if htslib::hts_set_thread_pool(htsfile, &mut b.inner as *mut _) != 0 {
+        Err(Error::ThreadPool)
     } else {
         Ok(())
     }
@@ -139,6 +150,15 @@ pub trait Read: Sized {
     fn set_threads(&mut self, n_threads: usize) -> Result<()> {
         unsafe { set_threads(self.htsfile(), n_threads) }
     }
+
+    /// Use a shared thread-pool for writing. This permits controlling the total
+    /// thread count when multiple readers and writers are working simultaneously.
+    /// A thread pool can be created with `crate::tpool::ThreadPool::new(n_threads)`
+    ///
+    /// # Arguments
+    ///
+    /// * `tpool` - thread pool to use for compression work.
+    fn set_thread_pool(&mut self, tpool: &ThreadPool) -> Result<()>;
 }
 
 fn path_as_bytes<'a, P: 'a + AsRef<Path>>(path: P, must_exist: bool) -> Result<Vec<u8>> {
@@ -161,6 +181,7 @@ fn path_as_bytes<'a, P: 'a + AsRef<Path>>(path: P, must_exist: bool) -> Result<V
 pub struct Reader {
     htsfile: *mut htslib::htsFile,
     header: Rc<HeaderView>,
+    tpool: Option<ThreadPool>,
 }
 
 unsafe impl Send for Reader {}
@@ -197,6 +218,7 @@ impl Reader {
         Ok(Reader {
             htsfile,
             header: Rc::new(HeaderView::new(header)),
+            tpool: None,
         })
     }
 
@@ -311,6 +333,12 @@ impl Read for Reader {
     fn header(&self) -> &HeaderView {
         &self.header
     }
+
+    fn set_thread_pool(&mut self, tpool: &ThreadPool) -> Result<()> {
+        unsafe { set_thread_pool(self.htsfile(), tpool)? }
+        self.tpool = Some(tpool.clone());
+        Ok(())
+    }
 }
 
 impl Drop for Reader {
@@ -327,6 +355,7 @@ pub struct IndexedReader {
     header: Rc<HeaderView>,
     idx: *mut htslib::hts_idx_t,
     itr: Option<*mut htslib::hts_itr_t>,
+    tpool: Option<ThreadPool>,
 }
 
 unsafe impl Send for IndexedReader {}
@@ -372,6 +401,7 @@ impl IndexedReader {
                 header: Rc::new(HeaderView::new(header)),
                 idx,
                 itr: None,
+                tpool: None,
             })
         }
     }
@@ -399,6 +429,7 @@ impl IndexedReader {
                 header: Rc::new(HeaderView::new(header)),
                 idx,
                 itr: None,
+                tpool: None,
             })
         }
     }
@@ -516,6 +547,12 @@ impl Read for IndexedReader {
     fn header(&self) -> &HeaderView {
         &self.header
     }
+
+    fn set_thread_pool(&mut self, tpool: &ThreadPool) -> Result<()> {
+        unsafe { set_thread_pool(self.htsfile(), tpool)? }
+        self.tpool = Some(tpool.clone());
+        Ok(())
+    }
 }
 
 impl Drop for IndexedReader {
@@ -552,6 +589,7 @@ impl Format {
 pub struct Writer {
     f: *mut htslib::htsFile,
     header: Rc<HeaderView>,
+    tpool: Option<ThreadPool>,
 }
 
 unsafe impl Send for Writer {}
@@ -628,6 +666,7 @@ impl Writer {
         Ok(Writer {
             f,
             header: Rc::new(HeaderView::new(header_record)),
+            tpool: None,
         })
     }
 
@@ -639,6 +678,19 @@ impl Writer {
     /// * `n_threads` - number of extra background writer threads to use, must be `> 0`.
     pub fn set_threads(&mut self, n_threads: usize) -> Result<()> {
         unsafe { set_threads(self.f, n_threads) }
+    }
+
+    /// Use a shared thread-pool for writing. This permits controlling the total
+    /// thread count when multiple readers and writers are working simultaneously.
+    /// A thread pool can be created with `crate::tpool::ThreadPool::new(n_threads)`
+    ///
+    /// # Arguments
+    ///
+    /// * `tpool` - thread pool to use for compression work.
+    pub fn set_thread_pool(&mut self, tpool: &ThreadPool) -> Result<()> {
+        unsafe { set_thread_pool(self.f, tpool)? }
+        self.tpool = Some(tpool.clone());
+        Ok(())
     }
 
     /// Write record to BAM.
@@ -1423,6 +1475,82 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 assert_eq!(rec.seq().as_bytes(), seqs[idx]);
                 assert_eq!(rec.qual(), quals[idx]);
                 assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+            }
+        }
+
+        tmp.close().expect("Failed to delete temp dir");
+    }
+
+    #[test]
+    fn test_write_shared_tpool() {
+        let (names, _, seqs, quals, cigars) = gold();
+
+        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
+        let bampath1 = tmp.path().join("test1.bam");
+        let bampath2 = tmp.path().join("test2.bam");
+
+        {
+            let (mut bam1, mut bam2) = {
+                let pool = crate::tpool::ThreadPool::new(4).unwrap();
+
+                let mut bam1 = Writer::from_path(
+                    &bampath1,
+                    Header::new().push_record(
+                        HeaderRecord::new(b"SQ")
+                            .push_tag(b"SN", &"chr1")
+                            .push_tag(b"LN", &15072423),
+                    ),
+                    Format::BAM,
+                )
+                .expect("Error opening file.");
+
+                let mut bam2 = Writer::from_path(
+                    &bampath2,
+                    Header::new().push_record(
+                        HeaderRecord::new(b"SQ")
+                            .push_tag(b"SN", &"chr1")
+                            .push_tag(b"LN", &15072423),
+                    ),
+                    Format::BAM,
+                )
+                .expect("Error opening file.");
+
+                bam1.set_thread_pool(&pool).unwrap();
+                bam2.set_thread_pool(&pool).unwrap();
+                (bam1, bam2)
+            };
+
+            for i in 0..10000 {
+                let mut rec = record::Record::new();
+                let idx = i % names.len();
+                rec.set(names[idx], Some(&cigars[idx]), seqs[idx], quals[idx]);
+                rec.push_aux(b"NM", &Aux::Integer(15));
+                rec.set_pos(i as i64);
+
+                bam1.write(&rec).expect("Failed to write record.");
+                bam2.write(&rec).expect("Failed to write record.");
+            }
+        }
+
+        {
+            let pool = crate::tpool::ThreadPool::new(2).unwrap();
+
+            for p in vec![bampath1, bampath2] {
+                let mut bam = Reader::from_path(&p).expect("Error opening file.");
+                bam.set_thread_pool(&pool).unwrap();
+
+                for (i, _rec) in bam.iter_chunk(None, None).enumerate() {
+                    let idx = i % names.len();
+
+                    let rec = _rec.expect("Failed to read record.");
+
+                    assert_eq!(rec.pos(), i as i64);
+                    assert_eq!(rec.qname(), names[idx]);
+                    assert_eq!(*rec.cigar(), cigars[idx]);
+                    assert_eq!(rec.seq().as_bytes(), seqs[idx]);
+                    assert_eq!(rec.qual(), quals[idx]);
+                    assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+                }
             }
         }
 
