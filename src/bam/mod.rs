@@ -832,7 +832,8 @@ fn hts_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
             unsafe {
                 // Comparison against 'htsFormatCategory_sequence_data' doesn't handle text files correctly
                 // hence the explicit checks against all supported exact formats
-                if (*ret).format.format != htslib::htsExactFormat_bam
+                if (*ret).format.format != htslib::htsExactFormat_sam
+                    && (*ret).format.format != htslib::htsExactFormat_bam
                     && (*ret).format.format != htslib::htsExactFormat_cram
                 {
                     return Err(Error::Open {
@@ -1152,6 +1153,14 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .to_string();
         let header_text = String::from_utf8(bam.header.as_bytes().to_owned()).unwrap();
         assert_eq!(header_text, true_header);
+    }
+
+    #[test]
+    fn test_read_against_sam() {
+        let mut bam = Reader::from_path("./test/bam2sam_out.sam").unwrap();
+        for read in bam.records() {
+            let _read = read.unwrap();
+        }
     }
 
     fn _test_read_indexed_common(mut bam: IndexedReader) {
