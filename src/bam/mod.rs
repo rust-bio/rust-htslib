@@ -832,7 +832,8 @@ fn hts_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
             unsafe {
                 // Comparison against 'htsFormatCategory_sequence_data' doesn't handle text files correctly
                 // hence the explicit checks against all supported exact formats
-                if (*ret).format.format != htslib::htsExactFormat_bam
+                if (*ret).format.format != htslib::htsExactFormat_sam
+                    && (*ret).format.format != htslib::htsExactFormat_bam
                     && (*ret).format.format != htslib::htsExactFormat_cram
                 {
                     return Err(Error::Open {
@@ -1152,6 +1153,14 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .to_string();
         let header_text = String::from_utf8(bam.header.as_bytes().to_owned()).unwrap();
         assert_eq!(header_text, true_header);
+    }
+
+    #[test]
+    fn test_read_against_sam() {
+        let mut bam = Reader::from_path("./test/bam2sam_out.sam").unwrap();
+        for read in bam.records() {
+            let _read = read.unwrap();
+        }
     }
 
     fn _test_read_indexed_common(mut bam: IndexedReader) {
@@ -1893,15 +1902,17 @@ CCCCCCCCCCCCCCCCCCC"[..],
         assert_eq!(expected, written);
     }
 
-    #[cfg(feature = "curl")]
-    #[test]
-    fn test_http_connect() {
-        // currently failing -- need credentials
-        let url: Url = Url::parse("http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/HG00096/exome_alignment/HG00096.chrom11.ILLUMINA.bwa.GBR.exome.20120522.bam").unwrap();
-        let r = Reader::from_url(&url);
-        println!("{:#?}", r);
-        let r = r.unwrap();
+    // #[cfg(feature = "curl")]
+    // #[test]
+    // fn test_http_connect() {
+    //     let url: Url = Url::parse(
+    //         "https://raw.githubusercontent.com/brainstorm/tiny-test-data/master/wgs/mt.bam",
+    //     )
+    //     .unwrap();
+    //     let r = Reader::from_url(&url);
+    //     println!("{:#?}", r);
+    //     let r = r.unwrap();
 
-        assert_eq!(r.header().target_names()[0], b"1");
-    }
+    //     assert_eq!(r.header().target_names()[0], b"chr1");
+    // }
 }
