@@ -1897,7 +1897,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
     #[test]
     fn test_http_connect() {
         // currently failing -- need credentials
-        let url: Url = Url::parse("https://raw.githubusercontent.com/brainstorm/tiny-test-data/master/wgs/mt.bam").unwrap();
+        let url: Url = Url::parse(
+            "https://raw.githubusercontent.com/brainstorm/tiny-test-data/master/wgs/mt.bam",
+        )
+        .unwrap();
         let r = Reader::from_url(&url);
         println!("{:#?}", r);
         let r = r.unwrap();
