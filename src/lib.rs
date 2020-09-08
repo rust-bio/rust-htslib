@@ -9,7 +9,7 @@
 //! HTS alignments (SAM and BAM) as well as variant calls in VCF and BCF format.
 //!
 //! For example, let's say that we use samtools to view the header of a test file:
-
+//!
 //! ```
 //! samtools view -H test/test.bam
 //! @SQ    SN:CHROMOSOME_I    LN:15072423
