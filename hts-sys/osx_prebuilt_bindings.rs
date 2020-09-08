@@ -388,6 +388,8 @@ pub const __IPHONE_13_1: u32 = 130100;
 pub const __IPHONE_13_2: u32 = 130200;
 pub const __IPHONE_13_3: u32 = 130300;
 pub const __IPHONE_13_4: u32 = 130400;
+pub const __IPHONE_13_5: u32 = 130500;
+pub const __IPHONE_13_6: u32 = 130600;
 pub const __TVOS_9_0: u32 = 90000;
 pub const __TVOS_9_1: u32 = 90100;
 pub const __TVOS_9_2: u32 = 90200;
@@ -19572,6 +19574,125 @@ extern "C" {
 }
 extern "C" {
     pub fn fai_set_cache_size(fai: *mut faidx_t, cache_size: ::std::os::raw::c_int);
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct hts_tpool_process {
+    _unused: [u8; 0],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct hts_tpool_result {
+    _unused: [u8; 0],
+}
+extern "C" {
+    pub fn hts_tpool_init(n: ::std::os::raw::c_int) -> *mut hts_tpool;
+}
+extern "C" {
+    pub fn hts_tpool_size(p: *mut hts_tpool) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn hts_tpool_dispatch(
+        p: *mut hts_tpool,
+        q: *mut hts_tpool_process,
+        func: ::std::option::Option<
+            unsafe extern "C" fn(arg: *mut ::std::os::raw::c_void) -> *mut ::std::os::raw::c_void,
+        >,
+        arg: *mut ::std::os::raw::c_void,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn hts_tpool_dispatch2(
+        p: *mut hts_tpool,
+        q: *mut hts_tpool_process,
+        func: ::std::option::Option<
+            unsafe extern "C" fn(arg: *mut ::std::os::raw::c_void) -> *mut ::std::os::raw::c_void,
+        >,
+        arg: *mut ::std::os::raw::c_void,
+        nonblock: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn hts_tpool_dispatch3(
+        p: *mut hts_tpool,
+        q: *mut hts_tpool_process,
+        exec_func: ::std::option::Option<
+            unsafe extern "C" fn(arg: *mut ::std::os::raw::c_void) -> *mut ::std::os::raw::c_void,
+        >,
+        arg: *mut ::std::os::raw::c_void,
+        job_cleanup: ::std::option::Option<unsafe extern "C" fn(arg: *mut ::std::os::raw::c_void)>,
+        result_cleanup: ::std::option::Option<
+            unsafe extern "C" fn(data: *mut ::std::os::raw::c_void),
+        >,
+        nonblock: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn hts_tpool_wake_dispatch(q: *mut hts_tpool_process);
+}
+extern "C" {
+    pub fn hts_tpool_process_flush(q: *mut hts_tpool_process) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn hts_tpool_process_reset(
+        q: *mut hts_tpool_process,
+        free_results: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn hts_tpool_process_qsize(q: *mut hts_tpool_process) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn hts_tpool_destroy(p: *mut hts_tpool);
+}
+extern "C" {
+    pub fn hts_tpool_kill(p: *mut hts_tpool);
+}
+extern "C" {
+    pub fn hts_tpool_next_result(q: *mut hts_tpool_process) -> *mut hts_tpool_result;
+}
+extern "C" {
+    pub fn hts_tpool_next_result_wait(q: *mut hts_tpool_process) -> *mut hts_tpool_result;
+}
+extern "C" {
+    pub fn hts_tpool_delete_result(r: *mut hts_tpool_result, free_data: ::std::os::raw::c_int);
+}
+extern "C" {
+    pub fn hts_tpool_result_data(r: *mut hts_tpool_result) -> *mut ::std::os::raw::c_void;
+}
+extern "C" {
+    pub fn hts_tpool_process_init(
+        p: *mut hts_tpool,
+        qsize: ::std::os::raw::c_int,
+        in_only: ::std::os::raw::c_int,
+    ) -> *mut hts_tpool_process;
+}
+extern "C" {
+    pub fn hts_tpool_process_destroy(q: *mut hts_tpool_process);
+}
+extern "C" {
+    pub fn hts_tpool_process_empty(q: *mut hts_tpool_process) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn hts_tpool_process_len(q: *mut hts_tpool_process) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn hts_tpool_process_sz(q: *mut hts_tpool_process) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn hts_tpool_process_shutdown(q: *mut hts_tpool_process);
+}
+extern "C" {
+    pub fn hts_tpool_process_attach(p: *mut hts_tpool, q: *mut hts_tpool_process);
+}
+extern "C" {
+    pub fn hts_tpool_process_detach(p: *mut hts_tpool, q: *mut hts_tpool_process);
+}
+extern "C" {
+    pub fn hts_tpool_process_ref_incr(q: *mut hts_tpool_process);
+}
+extern "C" {
+    pub fn hts_tpool_process_ref_decr(q: *mut hts_tpool_process);
 }
 extern "C" {
     #[link_name = "\u{1}_wrap_kbs_init2"]

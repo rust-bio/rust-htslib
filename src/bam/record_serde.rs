@@ -1,8 +1,8 @@
 use std::fmt;
 
-use serde_base::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
-use serde_base::ser::SerializeStruct;
-use serde_base::{Serialize, Serializer};
+use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
+use serde::ser::SerializeStruct;
+use serde::{Serialize, Serializer};
 use serde_bytes::{ByteBuf, Bytes};
 
 use crate::bam::record::Record;

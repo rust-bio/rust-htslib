@@ -46,4 +46,6 @@ pub enum Error {
     BuildIndex,
     #[error("failed to create SAM/BAM/CRAM pileup")]
     Pileup,
+    #[error("failed to create htslib thread pool")]
+    ThreadPool,
 }
