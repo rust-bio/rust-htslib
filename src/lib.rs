@@ -12,11 +12,11 @@
 
 //! ```
 //! samtools view -H test/test.bam
-//! @SQ	SN:CHROMOSOME_I	LN:15072423
-//! @SQ	SN:CHROMOSOME_II	LN:15279345
-//! @SQ	SN:CHROMOSOME_III	LN:13783700
-//! @SQ	SN:CHROMOSOME_IV	LN:17493793
-//! @SQ	SN:CHROMOSOME_V	LN:20924149
+//! @SQ    SN:CHROMOSOME_I    LN:15072423
+//! @SQ    SN:CHROMOSOME_II    LN:15279345
+//! @SQ    SN:CHROMOSOME_III    LN:13783700
+//! @SQ    SN:CHROMOSOME_IV    LN:17493793
+//! @SQ    SN:CHROMOSOME_V    LN:20924149
 //! ```
 //!
 //! We can reproduce that with Rust-Htslib. Reading BAM files and printing the header
@@ -41,11 +41,11 @@
 //! which results in the following output, equivalent to samtools.
 //!
 //! ```bash
-//! @SQ	SN:CHROMOSOME_I	LN:15072423
-//! @SQ	SN:CHROMOSOME_II	LN:15279345
-//! @SQ	SN:CHROMOSOME_III	LN:13783700
-//! @SQ	SN:CHROMOSOME_IV	LN:17493793
-//! @SQ	SN:CHROMOSOME_V	LN:20924149
+//! @SQ    SN:CHROMOSOME_I    LN:15072423
+//! @SQ    SN:CHROMOSOME_II    LN:15279345
+//! @SQ    SN:CHROMOSOME_III    LN:13783700
+//! @SQ    SN:CHROMOSOME_IV    LN:17493793
+//! @SQ    SN:CHROMOSOME_V    LN:20924149
 //! ```
 //!
 //! We can also read directly from the BAM file and write to an output file
