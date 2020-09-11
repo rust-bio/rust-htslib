@@ -125,7 +125,7 @@ impl RecordBuffer {
         loop {
             let mut rec = self.reader.empty_record();
 
-            if !self.reader.read(&mut rec)? {
+            if self.reader.read(&mut rec).is_none() {
                 // EOF
                 break;
             }

@@ -91,8 +91,8 @@ pub trait Read: Sized {
     ///
     /// # Returns
     ///
-    /// `Ok(true)` if record was read without error, Ok(false) if there is no more record in the file.
-    fn read(&mut self, record: &mut record::Record) -> Result<bool>;
+    /// Some(Ok(())) if the record was read and None if no more records to read
+    fn read(&mut self, record: &mut record::Record) -> Option<Result<()>>;
 
     /// Iterator over the records of the seeked region.
     /// Note that, while being convenient, this is less efficient than pre-allocating a
@@ -265,7 +265,7 @@ impl Reader {
 
 impl Read for Reader {
     /// Read the next BAM record into the given `Record`.
-    /// Returns a true result if a record was read, or false if there are no more records.
+    /// Returns `None` if there are no more records.
     ///
     /// This method is useful if you want to read records as fast as possible as the
     /// `Record` can be reused. A more ergonomic approach is to use the [records](Reader::records)
@@ -283,12 +283,13 @@ impl Read for Reader {
     /// let mut record = Record::new();
     ///
     /// // Print the TID of each record
-    /// while bam.read(&mut record)? {
+    /// while let Some(r) = bam.read(&mut record) {
+    ///    r.expect("Failed to parse record");
     ///    println!("TID: {}", record.tid())
     /// }
     /// # Ok::<(), Error>(())
     /// ```
-    fn read(&mut self, record: &mut record::Record) -> Result<bool> {
+    fn read(&mut self, record: &mut record::Record) -> Option<Result<()>> {
         match unsafe {
             htslib::sam_read1(
                 self.htsfile,
@@ -296,13 +297,13 @@ impl Read for Reader {
                 record.inner_ptr_mut(),
             )
         } {
-            -1 => Ok(false),
-            -2 => Err(Error::TruncatedRecord),
-            -4 => Err(Error::InvalidRecord),
+            -1 => None,
+            -2 => Some(Err(Error::TruncatedRecord)),
+            -4 => Some(Err(Error::InvalidRecord)),
             _ => {
                 record.set_header(Rc::clone(&self.header));
 
-                Ok(true)
+                Some(Ok(()))
             }
         }
     }
@@ -503,21 +504,21 @@ impl IndexedReader {
 }
 
 impl Read for IndexedReader {
-    fn read(&mut self, record: &mut record::Record) -> Result<bool> {
+    fn read(&mut self, record: &mut record::Record) -> Option<Result<()>> {
         match self.itr {
             Some(itr) => {
                 match itr_next(self.htsfile, itr, &mut record.inner as *mut htslib::bam1_t) {
-                    -1 => Ok(false),
-                    -2 => Err(Error::TruncatedRecord),
-                    -4 => Err(Error::InvalidRecord),
+                    -1 => None,
+                    -2 => Some(Err(Error::TruncatedRecord)),
+                    -4 => Some(Err(Error::InvalidRecord)),
                     _ => {
                         record.set_header(Rc::clone(&self.header));
 
-                        Ok(true)
+                        Some(Ok(()))
                     }
                 }
             }
-            None => Ok(false),
+            None => None,
         }
     }
 
@@ -787,9 +788,9 @@ impl<'a, R: Read> Iterator for Records<'a, R> {
     fn next(&mut self) -> Option<Result<record::Record>> {
         let mut record = record::Record::new();
         match self.reader.read(&mut record) {
-            Ok(false) => None,
-            Ok(true) => Some(Ok(record)),
-            Err(err) => Some(Err(err)),
+            None => None,
+            Some(Ok(_)) => Some(Ok(record)),
+            Some(Err(err)) => Some(Err(err)),
         }
     }
 }
@@ -810,9 +811,9 @@ impl<'a, R: Read> Iterator for ChunkIterator<'a, R> {
         }
         let mut record = record::Record::new();
         match self.reader.read(&mut record) {
-            Ok(false) => None,
-            Ok(true) => Some(Ok(record)),
-            Err(err) => Some(Err(err)),
+            None => None,
+            Some(Ok(_)) => Some(Ok(record)),
+            Some(Err(err)) => Some(Err(err)),
         }
     }
 }
@@ -1085,7 +1086,6 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
         for (i, record) in bam.records().enumerate() {
             let rec = record.expect("Expected valid record");
-            println!("{}", str::from_utf8(rec.qname()).unwrap());
             assert_eq!(rec.qname(), names[i]);
             assert_eq!(rec.flags(), flags[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
@@ -1125,9 +1125,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let mut offset = bam.tell();
         let mut rec = Record::new();
         loop {
-            if !bam.read(&mut rec).expect("error reading bam") {
-                break;
-            }
+            match bam.read(&mut rec) {
+                Some(r) => r.expect("error reading bam"),
+                None => break
+            };
             let qname = str::from_utf8(rec.qname()).unwrap().to_string();
             println!("{} {}", offset, qname);
             names_by_voffset.insert(offset, qname);
@@ -1137,7 +1138,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
         for (offset, qname) in names_by_voffset.iter() {
             println!("{} {}", offset, qname);
             bam.seek(*offset).unwrap();
-            bam.read(&mut rec).unwrap();
+            match bam.read(&mut rec) {
+                Some(r) => r.unwrap(),
+                None => {}
+            };
             let rec_qname = str::from_utf8(rec.qname()).unwrap().to_string();
             assert_eq!(qname, &rec_qname);
         }
@@ -1426,7 +1430,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
             for i in 0..names.len() {
                 let mut rec = record::Record::new();
-                bam.read(&mut rec).expect("Failed to read record.");
+                match bam.read(&mut rec) {
+                    Some(r) => r.expect("Failed to read record."),
+                    None => {}
+                };
 
                 assert_eq!(rec.qname(), names[i]);
                 assert_eq!(*rec.cigar(), cigars[i]);
