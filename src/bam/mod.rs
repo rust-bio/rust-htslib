@@ -1127,7 +1127,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         loop {
             match bam.read(&mut rec) {
                 Some(r) => r.expect("error reading bam"),
-                None => break
+                None => break,
             };
             let qname = str::from_utf8(rec.qname()).unwrap().to_string();
             println!("{} {}", offset, qname);

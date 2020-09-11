@@ -39,7 +39,7 @@ pub trait Read: Sized {
     /// * record - an empty record, that can be created with `bcf::Reader::empty_record`.
     ///
     /// # Returns
-    /// None if end of file was reached, otherwise Some will contain 
+    /// None if end of file was reached, otherwise Some will contain
     /// a result with an error in case of failure.
     fn read(&mut self, record: &mut record::Record) -> Option<Result<()>>;
 
