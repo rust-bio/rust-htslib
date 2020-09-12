@@ -12,5 +12,5 @@ pub enum Error {
     #[error("This file is not in BGZF format")]
     NotBgzf,
     #[error("Can not read")]
-		IOError,
+    IOError,
 }
