@@ -23,7 +23,7 @@ url = "2.1"
 lazy_static = "1.4"
 regex = "1.3"
 linear-map = "1.2"
-serde_base = { version = "^1", optional = true, package = "serde" }
+serde = { version = "^1", optional = true, features=["derive"] }
 serde_bytes = { version = "0.11", optional = true }
 bio-types = ">=0.6"
 thiserror = "1"
@@ -39,7 +39,7 @@ libdeflate = ["hts-sys/libdeflate"]
 s3 = ["hts-sys/s3"]
 gcs = ["hts-sys/gcs"]
 static = ["hts-sys/static"]
-serde = ["serde_base", "serde_bytes"]
+serde_feature = ["serde", "serde_bytes"]
 
 [dev-dependencies]
 tempdir = "0.3"
