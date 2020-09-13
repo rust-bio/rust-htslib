@@ -91,26 +91,23 @@ impl Reader {
         Ok(Self { inner })
     }
 
-    /// Set the thread pool to use for parallel decompression. 
+    /// Set the thread pool to use for parallel decompression.
     ///
     /// # Arguments
     ///
     /// * `tpool` - the thread-pool to use
-		pub fn set_thread_pool(&mut self, tpool: &ThreadPool) -> Result<()> {
-    	let b = tpool.handle.borrow_mut();
-			let r = unsafe {
-				htslib::bgzf_thread_pool(
-					self.inner, 
-					b.inner.pool as *mut _, 
-					0) // let htslib decide on the queue-size
-			};
-    	
-    	if r != 0 {
-    	    Err(Error::ThreadPool)
-    	} else {
-    	    Ok(())
-    	}
-	}
+    pub fn set_thread_pool(&mut self, tpool: &ThreadPool) -> Result<()> {
+        let b = tpool.handle.borrow_mut();
+        let r = unsafe {
+            htslib::bgzf_thread_pool(self.inner, b.inner.pool as *mut _, 0) // let htslib decide on the queue-size
+        };
+
+        if r != 0 {
+            Err(Error::ThreadPool)
+        } else {
+            Ok(())
+        }
+    }
 }
 
 impl std::io::Read for Reader {
@@ -227,14 +224,14 @@ mod tests {
     fn test_set_threadpool() {
         let r_result = Reader::from_path(FN_BGZIP);
         assert!(r_result.is_ok(), "Open bgzip file with Bgzip reader");
-				let mut r = r_result.unwrap();
+        let mut r = r_result.unwrap();
 
-				let tpool_result = ThreadPool::new(5);
-				assert!(tpool_result.is_ok(), "Creating thread pool");
-				let tpool = tpool_result.unwrap();
+        let tpool_result = ThreadPool::new(5);
+        assert!(tpool_result.is_ok(), "Creating thread pool");
+        let tpool = tpool_result.unwrap();
 
-				let set_result = r.set_thread_pool(&tpool);
-				assert_eq!(set_result, Ok(()), "Setting thread pool okay");
+        let set_result = r.set_thread_pool(&tpool);
+        assert_eq!(set_result, Ok(()), "Setting thread pool okay");
 
         let mut my_content = String::new();
         let reading_result = r.read_to_string(&mut my_content);
