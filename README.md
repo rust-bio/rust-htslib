@@ -43,7 +43,7 @@ Alternatively, you can also install it locally by installing the development hea
 $ sudo apt-get install zlib1g-dev libbz2-dev liblzma-dev clang pkg-config
 ```
 
-Refer to the `docker` directory in this repository for more up to date local instructions, including LLVM installation.
+We provide Dockerfile bases that provide these dependencies. Refer to the [docker](https://github.com/rust-bio/rust-htslib/tree/master/docker) directory in this repository for the latest instructions, including LLVM installation.
 
 On OSX:
 
