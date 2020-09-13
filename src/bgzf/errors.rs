@@ -13,4 +13,6 @@ pub enum Error {
     NotBgzf,
     #[error("Can not read")]
     IOError,
+    #[error("Can not set the thread pool")]
+    ThreadPool,
 }

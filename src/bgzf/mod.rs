@@ -12,6 +12,7 @@ use std::path::Path;
 use url::Url;
 
 use crate::htslib;
+use crate::tpool::ThreadPool;
 
 pub mod errors;
 pub use errors::{Error, Result};
@@ -55,7 +56,7 @@ pub struct Reader {
 
 impl Reader {
     /// Create a new Reader to read from stdin.
-    pub fn from_stdin<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
+    pub fn from_stdin() -> Result<Self, Error> {
         Self::new(b"-")
     }
 
@@ -89,6 +90,27 @@ impl Reader {
         let inner = unsafe { htslib::bgzf_open(cpath.as_ptr(), mode.as_ptr()) };
         Ok(Self { inner })
     }
+
+    /// Set the thread pool to use for parallel decompression. 
+    ///
+    /// # Arguments
+    ///
+    /// * `tpool` - the thread-pool to use
+		pub fn set_thread_pool(&mut self, tpool: &ThreadPool) -> Result<()> {
+    	let b = tpool.handle.borrow_mut();
+			let r = unsafe {
+				htslib::bgzf_thread_pool(
+					self.inner, 
+					b.inner.pool as *mut _, 
+					0) // let htslib decide on the queue-size
+			};
+    	
+    	if r != 0 {
+    	    Err(Error::ThreadPool)
+    	} else {
+    	    Ok(())
+    	}
+	}
 }
 
 impl std::io::Read for Reader {
@@ -114,7 +136,7 @@ impl std::io::Read for Reader {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::{BufRead, BufReader, Read};
+    use std::io::Read;
 
     // Define paths to the test files
     const FN_PLAIN: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/test/bgzip/plain.vcf");
@@ -199,6 +221,35 @@ mod tests {
         assert_eq!(
             my_content, CONTENT,
             "Reading bgzip file with correct content"
+        );
+    }
+    #[test]
+    fn test_set_threadpool() {
+        let r_result = Reader::from_path(FN_BGZIP);
+        assert!(r_result.is_ok(), "Open bgzip file with Bgzip reader");
+				let mut r = r_result.unwrap();
+
+				let tpool_result = ThreadPool::new(5);
+				assert!(tpool_result.is_ok(), "Creating thread pool");
+				let tpool = tpool_result.unwrap();
+
+				let set_result = r.set_thread_pool(&tpool);
+				assert_eq!(set_result, Ok(()), "Setting thread pool okay");
+
+        let mut my_content = String::new();
+        let reading_result = r.read_to_string(&mut my_content);
+        assert!(
+            reading_result.is_ok(),
+            "Reading bgzip file into buffer is ok - using a threadpool"
+        );
+        assert_eq!(
+            reading_result.unwrap(),
+            190,
+            "Reading bgzip file into buffer is correct size using a threadpool"
+        );
+        assert_eq!(
+            my_content, CONTENT,
+            "Reading bgzip file with correct content using a threadpool"
         );
     }
 }
