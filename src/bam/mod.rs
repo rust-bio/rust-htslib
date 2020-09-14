@@ -451,7 +451,7 @@ impl<'a> From<&'a str> for FetchDefinition<'a> {
     }
 }
 
-//also accept &[u8;n] literars
+//also accept &[u8;n] literals
 impl<'a> From<&'a [u8]> for FetchDefinition<'a> {
     fn from(s: &'a [u8]) -> FetchDefinition<'a> {
         FetchDefinition::String(s)
@@ -581,18 +581,35 @@ impl IndexedReader {
         }
     }
 
-    /// Fetch reads to be used either in .read() or .records
+    /// Define the region from which .read() or .records will retrieve reads.
+    ///
+    /// Both iterating (with [.records()](trait.Read.html#tymethod.records)) and looping without allocation (with [.read()](trait.Read.html#tymethod.read) are a two stage process:
+    /// 1. 'fetch' the region of interest
+    /// 2. iter/loop trough the reads.
+    ///
+    /// Example:
+    /// ```
+    /// use rust_htslib::bam::{IndexedReader, Read};
+    /// let mut bam = IndexedReader::from_path(&"test/test.bam").unwrap();
+    /// bam.fetch(("chrX", 10000, 20000)); // coordinate 10000..20000 on reference named "chromosomeX"
+    /// for read in bam.records() {
+    ///     println!("read name: {:?}", read.unwrap().qname());
+    /// }
+    /// ```
     ///
     /// The arguments may be anything that can be converted into a FetchDefinition
     /// such as
     ///
-    /// * tid: u32 -> fetch everything on this reference
-    /// * reference_name: &[u8] or *&str -> fetch everything on this reference
-    /// * (tid, start, stop): (u32, i64, i64) -> fetch in this region on this tid
-    /// * (reference_name, start, stop): (&[u8]|&str, i64, i64) -> fetch in this region on this tid
-    /// * FetchDefinition::All or "." -> Fetch overything
-    /// * FetchDefinition::Unmapped "*" -> Fetch unmapped (as signified by the 'unmapped' flag in the BAM - might be
-    ///   unreliable with some aligners.
+    /// * fetch(tid: u32) -> fetch everything on this reference
+    /// * fetch(reference_name: &[u8] | &str) -> fetch everything on this reference
+    /// * fetch((tid: i32, start: i64, stop: i64)): -> fetch in this region on this tid
+    /// * fetch((reference_name: &[u8] | &str, start: i64, stop: i64) -> fetch in this region on this tid
+    /// * fetch(FetchDefinition::All) or fetch(".") -> Fetch overything
+    /// * fetch(FetchDefinition::Unmapped) or fetch("*") -> Fetch unmapped (as signified by the 'unmapped' flag in the BAM - might be unreliable with some aligners.
+    ///
+    /// The start / stop coordinates will take i64 (the correct type as of htslib's 'large
+    /// coordinates' expansion), i32, u32, and u64 (with a possible panic! if the coordinate 
+    /// won't fit an i64).
     ///
     /// This replaces the old fetch and fetch_str implementations.
     pub fn fetch<'a, T: Into<FetchDefinition<'a>>>(&mut self, fetch_definition: T) -> Result<()> {
