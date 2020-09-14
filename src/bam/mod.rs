@@ -591,7 +591,7 @@ impl IndexedReader {
     /// ```
     /// use rust_htslib::bam::{IndexedReader, Read};
     /// let mut bam = IndexedReader::from_path(&"test/test.bam").unwrap();
-    /// bam.fetch(("chrX", 10000, 20000)); // coordinate 10000..20000 on reference named "chromosomeX"
+    /// bam.fetch(("chrX", 10000, 20000)); // coordinates 10000..20000 on reference named "chrX"
     /// for read in bam.records() {
     ///     println!("read name: {:?}", read.unwrap().qname());
     /// }
