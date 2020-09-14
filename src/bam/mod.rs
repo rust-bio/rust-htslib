@@ -92,13 +92,70 @@ pub trait Read: Sized {
     /// # Returns
     ///
     /// `Ok(true)` if record was read without error, Ok(false) if there is no more record in the file.
+    ///
+    /// Example:
+    /// ```
+    /// use rust_htslib::bam::{Error, Read, IndexedReader, Record};
+    ///
+    /// let mut bam = IndexedReader::from_path(&"test/test.bam").unwrap();
+    /// bam.fetch(0, 1000, 2000); // reads on tid 0, from 1000bp to 2000bp
+    /// let mut record = Record::new();
+    /// loop {
+    ///     match bam.read(&mut record){
+    ///         Ok(true) => {
+    ///             println!("Read sequence: {:?}", record.seq().as_bytes());
+    ///         },
+    ///         Ok(_) => break, //no more reads
+    ///         Err(_) => panic!("BAM parsing failed...")
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Consider using [`rc_records`](#tymethod.rc_records) instead.
     fn read(&mut self, record: &mut record::Record) -> Result<bool>;
 
     /// Iterator over the records of the seeked region.
     /// Note that, while being convenient, this is less efficient than pre-allocating a
     /// `Record` and reading into it with the `read` method, since every iteration involves
     /// the allocation of a new `Record`.
+    ///
+    /// This is about 10% slower than record in micro benchmarks.
+    ///
+    /// Consider using [`rc_records`](#tymethod.rc_records) instead.
     fn records(&mut self) -> Records<'_, Self>;
+
+    /// Records iterator using an Rc to avoid allocating a Record each turn.
+    /// This is about 1% slower than the [`read`](#tymethod.read) based API in micro benchmarks,
+    /// but has nicer ergonomics (and might not actually be slower in your applications).
+    ///
+    /// Example:
+    /// ```
+    /// use rust_htslib::bam::{Error, Read, Reader, Record};
+    /// use rust_htslib::htslib; // for BAM_F*
+    /// let mut bam = Reader::from_path(&"test/test.bam").unwrap();
+    /// let record = Record::new();
+    //
+    /// for read in
+    ///     bam.rc_records()
+    ///     .map(|x| x.expect("Failure parsing Bam file"))
+    ///     .filter(|read|
+    ///         read.flags()
+    ///          & (htslib::BAM_FUNMAP
+    ///              | htslib::BAM_FSECONDARY
+    ///              | htslib::BAM_FQCFAIL
+    ///              | htslib::BAM_FDUP) as u16
+    ///          == 0
+    ///     )
+    ///     .filter(|read| !read.is_reverse()) {
+    ///     println!("Found a forward read: {:?}", read.qname());
+    /// }
+    ///
+    /// //or to add the read qnames into a Vec
+    /// let collected: Vec<_> = bam.rc_records().map(|read| read.unwrap().qname().to_vec()).collect();
+    ///
+    ///
+    /// ```
+    fn rc_records(&mut self) -> RcRecords<'_, Self>;
 
     /// Iterator over pileups.
     fn pileup(&mut self) -> pileup::Pileups<'_, Self>;
@@ -313,6 +370,13 @@ impl Read for Reader {
     /// the allocation of a new `Record`.
     fn records(&mut self) -> Records<'_, Self> {
         Records { reader: self }
+    }
+
+    fn rc_records(&mut self) -> RcRecords<'_, Self> {
+        RcRecords {
+            reader: self,
+            record: Rc::new(record::Record::new()),
+        }
     }
 
     fn pileup(&mut self) -> pileup::Pileups<'_, Self> {
@@ -749,6 +813,13 @@ impl Read for IndexedReader {
         Records { reader: self }
     }
 
+    fn rc_records(&mut self) -> RcRecords<'_, Self> {
+        RcRecords {
+            reader: self,
+            record: Rc::new(record::Record::new()),
+        }
+    }
+
     fn pileup(&mut self) -> pileup::Pileups<'_, Self> {
         let _self = self as *const Self;
         let itr = unsafe {
@@ -1009,6 +1080,36 @@ impl<'a, R: Read> Iterator for Records<'a, R> {
         match self.reader.read(&mut record) {
             Ok(false) => None,
             Ok(true) => Some(Ok(record)),
+            Err(err) => Some(Err(err)),
+        }
+    }
+}
+
+/// Iterator over the records of a BAM, using an Rc.
+///
+/// See [rc_records](trait.Read.html#tymethod.rc_records).
+#[derive(Debug)]
+pub struct RcRecords<'a, R: Read> {
+    reader: &'a mut R,
+    record: Rc<record::Record>,
+}
+
+impl<'a, R: Read> Iterator for RcRecords<'a, R> {
+    type Item = Result<Rc<record::Record>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut record = match Rc::get_mut(&mut self.record) {
+            //not make_mut, we don't need a clone
+            Some(x) => x,
+            None => {
+                self.record = Rc::new(record::Record::new());
+                Rc::get_mut(&mut self.record).unwrap()
+            }
+        };
+
+        match self.reader.read(&mut record) {
+            Ok(false) => None,
+            Ok(true) => Some(Ok(Rc::clone(&self.record))),
             Err(err) => Some(Err(err)),
         }
     }
@@ -2191,4 +2292,44 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     //     assert_eq!(r.header().target_names()[0], b"chr1");
     // }
+
+    #[test]
+    fn test_rc_records() {
+        let (names, flags, seqs, quals, cigars) = gold();
+        let mut bam = Reader::from_path(&Path::new("test/test.bam")).expect("Error opening file.");
+        let del_len = [1, 1, 1, 1, 1, 100000];
+
+        for (i, record) in bam.rc_records().enumerate() {
+            //let rec = record.expect("Expected valid record");
+            let rec = record.unwrap();
+            println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
+            assert_eq!(rec.qname(), names[i]);
+            assert_eq!(rec.flags(), flags[i]);
+            assert_eq!(rec.seq().as_bytes(), seqs[i]);
+
+            let cigar = rec.cigar();
+            assert_eq!(*cigar, cigars[i]);
+
+            let end_pos = cigar.end_pos();
+            assert_eq!(end_pos, rec.pos() + 100 + del_len[i]);
+            assert_eq!(
+                cigar
+                    .read_pos(end_pos as u32 - 10, false, false)
+                    .unwrap()
+                    .unwrap(),
+                90
+            );
+            assert_eq!(
+                cigar
+                    .read_pos(rec.pos() as u32 + 20, false, false)
+                    .unwrap()
+                    .unwrap(),
+                20
+            );
+            assert_eq!(cigar.read_pos(4000000, false, false).unwrap(), None);
+            // fix qual offset
+            let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
+            assert_eq!(rec.qual(), &qual[..]);
+        }
+    }
 }
