@@ -8,7 +8,47 @@
 //! Htslib itself is the *de facto* standard implementation for reading and writing files for
 //! HTS alignments (SAM and BAM) as well as variant calls in VCF and BCF format.
 //!
-//! For example, reading and writing BAM files is as easy as
+//! For example, let's say that we use samtools to view the header of a test file:
+//!
+//! ```bash
+//! samtools view -H test/test.bam
+//! @SQ    SN:CHROMOSOME_I    LN:15072423
+//! @SQ    SN:CHROMOSOME_II    LN:15279345
+//! @SQ    SN:CHROMOSOME_III    LN:13783700
+//! @SQ    SN:CHROMOSOME_IV    LN:17493793
+//! @SQ    SN:CHROMOSOME_V    LN:20924149
+//! ```
+//!
+//! We can reproduce that with Rust-Htslib. Reading BAM files and printing the header
+//! to the the screen is as easy as
+//!
+//! ```
+//! use rust_htslib::{bam, bam::Read};
+//!
+//! fn main() {
+//!     let bam = bam::Reader::from_path(&"test/test.bam").unwrap();
+//!     let header = bam::Header::from_template(bam.header());
+//!
+//!     // print header records to the terminal, akin to samtool
+//!     for (key, records) in header.to_hashmap() {
+//!         for record in records {
+//!             println!("@{}\tSN:{}\tLN:{}", key, record["SN"], record["LN"]);
+//!         }
+//!     }
+//! }
+//! ```
+//!
+//! which results in the following output, equivalent to samtools.
+//!
+//! ```bash
+//! @SQ    SN:CHROMOSOME_I    LN:15072423
+//! @SQ    SN:CHROMOSOME_II    LN:15279345
+//! @SQ    SN:CHROMOSOME_III    LN:13783700
+//! @SQ    SN:CHROMOSOME_IV    LN:17493793
+//! @SQ    SN:CHROMOSOME_V    LN:20924149
+//! ```
+//!
+//! We can also read directly from the BAM file and write to an output file
 //!
 //! ```
 //! use rust_htslib::{bam, bam::Read};
@@ -88,6 +128,7 @@ extern crate serde_json;
 pub mod bam;
 pub mod bcf;
 pub mod errors;
+pub mod bgzf;
 pub mod faidx;
 pub mod htslib;
 pub mod tbx;
