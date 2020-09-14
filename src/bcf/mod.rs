@@ -200,7 +200,7 @@ impl IndexedReader {
         unsafe {
             htslib::bcf_sr_set_opt(ser_reader, 0);
         } // 0: BCF_SR_REQUIRE_IDX
-          // Attach a file with the path from the arguments.
+        // Attach a file with the path from the arguments.
         if unsafe { htslib::bcf_sr_add_reader(ser_reader, path.as_ptr()) } >= 0 {
             let header = Rc::new(HeaderView::new(unsafe {
                 htslib::bcf_hdr_dup((*(*ser_reader).readers.offset(0)).header)
@@ -733,10 +733,12 @@ mod tests {
     use super::*;
     use crate::bcf::header::Id;
     use crate::bcf::record::Numeric;
+    use crate::bcf::Reader;
     use std::fs::File;
     use std::io::prelude::Read as IoRead;
     use std::path::Path;
     use std::str;
+    use std::convert::TryFrom;
 
     fn _test_read<P: AsRef<Path>>(path: &P) {
         let mut bcf = Reader::from_path(path).expect("Error opening file.");
@@ -1114,7 +1116,7 @@ mod tests {
                 true,
                 Format::VCF,
             )
-            .expect("Error opening file.");
+                .expect("Error opening file.");
             let header = writer.header().clone();
 
             // Setup empty record, filled below.
@@ -1295,5 +1297,34 @@ mod tests {
         let _ = reader.read(&mut rec);
 
         assert_eq!(rec.info(b"X").string().unwrap().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn test_alt_allele_dosage() {
+        let path = &"test/test_string.vcf";
+        let mut bcf = Reader::from_path(path).expect("Error opening file.");
+        let header = bcf.header();
+
+        for (_i, record_result) in bcf.records().enumerate() {
+            let mut record = record_result.expect("Fail to read record");
+            let mut s = String::new();
+
+            let sample_count = usize::try_from(record.sample_count()).unwrap();
+            let mut n_ref = vec![0; sample_count];
+            let mut n_alt = vec![0; sample_count];
+            let gts = record.genotypes().expect("Error reading genotypes");
+            for sample_index in 0..sample_count {
+                // for each sample
+                for gta in gts.get(sample_index).iter() {
+                    // for each allele
+                    match gta.index() {
+                        Some(0) => n_ref[sample_index] += 1, // reference allele
+                        Some(_) => n_alt[sample_index] += 1, // alt allele
+                        None => break,                       // missing allele
+                    }
+                }
+            }
+        }
+
     }
 }

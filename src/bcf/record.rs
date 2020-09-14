@@ -74,6 +74,45 @@ impl NumericUtils for i32 {
 
 /// A BCF record.
 /// New records can be created by the `empty_record` methods of `bcf::Reader` and `bcf::Writer`.
+/// # Example
+///   - Obtaining 0-based locus index of the VCF record.
+///   - Obtaining alleles of the VCF record.
+///   - calculate alt-allele dosage in a mutli-sample VCF / BCF
+///
+/// ```
+/// use crate::rust_htslib::bcf::{Reader, Read};
+/// use std::convert::TryFrom;
+///
+/// let path = &"test/test_string.vcf";
+/// let mut bcf = Reader::from_path(path).expect("Error opening file.");
+///
+/// for (i, record_result) in bcf.records().enumerate() {
+///     let mut record = record_result.expect("Fail to read record");
+///     let mut s = String::new();
+///      for allele in record.alleles() {
+///          for c in allele {
+///              s.push(char::from(*c))
+///          }
+///          s.push(' ')
+///      }
+///     println!("Locus: {}, Alleles: {}", record.pos(), s);  // 0-based position, Alleles
+///     let sample_count = usize::try_from(record.sample_count()).unwrap();
+///     let mut n_ref = vec![0; sample_count];
+///     let mut n_alt = vec![0; sample_count];
+///     let gts = record.genotypes().expect("Error reading genotypes");
+///     for sample_index in 0..sample_count {
+///         // for each sample
+///         for gta in gts.get(sample_index).iter() {
+///             // for each allele
+///             match gta.index() {
+///                 Some(0) => n_ref[sample_index] += 1, // reference allele
+///                 Some(_) => n_alt[sample_index] += 1, // alt allele
+///                 None => break,                       // missing allele
+///             }
+///         }
+///     }
+/// }
+/// ```
 #[derive(Debug)]
 pub struct Record {
     pub inner: *mut htslib::bcf1_t,
@@ -357,6 +396,18 @@ impl Record {
     // TODO fn push_genotypes(&mut self, Genotypes) {}?
 
     /// Get genotypes as vector of one `Genotype` per sample.
+    /// # Example
+    /// Parsing genotype field (`GT` tag) from a VCF record:
+    /// ```
+    /// use crate::rust_htslib::bcf::{Reader, Read};
+    /// let mut vcf = Reader::from_path(&"test/test_string.vcf").expect("Error opening file.");
+    /// let expected = ["./1", "1|1", "0/1", "0|1", "1|.", "1/1"];
+    /// for (rec, exp_gt) in vcf.records().zip(expected.iter()) {
+    ///     let mut rec = rec.expect("Error reading record.");
+    ///     let genotypes = rec.genotypes().expect("Error reading genotypes");
+    ///     assert_eq!(&format!("{}", genotypes.get(0)), exp_gt);
+    /// }
+    /// ```
     pub fn genotypes(&mut self) -> Result<Genotypes<'_>> {
         Ok(Genotypes {
             encoded: self.format(b"GT").integer()?,
@@ -627,7 +678,7 @@ impl genome::AbstractLocus for Record {
                 .rid2name(self.rid().expect("rid not set"))
                 .expect("unable to find rid in header"),
         )
-        .expect("unable to interpret contig name as UTF-8")
+            .expect("unable to interpret contig name as UTF-8")
     }
 
     fn pos(&self) -> u64 {
