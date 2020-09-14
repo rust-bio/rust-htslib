@@ -608,7 +608,7 @@ impl IndexedReader {
     /// * fetch(FetchDefinition::Unmapped) or fetch("*") -> Fetch unmapped (as signified by the 'unmapped' flag in the BAM - might be unreliable with some aligners.
     ///
     /// The start / stop coordinates will take i64 (the correct type as of htslib's 'large
-    /// coordinates' expansion), i32, u32, and u64 (with a possible panic! if the coordinate 
+    /// coordinates' expansion), i32, u32, and u64 (with a possible panic! if the coordinate
     /// won't fit an i64).
     ///
     /// This replaces the old fetch and fetch_str implementations.
