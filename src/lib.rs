@@ -103,7 +103,7 @@
 //! // afterwards, read or pileup in this region
 //! ```
 //!
-//! See 
+//! See
 //! * [`fetch`](bam/struct.IndexedReader.html#method.fetch)
 //! * [`records`](bam/struct.IndexedReader.html#method.records)
 //! * [`read`](bam/struct.IndexedReader.html#method.read)
