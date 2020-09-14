@@ -98,7 +98,7 @@ pub trait Read: Sized {
     /// use rust_htslib::bam::{Error, Read, IndexedReader, Record};
     ///
     /// let mut bam = IndexedReader::from_path(&"test/test.bam").unwrap();
-    /// bam.fetch(0, 1000, 2000); // reads on tid 0, from 1000bp to 2000bp
+    /// bam.fetch((0, 1000, 2000)); // reads on tid 0, from 1000bp to 2000bp
     /// let mut record = Record::new();
     /// loop {
     ///     match bam.read(&mut record){
