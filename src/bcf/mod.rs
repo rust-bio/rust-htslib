@@ -200,7 +200,7 @@ impl IndexedReader {
         unsafe {
             htslib::bcf_sr_set_opt(ser_reader, 0);
         } // 0: BCF_SR_REQUIRE_IDX
-        // Attach a file with the path from the arguments.
+          // Attach a file with the path from the arguments.
         if unsafe { htslib::bcf_sr_add_reader(ser_reader, path.as_ptr()) } >= 0 {
             let header = Rc::new(HeaderView::new(unsafe {
                 htslib::bcf_hdr_dup((*(*ser_reader).readers.offset(0)).header)
@@ -734,11 +734,11 @@ mod tests {
     use crate::bcf::header::Id;
     use crate::bcf::record::Numeric;
     use crate::bcf::Reader;
+    use std::convert::TryFrom;
     use std::fs::File;
     use std::io::prelude::Read as IoRead;
     use std::path::Path;
     use std::str;
-    use std::convert::TryFrom;
 
     fn _test_read<P: AsRef<Path>>(path: &P) {
         let mut bcf = Reader::from_path(path).expect("Error opening file.");
@@ -1116,7 +1116,7 @@ mod tests {
                 true,
                 Format::VCF,
             )
-                .expect("Error opening file.");
+            .expect("Error opening file.");
             let header = writer.header().clone();
 
             // Setup empty record, filled below.
@@ -1325,6 +1325,5 @@ mod tests {
                 }
             }
         }
-
     }
 }

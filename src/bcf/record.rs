@@ -678,7 +678,7 @@ impl genome::AbstractLocus for Record {
                 .rid2name(self.rid().expect("rid not set"))
                 .expect("unable to find rid in header"),
         )
-            .expect("unable to interpret contig name as UTF-8")
+        .expect("unable to interpret contig name as UTF-8")
     }
 
     fn pos(&self) -> u64 {
