@@ -92,7 +92,7 @@
 //! }
 //! ```
 //!
-//! In both cases, indexed BAM files can be seeked for specific regions using [`fetch`](bam/struct.IndexedReader.html#method.fetch)\, constraining either the record iterator or the pileups:
+//! In both cases, indexed BAM files can be seeked for specific regions using [`fetch`](bam/struct.IndexedReader.html#method.fetch), constraining either the record iterator or the pileups:
 //!
 //! ```
 //! use rust_htslib::{bam, bam::Read};
@@ -102,6 +102,12 @@
 //! bam.fetch(("CHROMOSOME_I", 0, 20)).unwrap();
 //! // afterwards, read or pileup in this region
 //! ```
+//!
+//! See 
+//! * [`fetch`](bam/struct.IndexedReader.html#method.fetch)
+//! * [`records`](bam/struct.IndexedReader.html#method.records)
+//! * [`read`](bam/struct.IndexedReader.html#method.read)
+//! * [`pileup`](bam/struct.IndexedReader.html#method.pileup)
 
 #[macro_use]
 extern crate custom_derive;
