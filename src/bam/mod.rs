@@ -349,6 +349,9 @@ impl Drop for Reader {
     }
 }
 
+/// Conversion type for start/stop coordinates
+/// only public because it's leaked by the conversions
+#[doc(hidden)]
 pub struct FetchCoordinate(i64);
 
 //the old sam spec
@@ -379,7 +382,9 @@ impl From<u64> for FetchCoordinate {
     }
 }
 
-///tids may be converted From<>:
+/// Enum for [IndexdReader.fetch()](struct.IndexedReader.html#method.fetch) arguments.
+///
+/// tids may be converted From<>:
 /// * i32 (correct as per spec)
 /// * u32 (because of header.tid. Will panic if above 2^31-1).
 ///
