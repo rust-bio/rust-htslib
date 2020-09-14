@@ -10,6 +10,45 @@ use crate::bam::record::Cigar;
 use crate::htslib;
 use std::collections::HashMap;
 
+pub struct IterAlignedBlockPairs {
+    genome_pos: i64,
+    read_pos: i64,
+    cigar_index: usize,
+    cigar: Vec<Cigar>,
+}
+
+impl Iterator for IterAlignedBlockPairs {
+    type Item = ([i64; 2], [i64; 2]);
+    fn next(&mut self) -> Option<Self::Item> {
+        while self.cigar_index < self.cigar.len() {
+            let entry = self.cigar[self.cigar_index];
+            match entry {
+                Cigar::Match(len) | Cigar::Equal(len) | Cigar::Diff(len) => {
+                    let qstart = self.read_pos;
+                    let qend = qstart + len as i64;
+                    let rstart = self.genome_pos;
+                    let rend = self.genome_pos + len as i64;
+                    self.read_pos += len as i64;
+                    self.genome_pos += len as i64;
+                    self.cigar_index += 1;
+                    return Some(([qstart, qend], [rstart, rend]));
+                }
+                Cigar::Ins(len) | Cigar::SoftClip(len) => {
+                    self.read_pos += len as i64;
+                }
+                Cigar::Del(len) | Cigar::RefSkip(len) => {
+                    self.genome_pos += len as i64;
+                }
+                Cigar::HardClip(_) => {} // no advance
+                Cigar::Pad(_) => panic!("Padding (Cigar::Pad) is not supported."), //padding is only used for multiple sequence alignment
+            }
+            self.cigar_index += 1;
+        }
+        None
+    }
+}
+
+
 pub struct IterAlignedBlocks {
     pos: i64,
     cigar_index: usize,
@@ -185,10 +224,22 @@ pub trait BamRecordExtensions {
     /// this happens on insertions.
     ///
     /// pysam: blocks
+    /// See also: [aligned_block_pairs](#tymethod.aligned_block_pairs) if you need
+    /// the read coordinates as well.
     fn aligned_blocks(&self) -> IterAlignedBlocks;
 
-    /// Iter intron positions (start, stop)
+    ///Iter over <([read_start, read_stop], [genome_start, genome_stop]) blocks
+    ///of continously aligned reads.
     ///
+    ///In contrast to [aligned_blocks](#tymethod.aligned_blocks), this returns
+    ///read and genome coordinates.
+    ///In contrast to aligned_pairs, this returns just the start-stop
+    ///coordinates of each block.
+    ///
+    ///There is not necessarily a gap between blocks in either coordinate space
+    ///(this happens in in-dels).
+    fn aligned_block_pairs(&self) -> IterAlignedBlockPairs;
+
     /// This scans the CIGAR for reference skips
     /// and reports their positions.
     /// It does not inspect the reported regions
@@ -201,6 +252,11 @@ pub trait BamRecordExtensions {
     /// No entry for insertions, deletions or skipped pairs
     ///
     /// pysam: get_aligned_pairs(matches_only = True)
+    ///
+    /// See also [aligned_block_pairs](#tymethod.aligned_block_pairs)
+    /// if you just need start&end coordinates of each block.
+    /// That way you can allocate less memory for the same
+    /// informational content.
     fn aligned_pairs(&self) -> IterAlignedPairs;
 
     /// iter list of read and reference positions on a basepair level.
@@ -274,6 +330,15 @@ impl BamRecordExtensions for bam::Record {
             cigar_index: 0,
         }
     }
+    
+    fn aligned_block_pairs(&self) -> IterAlignedBlockPairs {
+        IterAlignedBlockPairs{
+            genome_pos: self.pos(),
+            read_pos: 0,
+            cigar: self.cigar().take().0,
+            cigar_index: 0,
+        }
+   }
 
     fn aligned_pairs(&self) -> IterAlignedPairs {
         IterAlignedPairs {
@@ -4688,6 +4753,47 @@ mod tests {
         assert_eq!(none_count(&pairs, 0), 4027);
         assert_eq!(some_count(&pairs, 1), 4074);
         assert_eq!(none_count(&pairs, 1), 4);
+    }
+
+    #[test]
+    fn test_aligned_block_pairs() {
+        let mut bam = bam::Reader::from_path("./test/test_spliced_reads.bam").unwrap();
+        let mut it = bam.records();
+
+        let read = it.next().unwrap().unwrap();
+        let pairs: Vec<_> = read.aligned_pairs().collect();
+        let block_pairs: Vec<_> = read.aligned_block_pairs().collect();
+
+        //first coordinates identical
+        assert_eq!(pairs[0][0], block_pairs[0].0[0]); //read
+        assert_eq!(pairs[0][1], block_pairs[0].1[0]); // genomic
+
+        //end coordinates are + 1, so the ranges are the same...
+        assert_eq!(
+            pairs[pairs.len() - 1][0],
+            block_pairs[block_pairs.len() - 1].0[1] - 1
+        );
+        assert_eq!(
+            pairs[pairs.len() - 1][1],
+            block_pairs[block_pairs.len() - 1].1[1] - 1
+        );
+
+        //let's see if they're really identical
+        for read in it {
+            let read = read.unwrap();
+            let pairs: Vec<_> = read.aligned_pairs().collect();
+            let block_pairs: Vec<_> = read.aligned_block_pairs().collect();
+            let mut ii = 0;
+            for ([read_start, read_stop], [genome_start, genome_stop]) in block_pairs {
+                assert_eq!(read_stop - read_start, genome_stop - genome_start);
+                for (read_pos, genome_pos) in (read_start..read_stop).zip(genome_start..genome_stop)
+                {
+                    assert_eq!(pairs[ii][0], read_pos);
+                    assert_eq!(pairs[ii][1], genome_pos);
+                    ii += 1;
+                }
+            }
+        }
     }
 
     #[test]
