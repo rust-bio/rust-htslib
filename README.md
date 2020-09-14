@@ -31,7 +31,7 @@ $ cargo install cross
 $ cross build 				              # will build with GNU GCC or LLVM toolchains
 ```
 
-If you want to run rust-htslib code on AWS lambda, you'll need to statically compile it with MUSL as follows:
+If you want to run rust-htslib code on AWS lambda, [you'll need to statically compile it with MUSL](https://github.com/awslabs/aws-lambda-rust-runtime/issues/17#issuecomment-577490373) as follows:
 
 ```shell
 $ cross build --target x86_64-unknown-linux-musl      # will build with MUSL toolchain
@@ -42,6 +42,8 @@ Alternatively, you can also install it locally by installing the development hea
 ```shell
 $ sudo apt-get install zlib1g-dev libbz2-dev liblzma-dev clang pkg-config
 ```
+
+We provide Dockerfile bases that provide these dependencies. Refer to the [docker](https://github.com/rust-bio/rust-htslib/tree/master/docker) directory in this repository for the latest instructions, including LLVM installation.
 
 On OSX:
 
