@@ -800,7 +800,10 @@ mod tests {
     #[test]
     fn test_writer_set_threads() {
         let path = &"test/test.bcf";
-        let tmp = tempfile::Builder::new().prefix("rust-htslib").tempdir().expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let bcfpath = tmp.path().join("test.bcf");
         let bcf = Reader::from_path(path).expect("Error opening file.");
         let header = Header::from_template_subset(&bcf.header, &[b"NA12878.subsample-0.25-0"])
@@ -825,7 +828,10 @@ mod tests {
     #[test]
     fn test_write() {
         let mut bcf = Reader::from_path(&"test/test_multi.bcf").expect("Error opening file.");
-        let tmp = tempfile::Builder::new().prefix("rust-htslib").tempdir().expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let bcfpath = tmp.path().join("test.bcf");
         println!("{:?}", bcfpath);
         {
@@ -1101,7 +1107,10 @@ mod tests {
     #[test]
     fn test_write_various() {
         // Open reader, then create writer.
-        let tmp = tempfile::Builder::new().prefix("rust-htslib").tempdir().expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let out_path = tmp.path().join("test_various.out.vcf");
 
         let vcf = Reader::from_path(&"test/test_various.vcf").expect("Error opening file.");
@@ -1175,7 +1184,10 @@ mod tests {
     #[test]
     fn test_remove_headers() {
         let vcf = Reader::from_path(&"test/test_headers.vcf").expect("Error opening file.");
-        let tmp = tempfile::Builder::new().prefix("rust-htslib").tempdir().expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let vcfpath = tmp.path().join("test.vcf");
         let mut header = Header::from_template(&vcf.header);
         header

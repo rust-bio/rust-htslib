@@ -1397,7 +1397,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
     fn test_write() {
         let (names, _, seqs, quals, cigars) = gold();
 
-        let tmp = tempfile::Builder::new().prefix("rust-htslib").tempdir().expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let bampath = tmp.path().join("test.bam");
         println!("{:?}", bampath);
         {
@@ -1443,7 +1446,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
     fn test_write_threaded() {
         let (names, _, seqs, quals, cigars) = gold();
 
-        let tmp = tempfile::Builder::new().prefix("rust-htslib").tempdir().expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let bampath = tmp.path().join("test.bam");
         println!("{:?}", bampath);
         {
@@ -1494,7 +1500,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
     fn test_write_shared_tpool() {
         let (names, _, seqs, quals, cigars) = gold();
 
-        let tmp = tempfile::Builder::new().prefix("rust-htslib").tempdir().expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let bampath1 = tmp.path().join("test1.bam");
         let bampath2 = tmp.path().join("test2.bam");
 
@@ -1571,7 +1580,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
         // Verify that BAM headers are transmitted correctly when using an existing BAM as a
         // template for headers.
 
-        let tmp = tempfile::Builder::new().prefix("rust-htslib").tempdir().expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let bampath = tmp.path().join("test.bam");
         println!("{:?}", bampath);
 
@@ -1715,7 +1727,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let bam_records: Vec<Record> = bam_reader.records().map(|v| v.unwrap()).collect();
 
         // New CRAM file
-        let tmp = tempfile::Builder::new().prefix("rust-htslib").tempdir().expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let cram_path = tmp.path().join("test.cram");
 
         // Write BAM records to new CRAM file
@@ -1791,7 +1806,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     #[test]
     fn test_write_compression() {
-        let tmp = tempfile::Builder::new().prefix("rust-htslib").tempdir().expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let input_bam_path = "test/test.bam";
 
         // test levels with decreasing compression factor
