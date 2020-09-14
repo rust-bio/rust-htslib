@@ -349,6 +349,153 @@ impl Drop for Reader {
     }
 }
 
+/// Conversion type for start/stop coordinates
+/// only public because it's leaked by the conversions
+#[doc(hidden)]
+pub struct FetchCoordinate(i64);
+
+//the old sam spec
+impl From<i32> for FetchCoordinate {
+    fn from(coord: i32) -> FetchCoordinate {
+        FetchCoordinate(coord as i64)
+    }
+}
+
+// to support un-annotated literals (type interference fails on those)
+impl From<u32> for FetchCoordinate {
+    fn from(coord: u32) -> FetchCoordinate {
+        FetchCoordinate(coord as i64)
+    }
+}
+
+//the new sam spec
+impl From<i64> for FetchCoordinate {
+    fn from(coord: i64) -> FetchCoordinate {
+        FetchCoordinate(coord)
+    }
+}
+
+//what some of our header methods return
+impl From<u64> for FetchCoordinate {
+    fn from(coord: u64) -> FetchCoordinate {
+        FetchCoordinate(coord.try_into().expect("Coordinate exceeded 2^^63-1"))
+    }
+}
+
+/// Enum for [IndexdReader.fetch()](struct.IndexedReader.html#method.fetch) arguments.
+///
+/// tids may be converted From<>:
+/// * i32 (correct as per spec)
+/// * u32 (because of header.tid. Will panic if above 2^31-1).
+///
+///Coordinates may be (via FetchCoordinate)
+/// * i32 (as of the sam v1 spec)
+/// * i64 (as of the htslib 'large coordinate' extension (even though they are not supported in BAM)
+/// * u32 (because that's what rust literals will default to)
+/// * u64 (because of header.target_len(). Will panic if above 2^^63-1).
+#[derive(Debug)]
+pub enum FetchDefinition<'a> {
+    /// tid, start, stop,
+    Region(i32, i64, i64),
+    /// 'named-reference', start, stop tuple.
+    RegionString(&'a [u8], i64, i64),
+    ///complete reference. May be i32 or u32 (which panics if above 2^31-')
+    CompleteTid(i32),
+    ///complete reference by name (&[u8] or &str)
+    String(&'a [u8]),
+    /// Every read
+    All,
+    /// Only reads with the BAM flag BAM_FUNMAP (which might not be all reads with reference = -1)
+    Unmapped,
+}
+impl<'a, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(i32, X, Y)>
+    for FetchDefinition<'a>
+{
+    fn from(tup: (i32, X, Y)) -> FetchDefinition<'a> {
+        let start: FetchCoordinate = tup.1.into();
+        let stop: FetchCoordinate = tup.2.into();
+        FetchDefinition::Region(tup.0, start.0, stop.0)
+    }
+}
+impl<'a, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(u32, X, Y)>
+    for FetchDefinition<'a>
+{
+    fn from(tup: (u32, X, Y)) -> FetchDefinition<'a> {
+        let start: FetchCoordinate = tup.1.into();
+        let stop: FetchCoordinate = tup.2.into();
+        FetchDefinition::Region(
+            tup.0.try_into().expect("Tid exceeded 2^31-1"),
+            start.0,
+            stop.0,
+        )
+    }
+}
+
+//non tuple impls
+impl<'a> From<i32> for FetchDefinition<'a> {
+    fn from(tid: i32) -> FetchDefinition<'a> {
+        FetchDefinition::CompleteTid(tid)
+    }
+}
+
+impl<'a> From<u32> for FetchDefinition<'a> {
+    fn from(tid: u32) -> FetchDefinition<'a> {
+        let tid: i32 = tid.try_into().expect("tid exceeded 2^31-1");
+        FetchDefinition::CompleteTid(tid)
+    }
+}
+
+impl<'a> From<&'a str> for FetchDefinition<'a> {
+    fn from(s: &'a str) -> FetchDefinition<'a> {
+        FetchDefinition::String(s.as_bytes())
+    }
+}
+
+//also accept &[u8;n] literals
+impl<'a> From<&'a [u8]> for FetchDefinition<'a> {
+    fn from(s: &'a [u8]) -> FetchDefinition<'a> {
+        FetchDefinition::String(s)
+    }
+}
+
+//also accept &[u8;n] literals
+impl<'a, T: AsRef<[u8]>> From<&'a T> for FetchDefinition<'a> {
+    fn from(s: &'a T) -> FetchDefinition<'a> {
+        FetchDefinition::String(s.as_ref())
+    }
+}
+
+impl<'a, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(&'a str, X, Y)>
+    for FetchDefinition<'a>
+{
+    fn from(tup: (&'a str, X, Y)) -> FetchDefinition<'a> {
+        let start: FetchCoordinate = tup.1.into();
+        let stop: FetchCoordinate = tup.2.into();
+        FetchDefinition::RegionString(tup.0.as_bytes(), start.0, stop.0)
+    }
+}
+
+impl<'a, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(&'a [u8], X, Y)>
+    for FetchDefinition<'a>
+{
+    fn from(tup: (&'a [u8], X, Y)) -> FetchDefinition<'a> {
+        let start: FetchCoordinate = tup.1.into();
+        let stop: FetchCoordinate = tup.2.into();
+        FetchDefinition::RegionString(tup.0, start.0, stop.0)
+    }
+}
+
+//also accept &[u8;n] literals
+impl<'a, T: AsRef<[u8]>, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(&'a T, X, Y)>
+    for FetchDefinition<'a>
+{
+    fn from(tup: (&'a T, X, Y)) -> FetchDefinition<'a> {
+        let start: FetchCoordinate = tup.1.into();
+        let stop: FetchCoordinate = tup.2.into();
+        FetchDefinition::RegionString(tup.0.as_ref(), start.0, stop.0)
+    }
+}
+
 #[derive(Debug)]
 pub struct IndexedReader {
     htsfile: *mut htslib::htsFile,
@@ -434,7 +581,85 @@ impl IndexedReader {
         }
     }
 
-    pub fn fetch(&mut self, tid: u32, beg: u64, end: u64) -> Result<()> {
+    /// Define the region from which .read() or .records will retrieve reads.
+    ///
+    /// Both iterating (with [.records()](trait.Read.html#tymethod.records)) and looping without allocation (with [.read()](trait.Read.html#tymethod.read) are a two stage process:
+    /// 1. 'fetch' the region of interest
+    /// 2. iter/loop trough the reads.
+    ///
+    /// Example:
+    /// ```
+    /// use rust_htslib::bam::{IndexedReader, Read};
+    /// let mut bam = IndexedReader::from_path(&"test/test.bam").unwrap();
+    /// bam.fetch(("chrX", 10000, 20000)); // coordinates 10000..20000 on reference named "chrX"
+    /// for read in bam.records() {
+    ///     println!("read name: {:?}", read.unwrap().qname());
+    /// }
+    /// ```
+    ///
+    /// The arguments may be anything that can be converted into a FetchDefinition
+    /// such as
+    ///
+    /// * fetch(tid: u32) -> fetch everything on this reference
+    /// * fetch(reference_name: &[u8] | &str) -> fetch everything on this reference
+    /// * fetch((tid: i32, start: i64, stop: i64)): -> fetch in this region on this tid
+    /// * fetch((reference_name: &[u8] | &str, start: i64, stop: i64) -> fetch in this region on this tid
+    /// * fetch(FetchDefinition::All) or fetch(".") -> Fetch overything
+    /// * fetch(FetchDefinition::Unmapped) or fetch("*") -> Fetch unmapped (as signified by the 'unmapped' flag in the BAM - might be unreliable with some aligners.
+    ///
+    /// The start / stop coordinates will take i64 (the correct type as of htslib's 'large
+    /// coordinates' expansion), i32, u32, and u64 (with a possible panic! if the coordinate
+    /// won't fit an i64).
+    ///
+    /// This replaces the old fetch and fetch_str implementations.
+    pub fn fetch<'a, T: Into<FetchDefinition<'a>>>(&mut self, fetch_definition: T) -> Result<()> {
+        //this 'compile time redirect' safes us
+        //from monomorphing the 'meat' of the fetch function
+        self._inner_fetch(fetch_definition.into())
+    }
+
+    fn _inner_fetch<'a>(&mut self, fetch_definition: FetchDefinition<'a>) -> Result<()> {
+        match fetch_definition {
+            FetchDefinition::Region(tid, start, stop) => {
+                self._fetch_by_coord_tuple(tid, start, stop)
+            }
+            FetchDefinition::RegionString(s, start, stop) => {
+                let tid = self.header().tid(s);
+                match tid {
+                    Some(tid) => self._fetch_by_coord_tuple(tid as i32, start, stop),
+                    None => Err(Error::Fetch),
+                }
+            }
+            FetchDefinition::CompleteTid(tid) => {
+                let len = self.header().target_len(tid as u32);
+                match len {
+                    Some(len) => self._fetch_by_coord_tuple(tid, 0, len as i64),
+                    None => Err(Error::Fetch),
+                }
+            }
+            FetchDefinition::String(s) => {
+                // either a target-name or a samtools style definition
+                let tid = self.header().tid(s);
+                match tid {
+                    Some(tid) => {
+                        //'large position' spec says target len must will fit into an i64.
+                        let len: i64 = self
+                            .header
+                            .target_len(tid as u32)
+                            .unwrap()
+                            .try_into()
+                            .unwrap();
+                        self._fetch_by_coord_tuple(tid as i32, 0, len)
+                    }
+                    None => self._fetch_by_str(&s),
+                }
+            }
+            FetchDefinition::All => self._fetch_by_str(b"."),
+            FetchDefinition::Unmapped => self._fetch_by_str(b"*"),
+        }
+    }
+
+    fn _fetch_by_coord_tuple(&mut self, tid: i32, beg: i64, end: i64) -> Result<()> {
         if let Some(itr) = self.itr {
             unsafe { htslib::hts_itr_destroy(itr) }
         }
@@ -447,13 +672,8 @@ impl IndexedReader {
             Ok(())
         }
     }
-    /// Fetch reads from a region using a samtools region string.
-    /// Region strings are of the format b"chr1:1-1000".
-    ///
-    /// # Arguments
-    ///
-    /// * `region` - A binary string
-    pub fn fetch_str(&mut self, region: &[u8]) -> Result<()> {
+
+    fn _fetch_by_str(&mut self, region: &[u8]) -> Result<()> {
         if let Some(itr) = self.itr {
             unsafe { htslib::hts_itr_destroy(itr) }
         }
@@ -632,7 +852,7 @@ impl Writer {
 
         // sam_hdr_parse does not populate the text and l_text fields of the header_record.
         // This causes non-SQ headers to be dropped in the output BAM file.
-        // To avoid this, we copy the full header to a new C-string that is allocated with malloc,
+        // To avoid this, we copy the All header to a new C-string that is allocated with malloc,
         // and set this into header_record manually.
         let header_record = unsafe {
             let mut header_string = header.to_bytes();
@@ -1172,11 +1392,13 @@ CCCCCCCCCCCCCCCCCCC"[..],
         assert!(bam.header.target_len(tid_1).expect("Expected target len.") == 15072423);
 
         // fetch to position containing reads
-        bam.fetch(tid_1, 0, 2).expect("Expected successful fetch.");
+        bam.fetch((tid_1, 0, 2))
+            .expect("Expected successful fetch.");
         assert!(bam.records().count() == 6);
 
         // compare reads
-        bam.fetch(tid_1, 0, 2).expect("Expected successful fetch.");
+        bam.fetch((tid_1, 0, 2))
+            .expect("Expected successful fetch.");
         for (i, record) in bam.records().enumerate() {
             let rec = record.expect("Expected valid record");
 
@@ -1192,18 +1414,40 @@ CCCCCCCCCCCCCCCCCCC"[..],
         }
 
         // fetch to empty position
-        bam.fetch(tid_2, 1, 1).expect("Expected successful fetch.");
+        bam.fetch((tid_2, 1, 1))
+            .expect("Expected successful fetch.");
         assert!(bam.records().count() == 0);
 
         // repeat with byte-string based fetch
 
         // fetch to position containing reads
-        bam.fetch_str(format!("{}:{}-{}", str::from_utf8(sq_1).unwrap(), 0, 2).as_bytes())
+        // using coordinate-string chr:start-stop
+        bam.fetch(format!("{}:{}-{}", str::from_utf8(sq_1).unwrap(), 0, 2).as_bytes())
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        // using &str and exercising some of the coordinate conversion funcs
+        bam.fetch((str::from_utf8(sq_1).unwrap(), 0 as u32, 2 as u64))
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        // using a slice
+        bam.fetch((&sq_1[..], 0, 2))
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        // using a literal
+        bam.fetch((sq_1, 0, 2)).expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+
+        // using a tid
+        bam.fetch((0i32, 0u32, 2i64))
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        // using a tid:u32
+        bam.fetch((0u32, 0u32, 2i64))
             .expect("Expected successful fetch.");
         assert!(bam.records().count() == 6);
 
         // compare reads
-        bam.fetch_str(format!("{}:{}-{}", str::from_utf8(sq_1).unwrap(), 0, 2).as_bytes())
+        bam.fetch(format!("{}:{}-{}", str::from_utf8(sq_1).unwrap(), 0, 2).as_bytes())
             .expect("Expected successful fetch.");
         for (i, record) in bam.records().enumerate() {
             let rec = record.expect("Expected valid record");
@@ -1220,9 +1464,41 @@ CCCCCCCCCCCCCCCCCCC"[..],
         }
 
         // fetch to empty position
-        bam.fetch_str(format!("{}:{}-{}", str::from_utf8(sq_2).unwrap(), 1, 1).as_bytes())
+        bam.fetch(format!("{}:{}-{}", str::from_utf8(sq_2).unwrap(), 1, 1).as_bytes())
             .expect("Expected successful fetch.");
         assert!(bam.records().count() == 0);
+
+        //all on a tid
+        bam.fetch(0).expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        //all on a tid:u32
+        bam.fetch(0u32).expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+
+        //all on a tid - by &[u8]
+        bam.fetch(sq_1).expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        //all on a tid - by str
+        bam.fetch(str::from_utf8(sq_1).unwrap())
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+
+        //all reads
+        bam.fetch(FetchDefinition::All)
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+
+        //all reads
+        bam.fetch(".").expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+
+        //all unmapped
+        bam.fetch(FetchDefinition::Unmapped)
+            .expect("Expected successful fetch.");
+        assert_eq!(bam.records().count(), 1); // expect one 'truncade record' Record.
+
+        bam.fetch("*").expect("Expected successful fetch.");
+        assert_eq!(bam.records().count(), 1); // expect one 'truncade record' Record.
     }
 
     #[test]
@@ -1630,7 +1906,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         }
         // go back again
         let tid = bam.header().tid(b"CHROMOSOME_I").unwrap();
-        bam.fetch(tid, 0, 5).unwrap();
+        bam.fetch((tid, 0, 5)).unwrap();
         for p in bam.pileup() {
             println!("{}", p.unwrap().pos())
         }
