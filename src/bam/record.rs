@@ -1315,6 +1315,11 @@ impl CigarStringView {
 
         Ok(None)
     }
+
+    /// transfer ownership of the Cigar out of the CigarView
+    pub fn take(self) -> CigarString {
+        self.inner
+    }
 }
 
 impl ops::Deref for CigarStringView {
