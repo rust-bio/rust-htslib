@@ -94,7 +94,6 @@ impl Reader {
             Some(p) => Ok(Self::new(&ffi::CString::new(p).unwrap())?),
             _ => Err(Error::NonUnicodePath),
         }
-        }
     }
 
     /// Create a new reader from a given URL.
