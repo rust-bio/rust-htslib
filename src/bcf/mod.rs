@@ -89,15 +89,11 @@ pub unsafe fn set_threads(hts_file: *mut htslib::htsFile, n_threads: usize) -> R
 impl Reader {
     /// Create a new reader from a given path.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
-        if !path.as_ref().exists() {
-            Err(Error::FileNotFound {
-                path: path.as_ref().to_owned(),
-            })
-        } else {
-            match path.as_ref().to_str() {
-                Some(p) if path.as_ref().exists() => Ok(Self::new(p.as_bytes())?),
-                _ => Err(errors::Error::NonUnicodePath),
-            }
+        match path.as_ref().to_str() {
+            Some(p) if !path.as_ref().exists() => Err(Error::FileNotFound { path: p.into() }),
+            Some(p) => Ok(Self::new(&ffi::CString::new(p).unwrap())?),
+            _ => Err(Error::NonUnicodePath),
+        }
         }
     }
 
