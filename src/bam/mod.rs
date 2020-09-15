@@ -133,7 +133,7 @@ pub trait Read: Sized {
     /// use rust_htslib::bam::{Error, Read, Reader, Record};
     /// use rust_htslib::htslib; // for BAM_F*
     /// let mut bam = Reader::from_path(&"test/test.bam").unwrap();
-    //
+    ///
     /// for read in
     ///     bam.rc_records()
     ///     .map(|x| x.expect("Failure parsing Bam file"))
