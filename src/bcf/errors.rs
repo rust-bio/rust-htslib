@@ -39,7 +39,7 @@ pub enum Error {
     #[error("invalid (non-unique) characters in path")]
     NonUnicodePath,
     #[error("file not found: {path}")]
-    FileNotFound { path: PathBuf },
+    FileNotFound { path: String },
     #[error("failed to set values in BCF/VCF record (out of memory?)")]
     SetValues,
     #[error("failed to remove alleles in BCF/VCF record")]
