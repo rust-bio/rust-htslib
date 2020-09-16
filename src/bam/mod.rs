@@ -36,7 +36,7 @@ use std::convert::TryInto;
 /// # Safety
 ///
 /// Implementation for `Read::set_threads` and `Writer::set_threads`.
-pub unsafe fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
+unsafe fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
     assert!(n_threads != 0, "n_threads must be > 0");
 
     if htslib::hts_set_threads(htsfile, n_threads as i32) != 0 {
@@ -46,7 +46,7 @@ pub unsafe fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Re
     }
 }
 
-pub unsafe fn set_thread_pool(htsfile: *mut htslib::htsFile, tpool: &ThreadPool) -> Result<()> {
+unsafe fn set_thread_pool(htsfile: *mut htslib::htsFile, tpool: &ThreadPool) -> Result<()> {
     let mut b = tpool.handle.borrow_mut();
 
     if htslib::hts_set_thread_pool(htsfile, &mut b.inner as *mut _) != 0 {

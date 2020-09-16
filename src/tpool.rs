@@ -44,7 +44,7 @@ pub struct InnerThreadPool {
 
 impl Drop for InnerThreadPool {
     fn drop(&mut self) {
-        if self.inner.pool != std::ptr::null_mut() {
+        if !self.inner.pool.is_null() {
             unsafe {
                 htslib::hts_tpool_destroy(self.inner.pool);
             }
