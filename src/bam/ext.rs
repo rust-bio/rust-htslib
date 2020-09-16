@@ -48,7 +48,6 @@ impl Iterator for IterAlignedBlockPairs {
     }
 }
 
-
 pub struct IterAlignedBlocks {
     pos: i64,
     cigar_index: usize,
@@ -330,15 +329,15 @@ impl BamRecordExtensions for bam::Record {
             cigar_index: 0,
         }
     }
-    
+
     fn aligned_block_pairs(&self) -> IterAlignedBlockPairs {
-        IterAlignedBlockPairs{
+        IterAlignedBlockPairs {
             genome_pos: self.pos(),
             read_pos: 0,
             cigar: self.cigar().take().0,
             cigar_index: 0,
         }
-   }
+    }
 
     fn aligned_pairs(&self) -> IterAlignedPairs {
         IterAlignedPairs {
