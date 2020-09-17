@@ -59,7 +59,7 @@ pub enum Error {
     BamInvalidRecord,
     #[error("truncated record in SAM/BAM/CRAM file")]
     BamTruncatedRecord,
-    #[error("format of SAM files are not indexable")]
+    #[error("format not indexable by htslib (format is detected as something else than SAM/BAM/CRAM)")]
     NotIndexable,
     #[error("failed to write BAM/CRAM index (out of disk space?)")]
     WriteIndex,
