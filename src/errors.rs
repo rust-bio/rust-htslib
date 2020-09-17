@@ -22,6 +22,8 @@ pub enum Error {
     UnknownSequence { sequence: String },
     #[error("error setting threads for file reading")]
     SetThreads,
+    #[error("failed to create htslib thread pool")]
+    ThreadPool,
 
     // Errors for faidx
     #[error("The given position is too large to be converted to i64")]
@@ -94,7 +96,4 @@ pub enum Error {
     SetValues,
     #[error("failed to remove alleles in BCF/VCF record")]
     RemoveAlleles,
-
-    #[error("failed to create htslib thread pool")]
-    ThreadPool,
 }
