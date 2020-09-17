@@ -79,7 +79,7 @@ impl RecordBuffer {
                 || self.start().unwrap() > window_start
             {
                 let end = self.reader.header.target_len(tid).unwrap();
-                self.reader.fetch(tid, window_start, end)?;
+                self.reader.fetch((tid, window_start, end))?;
                 deleted = self.inner.len();
                 self.inner.clear();
             } else {
