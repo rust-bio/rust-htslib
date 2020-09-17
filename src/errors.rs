@@ -47,7 +47,7 @@ pub enum Error {
     UnexpectedCigarOperation { msg: String },
     #[error("error parsing SAM record: {rec}")]
     ParseSAM { rec: String },
-    #[error("invalid reference path {path}")]
+    #[error("invalid path to CRAM-reference {path}")]
     InvalidReferencePath { path: PathBuf },
     #[error("invalid compression level {level}")]
     InvalidCompressionLevel { level: u32 },
@@ -59,7 +59,9 @@ pub enum Error {
     BamInvalidRecord,
     #[error("truncated record in SAM/BAM/CRAM file")]
     BamTruncatedRecord,
-    #[error("format not indexable by htslib (format is detected as something else than SAM/BAM/CRAM)")]
+    #[error(
+        "format not indexable by htslib (format is detected as something else than SAM/BAM/CRAM)"
+    )]
     NotIndexable,
     #[error("failed to write BAM/CRAM index (out of disk space?)")]
     WriteIndex,
