@@ -20,7 +20,7 @@ pub enum Error {
     GenomicSeek { contig: String, start: u64 },
     #[error("sequence {sequence} not found in index")]
     UnknownSequence { sequence: String },
-    #[error("error setting threads for for file reading")]
+    #[error("error setting threads for file reading")]
     SetThreads,
 
     // Errors for faidx
@@ -32,7 +32,7 @@ pub enum Error {
     NoIter,
     #[error("truncated tabix record")]
     TabixTruncatedRecord,
-    #[error("invTabixalid tabix index")]
+    #[error("invalid tabix index")]
     TabixInvalidIndex,
 
     // Errors for BAM
