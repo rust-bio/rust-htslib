@@ -3,6 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::cmp::Ordering;
 use std::collections::{vec_deque, VecDeque};
 use std::mem;
 
@@ -131,26 +132,30 @@ impl RecordBuffer {
             }
             let pos = rec.pos() as u64;
             if let Some(rec_rid) = rec.rid() {
-                if rec_rid == rid {
-                    if pos >= end {
-                        // Record is beyond our window. Store it anyways but stop.
-                        self.overflow = Some(rec);
+                match rec_rid.cmp(&rid) {
+                    Ordering::Equal => {
+                        if pos >= end {
+                            // Record is beyond our window. Store it anyways but stop.
+                            self.overflow = Some(rec);
+                            break;
+                        } else if pos >= start {
+                            // Record is within our window.
+                            self.ringbuffer.push_back(rec);
+                            added += 1;
+                        } else {
+                            // Record is upstream of our window, ignore it
+                            continue;
+                        }
+                    }
+                    Ordering::Greater => {
+                        // record comes from next rid. Store it in second buffer but stop filling.
+                        self.ringbuffer2.push_back(rec);
                         break;
-                    } else if pos >= start {
-                        // Record is within our window.
-                        self.ringbuffer.push_back(rec);
-                        added += 1;
-                    } else {
-                        // Record is upstream of our window, ignore it
+                    }
+                    _ => {
+                        // Record comes from previous rid. Ignore it.
                         continue;
                     }
-                } else if rec_rid > rid {
-                    // record comes from next rid. Store it in second buffer but stop filling.
-                    self.ringbuffer2.push_back(rec);
-                    break;
-                } else {
-                    // Record comes from previous rid. Ignore it.
-                    continue;
                 }
             } else {
                 // skip records without proper rid
