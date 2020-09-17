@@ -127,8 +127,8 @@ extern crate serde_json;
 
 pub mod bam;
 pub mod bcf;
-pub mod errors;
 pub mod bgzf;
+pub mod errors;
 pub mod faidx;
 pub mod htslib;
 pub mod tbx;

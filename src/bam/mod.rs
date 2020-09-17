@@ -685,7 +685,7 @@ impl Writer {
     /// * `record` - the record to write
     pub fn write(&mut self, record: &record::Record) -> Result<()> {
         if unsafe { htslib::sam_write1(self.f, self.header.inner(), record.inner_ptr()) } == -1 {
-            Err(Error::Write)
+            Err(Error::WriteRecord)
         } else {
             Ok(())
         }

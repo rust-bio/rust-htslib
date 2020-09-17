@@ -658,7 +658,7 @@ impl Writer {
     /// - `record` - The `Record` to write.
     pub fn write(&mut self, record: &record::Record) -> Result<()> {
         if unsafe { htslib::bcf_write(self.inner, self.header.inner, record.inner) } == -1 {
-            Err(Error::Write)
+            Err(Error::WriteRecord)
         } else {
             Ok(())
         }

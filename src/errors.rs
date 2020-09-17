@@ -25,6 +25,9 @@ pub enum Error {
     #[error("failed to create htslib thread pool")]
     ThreadPool,
 
+    #[error("failed to write BAM/BCF record (out of disk space?)")]
+    WriteRecord,
+
     // Errors for faidx
     #[error("The given position is too large to be converted to i64")]
     PositionTooLarge,
@@ -52,8 +55,6 @@ pub enum Error {
     BamOpen { target: String },
     #[error("unable to open SAM/BAM/CRAM index for {target}")]
     BamInvalidIndex { target: String },
-    #[error("failed to write record (out of disk space?)")]
-    Write,
     #[error("invalid record in SAM/BAM/CRAM file")]
     BamInvalidRecord,
     #[error("truncated record in SAM/BAM/CRAM file")]
