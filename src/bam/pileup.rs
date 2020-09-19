@@ -162,7 +162,7 @@ impl<'a, R: bam::Read> Iterator for Pileups<'a, R> {
         let inner = unsafe { htslib::bam_plp_auto(self.itr, &mut tid, &mut pos, &mut depth) };
 
         match inner.is_null() {
-            true if depth == -1 => Some(Err(Error::Pileup)),
+            true if depth == -1 => Some(Err(Error::BamPileup)),
             true => None,
             false => Some(Ok(Pileup {
                 inner,

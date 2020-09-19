@@ -296,7 +296,7 @@ impl Read for Reader {
                     }
                 }
             }
-            _ => Err(Error::NoIter),
+            _ => Err(Error::TabixNoIter),
         }
     }
 

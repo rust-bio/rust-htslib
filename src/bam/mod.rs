@@ -75,7 +75,7 @@ pub unsafe fn set_fai_filename<P: AsRef<Path>>(
     if htslib::hts_set_fai_filename(htsfile, c_str.as_ptr()) == 0 {
         Ok(())
     } else {
-        Err(Error::InvalidReferencePath { path: p.to_owned() })
+        Err(Error::BamInvalidReferencePath { path: p.to_owned() })
     }
 }
 
@@ -940,7 +940,7 @@ impl Writer {
             )
         } {
             0 => Ok(()),
-            _ => Err(Error::InvalidCompressionLevel { level }),
+            _ => Err(Error::BamInvalidCompressionLevel { level }),
         }
     }
 }
@@ -967,7 +967,7 @@ impl CompressionLevel {
             CompressionLevel::Fastest => Ok(1),
             CompressionLevel::Maximum => Ok(9),
             CompressionLevel::Level(i @ 0..=9) => Ok(i),
-            CompressionLevel::Level(i) => Err(Error::InvalidCompressionLevel { level: i }),
+            CompressionLevel::Level(i) => Err(Error::BamInvalidCompressionLevel { level: i }),
         }
     }
 }

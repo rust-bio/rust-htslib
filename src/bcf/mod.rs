@@ -125,7 +125,7 @@ impl Read for Reader {
                 Ok(true)
             }
             -1 => Ok(false),
-            _ => Err(Error::InvalidRecord),
+            _ => Err(Error::BcfInvalidRecord),
         }
     }
 
@@ -209,7 +209,7 @@ impl IndexedReader {
                 current_region: None,
             })
         } else {
-            Err(Error::Open {
+            Err(Error::BcfOpen {
                 target: path.to_str().unwrap().to_owned(),
             })
         }
@@ -243,7 +243,7 @@ impl Read for IndexedReader {
         match unsafe { htslib::bcf_sr_next_line(self.inner) } {
             0 => {
                 if unsafe { (*self.inner).errnum } != 0 {
-                    Err(Error::InvalidRecord)
+                    Err(Error::BcfInvalidRecord)
                 } else {
                     Ok(false)
                 }
@@ -355,7 +355,7 @@ pub mod synced {
         pub fn new() -> Result<Self> {
             let inner = unsafe { crate::htslib::bcf_sr_init() };
             if inner.is_null() {
-                return Err(Error::AllocationError);
+                return Err(Error::BcfAllocationError);
             }
 
             Ok(SyncedReader {
@@ -389,7 +389,7 @@ pub mod synced {
                         unsafe { crate::htslib::bcf_sr_add_reader(self.inner, p_cstring.as_ptr()) };
 
                     if res == 0 {
-                        return Err(Error::Open {
+                        return Err(Error::BcfOpen {
                             target: p.to_owned(),
                         });
                     }
@@ -428,7 +428,7 @@ pub mod synced {
 
             if num == 0 {
                 if unsafe { (*self.inner).errnum } != 0 {
-                    return Err(Error::InvalidRecord);
+                    return Err(Error::BcfInvalidRecord);
                 }
                 Ok(0)
             } else {
@@ -708,7 +708,7 @@ fn bcf_open(target: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
     let ret = unsafe { htslib::hts_open(p.as_ptr(), c_str.as_ptr()) };
 
     if ret.is_null() {
-        return Err(Error::Open {
+        return Err(Error::BcfOpen {
             target: str::from_utf8(target).unwrap().to_owned(),
         });
     }
@@ -717,7 +717,7 @@ fn bcf_open(target: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
         if !(mode.contains(&b'w')
             || (*ret).format.category == htslib::htsFormatCategory_variant_data)
         {
-            return Err(Error::Open {
+            return Err(Error::BcfOpen {
                 target: str::from_utf8(target).unwrap().to_owned(),
             });
         }

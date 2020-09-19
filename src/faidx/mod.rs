@@ -62,10 +62,10 @@ impl Reader {
     /// * `end` - the end position to return (if smaller than `begin`, the behavior is undefined).
     pub fn fetch_seq<N: AsRef<str>>(&self, name: N, begin: usize, end: usize) -> Result<&[u8]> {
         if begin > i64::MAX as usize {
-            return Err(Error::PositionTooLarge);
+            return Err(Error::FaidxPositionTooLarge);
         }
         if end > i64::MAX as usize {
-            return Err(Error::PositionTooLarge);
+            return Err(Error::FaidxPositionTooLarge);
         }
         let cname = ffi::CString::new(name.as_ref().as_bytes()).unwrap();
         let len_out: i64 = 0;

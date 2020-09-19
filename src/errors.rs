@@ -30,11 +30,11 @@ pub enum Error {
 
     // Errors for faidx
     #[error("The given position is too large to be converted to i64")]
-    PositionTooLarge,
+    FaidxPositionTooLarge,
 
     // Errors for Tbx
     #[error("previous iterator generation failed")]
-    NoIter,
+    TabixNoIter,
     #[error("truncated tabix record")]
     TabixTruncatedRecord,
     #[error("invalid tabix index")]
@@ -42,15 +42,15 @@ pub enum Error {
 
     // Errors for BAM
     #[error("error parsing CIGAR string: {msg}")]
-    ParseCigar { msg: String },
+    BamParseCigar { msg: String },
     #[error("unexpected CIGAR operation: {msg}")]
-    UnexpectedCigarOperation { msg: String },
+    BamUnexpectedCigarOperation { msg: String },
     #[error("error parsing SAM record: {rec}")]
-    ParseSAM { rec: String },
+    BamParseSAM { rec: String },
     #[error("invalid path to CRAM-reference {path}")]
-    InvalidReferencePath { path: PathBuf },
+    BamInvalidReferencePath { path: PathBuf },
     #[error("invalid compression level {level}")]
-    InvalidCompressionLevel { level: u32 },
+    BamInvalidCompressionLevel { level: u32 },
     #[error("unable to open SAM/BAM/CRAM file at {target}")]
     BamOpen { target: String },
     #[error("unable to open SAM/BAM/CRAM index for {target}")]
@@ -59,44 +59,42 @@ pub enum Error {
     BamInvalidRecord,
     #[error("truncated record in SAM/BAM/CRAM file")]
     BamTruncatedRecord,
-    #[error(
-        "format not indexable by htslib (format is detected as something else than SAM/BAM/CRAM)"
-    )]
-    NotIndexable,
+    #[error("format not indexable by htslib (format is detected as something else than SAM/BAM/CRAM)")]
+    BamNotIndexable,
     #[error("failed to write BAM/CRAM index (out of disk space?)")]
-    WriteIndex,
+    BamWriteIndex,
     #[error("failed to build BAM/CRAM index")]
-    BuildIndex,
+    BamBuildIndex,
     #[error("failed to create SAM/BAM/CRAM pileup")]
-    Pileup,
+    BamPileup,
 
     // Errors for BCF
     #[error("error allocating internal data structure for BCF/VCF reader (out of memory?)")]
-    AllocationError,
+    BcfAllocationError,
     #[error("failed to open BCF/VCF from {target:?}")]
-    Open { target: String },
+    BcfOpen { target: String },
     #[error("invalid record in BCF/VCF file")]
-    InvalidRecord,
+    BcfInvalidRecord,
     #[error("tag {tag} undefined in BCF/VCF header")]
-    UndefinedTag { tag: String },
+    BcfUndefinedTag { tag: String },
     #[error("unexpected type for tag {tag} in BCF/VCF file")]
-    UnexpectedType { tag: String },
+    BcfUnexpectedType { tag: String },
     #[error("tag {tag} missing from record {record} in BCF/VCF file")]
-    MissingTag { tag: String, record: String },
+    BcfMissingTag { tag: String, record: String },
     #[error("error setting tag {tag} in BCF/VCF record (out of memory?)")]
-    SetTag { tag: String },
+    BcfSetTag { tag: String },
     #[error("ID {rid} not found in BCF/VCF header")]
-    UnknownRID { rid: u32 },
+    BcfUnknownRID { rid: u32 },
     #[error("contig {contig} not found in BCF/VCF header")]
-    UnknownContig { contig: String },
+    BcfUnknownContig { contig: String },
     #[error("ID {id} not found in BCF/VCF header")]
-    UnknownID { id: String },
+    BcfUnknownID { id: String },
     #[error("sample {name} not found in BCF/VCF header")]
-    UnknownSample { name: String },
+    BcfUnknownSample { name: String },
     #[error("duplicate sample names given for subsetting BCF/VCF")]
-    DuplicateSampleNames,
+    BcfDuplicateSampleNames,
     #[error("failed to set values in BCF/VCF record (out of memory?)")]
-    SetValues,
+    BcfSetValues,
     #[error("failed to remove alleles in BCF/VCF record")]
-    RemoveAlleles,
+    BcfRemoveAlleles,
 }
