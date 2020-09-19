@@ -23,7 +23,7 @@ use std::str;
 
 use url::Url;
 
-use crate::errors::*;
+use crate::errors::{Error, Result};
 use crate::htslib;
 use crate::tpool::ThreadPool;
 use crate::utils::path_as_bytes;
@@ -262,7 +262,8 @@ impl Read for Reader {
     /// # Examples
     ///
     /// ```
-    /// use rust_htslib::bam::{Error, Read, Reader, Record};
+    /// use rust_htslib::errors::Error;
+    /// use rust_htslib::bam::{Read, Reader, Record};
     ///
     /// let mut bam = Reader::from_path(&"test/test.bam")?;
     /// let mut record = Record::new();
