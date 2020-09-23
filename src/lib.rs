@@ -25,15 +25,14 @@
 //! ```
 //! use rust_htslib::{bam, bam::Read};
 //!
-//! fn main() {
-//!     let bam = bam::Reader::from_path(&"test/test.bam").unwrap();
-//!     let header = bam::Header::from_template(bam.header());
 //!
-//!     // print header records to the terminal, akin to samtool
-//!     for (key, records) in header.to_hashmap() {
-//!         for record in records {
-//!             println!("@{}\tSN:{}\tLN:{}", key, record["SN"], record["LN"]);
-//!         }
+//! let bam = bam::Reader::from_path(&"test/test.bam").unwrap();
+//! let header = bam::Header::from_template(bam.header());
+//!
+//! // print header records to the terminal, akin to samtool
+//! for (key, records) in header.to_hashmap() {
+//!     for record in records {
+//!          println!("@{}\tSN:{}\tLN:{}", key, record["SN"], record["LN"]);
 //!     }
 //! }
 //! ```
@@ -92,18 +91,22 @@
 //! }
 //! ```
 //!
-//! In both cases, indexed BAM files can be seeked for specific regions, constraining either the record iterator or the pileups:
+//! In both cases, indexed BAM files can be seeked for specific regions using [`fetch`](bam/struct.IndexedReader.html#method.fetch), constraining either the record iterator or the pileups:
 //!
 //! ```
 //! use rust_htslib::{bam, bam::Read};
 //!
 //! let mut bam = bam::IndexedReader::from_path(&"test/test.bam").unwrap();
 //!
-//! // seek to chr1:50000-100000
-//! let tid = bam.header().tid(b"CHROMOSOME_I").unwrap();
-//! bam.fetch(tid, 0, 20).unwrap();
+//! bam.fetch(("CHROMOSOME_I", 0, 20)).unwrap();
 //! // afterwards, read or pileup in this region
 //! ```
+//!
+//! See
+//! * [`fetch`](bam/struct.IndexedReader.html#method.fetch)
+//! * [`records`](bam/struct.IndexedReader.html#method.records)
+//! * [`read`](bam/struct.IndexedReader.html#method.read)
+//! * [`pileup`](bam/struct.IndexedReader.html#method.pileup)
 
 #[macro_use]
 extern crate custom_derive;
@@ -127,6 +130,8 @@ extern crate serde_json;
 
 pub mod bam;
 pub mod bcf;
+pub mod bgzf;
+pub mod errors;
 pub mod faidx;
 pub mod htslib;
 pub mod tbx;

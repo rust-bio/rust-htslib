@@ -46,25 +46,9 @@ use std::path::Path;
 use std::ptr;
 use url::Url;
 
-pub mod errors;
-
+use crate::errors::{Error, Result};
 use crate::htslib;
-use crate::tbx::errors::{Error, Result};
-
-fn path_as_bytes<'a, P: 'a + AsRef<Path>>(path: P, must_exist: bool) -> Result<Vec<u8>> {
-    if path.as_ref().exists() || !must_exist {
-        Ok(path
-            .as_ref()
-            .to_str()
-            .ok_or(Error::NonUnicodePath)?
-            .as_bytes()
-            .to_owned())
-    } else {
-        Err(Error::FileNotFound {
-            path: path.as_ref().to_owned(),
-        })
-    }
-}
+use crate::utils::path_as_bytes;
 
 /// A trait for a Tabix reader with a read method.
 pub trait Read: Sized {
@@ -158,7 +142,7 @@ impl Reader {
 
         let tbx = unsafe { htslib::tbx_index_load(path.as_ptr()) };
         if tbx.is_null() {
-            return Err(Error::InvalidIndex);
+            return Err(Error::TabixInvalidIndex);
         }
         let mut header = Vec::new();
         let mut buf = htslib::kstring_t {
@@ -296,7 +280,7 @@ impl Read for Reader {
                     if ret == -1 {
                         return Ok(false);
                     } else if ret == -2 {
-                        return Err(Error::TruncatedRecord);
+                        return Err(Error::TabixTruncatedRecord);
                     } else if ret < 0 {
                         panic!("Return value should not be <0 but was: {}", ret);
                     }
@@ -312,7 +296,7 @@ impl Read for Reader {
                     }
                 }
             }
-            _ => Err(Error::NoIter),
+            _ => Err(Error::TabixNoIter),
         }
     }
 

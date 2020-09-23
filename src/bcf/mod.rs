@@ -19,15 +19,13 @@ use std::str;
 use url::Url;
 
 pub mod buffer;
-pub mod errors;
 pub mod header;
 pub mod record;
 
 use crate::bcf::header::{HeaderView, SampleSubset};
+use crate::errors::{Error, Result};
 use crate::htslib;
 
-pub use crate::bcf::errors::Error;
-pub use crate::bcf::errors::Result;
 pub use crate::bcf::header::{Header, HeaderRecord};
 pub use crate::bcf::record::Record;
 
@@ -91,7 +89,7 @@ impl Reader {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         match path.as_ref().to_str() {
             Some(p) if path.as_ref().exists() => Ok(Self::new(p.as_bytes())?),
-            _ => Err(errors::Error::NonUnicodePath),
+            _ => Err(Error::NonUnicodePath),
         }
     }
 
@@ -127,7 +125,7 @@ impl Read for Reader {
                 Ok(true)
             }
             -1 => Ok(false),
-            _ => Err(Error::InvalidRecord),
+            _ => Err(Error::BcfInvalidRecord),
         }
     }
 
@@ -211,7 +209,7 @@ impl IndexedReader {
                 current_region: None,
             })
         } else {
-            Err(Error::Open {
+            Err(Error::BcfOpen {
                 target: path.to_str().unwrap().to_owned(),
             })
         }
@@ -229,7 +227,7 @@ impl IndexedReader {
         let contig = self.header.rid2name(rid).unwrap();
         let contig = ffi::CString::new(contig).unwrap();
         if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i64) } != 0 {
-            Err(Error::Seek {
+            Err(Error::GenomicSeek {
                 contig: contig.to_str().unwrap().to_owned(),
                 start,
             })
@@ -245,7 +243,7 @@ impl Read for IndexedReader {
         match unsafe { htslib::bcf_sr_next_line(self.inner) } {
             0 => {
                 if unsafe { (*self.inner).errnum } != 0 {
-                    Err(Error::InvalidRecord)
+                    Err(Error::BcfInvalidRecord)
                 } else {
                     Ok(false)
                 }
@@ -353,12 +351,11 @@ pub mod synced {
     }
 
     // TODO: add interface for setting threads, ensure that the pool is freed properly
-
     impl SyncedReader {
         pub fn new() -> Result<Self> {
             let inner = unsafe { crate::htslib::bcf_sr_init() };
             if inner.is_null() {
-                return Err(errors::Error::AllocationError);
+                return Err(Error::BcfAllocationError);
             }
 
             Ok(SyncedReader {
@@ -392,7 +389,7 @@ pub mod synced {
                         unsafe { crate::htslib::bcf_sr_add_reader(self.inner, p_cstring.as_ptr()) };
 
                     if res == 0 {
-                        return Err(errors::Error::Open {
+                        return Err(Error::BcfOpen {
                             target: p.to_owned(),
                         });
                     }
@@ -404,7 +401,7 @@ pub mod synced {
                     self.headers.push(header);
                     Ok(())
                 }
-                _ => Err(errors::Error::NonUnicodePath),
+                _ => Err(Error::NonUnicodePath),
             }
         }
 
@@ -431,7 +428,7 @@ pub mod synced {
 
             if num == 0 {
                 if unsafe { (*self.inner).errnum } != 0 {
-                    return Err(errors::Error::InvalidRecord);
+                    return Err(Error::BcfInvalidRecord);
                 }
                 Ok(0)
             } else {
@@ -509,7 +506,7 @@ pub mod synced {
                 ffi::CString::new(contig).unwrap()
             };
             if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i64) } != 0 {
-                Err(Error::Seek {
+                Err(Error::GenomicSeek {
                     contig: contig.to_str().unwrap().to_owned(),
                     start,
                 })
@@ -561,7 +558,7 @@ impl Writer {
         if let Some(p) = path.as_ref().to_str() {
             Ok(Self::new(p.as_bytes(), header, uncompressed, format)?)
         } else {
-            Err(errors::Error::NonUnicodePath)
+            Err(Error::NonUnicodePath)
         }
     }
 
@@ -661,7 +658,7 @@ impl Writer {
     /// - `record` - The `Record` to write.
     pub fn write(&mut self, record: &record::Record) -> Result<()> {
         if unsafe { htslib::bcf_write(self.inner, self.header.inner, record.inner) } == -1 {
-            Err(Error::Write)
+            Err(Error::WriteRecord)
         } else {
             Ok(())
         }
@@ -711,7 +708,7 @@ fn bcf_open(target: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
     let ret = unsafe { htslib::hts_open(p.as_ptr(), c_str.as_ptr()) };
 
     if ret.is_null() {
-        return Err(errors::Error::Open {
+        return Err(Error::BcfOpen {
             target: str::from_utf8(target).unwrap().to_owned(),
         });
     }
@@ -720,7 +717,7 @@ fn bcf_open(target: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
         if !(mode.contains(&b'w')
             || (*ret).format.category == htslib::htsFormatCategory_variant_data)
         {
-            return Err(errors::Error::Open {
+            return Err(Error::BcfOpen {
                 target: str::from_utf8(target).unwrap().to_owned(),
             });
         }
@@ -800,7 +797,10 @@ mod tests {
     #[test]
     fn test_writer_set_threads() {
         let path = &"test/test.bcf";
-        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let bcfpath = tmp.path().join("test.bcf");
         let bcf = Reader::from_path(path).expect("Error opening file.");
         let header = Header::from_template_subset(&bcf.header, &[b"NA12878.subsample-0.25-0"])
@@ -825,7 +825,10 @@ mod tests {
     #[test]
     fn test_write() {
         let mut bcf = Reader::from_path(&"test/test_multi.bcf").expect("Error opening file.");
-        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let bcfpath = tmp.path().join("test.bcf");
         println!("{:?}", bcfpath);
         {
@@ -1101,7 +1104,10 @@ mod tests {
     #[test]
     fn test_write_various() {
         // Open reader, then create writer.
-        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let out_path = tmp.path().join("test_various.out.vcf");
 
         let vcf = Reader::from_path(&"test/test_various.vcf").expect("Error opening file.");
@@ -1175,7 +1181,10 @@ mod tests {
     #[test]
     fn test_remove_headers() {
         let vcf = Reader::from_path(&"test/test_headers.vcf").expect("Error opening file.");
-        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let vcfpath = tmp.path().join("test.vcf");
         let mut header = Header::from_template(&vcf.header);
         header
