@@ -6,7 +6,6 @@
 //! Module for working with SAM, BAM, and CRAM files.
 
 pub mod buffer;
-pub mod errors;
 pub mod ext;
 pub mod header;
 pub mod index;
@@ -24,11 +23,12 @@ use std::str;
 
 use url::Url;
 
+use crate::errors::{Error, Result};
 use crate::htslib;
 use crate::tpool::ThreadPool;
+use crate::utils::path_as_bytes;
 
 pub use crate::bam::buffer::RecordBuffer;
-pub use crate::bam::errors::{Error, Result};
 pub use crate::bam::header::Header;
 pub use crate::bam::record::Record;
 use std::convert::TryInto;
@@ -75,7 +75,7 @@ pub unsafe fn set_fai_filename<P: AsRef<Path>>(
     if htslib::hts_set_fai_filename(htsfile, c_str.as_ptr()) == 0 {
         Ok(())
     } else {
-        Err(Error::InvalidReferencePath { path: p.to_owned() })
+        Err(Error::BamInvalidReferencePath { path: p.to_owned() })
     }
 }
 
@@ -95,7 +95,8 @@ pub trait Read: Sized {
     ///
     /// Example:
     /// ```
-    /// use rust_htslib::bam::{Error, Read, IndexedReader, Record};
+    /// use rust_htslib::errors::Error;
+    /// use rust_htslib::bam::{Read, IndexedReader, Record};
     ///
     /// let mut bam = IndexedReader::from_path(&"test/test.bam").unwrap();
     /// bam.fetch((0, 1000, 2000)); // reads on tid 0, from 1000bp to 2000bp
@@ -130,7 +131,8 @@ pub trait Read: Sized {
     ///
     /// Example:
     /// ```
-    /// use rust_htslib::bam::{Error, Read, Reader, Record};
+    /// use rust_htslib::errors::Error;
+    /// use rust_htslib::bam::{Read, Reader, Record};
     /// use rust_htslib::htslib; // for BAM_F*
     /// let mut bam = Reader::from_path(&"test/test.bam").unwrap();
     ///
@@ -182,7 +184,7 @@ pub trait Read: Sized {
         if ret == 0 {
             Ok(())
         } else {
-            Err(Error::Seek)
+            Err(Error::FileSeek)
         }
     }
 
@@ -215,21 +217,6 @@ pub trait Read: Sized {
     ///
     /// * `tpool` - thread pool to use for compression work.
     fn set_thread_pool(&mut self, tpool: &ThreadPool) -> Result<()>;
-}
-
-fn path_as_bytes<'a, P: 'a + AsRef<Path>>(path: P, must_exist: bool) -> Result<Vec<u8>> {
-    if path.as_ref().exists() || !must_exist {
-        Ok(path
-            .as_ref()
-            .to_str()
-            .ok_or(Error::NonUnicodePath)?
-            .as_bytes()
-            .to_owned())
-    } else {
-        Err(Error::FileNotFound {
-            path: path.as_ref().to_owned(),
-        })
-    }
 }
 
 /// A BAM reader.
@@ -333,7 +320,8 @@ impl Read for Reader {
     /// # Examples
     ///
     /// ```
-    /// use rust_htslib::bam::{Error, Read, Reader, Record};
+    /// use rust_htslib::errors::Error;
+    /// use rust_htslib::bam::{Read, Reader, Record};
     ///
     /// let mut bam = Reader::from_path(&"test/test.bam")?;
     /// let mut record = Record::new();
@@ -353,8 +341,8 @@ impl Read for Reader {
             )
         } {
             -1 => Ok(false),
-            -2 => Err(Error::TruncatedRecord),
-            -4 => Err(Error::InvalidRecord),
+            -2 => Err(Error::BamTruncatedRecord),
+            -4 => Err(Error::BamInvalidRecord),
             _ => {
                 record.set_header(Rc::clone(&self.header));
 
@@ -602,7 +590,7 @@ impl IndexedReader {
         let c_str = ffi::CString::new(path).unwrap();
         let idx = unsafe { htslib::sam_index_load(htsfile, c_str.as_ptr()) };
         if idx.is_null() {
-            Err(Error::InvalidIndex {
+            Err(Error::BamInvalidIndex {
                 target: str::from_utf8(path).unwrap().to_owned(),
             })
         } else {
@@ -630,7 +618,7 @@ impl IndexedReader {
             htslib::sam_index_load2(htsfile, c_str_path.as_ptr(), c_str_index_path.as_ptr())
         };
         if idx.is_null() {
-            Err(Error::InvalidIndex {
+            Err(Error::BamInvalidIndex {
                 target: str::from_utf8(path).unwrap().to_owned(),
             })
         } else {
@@ -791,8 +779,8 @@ impl Read for IndexedReader {
             Some(itr) => {
                 match itr_next(self.htsfile, itr, &mut record.inner as *mut htslib::bam1_t) {
                     -1 => Ok(false),
-                    -2 => Err(Error::TruncatedRecord),
-                    -4 => Err(Error::InvalidRecord),
+                    -2 => Err(Error::BamTruncatedRecord),
+                    -4 => Err(Error::BamInvalidRecord),
                     _ => {
                         record.set_header(Rc::clone(&self.header));
 
@@ -990,7 +978,7 @@ impl Writer {
     /// * `record` - the record to write
     pub fn write(&mut self, record: &record::Record) -> Result<()> {
         if unsafe { htslib::sam_write1(self.f, self.header.inner(), record.inner_ptr()) } == -1 {
-            Err(Error::Write)
+            Err(Error::WriteRecord)
         } else {
             Ok(())
         }
@@ -1025,7 +1013,7 @@ impl Writer {
             )
         } {
             0 => Ok(()),
-            _ => Err(Error::InvalidCompressionLevel { level }),
+            _ => Err(Error::BamInvalidCompressionLevel { level }),
         }
     }
 }
@@ -1052,7 +1040,7 @@ impl CompressionLevel {
             CompressionLevel::Fastest => Ok(1),
             CompressionLevel::Maximum => Ok(9),
             CompressionLevel::Level(i @ 0..=9) => Ok(i),
-            CompressionLevel::Level(i) => Err(Error::InvalidCompressionLevel { level: i }),
+            CompressionLevel::Level(i) => Err(Error::BamInvalidCompressionLevel { level: i }),
         }
     }
 }
@@ -1144,7 +1132,7 @@ fn hts_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
     let c_str = ffi::CString::new(mode).unwrap();
     let ret = unsafe { htslib::hts_open(cpath.as_ptr(), c_str.as_ptr()) };
     if ret.is_null() {
-        Err(Error::Open {
+        Err(Error::BamOpen {
             target: path.to_owned(),
         })
     } else {
@@ -1156,7 +1144,7 @@ fn hts_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
                     && (*ret).format.format != htslib::htsExactFormat_bam
                     && (*ret).format.format != htslib::htsExactFormat_cram
                 {
-                    return Err(Error::Open {
+                    return Err(Error::BamOpen {
                         target: path.to_owned(),
                     });
                 }

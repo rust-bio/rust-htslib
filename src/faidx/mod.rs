@@ -13,23 +13,9 @@ use url::Url;
 
 use crate::htslib;
 
-pub mod errors;
-pub use errors::{Error, Result};
+use crate::errors::{Error, Result};
+use crate::utils::path_as_bytes;
 
-fn path_as_bytes<'a, P: 'a + AsRef<Path>>(path: P, must_exist: bool) -> Result<Vec<u8>> {
-    if path.as_ref().exists() || !must_exist {
-        Ok(path
-            .as_ref()
-            .to_str()
-            .ok_or(Error::NonUnicodePath)?
-            .as_bytes()
-            .to_owned())
-    } else {
-        Err(Error::FileNotFound {
-            path: path.as_ref().to_owned(),
-        })
-    }
-}
 /// A Fasta reader.
 #[derive(Debug)]
 pub struct Reader {
@@ -76,10 +62,10 @@ impl Reader {
     /// * `end` - the end position to return (if smaller than `begin`, the behavior is undefined).
     pub fn fetch_seq<N: AsRef<str>>(&self, name: N, begin: usize, end: usize) -> Result<&[u8]> {
         if begin > std::i64::MAX as usize {
-            return Err(Error::PositionTooLarge);
+            return Err(Error::FaidxPositionTooLarge);
         }
         if end > std::i64::MAX as usize {
-            return Err(Error::PositionTooLarge);
+            return Err(Error::FaidxPositionTooLarge);
         }
         let cname = ffi::CString::new(name.as_ref().as_bytes()).unwrap();
         let len_out: i64 = 0;
@@ -210,6 +196,6 @@ mod tests {
         let r = open_reader();
         let position_too_large = i64::MAX as usize;
         let res = r.fetch_seq("chr1", position_too_large, position_too_large + 1);
-        assert_eq!(res, Err(Error::PositionTooLarge));
+        assert_eq!(res, Err(Error::FaidxPositionTooLarge));
     }
 }

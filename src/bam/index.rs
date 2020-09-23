@@ -8,7 +8,7 @@
 use std::path::Path;
 use std::ptr;
 
-use crate::bam::errors::{Error, Result};
+use crate::errors::{Error, Result};
 use crate::htslib;
 use crate::utils;
 
@@ -49,12 +49,12 @@ pub fn build<P: AsRef<Path>>(
     };
     match ret {
         0 => Ok(()),
-        -1 => Err(Error::BuildIndex),
-        -2 => Err(Error::Open {
+        -1 => Err(Error::BamBuildIndex),
+        -2 => Err(Error::BamOpen {
             target: bam_path.as_ref().to_str().unwrap().to_owned(),
         }),
-        -3 => Err(Error::NotIndexable),
-        -4 => Err(Error::WriteIndex),
+        -3 => Err(Error::BamNotIndexable),
+        -4 => Err(Error::BamWriteIndex),
         e => panic!("unexpected error code from sam_index_build3: {}", e),
     }
 }

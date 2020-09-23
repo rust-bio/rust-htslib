@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::sync::Arc;
 
-pub use crate::bam::errors::{Error, Result};
+pub use crate::errors::{Error, Result};
 use crate::htslib;
 
 /// An HTSlib thread pool. Create a thread pool and use `set_thread_pool()` methods

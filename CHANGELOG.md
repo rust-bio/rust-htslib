@@ -4,6 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [next]
 - BREAKING: Rename feature 'serde' as 'serde_feature' (for technical reasons)
+- BREAKING: Consolidate module-wide errors into a crate-wide error module
 
 ## [0.32.0] - 2020-07-09
 ### Changes
