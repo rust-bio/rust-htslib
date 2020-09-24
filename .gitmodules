@@ -1,3 +1,3 @@
 [submodule "htslib"]
 	path = hts-sys/htslib
-	url = https://github.com/samtools/htslib.git
+	url = https://github.com/brainstorm/htslib.git
