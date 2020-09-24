@@ -101,10 +101,10 @@ pub trait Read: Sized {
     /// let mut bam = IndexedReader::from_path(&"test/test.bam").unwrap();
     /// bam.fetch((0, 1000, 2000)); // reads on tid 0, from 1000bp to 2000bp
     /// let mut record = Record::new();
-    /// while Some(r) = bam.read(&mut record) {
-    ///     match r {
-    ///         Ok(record) => {
-    ///             println!("Read sequence: {:?}", record.seq().as_bytes());
+    /// while Some(_) = bam.read(&mut record) {
+    ///     match record {
+    ///         Ok(r) => {
+    ///             println!("Read sequence: {:?}", r.seq().as_bytes());
     ///         },
     ///         Err(_) => panic!("BAM parsing failed...")
     ///     }
