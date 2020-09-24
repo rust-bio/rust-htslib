@@ -1095,9 +1095,9 @@ impl<'a, R: Read> Iterator for RcRecords<'a, R> {
         };
 
         match self.reader.read(&mut record) {
-            Ok(false) => None,
-            Ok(true) => Some(Ok(Rc::clone(&self.record))),
-            Err(err) => Some(Err(err)),
+            None => None,
+            Some(Ok(_)) => Some(Ok(Rc::clone(&self.record))),
+            Some(Err(err)) => Some(Err(err)),
         }
     }
 }
