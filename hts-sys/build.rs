@@ -60,13 +60,15 @@ const FILES: &[&str] = &[
 fn main() {
 
     let out = PathBuf::from(env::var("OUT_DIR").unwrap());
-    if !out.join("htslib").exists() {
-        println!("copying...");
-        copy_directory("htslib", &out).unwrap();
+    let htslib_copy = out.join("htslib");
+
+    if htslib_copy.exists() {
+        std::fs::remove_dir_all(htslib_copy).unwrap();
     }
+    copy_directory("htslib", &out).unwrap();
     
     let mut cfg = cc::Build::new();
-    
+
     // default files
     let out_htslib = out.join("htslib");
     let htslib = PathBuf::from("htslib");
