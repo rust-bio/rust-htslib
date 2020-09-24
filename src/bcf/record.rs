@@ -15,9 +15,9 @@ use std::str;
 
 use bio_types::genome;
 
-use crate::bcf::errors::Result;
 use crate::bcf::header::{HeaderView, Id};
 use crate::bcf::Error;
+use crate::errors::Result;
 use crate::htslib;
 
 const MISSING_INTEGER: i32 = i32::MIN;
@@ -188,7 +188,7 @@ impl Record {
         {
             Ok(())
         } else {
-            Err(Error::SetValues)
+            Err(Error::BcfSetValues)
         }
     }
 
@@ -201,7 +201,7 @@ impl Record {
         {
             Ok(())
         } else {
-            Err(Error::SetValues)
+            Err(Error::BcfSetValues)
         }
     }
 
@@ -213,7 +213,7 @@ impl Record {
         {
             Ok(())
         } else {
-            Err(Error::SetValues)
+            Err(Error::BcfSetValues)
         }
     }
 
@@ -325,7 +325,7 @@ impl Record {
         {
             Ok(())
         } else {
-            Err(Error::SetValues)
+            Err(Error::BcfSetValues)
         }
     }
 
@@ -429,7 +429,7 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(Error::SetTag {
+                Err(Error::BcfSetTag {
                     tag: str::from_utf8(tag).unwrap().to_owned(),
                 })
             }
@@ -474,7 +474,7 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(Error::SetTag {
+                Err(Error::BcfSetTag {
                     tag: str::from_utf8(tag).unwrap().to_owned(),
                 })
             }
@@ -516,7 +516,7 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(Error::SetTag {
+                Err(Error::BcfSetTag {
                     tag: str::from_utf8(tag).unwrap().to_owned(),
                 })
             }
@@ -571,7 +571,7 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(Error::SetTag {
+                Err(Error::BcfSetTag {
                     tag: str::from_utf8(tag).unwrap().to_owned(),
                 })
             }
@@ -581,7 +581,7 @@ impl Record {
     /// Remove unused alleles.
     pub fn trim_alleles(&mut self) -> Result<()> {
         match unsafe { htslib::bcf_trim_alleles(self.header().inner, self.inner) } {
-            -1 => Err(Error::RemoveAlleles),
+            -1 => Err(Error::BcfRemoveAlleles),
             _ => Ok(()),
         }
     }
@@ -604,7 +604,7 @@ impl Record {
         }
 
         match ret {
-            -1 => Err(Error::RemoveAlleles),
+            -1 => Err(Error::BcfRemoveAlleles),
             _ => Ok(()),
         }
     }
@@ -758,8 +758,8 @@ impl<'a> Info<'a> {
         self.record.buffer_len = n;
 
         match ret {
-            -1 => Err(Error::UndefinedTag { tag: self.desc() }),
-            -2 => Err(Error::UnexpectedType { tag: self.desc() }),
+            -1 => Err(Error::BcfUndefinedTag { tag: self.desc() }),
+            -2 => Err(Error::BcfUnexpectedType { tag: self.desc() }),
             -3 => Ok(None),
             ret => Ok(Some((n as usize, ret))),
         }
@@ -879,9 +879,9 @@ impl<'a> Format<'a> {
         };
         self.record.buffer_len = n;
         match ret {
-            -1 => Err(Error::UndefinedTag { tag: self.desc() }),
-            -2 => Err(Error::UnexpectedType { tag: self.desc() }),
-            -3 => Err(Error::MissingTag {
+            -1 => Err(Error::BcfUndefinedTag { tag: self.desc() }),
+            -2 => Err(Error::BcfUnexpectedType { tag: self.desc() }),
+            -3 => Err(Error::BcfMissingTag {
                 tag: self.desc(),
                 record: self.record.desc(),
             }),

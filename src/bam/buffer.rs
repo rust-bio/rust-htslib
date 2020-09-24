@@ -8,8 +8,8 @@ use std::rc::Rc;
 use std::str;
 
 use crate::bam;
-use crate::bam::errors::{Error, Result};
 use crate::bam::Read;
+use crate::errors::{Error, Result};
 
 /// A buffer for BAM records. This allows access regions in a sorted BAM file while iterating
 /// over it in a single pass.
@@ -79,7 +79,7 @@ impl RecordBuffer {
                 || self.start().unwrap() > window_start
             {
                 let end = self.reader.header.target_len(tid).unwrap();
-                self.reader.fetch(tid, window_start, end)?;
+                self.reader.fetch((tid, window_start, end))?;
                 deleted = self.inner.len();
                 self.inner.clear();
             } else {

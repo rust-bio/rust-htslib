@@ -6,7 +6,6 @@
 //! Module for working with SAM, BAM, and CRAM files.
 
 pub mod buffer;
-pub mod errors;
 pub mod ext;
 pub mod header;
 pub mod index;
@@ -24,11 +23,12 @@ use std::str;
 
 use url::Url;
 
+use crate::errors::{Error, Result};
 use crate::htslib;
 use crate::tpool::ThreadPool;
+use crate::utils::path_as_bytes;
 
 pub use crate::bam::buffer::RecordBuffer;
-pub use crate::bam::errors::{Error, Result};
 pub use crate::bam::header::Header;
 pub use crate::bam::record::Record;
 use std::convert::TryInto;
@@ -36,7 +36,7 @@ use std::convert::TryInto;
 /// # Safety
 ///
 /// Implementation for `Read::set_threads` and `Writer::set_threads`.
-pub unsafe fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
+unsafe fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
     assert!(n_threads != 0, "n_threads must be > 0");
 
     if htslib::hts_set_threads(htsfile, n_threads as i32) != 0 {
@@ -46,7 +46,7 @@ pub unsafe fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Re
     }
 }
 
-pub unsafe fn set_thread_pool(htsfile: *mut htslib::htsFile, tpool: &ThreadPool) -> Result<()> {
+unsafe fn set_thread_pool(htsfile: *mut htslib::htsFile, tpool: &ThreadPool) -> Result<()> {
     let mut b = tpool.handle.borrow_mut();
 
     if htslib::hts_set_thread_pool(htsfile, &mut b.inner as *mut _) != 0 {
@@ -75,7 +75,7 @@ pub unsafe fn set_fai_filename<P: AsRef<Path>>(
     if htslib::hts_set_fai_filename(htsfile, c_str.as_ptr()) == 0 {
         Ok(())
     } else {
-        Err(Error::InvalidReferencePath { path: p.to_owned() })
+        Err(Error::BamInvalidReferencePath { path: p.to_owned() })
     }
 }
 
@@ -92,13 +92,70 @@ pub trait Read: Sized {
     /// # Returns
     ///
     /// Some(Ok(())) if the record was read and None if no more records to read
+    ///
+    /// Example:
+    /// ```
+    /// use rust_htslib::errors::Error;
+    /// use rust_htslib::bam::{Read, IndexedReader, Record};
+    ///
+    /// let mut bam = IndexedReader::from_path(&"test/test.bam").unwrap();
+    /// bam.fetch((0, 1000, 2000)); // reads on tid 0, from 1000bp to 2000bp
+    /// let mut record = Record::new();
+    /// while Some(r) = bam.read(&mut record) {
+    ///     match r {
+    ///         Ok(record) => {
+    ///             println!("Read sequence: {:?}", record.seq().as_bytes());
+    ///         },
+    ///         Err(_) => panic!("BAM parsing failed...")
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Consider using [`rc_records`](#tymethod.rc_records) instead.
     fn read(&mut self, record: &mut record::Record) -> Option<Result<()>>;
 
     /// Iterator over the records of the seeked region.
     /// Note that, while being convenient, this is less efficient than pre-allocating a
     /// `Record` and reading into it with the `read` method, since every iteration involves
     /// the allocation of a new `Record`.
+    ///
+    /// This is about 10% slower than record in micro benchmarks.
+    ///
+    /// Consider using [`rc_records`](#tymethod.rc_records) instead.
     fn records(&mut self) -> Records<'_, Self>;
+
+    /// Records iterator using an Rc to avoid allocating a Record each turn.
+    /// This is about 1% slower than the [`read`](#tymethod.read) based API in micro benchmarks,
+    /// but has nicer ergonomics (and might not actually be slower in your applications).
+    ///
+    /// Example:
+    /// ```
+    /// use rust_htslib::errors::Error;
+    /// use rust_htslib::bam::{Read, Reader, Record};
+    /// use rust_htslib::htslib; // for BAM_F*
+    /// let mut bam = Reader::from_path(&"test/test.bam").unwrap();
+    ///
+    /// for read in
+    ///     bam.rc_records()
+    ///     .map(|x| x.expect("Failure parsing Bam file"))
+    ///     .filter(|read|
+    ///         read.flags()
+    ///          & (htslib::BAM_FUNMAP
+    ///              | htslib::BAM_FSECONDARY
+    ///              | htslib::BAM_FQCFAIL
+    ///              | htslib::BAM_FDUP) as u16
+    ///          == 0
+    ///     )
+    ///     .filter(|read| !read.is_reverse()) {
+    ///     println!("Found a forward read: {:?}", read.qname());
+    /// }
+    ///
+    /// //or to add the read qnames into a Vec
+    /// let collected: Vec<_> = bam.rc_records().map(|read| read.unwrap().qname().to_vec()).collect();
+    ///
+    ///
+    /// ```
+    fn rc_records(&mut self) -> RcRecords<'_, Self>;
 
     /// Iterator over pileups.
     fn pileup(&mut self) -> pileup::Pileups<'_, Self>;
@@ -126,7 +183,7 @@ pub trait Read: Sized {
         if ret == 0 {
             Ok(())
         } else {
-            Err(Error::Seek)
+            Err(Error::FileSeek)
         }
     }
 
@@ -159,21 +216,6 @@ pub trait Read: Sized {
     ///
     /// * `tpool` - thread pool to use for compression work.
     fn set_thread_pool(&mut self, tpool: &ThreadPool) -> Result<()>;
-}
-
-fn path_as_bytes<'a, P: 'a + AsRef<Path>>(path: P, must_exist: bool) -> Result<Vec<u8>> {
-    if path.as_ref().exists() || !must_exist {
-        Ok(path
-            .as_ref()
-            .to_str()
-            .ok_or(Error::NonUnicodePath)?
-            .as_bytes()
-            .to_owned())
-    } else {
-        Err(Error::FileNotFound {
-            path: path.as_ref().to_owned(),
-        })
-    }
 }
 
 /// A BAM reader.
@@ -277,7 +319,8 @@ impl Read for Reader {
     /// # Examples
     ///
     /// ```
-    /// use rust_htslib::bam::{Error, Read, Reader, Record};
+    /// use rust_htslib::errors::Error;
+    /// use rust_htslib::bam::{Read, Reader, Record};
     ///
     /// let mut bam = Reader::from_path(&"test/test.bam")?;
     /// let mut record = Record::new();
@@ -298,8 +341,8 @@ impl Read for Reader {
             )
         } {
             -1 => None,
-            -2 => Some(Err(Error::TruncatedRecord)),
-            -4 => Some(Err(Error::InvalidRecord)),
+            -2 => Some(Err(Error::BamTruncatedRecord)),
+            -4 => Some(Err(Error::BamInvalidRecord)),
             _ => {
                 record.set_header(Rc::clone(&self.header));
 
@@ -314,6 +357,13 @@ impl Read for Reader {
     /// the allocation of a new `Record`.
     fn records(&mut self) -> Records<'_, Self> {
         Records { reader: self }
+    }
+
+    fn rc_records(&mut self) -> RcRecords<'_, Self> {
+        RcRecords {
+            reader: self,
+            record: Rc::new(record::Record::new()),
+        }
     }
 
     fn pileup(&mut self) -> pileup::Pileups<'_, Self> {
@@ -347,6 +397,153 @@ impl Drop for Reader {
         unsafe {
             htslib::hts_close(self.htsfile);
         }
+    }
+}
+
+/// Conversion type for start/stop coordinates
+/// only public because it's leaked by the conversions
+#[doc(hidden)]
+pub struct FetchCoordinate(i64);
+
+//the old sam spec
+impl From<i32> for FetchCoordinate {
+    fn from(coord: i32) -> FetchCoordinate {
+        FetchCoordinate(coord as i64)
+    }
+}
+
+// to support un-annotated literals (type interference fails on those)
+impl From<u32> for FetchCoordinate {
+    fn from(coord: u32) -> FetchCoordinate {
+        FetchCoordinate(coord as i64)
+    }
+}
+
+//the new sam spec
+impl From<i64> for FetchCoordinate {
+    fn from(coord: i64) -> FetchCoordinate {
+        FetchCoordinate(coord)
+    }
+}
+
+//what some of our header methods return
+impl From<u64> for FetchCoordinate {
+    fn from(coord: u64) -> FetchCoordinate {
+        FetchCoordinate(coord.try_into().expect("Coordinate exceeded 2^^63-1"))
+    }
+}
+
+/// Enum for [IndexdReader.fetch()](struct.IndexedReader.html#method.fetch) arguments.
+///
+/// tids may be converted From<>:
+/// * i32 (correct as per spec)
+/// * u32 (because of header.tid. Will panic if above 2^31-1).
+///
+///Coordinates may be (via FetchCoordinate)
+/// * i32 (as of the sam v1 spec)
+/// * i64 (as of the htslib 'large coordinate' extension (even though they are not supported in BAM)
+/// * u32 (because that's what rust literals will default to)
+/// * u64 (because of header.target_len(). Will panic if above 2^^63-1).
+#[derive(Debug)]
+pub enum FetchDefinition<'a> {
+    /// tid, start, stop,
+    Region(i32, i64, i64),
+    /// 'named-reference', start, stop tuple.
+    RegionString(&'a [u8], i64, i64),
+    ///complete reference. May be i32 or u32 (which panics if above 2^31-')
+    CompleteTid(i32),
+    ///complete reference by name (&[u8] or &str)
+    String(&'a [u8]),
+    /// Every read
+    All,
+    /// Only reads with the BAM flag BAM_FUNMAP (which might not be all reads with reference = -1)
+    Unmapped,
+}
+impl<'a, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(i32, X, Y)>
+    for FetchDefinition<'a>
+{
+    fn from(tup: (i32, X, Y)) -> FetchDefinition<'a> {
+        let start: FetchCoordinate = tup.1.into();
+        let stop: FetchCoordinate = tup.2.into();
+        FetchDefinition::Region(tup.0, start.0, stop.0)
+    }
+}
+impl<'a, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(u32, X, Y)>
+    for FetchDefinition<'a>
+{
+    fn from(tup: (u32, X, Y)) -> FetchDefinition<'a> {
+        let start: FetchCoordinate = tup.1.into();
+        let stop: FetchCoordinate = tup.2.into();
+        FetchDefinition::Region(
+            tup.0.try_into().expect("Tid exceeded 2^31-1"),
+            start.0,
+            stop.0,
+        )
+    }
+}
+
+//non tuple impls
+impl<'a> From<i32> for FetchDefinition<'a> {
+    fn from(tid: i32) -> FetchDefinition<'a> {
+        FetchDefinition::CompleteTid(tid)
+    }
+}
+
+impl<'a> From<u32> for FetchDefinition<'a> {
+    fn from(tid: u32) -> FetchDefinition<'a> {
+        let tid: i32 = tid.try_into().expect("tid exceeded 2^31-1");
+        FetchDefinition::CompleteTid(tid)
+    }
+}
+
+impl<'a> From<&'a str> for FetchDefinition<'a> {
+    fn from(s: &'a str) -> FetchDefinition<'a> {
+        FetchDefinition::String(s.as_bytes())
+    }
+}
+
+//also accept &[u8;n] literals
+impl<'a> From<&'a [u8]> for FetchDefinition<'a> {
+    fn from(s: &'a [u8]) -> FetchDefinition<'a> {
+        FetchDefinition::String(s)
+    }
+}
+
+//also accept &[u8;n] literals
+impl<'a, T: AsRef<[u8]>> From<&'a T> for FetchDefinition<'a> {
+    fn from(s: &'a T) -> FetchDefinition<'a> {
+        FetchDefinition::String(s.as_ref())
+    }
+}
+
+impl<'a, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(&'a str, X, Y)>
+    for FetchDefinition<'a>
+{
+    fn from(tup: (&'a str, X, Y)) -> FetchDefinition<'a> {
+        let start: FetchCoordinate = tup.1.into();
+        let stop: FetchCoordinate = tup.2.into();
+        FetchDefinition::RegionString(tup.0.as_bytes(), start.0, stop.0)
+    }
+}
+
+impl<'a, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(&'a [u8], X, Y)>
+    for FetchDefinition<'a>
+{
+    fn from(tup: (&'a [u8], X, Y)) -> FetchDefinition<'a> {
+        let start: FetchCoordinate = tup.1.into();
+        let stop: FetchCoordinate = tup.2.into();
+        FetchDefinition::RegionString(tup.0, start.0, stop.0)
+    }
+}
+
+//also accept &[u8;n] literals
+impl<'a, T: AsRef<[u8]>, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(&'a T, X, Y)>
+    for FetchDefinition<'a>
+{
+    fn from(tup: (&'a T, X, Y)) -> FetchDefinition<'a> {
+        let start: FetchCoordinate = tup.1.into();
+        let stop: FetchCoordinate = tup.2.into();
+        FetchDefinition::RegionString(tup.0.as_ref(), start.0, stop.0)
     }
 }
 
@@ -393,7 +590,7 @@ impl IndexedReader {
         let c_str = ffi::CString::new(path).unwrap();
         let idx = unsafe { htslib::sam_index_load(htsfile, c_str.as_ptr()) };
         if idx.is_null() {
-            Err(Error::InvalidIndex {
+            Err(Error::BamInvalidIndex {
                 target: str::from_utf8(path).unwrap().to_owned(),
             })
         } else {
@@ -421,7 +618,7 @@ impl IndexedReader {
             htslib::sam_index_load2(htsfile, c_str_path.as_ptr(), c_str_index_path.as_ptr())
         };
         if idx.is_null() {
-            Err(Error::InvalidIndex {
+            Err(Error::BamInvalidIndex {
                 target: str::from_utf8(path).unwrap().to_owned(),
             })
         } else {
@@ -435,7 +632,85 @@ impl IndexedReader {
         }
     }
 
-    pub fn fetch(&mut self, tid: u32, beg: u64, end: u64) -> Result<()> {
+    /// Define the region from which .read() or .records will retrieve reads.
+    ///
+    /// Both iterating (with [.records()](trait.Read.html#tymethod.records)) and looping without allocation (with [.read()](trait.Read.html#tymethod.read) are a two stage process:
+    /// 1. 'fetch' the region of interest
+    /// 2. iter/loop trough the reads.
+    ///
+    /// Example:
+    /// ```
+    /// use rust_htslib::bam::{IndexedReader, Read};
+    /// let mut bam = IndexedReader::from_path(&"test/test.bam").unwrap();
+    /// bam.fetch(("chrX", 10000, 20000)); // coordinates 10000..20000 on reference named "chrX"
+    /// for read in bam.records() {
+    ///     println!("read name: {:?}", read.unwrap().qname());
+    /// }
+    /// ```
+    ///
+    /// The arguments may be anything that can be converted into a FetchDefinition
+    /// such as
+    ///
+    /// * fetch(tid: u32) -> fetch everything on this reference
+    /// * fetch(reference_name: &[u8] | &str) -> fetch everything on this reference
+    /// * fetch((tid: i32, start: i64, stop: i64)): -> fetch in this region on this tid
+    /// * fetch((reference_name: &[u8] | &str, start: i64, stop: i64) -> fetch in this region on this tid
+    /// * fetch(FetchDefinition::All) or fetch(".") -> Fetch overything
+    /// * fetch(FetchDefinition::Unmapped) or fetch("*") -> Fetch unmapped (as signified by the 'unmapped' flag in the BAM - might be unreliable with some aligners.
+    ///
+    /// The start / stop coordinates will take i64 (the correct type as of htslib's 'large
+    /// coordinates' expansion), i32, u32, and u64 (with a possible panic! if the coordinate
+    /// won't fit an i64).
+    ///
+    /// This replaces the old fetch and fetch_str implementations.
+    pub fn fetch<'a, T: Into<FetchDefinition<'a>>>(&mut self, fetch_definition: T) -> Result<()> {
+        //this 'compile time redirect' safes us
+        //from monomorphing the 'meat' of the fetch function
+        self._inner_fetch(fetch_definition.into())
+    }
+
+    fn _inner_fetch<'a>(&mut self, fetch_definition: FetchDefinition<'a>) -> Result<()> {
+        match fetch_definition {
+            FetchDefinition::Region(tid, start, stop) => {
+                self._fetch_by_coord_tuple(tid, start, stop)
+            }
+            FetchDefinition::RegionString(s, start, stop) => {
+                let tid = self.header().tid(s);
+                match tid {
+                    Some(tid) => self._fetch_by_coord_tuple(tid as i32, start, stop),
+                    None => Err(Error::Fetch),
+                }
+            }
+            FetchDefinition::CompleteTid(tid) => {
+                let len = self.header().target_len(tid as u32);
+                match len {
+                    Some(len) => self._fetch_by_coord_tuple(tid, 0, len as i64),
+                    None => Err(Error::Fetch),
+                }
+            }
+            FetchDefinition::String(s) => {
+                // either a target-name or a samtools style definition
+                let tid = self.header().tid(s);
+                match tid {
+                    Some(tid) => {
+                        //'large position' spec says target len must will fit into an i64.
+                        let len: i64 = self
+                            .header
+                            .target_len(tid as u32)
+                            .unwrap()
+                            .try_into()
+                            .unwrap();
+                        self._fetch_by_coord_tuple(tid as i32, 0, len)
+                    }
+                    None => self._fetch_by_str(&s),
+                }
+            }
+            FetchDefinition::All => self._fetch_by_str(b"."),
+            FetchDefinition::Unmapped => self._fetch_by_str(b"*"),
+        }
+    }
+
+    fn _fetch_by_coord_tuple(&mut self, tid: i32, beg: i64, end: i64) -> Result<()> {
         if let Some(itr) = self.itr {
             unsafe { htslib::hts_itr_destroy(itr) }
         }
@@ -448,13 +723,8 @@ impl IndexedReader {
             Ok(())
         }
     }
-    /// Fetch reads from a region using a samtools region string.
-    /// Region strings are of the format b"chr1:1-1000".
-    ///
-    /// # Arguments
-    ///
-    /// * `region` - A binary string
-    pub fn fetch_str(&mut self, region: &[u8]) -> Result<()> {
+
+    fn _fetch_by_str(&mut self, region: &[u8]) -> Result<()> {
         if let Some(itr) = self.itr {
             unsafe { htslib::hts_itr_destroy(itr) }
         }
@@ -509,8 +779,8 @@ impl Read for IndexedReader {
             Some(itr) => {
                 match itr_next(self.htsfile, itr, &mut record.inner as *mut htslib::bam1_t) {
                     -1 => None,
-                    -2 => Some(Err(Error::TruncatedRecord)),
-                    -4 => Some(Err(Error::InvalidRecord)),
+                    -2 => Some(Err(Error::BamTruncatedRecord)),
+                    -4 => Some(Err(Error::BamInvalidRecord)),
                     _ => {
                         record.set_header(Rc::clone(&self.header));
 
@@ -528,6 +798,13 @@ impl Read for IndexedReader {
     /// the allocation of a new `Record`.
     fn records(&mut self) -> Records<'_, Self> {
         Records { reader: self }
+    }
+
+    fn rc_records(&mut self) -> RcRecords<'_, Self> {
+        RcRecords {
+            reader: self,
+            record: Rc::new(record::Record::new()),
+        }
     }
 
     fn pileup(&mut self) -> pileup::Pileups<'_, Self> {
@@ -633,7 +910,7 @@ impl Writer {
 
         // sam_hdr_parse does not populate the text and l_text fields of the header_record.
         // This causes non-SQ headers to be dropped in the output BAM file.
-        // To avoid this, we copy the full header to a new C-string that is allocated with malloc,
+        // To avoid this, we copy the All header to a new C-string that is allocated with malloc,
         // and set this into header_record manually.
         let header_record = unsafe {
             let mut header_string = header.to_bytes();
@@ -701,7 +978,7 @@ impl Writer {
     /// * `record` - the record to write
     pub fn write(&mut self, record: &record::Record) -> Result<()> {
         if unsafe { htslib::sam_write1(self.f, self.header.inner(), record.inner_ptr()) } == -1 {
-            Err(Error::Write)
+            Err(Error::WriteRecord)
         } else {
             Ok(())
         }
@@ -736,7 +1013,7 @@ impl Writer {
             )
         } {
             0 => Ok(()),
-            _ => Err(Error::InvalidCompressionLevel { level }),
+            _ => Err(Error::BamInvalidCompressionLevel { level }),
         }
     }
 }
@@ -763,7 +1040,7 @@ impl CompressionLevel {
             CompressionLevel::Fastest => Ok(1),
             CompressionLevel::Maximum => Ok(9),
             CompressionLevel::Level(i @ 0..=9) => Ok(i),
-            CompressionLevel::Level(i) => Err(Error::InvalidCompressionLevel { level: i }),
+            CompressionLevel::Level(i) => Err(Error::BamInvalidCompressionLevel { level: i }),
         }
     }
 }
@@ -791,6 +1068,36 @@ impl<'a, R: Read> Iterator for Records<'a, R> {
             None => None,
             Some(Ok(_)) => Some(Ok(record)),
             Some(Err(err)) => Some(Err(err)),
+        }
+    }
+}
+
+/// Iterator over the records of a BAM, using an Rc.
+///
+/// See [rc_records](trait.Read.html#tymethod.rc_records).
+#[derive(Debug)]
+pub struct RcRecords<'a, R: Read> {
+    reader: &'a mut R,
+    record: Rc<record::Record>,
+}
+
+impl<'a, R: Read> Iterator for RcRecords<'a, R> {
+    type Item = Result<Rc<record::Record>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut record = match Rc::get_mut(&mut self.record) {
+            //not make_mut, we don't need a clone
+            Some(x) => x,
+            None => {
+                self.record = Rc::new(record::Record::new());
+                Rc::get_mut(&mut self.record).unwrap()
+            }
+        };
+
+        match self.reader.read(&mut record) {
+            Ok(false) => None,
+            Ok(true) => Some(Ok(Rc::clone(&self.record))),
+            Err(err) => Some(Err(err)),
         }
     }
 }
@@ -825,7 +1132,7 @@ fn hts_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
     let c_str = ffi::CString::new(mode).unwrap();
     let ret = unsafe { htslib::hts_open(cpath.as_ptr(), c_str.as_ptr()) };
     if ret.is_null() {
-        Err(Error::Open {
+        Err(Error::BamOpen {
             target: path.to_owned(),
         })
     } else {
@@ -837,7 +1144,7 @@ fn hts_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
                     && (*ret).format.format != htslib::htsExactFormat_bam
                     && (*ret).format.format != htslib::htsExactFormat_cram
                 {
-                    return Err(Error::Open {
+                    return Err(Error::BamOpen {
                         target: path.to_owned(),
                     });
                 }
@@ -1176,11 +1483,13 @@ CCCCCCCCCCCCCCCCCCC"[..],
         assert!(bam.header.target_len(tid_1).expect("Expected target len.") == 15072423);
 
         // fetch to position containing reads
-        bam.fetch(tid_1, 0, 2).expect("Expected successful fetch.");
+        bam.fetch((tid_1, 0, 2))
+            .expect("Expected successful fetch.");
         assert!(bam.records().count() == 6);
 
         // compare reads
-        bam.fetch(tid_1, 0, 2).expect("Expected successful fetch.");
+        bam.fetch((tid_1, 0, 2))
+            .expect("Expected successful fetch.");
         for (i, record) in bam.records().enumerate() {
             let rec = record.expect("Expected valid record");
 
@@ -1196,18 +1505,40 @@ CCCCCCCCCCCCCCCCCCC"[..],
         }
 
         // fetch to empty position
-        bam.fetch(tid_2, 1, 1).expect("Expected successful fetch.");
+        bam.fetch((tid_2, 1, 1))
+            .expect("Expected successful fetch.");
         assert!(bam.records().count() == 0);
 
         // repeat with byte-string based fetch
 
         // fetch to position containing reads
-        bam.fetch_str(format!("{}:{}-{}", str::from_utf8(sq_1).unwrap(), 0, 2).as_bytes())
+        // using coordinate-string chr:start-stop
+        bam.fetch(format!("{}:{}-{}", str::from_utf8(sq_1).unwrap(), 0, 2).as_bytes())
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        // using &str and exercising some of the coordinate conversion funcs
+        bam.fetch((str::from_utf8(sq_1).unwrap(), 0 as u32, 2 as u64))
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        // using a slice
+        bam.fetch((&sq_1[..], 0, 2))
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        // using a literal
+        bam.fetch((sq_1, 0, 2)).expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+
+        // using a tid
+        bam.fetch((0i32, 0u32, 2i64))
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        // using a tid:u32
+        bam.fetch((0u32, 0u32, 2i64))
             .expect("Expected successful fetch.");
         assert!(bam.records().count() == 6);
 
         // compare reads
-        bam.fetch_str(format!("{}:{}-{}", str::from_utf8(sq_1).unwrap(), 0, 2).as_bytes())
+        bam.fetch(format!("{}:{}-{}", str::from_utf8(sq_1).unwrap(), 0, 2).as_bytes())
             .expect("Expected successful fetch.");
         for (i, record) in bam.records().enumerate() {
             let rec = record.expect("Expected valid record");
@@ -1224,9 +1555,41 @@ CCCCCCCCCCCCCCCCCCC"[..],
         }
 
         // fetch to empty position
-        bam.fetch_str(format!("{}:{}-{}", str::from_utf8(sq_2).unwrap(), 1, 1).as_bytes())
+        bam.fetch(format!("{}:{}-{}", str::from_utf8(sq_2).unwrap(), 1, 1).as_bytes())
             .expect("Expected successful fetch.");
         assert!(bam.records().count() == 0);
+
+        //all on a tid
+        bam.fetch(0).expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        //all on a tid:u32
+        bam.fetch(0u32).expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+
+        //all on a tid - by &[u8]
+        bam.fetch(sq_1).expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        //all on a tid - by str
+        bam.fetch(str::from_utf8(sq_1).unwrap())
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+
+        //all reads
+        bam.fetch(FetchDefinition::All)
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+
+        //all reads
+        bam.fetch(".").expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+
+        //all unmapped
+        bam.fetch(FetchDefinition::Unmapped)
+            .expect("Expected successful fetch.");
+        assert_eq!(bam.records().count(), 1); // expect one 'truncade record' Record.
+
+        bam.fetch("*").expect("Expected successful fetch.");
+        assert_eq!(bam.records().count(), 1); // expect one 'truncade record' Record.
     }
 
     #[test]
@@ -1401,7 +1764,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
     fn test_write() {
         let (names, _, seqs, quals, cigars) = gold();
 
-        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let bampath = tmp.path().join("test.bam");
         println!("{:?}", bampath);
         {
@@ -1450,7 +1816,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
     fn test_write_threaded() {
         let (names, _, seqs, quals, cigars) = gold();
 
-        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let bampath = tmp.path().join("test.bam");
         println!("{:?}", bampath);
         {
@@ -1501,7 +1870,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
     fn test_write_shared_tpool() {
         let (names, _, seqs, quals, cigars) = gold();
 
-        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let bampath1 = tmp.path().join("test1.bam");
         let bampath2 = tmp.path().join("test2.bam");
 
@@ -1578,7 +1950,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
         // Verify that BAM headers are transmitted correctly when using an existing BAM as a
         // template for headers.
 
-        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let bampath = tmp.path().join("test.bam");
         println!("{:?}", bampath);
 
@@ -1637,7 +2012,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         }
         // go back again
         let tid = bam.header().tid(b"CHROMOSOME_I").unwrap();
-        bam.fetch(tid, 0, 5).unwrap();
+        bam.fetch((tid, 0, 5)).unwrap();
         for p in bam.pileup() {
             println!("{}", p.unwrap().pos())
         }
@@ -1722,7 +2097,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let bam_records: Vec<Record> = bam_reader.records().map(|v| v.unwrap()).collect();
 
         // New CRAM file
-        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let cram_path = tmp.path().join("test.cram");
 
         // Write BAM records to new CRAM file
@@ -1798,7 +2176,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     #[test]
     fn test_write_compression() {
-        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let input_bam_path = "test/test.bam";
 
         // test levels with decreasing compression factor
@@ -1922,4 +2303,44 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     //     assert_eq!(r.header().target_names()[0], b"chr1");
     // }
+
+    #[test]
+    fn test_rc_records() {
+        let (names, flags, seqs, quals, cigars) = gold();
+        let mut bam = Reader::from_path(&Path::new("test/test.bam")).expect("Error opening file.");
+        let del_len = [1, 1, 1, 1, 1, 100000];
+
+        for (i, record) in bam.rc_records().enumerate() {
+            //let rec = record.expect("Expected valid record");
+            let rec = record.unwrap();
+            println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
+            assert_eq!(rec.qname(), names[i]);
+            assert_eq!(rec.flags(), flags[i]);
+            assert_eq!(rec.seq().as_bytes(), seqs[i]);
+
+            let cigar = rec.cigar();
+            assert_eq!(*cigar, cigars[i]);
+
+            let end_pos = cigar.end_pos();
+            assert_eq!(end_pos, rec.pos() + 100 + del_len[i]);
+            assert_eq!(
+                cigar
+                    .read_pos(end_pos as u32 - 10, false, false)
+                    .unwrap()
+                    .unwrap(),
+                90
+            );
+            assert_eq!(
+                cigar
+                    .read_pos(rec.pos() as u32 + 20, false, false)
+                    .unwrap()
+                    .unwrap(),
+                20
+            );
+            assert_eq!(cigar.read_pos(4000000, false, false).unwrap(), None);
+            // fix qual offset
+            let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
+            assert_eq!(rec.qual(), &qual[..]);
+        }
+    }
 }

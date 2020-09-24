@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::sync::Arc;
 
-pub use crate::bam::errors::{Error, Result};
+pub use crate::errors::{Error, Result};
 use crate::htslib;
 
 /// An HTSlib thread pool. Create a thread pool and use `set_thread_pool()` methods
@@ -44,7 +44,7 @@ pub struct InnerThreadPool {
 
 impl Drop for InnerThreadPool {
     fn drop(&mut self) {
-        if self.inner.pool != std::ptr::null_mut() {
+        if !self.inner.pool.is_null() {
             unsafe {
                 htslib::hts_tpool_destroy(self.inner.pool);
             }
