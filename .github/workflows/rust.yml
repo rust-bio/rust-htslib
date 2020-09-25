@@ -108,3 +108,14 @@ jobs:
           use-cross: true 
           command: build
           args: --target x86_64-unknown-linux-musl --all-features --verbose
+
+  Testing-OSX:
+    needs: Formatting
+    runs-on: macOS-latest
+    steps:
+      - name: Test musl build with all features and debug symbols (non --release) on OSX
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --target x86_64-unknown-linux-musl --all-features --verbose
