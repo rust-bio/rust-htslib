@@ -92,21 +92,21 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           use-cross: true
-          command: build
+          command: test
           args: --release --target x86_64-unknown-linux-musl --no-default-features
 
       - name: Test musl build with all features
         uses: actions-rs/cargo@v1
         with:
           use-cross: true 
-          command: build
+          command: test
           args: --release --target x86_64-unknown-linux-musl --all-features --verbose
       
       - name: Test musl build with all features and debug symbols (non --release)
         uses: actions-rs/cargo@v1
         with:
           use-cross: true 
-          command: build
+          command: test
           args: --target x86_64-unknown-linux-musl --all-features --verbose
 
   Testing-OSX:
@@ -117,5 +117,5 @@ jobs:
         uses: actions-rs/cargo@v1.0.1
         with:
           use-cross: true
-          command: build
+          command: test
           args: --target x86_64-unknown-linux-musl --all-features --verbose
