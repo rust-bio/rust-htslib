@@ -98,7 +98,11 @@ impl RecordBuffer {
             // extend to the right
             loop {
                 let mut record = Rc::new(bam::Record::new());
-                if !self.reader.read(Rc::get_mut(&mut record).unwrap())? {
+                if self
+                    .reader
+                    .read(Rc::get_mut(&mut record).unwrap())
+                    .is_none()
+                {
                     break;
                 }
 

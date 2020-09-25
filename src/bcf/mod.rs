@@ -37,9 +37,9 @@ pub trait Read: Sized {
     /// * record - an empty record, that can be created with `bcf::Reader::empty_record`.
     ///
     /// # Returns
-    /// A result with an error in case of failure. Otherwise, true if a record was read,
-    /// false if no record was read because the end of the file was reached.
-    fn read(&mut self, record: &mut record::Record) -> Result<bool>;
+    /// None if end of file was reached, otherwise Some will contain
+    /// a result with an error in case of failure.
+    fn read(&mut self, record: &mut record::Record) -> Option<Result<()>>;
 
     /// Return an iterator over all records of the VCF/BCF file.
     fn records(&mut self) -> Records<'_, Self>;
@@ -114,7 +114,7 @@ impl Reader {
 }
 
 impl Read for Reader {
-    fn read(&mut self, record: &mut record::Record) -> Result<bool> {
+    fn read(&mut self, record: &mut record::Record) -> Option<Result<()>> {
         match unsafe { htslib::bcf_read(self.inner, self.header.inner, record.inner) } {
             0 => {
                 unsafe {
@@ -122,10 +122,10 @@ impl Read for Reader {
                     htslib::bcf_unpack(record.inner_mut(), htslib::BCF_UN_ALL as i32);
                 }
                 record.set_header(Rc::clone(&self.header));
-                Ok(true)
+                Some(Ok(()))
             }
-            -1 => Ok(false),
-            _ => Err(Error::BcfInvalidRecord),
+            -1 => None,
+            _ => Some(Err(Error::BcfInvalidRecord)),
         }
     }
 
@@ -239,13 +239,13 @@ impl IndexedReader {
 }
 
 impl Read for IndexedReader {
-    fn read(&mut self, record: &mut record::Record) -> Result<bool> {
+    fn read(&mut self, record: &mut record::Record) -> Option<Result<()>> {
         match unsafe { htslib::bcf_sr_next_line(self.inner) } {
             0 => {
                 if unsafe { (*self.inner).errnum } != 0 {
-                    Err(Error::BcfInvalidRecord)
+                    Some(Err(Error::BcfInvalidRecord))
                 } else {
-                    Ok(false)
+                    None
                 }
             }
             i => {
@@ -269,12 +269,12 @@ impl Read for IndexedReader {
                             && rid == record.rid().unwrap()
                             && record.pos() as u64 <= end
                         {
-                            Ok(true)
+                            Some(Ok(()))
                         } else {
-                            Ok(false)
+                            None
                         }
                     }
-                    None => Ok(true),
+                    None => Some(Ok(())),
                 }
             }
         }
@@ -694,9 +694,9 @@ impl<'a, R: Read> Iterator for Records<'a, R> {
     fn next(&mut self) -> Option<Result<record::Record>> {
         let mut record = self.reader.empty_record();
         match self.reader.read(&mut record) {
-            Err(e) => Some(Err(e)),
-            Ok(true) => Some(Ok(record)),
-            Ok(false) => None,
+            Some(Err(e)) => Some(Err(e)),
+            Some(Ok(_)) => Some(Ok(record)),
+            None => None,
         }
     }
 }
