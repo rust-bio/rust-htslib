@@ -10,6 +10,51 @@
 //! Note that BCF corresponds to the in-memory representation of BCF/VCF records in Htslib
 //! itself. Thus, it comes without a runtime penalty for parsing, in contrast to reading VCF
 //! files.
+//! # Example
+//!   - Obtaining 0-based locus index of the VCF record.
+//!   - Obtaining alleles of the VCF record.
+//!   - calculate alt-allele dosage in a mutli-sample VCF / BCF
+//!
+//! ```
+//! use crate::rust_htslib::bcf::{Reader, Read};
+//! use std::convert::TryFrom;
+//!
+//! let path = &"test/test_string.vcf";
+//! let mut bcf = Reader::from_path(path).expect("Error opening file.");
+//! // iterate through each row of the vcf body.
+//! for (i, record_result) in bcf.records().enumerate() {
+//!     let mut record = record_result.expect("Fail to read record");
+//!     let mut s = String::new();
+//!      for allele in record.alleles() {
+//!          for c in allele {
+//!              s.push(char::from(*c))
+//!          }
+//!          s.push(' ')
+//!      }
+//!     // 0-based position and the list of alleles
+//!     println!("Locus: {}, Alleles: {}", record.pos(), s);
+//!     // number of sample in the vcf
+//!     let sample_count = usize::try_from(record.sample_count()).unwrap();
+//!
+//!     // Counting ref, alt and missing alleles for each sample
+//!     let mut n_ref = vec![0; sample_count];
+//!     let mut n_alt = vec![0; sample_count];
+//!     let mut n_missing = vec![0; sample_count];
+//!     let gts = record.genotypes().expect("Error reading genotypes");
+//!     for sample_index in 0..sample_count {
+//!         // for each sample
+//!         for gta in gts.get(sample_index).iter() {
+//!             // for each allele
+//!             match gta.index() {
+//!                 Some(0) => n_ref[sample_index] += 1,  // reference allele
+//!                 Some(_) => n_alt[sample_index] += 1,  // alt allele
+//!                 None => n_missing[sample_index] += 1, // missing allele
+//!             }
+//!         }
+//!     }
+//! }
+//! ```
+
 
 use std::ffi;
 use std::path::Path;
@@ -1313,26 +1358,28 @@ mod tests {
         let path = &"test/test_string.vcf";
         let mut bcf = Reader::from_path(path).expect("Error opening file.");
         let header = bcf.header();
-
-        for (_i, record_result) in bcf.records().enumerate() {
-            let mut record = record_result.expect("Fail to read record");
-            let mut s = String::new();
-
-            let sample_count = usize::try_from(record.sample_count()).unwrap();
-            let mut n_ref = vec![0; sample_count];
-            let mut n_alt = vec![0; sample_count];
-            let gts = record.genotypes().expect("Error reading genotypes");
-            for sample_index in 0..sample_count {
-                // for each sample
-                for gta in gts.get(sample_index).iter() {
-                    // for each allele
-                    match gta.index() {
-                        Some(0) => n_ref[sample_index] += 1, // reference allele
-                        Some(_) => n_alt[sample_index] += 1, // alt allele
-                        None => break,                       // missing allele
-                    }
+        // FORMAT fields of first record of the vcf should look like:
+        // GT:FS1:FN1	./1:LongString1:1	1/1:ss1:2
+        let mut first_record = bcf.records().next().unwrap().expect("Fail to read record");
+        let sample_count = usize::try_from(first_record.sample_count()).unwrap();
+        assert_eq!(sample_count, 2);
+        let mut n_ref = vec![0; sample_count];
+        let mut n_alt = vec![0; sample_count];
+        let mut n_missing = vec![0; sample_count];
+        let gts = first_record.genotypes().expect("Error reading genotypes");
+        for sample_index in 0..sample_count {
+            // for each sample
+            for gta in gts.get(sample_index).iter() {
+                // for each allele
+                match gta.index() {
+                    Some(0) => n_ref[sample_index] += 1, // reference allele
+                    Some(_) => n_alt[sample_index] += 1, // alt allele
+                    None => n_missing[sample_index] +=1, // missing allele
                 }
             }
         }
+        assert_eq!(n_ref, [0, 0]);
+        assert_eq!(n_alt, [1, 2]);
+        assert_eq!(n_missing, [1, 0]);
     }
 }
