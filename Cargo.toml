@@ -42,7 +42,7 @@ static = ["hts-sys/static"]
 serde_feature = ["serde", "serde_bytes"]
 
 [dev-dependencies]
-tempdir = "0.3"
+tempfile = "3.1.0"
 bincode = "1.2"
 serde_json = "1.0"
 pretty_assertions = "0.6"

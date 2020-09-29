@@ -11,7 +11,7 @@ use crate::htslib;
 
 use linear_map::LinearMap;
 
-use crate::bcf::{errors::Error, Result};
+use crate::errors::{Error, Result};
 
 pub type SampleSubset = Vec<i32>;
 
@@ -91,7 +91,7 @@ impl Header {
             )
         };
         if inner.is_null() {
-            Err(Error::DuplicateSampleNames)
+            Err(Error::BcfDuplicateSampleNames)
         } else {
             Ok(Header {
                 inner,
@@ -307,7 +307,7 @@ impl HeaderView {
                 Ok(ffi::CStr::from_ptr(ptr).to_bytes())
             }
         } else {
-            Err(Error::UnknownRID { rid })
+            Err(Error::BcfUnknownRID { rid })
         }
     }
 
@@ -319,7 +319,7 @@ impl HeaderView {
                 htslib::BCF_DT_CTG as i32,
                 c_str.as_ptr() as *mut i8,
             ) {
-                -1 => Err(Error::UnknownContig {
+                -1 => Err(Error::BcfUnknownContig {
                     contig: str::from_utf8(name).unwrap().to_owned(),
                 }),
                 i => Ok(i as u32),
@@ -345,7 +345,7 @@ impl HeaderView {
                 c_str_tag.as_ptr() as *mut i8,
             );
             if id < 0 {
-                return Err(Error::UndefinedTag { tag: tag_desc() });
+                return Err(Error::BcfUndefinedTag { tag: tag_desc() });
             }
             let n = (*self.inner).n[htslib::BCF_DT_ID as usize] as usize;
             let entry = slice::from_raw_parts((*self.inner).id[htslib::BCF_DT_ID as usize], n);
@@ -357,7 +357,7 @@ impl HeaderView {
             htslib::BCF_HT_INT => TagType::Integer,
             htslib::BCF_HT_REAL => TagType::Float,
             htslib::BCF_HT_STR => TagType::String,
-            _ => return Err(Error::UnexpectedType { tag: tag_desc() }),
+            _ => return Err(Error::BcfUnexpectedType { tag: tag_desc() }),
         };
         let length = match length as ::libc::c_uint {
             // XXX: Hacky "as u32" cast. Trace back through unsafe{} towards BCF struct and rollback to proper type
@@ -366,7 +366,7 @@ impl HeaderView {
             htslib::BCF_VL_A => TagLength::AltAlleles,
             htslib::BCF_VL_R => TagLength::Alleles,
             htslib::BCF_VL_G => TagLength::Genotypes,
-            _ => return Err(Error::UnexpectedType { tag: tag_desc() }),
+            _ => return Err(Error::BcfUnexpectedType { tag: tag_desc() }),
         };
 
         Ok((_type, length))
@@ -381,7 +381,7 @@ impl HeaderView {
                 htslib::BCF_DT_ID as i32,
                 c_str.as_ptr() as *const i8,
             ) {
-                -1 => Err(Error::UnknownID {
+                -1 => Err(Error::BcfUnknownID {
                     id: str::from_utf8(id).unwrap().to_owned(),
                 }),
                 i => Ok(Id(i as u32)),
@@ -409,7 +409,7 @@ impl HeaderView {
                 htslib::BCF_DT_SAMPLE as i32,
                 c_str.as_ptr() as *const i8,
             ) {
-                -1 => Err(Error::UnknownSample {
+                -1 => Err(Error::BcfUnknownSample {
                     name: str::from_utf8(id).unwrap().to_owned(),
                 }),
                 i => Ok(Id(i as u32)),

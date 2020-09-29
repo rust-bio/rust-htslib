@@ -17,14 +17,13 @@ use std::u32;
 use lazy_static::lazy_static;
 use regex::Regex;
 
-#[cfg(feature = "serde_feature")]
-use serde::{self, Deserialize, Serialize};
-
-use crate::bam::errors::Result;
 use crate::bam::Error;
 use crate::bam::HeaderView;
+use crate::errors::Result;
 use crate::htslib;
 use crate::utils;
+#[cfg(feature = "serde_feature")]
+use serde::{self, Deserialize, Serialize};
 
 use bio_types::alignment::{Alignment, AlignmentMode, AlignmentOperation};
 use bio_types::genome;
@@ -166,7 +165,7 @@ impl Record {
         if succ == 0 {
             Ok(record)
         } else {
-            Err(Error::ParseSAM {
+            Err(Error::BamParseSAM {
                 rec: str::from_utf8(&sam_copy).unwrap().to_owned(),
             })
         }
@@ -1046,7 +1045,7 @@ impl TryFrom<&[u8]> for CigarString {
 
     /// Create a CigarString from given bytes.
     fn try_from(text: &[u8]) -> Result<Self> {
-        Self::try_from(str::from_utf8(text).map_err(|_| Error::ParseCigar {
+        Self::try_from(str::from_utf8(text).map_err(|_| Error::BamParseCigar {
             msg: "unable to parse as UTF8".to_owned(),
         })?)
     }
@@ -1068,7 +1067,7 @@ impl TryFrom<&str> for CigarString {
                 let n = &caps["n"];
                 let op = &caps["op"];
                 i += n.len() + op.len();
-                let n = u32::from_str(n).map_err(|_| Error::ParseCigar {
+                let n = u32::from_str(n).map_err(|_| Error::BamParseCigar {
                     msg: "expected integer".to_owned(),
                 })?;
                 inner.push(match op {
@@ -1082,13 +1081,13 @@ impl TryFrom<&str> for CigarString {
                     "=" => Cigar::Equal(n),
                     "X" => Cigar::Diff(n),
                     op => {
-                        return Err(Error::ParseCigar {
+                        return Err(Error::BamParseCigar {
                             msg: format!("operation {} not expected", op),
                         });
                     }
                 });
             } else {
-                return Err(Error::ParseCigar {
+                return Err(Error::BamParseCigar {
                     msg: "expected cigar operation [0-9]+[MIDNSHP=X]".to_owned(),
                 });
             }
@@ -1238,17 +1237,17 @@ impl CigarStringView {
                     break;
                 },
                 Cigar::Del(_) => {
-                    return Err(Error::UnexpectedCigarOperation {
+                    return Err(Error::BamUnexpectedCigarOperation {
                         msg: "'deletion' (D) found before any operation describing read sequence".to_owned()
                     });
                 },
                 Cigar::RefSkip(_) => {
-                    return Err(Error::UnexpectedCigarOperation {
+                    return Err(Error::BamUnexpectedCigarOperation {
                         msg: "'reference skip' (N) found before any operation describing read sequence".to_owned()
                     });
                 },
                 Cigar::HardClip(_) if i > 0 && i < self.len()-1 => {
-                    return Err(Error::UnexpectedCigarOperation{
+                    return Err(Error::BamUnexpectedCigarOperation{
                         msg: "'hard clip' (H) found in between operations, contradicting SAMv1 spec that hard clips can only be at the ends of reads".to_owned()
                     });
                 },
@@ -1305,7 +1304,7 @@ impl CigarStringView {
                     j += 1;
                 }
                 Cigar::HardClip(_) if j < self.len() - 1 => {
-                    return Err(Error::UnexpectedCigarOperation{
+                    return Err(Error::BamUnexpectedCigarOperation{
                         msg: "'hard clip' (H) found in between operations, contradicting SAMv1 spec that hard clips can only be at the ends of reads".to_owned()
                     });
                 }
@@ -1314,6 +1313,11 @@ impl CigarStringView {
         }
 
         Ok(None)
+    }
+
+    /// transfer ownership of the Cigar out of the CigarView
+    pub fn take(self) -> CigarString {
+        self.inner
     }
 }
 
