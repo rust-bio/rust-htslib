@@ -265,7 +265,6 @@ pub struct HeaderView {
     pub inner: *mut htslib::bcf_hdr_t,
 }
 
-
 impl HeaderView {
     pub fn new(inner: *mut htslib::bcf_hdr_t) -> Self {
         HeaderView { inner }

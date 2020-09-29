@@ -55,7 +55,6 @@
 //! }
 //! ```
 
-
 use std::ffi;
 use std::path::Path;
 use std::rc::Rc;
@@ -1372,9 +1371,9 @@ mod tests {
             for gta in gts.get(sample_index).iter() {
                 // for each allele
                 match gta.index() {
-                    Some(0) => n_ref[sample_index] += 1, // reference allele
-                    Some(_) => n_alt[sample_index] += 1, // alt allele
-                    None => n_missing[sample_index] +=1, // missing allele
+                    Some(0) => n_ref[sample_index] += 1,  // reference allele
+                    Some(_) => n_alt[sample_index] += 1,  // alt allele
+                    None => n_missing[sample_index] += 1, // missing allele
                 }
             }
         }
