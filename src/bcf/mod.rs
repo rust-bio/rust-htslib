@@ -730,6 +730,7 @@ mod tests {
     use super::*;
     use crate::bcf::header::Id;
     use crate::bcf::record::Numeric;
+    use crate::bcf::record::GenotypeAllele;
     use std::fs::File;
     use std::io::prelude::Read as IoRead;
     use std::path::Path;
@@ -1304,5 +1305,21 @@ mod tests {
         let _ = reader.read(&mut rec);
 
         assert_eq!(rec.info(b"X").string().unwrap().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn test_genotype_allele_conversion() {
+        let allele = GenotypeAllele::Unphased(1);
+        let converted: i32 = allele.into();
+        let expected = 4;
+        assert_eq!(converted, expected);
+    }
+
+    #[test]
+    fn test_genotype_missing_allele_conversion() {
+        let allele = GenotypeAllele::PhasedMissing;
+        let converted: i32 = allele.into();
+        let expected = 1;
+        assert_eq!(converted, expected);
     }
 }

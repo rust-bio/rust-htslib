@@ -674,6 +674,18 @@ impl fmt::Display for GenotypeAllele {
     }
 }
 
+impl From<GenotypeAllele> for i32 {
+    fn from(allele: GenotypeAllele) -> i32 {
+        let (allele, phased) = match allele {
+            GenotypeAllele::UnphasedMissing => (-1, 0),
+            GenotypeAllele::PhasedMissing => (-1, 1),
+            GenotypeAllele::Unphased(a) => (a, 0),
+            GenotypeAllele::Phased(a) => (a, 1),
+        };
+        allele + 1 << 1 | phased
+    }
+}
+
 custom_derive! {
     /// Genotype representation as a vector of `GenotypeAllele`.
     #[derive(NewtypeDeref, Debug, Clone, PartialEq, Eq, Hash)]
