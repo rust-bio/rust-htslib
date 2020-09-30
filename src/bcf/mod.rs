@@ -1161,6 +1161,13 @@ mod tests {
             record.push_info_flag(b"X1").unwrap();
 
             record
+                .push_genotypes(&[GenotypeAllele::Unphased(0),
+                                  GenotypeAllele::Unphased(1),
+                                  GenotypeAllele::Unphased(1),
+                                  GenotypeAllele::Phased(1)]).
+                unwrap();
+
+            record
                 .push_format_string(b"FS1", &[&b"yes"[..], &b"no"[..]])
                 .unwrap();
             record.push_format_integer(b"FF1", &[43, 11]).unwrap();

@@ -354,7 +354,23 @@ impl Record {
         self.inner().n_allele()
     }
 
-    // TODO fn push_genotypes(&mut self, Genotypes) {}?
+    /// Add/replace genotypes in FORMAT GT tag.
+    ///
+    /// # Arguments
+    ///
+    /// - `genotypes` - a flattened, two-dimensional array of GenotypeAllele,
+    ///                 the first dimension contains one array for each sample.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if GT tag is not present in header.
+    pub fn push_genotypes(&mut self, genotypes: &[GenotypeAllele]) -> Result<()> {
+        let encoded: Vec<i32> = genotypes
+            .iter()
+            .map(|gt| i32::from(*gt))
+            .collect();
+        self.push_format_integer("GT".as_bytes(), &encoded)
+    }
 
     /// Get genotypes as vector of one `Genotype` per sample.
     pub fn genotypes(&mut self) -> Result<Genotypes<'_>> {
@@ -438,7 +454,8 @@ impl Record {
 
     // TODO: should we add convenience methods clear_format_*?
 
-    /// Add a string-typed FORMAT tag.
+    /// Add a string-typed FORMAT tag. Note that genotypes are treated as a special case
+    /// and cannot be added with this method. See instead [push_genotypes](#method.push_genotypes).
     ///
     /// # Arguments
     ///
