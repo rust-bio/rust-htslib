@@ -365,10 +365,7 @@ impl Record {
     ///
     /// Returns error if GT tag is not present in header.
     pub fn push_genotypes(&mut self, genotypes: &[GenotypeAllele]) -> Result<()> {
-        let encoded: Vec<i32> = genotypes
-            .iter()
-            .map(|gt| i32::from(*gt))
-            .collect();
+        let encoded: Vec<i32> = genotypes.iter().map(|gt| i32::from(*gt)).collect();
         self.push_format_integer("GT".as_bytes(), &encoded)
     }
 

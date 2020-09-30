@@ -729,8 +729,8 @@ fn bcf_open(target: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
 mod tests {
     use super::*;
     use crate::bcf::header::Id;
-    use crate::bcf::record::Numeric;
     use crate::bcf::record::GenotypeAllele;
+    use crate::bcf::record::Numeric;
     use std::fs::File;
     use std::io::prelude::Read as IoRead;
     use std::path::Path;
@@ -1161,11 +1161,13 @@ mod tests {
             record.push_info_flag(b"X1").unwrap();
 
             record
-                .push_genotypes(&[GenotypeAllele::Unphased(0),
-                                  GenotypeAllele::Unphased(1),
-                                  GenotypeAllele::Unphased(1),
-                                  GenotypeAllele::Phased(1)]).
-                unwrap();
+                .push_genotypes(&[
+                    GenotypeAllele::Unphased(0),
+                    GenotypeAllele::Unphased(1),
+                    GenotypeAllele::Unphased(1),
+                    GenotypeAllele::Phased(1),
+                ])
+                .unwrap();
 
             record
                 .push_format_string(b"FS1", &[&b"yes"[..], &b"no"[..]])
