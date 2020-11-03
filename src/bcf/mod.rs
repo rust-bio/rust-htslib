@@ -133,7 +133,7 @@ impl Reader {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         match path.as_ref().to_str() {
             Some(p) if !path.as_ref().exists() => Err(Error::FileNotFound { path: p.into() }),
-            Some(p) => Ok(Self::new(&ffi::CString::new(p).unwrap())?),
+            Some(p) => Self::new(p.as_bytes()),
             _ => Err(Error::NonUnicodePath),
         }
     }
@@ -223,7 +223,9 @@ impl IndexedReader {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         let path = path.as_ref();
         match path.to_str() {
-            Some(p) if path.exists() => Self::new(&ffi::CString::new(p)?),
+            Some(p) if path.exists() => {
+                Self::new(&ffi::CString::new(p).map_err(|_| Error::NonUnicodePath)?)
+            }
             Some(p) => Err(Error::FileNotFound { path: p.into() }),
             None => Err(Error::NonUnicodePath),
         }
