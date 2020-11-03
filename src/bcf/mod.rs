@@ -179,15 +179,12 @@ impl IndexedReader {
     ///
     /// * `path` - the path to open.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
-        if !path.as_ref().exists() {
-            Err(Error::FileNotFound {
-                path: path.as_ref().to_owned(),
-            })
-        } else {
-            match path.as_ref().to_str() {
-                Some(p) if path.as_ref().exists() => Ok(Self::new(&ffi::CString::new(p).unwrap())?),
-                _ => Err(Error::NonUnicodePath),
-            }
+        let path = path.as_ref();
+        match path.to_str() {
+            Some(p) if path.exists() => Self::new(&ffi::CString::new(p)?),
+            Some(p) => Err(Error::FileNotFound { path: p.into() }),
+            None => Err(Error::NonUnicodePath),
+        }
         }
     }
 
