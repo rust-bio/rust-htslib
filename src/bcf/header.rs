@@ -2,6 +2,35 @@
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
+//! Module for working with VCF or BCF headers.
+//!
+//! # Examples
+//! From the header of a VCF file we can
+//!   - Output sample count of a VCF file
+//!   - Output sample names of a VCF file
+//!   - Output sample index given a sample name of a VCF file.
+//! ```
+//! use crate::rust_htslib::bcf::{Reader, Read};
+//! use std::io::Read as IoRead;
+//!
+//! let path = &"test/test_string.vcf";
+//! let mut bcf = Reader::from_path(path).expect("Error opening file.");
+//! let header = bcf.header();
+//! assert_eq!(header.sample_count(), 2);  // Sample count
+//! let mut s = String::new();
+//! for (i, mut x) in header.samples().into_iter().enumerate() {
+//!     x.read_to_string(&mut s);  // Read sample name in to `s`
+//!     println!("{}", s);  // output sample name
+//! }
+//! assert_eq!(header.sample_id(b"one").unwrap(), 0);  // Sample index wrapped in Option<usize>
+//! assert_eq!(header.sample_id(b"two").unwrap(), 1);  // Sample index wrapped in Option<usize>
+//! assert!(header.sample_id(b"non existent sample").is_none());  // Return none if not found
+//!
+//! assert_eq!(header.contig_count(), 1); // Number of contig in header.
+//! // obtain the data type of an INFO field
+//! let (tag_type, tag_length) = header.info_type(b"S1").unwrap();
+//! let (fmt_type, fmt_length) = header.format_type(b"GT").unwrap();
+//! ```
 
 use std::ffi;
 use std::slice;
