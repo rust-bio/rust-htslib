@@ -132,7 +132,8 @@ impl Reader {
     /// Create a new reader from a given path.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         match path.as_ref().to_str() {
-            Some(p) if path.as_ref().exists() => Ok(Self::new(p.as_bytes())?),
+            Some(p) if !path.as_ref().exists() => Err(Error::FileNotFound { path: p.into() }),
+            Some(p) => Ok(Self::new(&ffi::CString::new(p).unwrap())?),
             _ => Err(Error::NonUnicodePath),
         }
     }
@@ -220,9 +221,11 @@ impl IndexedReader {
     ///
     /// * `path` - the path to open.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
-        match path.as_ref().to_str() {
-            Some(p) if path.as_ref().exists() => Ok(Self::new(&ffi::CString::new(p).unwrap())?),
-            _ => Err(Error::NonUnicodePath),
+        let path = path.as_ref();
+        match path.to_str() {
+            Some(p) if path.exists() => Self::new(&ffi::CString::new(p)?),
+            Some(p) => Err(Error::FileNotFound { path: p.into() }),
+            None => Err(Error::NonUnicodePath),
         }
     }
 
@@ -303,6 +306,11 @@ impl Read for IndexedReader {
                         record.inner,
                         *(*(*self.inner).readers.offset(0)).buffer.offset(0),
                     );
+                }
+
+                unsafe {
+                    // Always unpack record.
+                    htslib::bcf_unpack(record.inner_mut(), htslib::BCF_UN_ALL as i32);
                 }
 
                 record.set_header(Rc::clone(&self.header));

@@ -5,6 +5,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [next]
 - BREAKING: Rename feature 'serde' as 'serde_feature' (for technical reasons)
 - BREAKING: Consolidate module-wide errors into a crate-wide error module
+- Making `bcf::IndexedReader` always unpack records to reflect the behaviour of `bcf::Reader`.
+- Adding `bcf::errors::Error::FileNotFound` and using it.
 
 ## [0.32.0] - 2020-07-09
 ### Changes
