@@ -10,8 +10,8 @@ use std::slice;
 use crate::htslib;
 
 use crate::bam;
-use crate::bam::errors::{Error, Result};
 use crate::bam::record;
+use crate::errors::{Error, Result};
 
 /// Iterator over alignments of a pileup.
 pub type Alignments<'a> = iter::Map<
@@ -162,7 +162,7 @@ impl<'a, R: bam::Read> Iterator for Pileups<'a, R> {
         let inner = unsafe { htslib::bam_plp_auto(self.itr, &mut tid, &mut pos, &mut depth) };
 
         match inner.is_null() {
-            true if depth == -1 => Some(Err(Error::Pileup)),
+            true if depth == -1 => Some(Err(Error::BamPileup)),
             true => None,
             false => Some(Ok(Pileup {
                 inner,

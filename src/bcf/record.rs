@@ -15,9 +15,9 @@ use std::str;
 
 use bio_types::genome;
 
-use crate::bcf::errors::Result;
 use crate::bcf::header::{HeaderView, Id};
 use crate::bcf::Error;
+use crate::errors::Result;
 use crate::htslib;
 
 const MISSING_INTEGER: i32 = i32::MIN;
@@ -188,7 +188,7 @@ impl Record {
         {
             Ok(())
         } else {
-            Err(Error::SetValues)
+            Err(Error::BcfSetValues)
         }
     }
 
@@ -201,7 +201,7 @@ impl Record {
         {
             Ok(())
         } else {
-            Err(Error::SetValues)
+            Err(Error::BcfSetValues)
         }
     }
 
@@ -213,7 +213,7 @@ impl Record {
         {
             Ok(())
         } else {
-            Err(Error::SetValues)
+            Err(Error::BcfSetValues)
         }
     }
 
@@ -325,7 +325,7 @@ impl Record {
         {
             Ok(())
         } else {
-            Err(Error::SetValues)
+            Err(Error::BcfSetValues)
         }
     }
 
@@ -357,6 +357,18 @@ impl Record {
     // TODO fn push_genotypes(&mut self, Genotypes) {}?
 
     /// Get genotypes as vector of one `Genotype` per sample.
+    /// # Example
+    /// Parsing genotype field (`GT` tag) from a VCF record:
+    /// ```
+    /// use crate::rust_htslib::bcf::{Reader, Read};
+    /// let mut vcf = Reader::from_path(&"test/test_string.vcf").expect("Error opening file.");
+    /// let expected = ["./1", "1|1", "0/1", "0|1", "1|.", "1/1"];
+    /// for (rec, exp_gt) in vcf.records().zip(expected.iter()) {
+    ///     let mut rec = rec.expect("Error reading record.");
+    ///     let genotypes = rec.genotypes().expect("Error reading genotypes");
+    ///     assert_eq!(&format!("{}", genotypes.get(0)), exp_gt);
+    /// }
+    /// ```
     pub fn genotypes(&mut self) -> Result<Genotypes<'_>> {
         Ok(Genotypes {
             encoded: self.format(b"GT").integer()?,
@@ -429,7 +441,7 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(Error::SetTag {
+                Err(Error::BcfSetTag {
                     tag: str::from_utf8(tag).unwrap().to_owned(),
                 })
             }
@@ -474,7 +486,7 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(Error::SetTag {
+                Err(Error::BcfSetTag {
                     tag: str::from_utf8(tag).unwrap().to_owned(),
                 })
             }
@@ -516,7 +528,7 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(Error::SetTag {
+                Err(Error::BcfSetTag {
                     tag: str::from_utf8(tag).unwrap().to_owned(),
                 })
             }
@@ -571,7 +583,7 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(Error::SetTag {
+                Err(Error::BcfSetTag {
                     tag: str::from_utf8(tag).unwrap().to_owned(),
                 })
             }
@@ -581,7 +593,7 @@ impl Record {
     /// Remove unused alleles.
     pub fn trim_alleles(&mut self) -> Result<()> {
         match unsafe { htslib::bcf_trim_alleles(self.header().inner, self.inner) } {
-            -1 => Err(Error::RemoveAlleles),
+            -1 => Err(Error::BcfRemoveAlleles),
             _ => Ok(()),
         }
     }
@@ -604,7 +616,7 @@ impl Record {
         }
 
         match ret {
-            -1 => Err(Error::RemoveAlleles),
+            -1 => Err(Error::BcfRemoveAlleles),
             _ => Ok(()),
         }
     }
@@ -758,8 +770,8 @@ impl<'a> Info<'a> {
         self.record.buffer_len = n;
 
         match ret {
-            -1 => Err(Error::UndefinedTag { tag: self.desc() }),
-            -2 => Err(Error::UnexpectedType { tag: self.desc() }),
+            -1 => Err(Error::BcfUndefinedTag { tag: self.desc() }),
+            -2 => Err(Error::BcfUnexpectedType { tag: self.desc() }),
             -3 => Ok(None),
             ret => Ok(Some((n as usize, ret))),
         }
@@ -879,9 +891,9 @@ impl<'a> Format<'a> {
         };
         self.record.buffer_len = n;
         match ret {
-            -1 => Err(Error::UndefinedTag { tag: self.desc() }),
-            -2 => Err(Error::UnexpectedType { tag: self.desc() }),
-            -3 => Err(Error::MissingTag {
+            -1 => Err(Error::BcfUndefinedTag { tag: self.desc() }),
+            -2 => Err(Error::BcfUnexpectedType { tag: self.desc() }),
+            -3 => Err(Error::BcfMissingTag {
                 tag: self.desc(),
                 record: self.record.desc(),
             }),
