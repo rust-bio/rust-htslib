@@ -119,6 +119,13 @@ jobs:
       - name: Checkout submodules
         uses: textbook/git-checkout-submodule-action@2.0.0
 
+      - name: Test musl build without default features
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: test
+          args: --release --target x86_64-unknown-linux-musl --no-default-features
+
       - name: Test musl build with all features and debug symbols (non --release) on OSX
         uses: actions-rs/cargo@v1.0.1
         with:
