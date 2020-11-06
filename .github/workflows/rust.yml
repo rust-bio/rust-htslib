@@ -114,11 +114,9 @@ jobs:
     runs-on: macOS-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
-
-#      OSX Github Actions runner does not support this
-#      - name: Checkout submodules
-#        uses: textbook/git-checkout-submodule-action@2.0.0
+        uses: actions/checkout@v2.3.4
+        with:
+          submodules: true
 
       - uses: actions-rs/toolchain@v1
         with:
@@ -131,7 +129,7 @@ jobs:
 
       # https://github.com/FiloSottile/homebrew-musl-cross/issues/16
       - name: Provide musl-gcc symlink for the right musl arch
-        run: ln -sf /usr/local/opt/musl-cross/bin/x86_64-linux-musl-gcc /usr/local/bin/musl-gcc
+        run: ln -sf /usr/local/opt/musl-cross/libexec/bin/x86_64-linux-musl-gcc /usr/local/bin/musl-gcc
 
       - name: Install htslib dependencies
         run: brew install bzip2 zlib xz curl-openssl
