@@ -134,6 +134,13 @@ jobs:
       - name: Install htslib dependencies
         run: brew install bzip2 zlib xz curl-openssl
 
+      - name: Test build without default features for the default x86_64 OSX target
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: false  # cross is not supported on GHA OSX runner, see: https://github.community/t/why-is-docker-not-installed-on-macos/17017
+          command: test
+          args: --release
+
       - name: Test musl build without default features
         uses: actions-rs/cargo@v1
         with:
