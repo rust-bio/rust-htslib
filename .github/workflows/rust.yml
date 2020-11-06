@@ -122,13 +122,13 @@ jobs:
       - name: Test musl build without default features
         uses: actions-rs/cargo@v1
         with:
-          use-cross: true
+          use-cross: false
           command: test
           args: --release --target x86_64-unknown-linux-musl --no-default-features
 
       - name: Test musl build with all features and debug symbols (non --release) on OSX
         uses: actions-rs/cargo@v1.0.1
         with:
-          use-cross: true
+          use-cross: false
           command: test
           args: --target x86_64-unknown-linux-musl --all-features --verbose
