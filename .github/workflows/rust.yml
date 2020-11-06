@@ -129,6 +129,10 @@ jobs:
       - name: Install OSX musl-cross
         run: brew install FiloSottile/musl-cross/musl-cross
 
+      # https://github.com/FiloSottile/homebrew-musl-cross/issues/16
+      - name: Provide musl-gcc symlink for the right musl arch
+        run: ln -sf /usr/local/opt/musl-cross/bin/x86_64-linux-musl-gcc /usr/local/bin/musl-gcc
+
       - name: Install htslib dependencies
         run: brew install bzip2 zlib xz curl-openssl
 
