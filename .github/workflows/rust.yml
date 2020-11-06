@@ -113,6 +113,12 @@ jobs:
     needs: Formatting
     runs-on: macOS-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Checkout submodules
+        uses: textbook/git-checkout-submodule-action@2.0.0
+
       - name: Test musl build with all features and debug symbols (non --release) on OSX
         uses: actions-rs/cargo@v1.0.1
         with:
