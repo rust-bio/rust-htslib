@@ -116,13 +116,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
+#      OSX Github Actions runner does not support this
 #      - name: Checkout submodules
 #        uses: textbook/git-checkout-submodule-action@2.0.0
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: x86_64-unknown-linux-musl
+          override: true
+
+      - name: Install OSX musl-cross
+        run: brew install FiloSottile/musl-cross/musl-cross
+
+      - name: Install htslib dependencies
+        run: brew install bzip2 zlib xz curl-openssl
 
       - name: Test musl build without default features
         uses: actions-rs/cargo@v1
         with:
-          use-cross: false
+          use-cross: false  # cross is not supported on GHA OSX runner, see: https://github.community/t/why-is-docker-not-installed-on-macos/17017
           command: test
           args: --release --target x86_64-unknown-linux-musl --no-default-features
 
