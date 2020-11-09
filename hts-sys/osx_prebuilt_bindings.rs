@@ -344,7 +344,6 @@ pub const __MAC_10_14_1: u32 = 101401;
 pub const __MAC_10_14_4: u32 = 101404;
 pub const __MAC_10_15: u32 = 101500;
 pub const __MAC_10_15_1: u32 = 101501;
-pub const __MAC_10_15_4: u32 = 101504;
 pub const __IPHONE_2_0: u32 = 20000;
 pub const __IPHONE_2_1: u32 = 20100;
 pub const __IPHONE_2_2: u32 = 20200;
@@ -386,10 +385,6 @@ pub const __IPHONE_12_3: u32 = 120300;
 pub const __IPHONE_13_0: u32 = 130000;
 pub const __IPHONE_13_1: u32 = 130100;
 pub const __IPHONE_13_2: u32 = 130200;
-pub const __IPHONE_13_3: u32 = 130300;
-pub const __IPHONE_13_4: u32 = 130400;
-pub const __IPHONE_13_5: u32 = 130500;
-pub const __IPHONE_13_6: u32 = 130600;
 pub const __TVOS_9_0: u32 = 90000;
 pub const __TVOS_9_1: u32 = 90100;
 pub const __TVOS_9_2: u32 = 90200;
@@ -407,9 +402,7 @@ pub const __TVOS_12_1: u32 = 120100;
 pub const __TVOS_12_2: u32 = 120200;
 pub const __TVOS_12_3: u32 = 120300;
 pub const __TVOS_13_0: u32 = 130000;
-pub const __TVOS_13_2: u32 = 130200;
-pub const __TVOS_13_3: u32 = 130300;
-pub const __TVOS_13_4: u32 = 130400;
+pub const __TVOS_13_1: u32 = 130100;
 pub const __WATCHOS_1_0: u32 = 10000;
 pub const __WATCHOS_2_0: u32 = 20000;
 pub const __WATCHOS_2_1: u32 = 20100;
@@ -426,8 +419,7 @@ pub const __WATCHOS_5_0: u32 = 50000;
 pub const __WATCHOS_5_1: u32 = 50100;
 pub const __WATCHOS_5_2: u32 = 50200;
 pub const __WATCHOS_6_0: u32 = 60000;
-pub const __WATCHOS_6_1: u32 = 60100;
-pub const __WATCHOS_6_2: u32 = 60200;
+pub const __WATCHOS_6_0_1: u32 = 60001;
 pub const __DRIVERKIT_19_0: u32 = 190000;
 pub const __MAC_OS_X_VERSION_MAX_ALLOWED: u32 = 101500;
 pub const __ENABLE_LEGACY_MAC_AVAILABILITY: u32 = 1;
@@ -3246,7 +3238,7 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
-    pub static seq_nt16_table: [::std::os::raw::c_uchar; 256usize];
+    pub static mut seq_nt16_table: [::std::os::raw::c_uchar; 256usize];
 }
 extern "C" {
     pub static mut seq_nt16_str: [::std::os::raw::c_char; 0usize];
@@ -14561,13 +14553,6 @@ fn bindgen_test_layout_fd_set() {
         )
     );
 }
-extern "C" {
-    pub fn __darwin_check_fd_set_overflow(
-        arg1: ::std::os::raw::c_int,
-        arg2: *const ::std::os::raw::c_void,
-        arg3: ::std::os::raw::c_int,
-    ) -> ::std::os::raw::c_int;
-}
 pub type fd_mask = __int32_t;
 pub type pthread_cond_t = __darwin_pthread_cond_t;
 pub type pthread_condattr_t = __darwin_pthread_condattr_t;
@@ -16436,7 +16421,7 @@ fn bindgen_test_layout_sam_hdr_t() {
 }
 pub type bam_hdr_t = sam_hdr_t;
 extern "C" {
-    pub static bam_cigar_table: [i8; 256usize];
+    pub static mut bam_cigar_table: [i8; 256usize];
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -19422,277 +19407,6 @@ fn bindgen_test_layout_kbitset_iter_t() {
             stringify!(i)
         )
     );
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct __faidx_t {
-    _unused: [u8; 0],
-}
-pub type faidx_t = __faidx_t;
-pub const fai_format_options_FAI_NONE: fai_format_options = 0;
-pub const fai_format_options_FAI_FASTA: fai_format_options = 1;
-pub const fai_format_options_FAI_FASTQ: fai_format_options = 2;
-pub type fai_format_options = u32;
-extern "C" {
-    pub fn fai_build3(
-        fn_: *const ::std::os::raw::c_char,
-        fnfai: *const ::std::os::raw::c_char,
-        fngzi: *const ::std::os::raw::c_char,
-    ) -> ::std::os::raw::c_int;
-}
-extern "C" {
-    pub fn fai_build(fn_: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
-}
-extern "C" {
-    pub fn fai_destroy(fai: *mut faidx_t);
-}
-pub const fai_load_options_FAI_CREATE: fai_load_options = 1;
-pub type fai_load_options = u32;
-extern "C" {
-    pub fn fai_load3(
-        fn_: *const ::std::os::raw::c_char,
-        fnfai: *const ::std::os::raw::c_char,
-        fngzi: *const ::std::os::raw::c_char,
-        flags: ::std::os::raw::c_int,
-    ) -> *mut faidx_t;
-}
-extern "C" {
-    pub fn fai_load(fn_: *const ::std::os::raw::c_char) -> *mut faidx_t;
-}
-extern "C" {
-    pub fn fai_load3_format(
-        fn_: *const ::std::os::raw::c_char,
-        fnfai: *const ::std::os::raw::c_char,
-        fngzi: *const ::std::os::raw::c_char,
-        flags: ::std::os::raw::c_int,
-        format: fai_format_options,
-    ) -> *mut faidx_t;
-}
-extern "C" {
-    pub fn fai_load_format(
-        fn_: *const ::std::os::raw::c_char,
-        format: fai_format_options,
-    ) -> *mut faidx_t;
-}
-extern "C" {
-    pub fn fai_fetch(
-        fai: *const faidx_t,
-        reg: *const ::std::os::raw::c_char,
-        len: *mut ::std::os::raw::c_int,
-    ) -> *mut ::std::os::raw::c_char;
-}
-extern "C" {
-    pub fn fai_fetch64(
-        fai: *const faidx_t,
-        reg: *const ::std::os::raw::c_char,
-        len: *mut hts_pos_t,
-    ) -> *mut ::std::os::raw::c_char;
-}
-extern "C" {
-    pub fn fai_fetchqual(
-        fai: *const faidx_t,
-        reg: *const ::std::os::raw::c_char,
-        len: *mut ::std::os::raw::c_int,
-    ) -> *mut ::std::os::raw::c_char;
-}
-extern "C" {
-    pub fn fai_fetchqual64(
-        fai: *const faidx_t,
-        reg: *const ::std::os::raw::c_char,
-        len: *mut hts_pos_t,
-    ) -> *mut ::std::os::raw::c_char;
-}
-extern "C" {
-    pub fn faidx_fetch_nseq(fai: *const faidx_t) -> ::std::os::raw::c_int;
-}
-extern "C" {
-    pub fn faidx_fetch_seq(
-        fai: *const faidx_t,
-        c_name: *const ::std::os::raw::c_char,
-        p_beg_i: ::std::os::raw::c_int,
-        p_end_i: ::std::os::raw::c_int,
-        len: *mut ::std::os::raw::c_int,
-    ) -> *mut ::std::os::raw::c_char;
-}
-extern "C" {
-    pub fn faidx_fetch_seq64(
-        fai: *const faidx_t,
-        c_name: *const ::std::os::raw::c_char,
-        p_beg_i: hts_pos_t,
-        p_end_i: hts_pos_t,
-        len: *mut hts_pos_t,
-    ) -> *mut ::std::os::raw::c_char;
-}
-extern "C" {
-    pub fn faidx_fetch_qual(
-        fai: *const faidx_t,
-        c_name: *const ::std::os::raw::c_char,
-        p_beg_i: ::std::os::raw::c_int,
-        p_end_i: ::std::os::raw::c_int,
-        len: *mut ::std::os::raw::c_int,
-    ) -> *mut ::std::os::raw::c_char;
-}
-extern "C" {
-    pub fn faidx_fetch_qual64(
-        fai: *const faidx_t,
-        c_name: *const ::std::os::raw::c_char,
-        p_beg_i: hts_pos_t,
-        p_end_i: hts_pos_t,
-        len: *mut hts_pos_t,
-    ) -> *mut ::std::os::raw::c_char;
-}
-extern "C" {
-    pub fn faidx_has_seq(
-        fai: *const faidx_t,
-        seq: *const ::std::os::raw::c_char,
-    ) -> ::std::os::raw::c_int;
-}
-extern "C" {
-    pub fn faidx_nseq(fai: *const faidx_t) -> ::std::os::raw::c_int;
-}
-extern "C" {
-    pub fn faidx_iseq(
-        fai: *const faidx_t,
-        i: ::std::os::raw::c_int,
-    ) -> *const ::std::os::raw::c_char;
-}
-extern "C" {
-    pub fn faidx_seq_len(
-        fai: *const faidx_t,
-        seq: *const ::std::os::raw::c_char,
-    ) -> ::std::os::raw::c_int;
-}
-extern "C" {
-    pub fn fai_parse_region(
-        fai: *const faidx_t,
-        s: *const ::std::os::raw::c_char,
-        tid: *mut ::std::os::raw::c_int,
-        beg: *mut hts_pos_t,
-        end: *mut hts_pos_t,
-        flags: ::std::os::raw::c_int,
-    ) -> *const ::std::os::raw::c_char;
-}
-extern "C" {
-    pub fn fai_set_cache_size(fai: *mut faidx_t, cache_size: ::std::os::raw::c_int);
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct hts_tpool_process {
-    _unused: [u8; 0],
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct hts_tpool_result {
-    _unused: [u8; 0],
-}
-extern "C" {
-    pub fn hts_tpool_init(n: ::std::os::raw::c_int) -> *mut hts_tpool;
-}
-extern "C" {
-    pub fn hts_tpool_size(p: *mut hts_tpool) -> ::std::os::raw::c_int;
-}
-extern "C" {
-    pub fn hts_tpool_dispatch(
-        p: *mut hts_tpool,
-        q: *mut hts_tpool_process,
-        func: ::std::option::Option<
-            unsafe extern "C" fn(arg: *mut ::std::os::raw::c_void) -> *mut ::std::os::raw::c_void,
-        >,
-        arg: *mut ::std::os::raw::c_void,
-    ) -> ::std::os::raw::c_int;
-}
-extern "C" {
-    pub fn hts_tpool_dispatch2(
-        p: *mut hts_tpool,
-        q: *mut hts_tpool_process,
-        func: ::std::option::Option<
-            unsafe extern "C" fn(arg: *mut ::std::os::raw::c_void) -> *mut ::std::os::raw::c_void,
-        >,
-        arg: *mut ::std::os::raw::c_void,
-        nonblock: ::std::os::raw::c_int,
-    ) -> ::std::os::raw::c_int;
-}
-extern "C" {
-    pub fn hts_tpool_dispatch3(
-        p: *mut hts_tpool,
-        q: *mut hts_tpool_process,
-        exec_func: ::std::option::Option<
-            unsafe extern "C" fn(arg: *mut ::std::os::raw::c_void) -> *mut ::std::os::raw::c_void,
-        >,
-        arg: *mut ::std::os::raw::c_void,
-        job_cleanup: ::std::option::Option<unsafe extern "C" fn(arg: *mut ::std::os::raw::c_void)>,
-        result_cleanup: ::std::option::Option<
-            unsafe extern "C" fn(data: *mut ::std::os::raw::c_void),
-        >,
-        nonblock: ::std::os::raw::c_int,
-    ) -> ::std::os::raw::c_int;
-}
-extern "C" {
-    pub fn hts_tpool_wake_dispatch(q: *mut hts_tpool_process);
-}
-extern "C" {
-    pub fn hts_tpool_process_flush(q: *mut hts_tpool_process) -> ::std::os::raw::c_int;
-}
-extern "C" {
-    pub fn hts_tpool_process_reset(
-        q: *mut hts_tpool_process,
-        free_results: ::std::os::raw::c_int,
-    ) -> ::std::os::raw::c_int;
-}
-extern "C" {
-    pub fn hts_tpool_process_qsize(q: *mut hts_tpool_process) -> ::std::os::raw::c_int;
-}
-extern "C" {
-    pub fn hts_tpool_destroy(p: *mut hts_tpool);
-}
-extern "C" {
-    pub fn hts_tpool_kill(p: *mut hts_tpool);
-}
-extern "C" {
-    pub fn hts_tpool_next_result(q: *mut hts_tpool_process) -> *mut hts_tpool_result;
-}
-extern "C" {
-    pub fn hts_tpool_next_result_wait(q: *mut hts_tpool_process) -> *mut hts_tpool_result;
-}
-extern "C" {
-    pub fn hts_tpool_delete_result(r: *mut hts_tpool_result, free_data: ::std::os::raw::c_int);
-}
-extern "C" {
-    pub fn hts_tpool_result_data(r: *mut hts_tpool_result) -> *mut ::std::os::raw::c_void;
-}
-extern "C" {
-    pub fn hts_tpool_process_init(
-        p: *mut hts_tpool,
-        qsize: ::std::os::raw::c_int,
-        in_only: ::std::os::raw::c_int,
-    ) -> *mut hts_tpool_process;
-}
-extern "C" {
-    pub fn hts_tpool_process_destroy(q: *mut hts_tpool_process);
-}
-extern "C" {
-    pub fn hts_tpool_process_empty(q: *mut hts_tpool_process) -> ::std::os::raw::c_int;
-}
-extern "C" {
-    pub fn hts_tpool_process_len(q: *mut hts_tpool_process) -> ::std::os::raw::c_int;
-}
-extern "C" {
-    pub fn hts_tpool_process_sz(q: *mut hts_tpool_process) -> ::std::os::raw::c_int;
-}
-extern "C" {
-    pub fn hts_tpool_process_shutdown(q: *mut hts_tpool_process);
-}
-extern "C" {
-    pub fn hts_tpool_process_attach(p: *mut hts_tpool, q: *mut hts_tpool_process);
-}
-extern "C" {
-    pub fn hts_tpool_process_detach(p: *mut hts_tpool, q: *mut hts_tpool_process);
-}
-extern "C" {
-    pub fn hts_tpool_process_ref_incr(q: *mut hts_tpool_process);
-}
-extern "C" {
-    pub fn hts_tpool_process_ref_decr(q: *mut hts_tpool_process);
 }
 extern "C" {
     #[link_name = "\u{1}_wrap_kbs_init2"]
