@@ -42,7 +42,6 @@ const FILES: &[&str] = &[
     "thread_pool.c",
     "vcf.c",
     "vcfutils.c",
-    "wrapper.c",
     "cram/cram_codecs.c",
     "cram/cram_decode.c",
     "cram/cram_encode.c",
@@ -86,7 +85,7 @@ fn main() {
     if want_static {
         cfg.warnings(false).static_flag(true).pic(true);
     } else {
-        cfg.warnings(true).static_flag(false).pic(true); 
+        cfg.warnings(false).static_flag(false).pic(true);
     }
 
     if let Ok(z_inc) = env::var("DEP_Z_INCLUDE") {
