@@ -22,6 +22,7 @@ pub struct RecordBuffer {
     inner: VecDeque<Rc<bam::Record>>,
     overflow: Option<Rc<bam::Record>>,
     cache_cigar: bool,
+    min_refetch_distance: u64,
 }
 
 unsafe impl Sync for RecordBuffer {}
@@ -40,7 +41,16 @@ impl RecordBuffer {
             inner: VecDeque::new(),
             overflow: None,
             cache_cigar,
+            min_refetch_distance: 1,
         }
+    }
+
+    /// maximum distance to previous fetch window such that a
+    /// new fetch operation is performed. If the distance is smaller, buffer will simply
+    /// read through until the start of the new fetch window (probably saving some time
+    /// by avoiding the random access).
+    pub fn set_min_refetch_distance(&mut self, min_refetch_distance: u64) {
+        self.min_refetch_distance = min_refetch_distance;
     }
 
     /// Return start position of buffer
@@ -74,7 +84,7 @@ impl RecordBuffer {
             let mut deleted = 0;
             let window_start = start;
             if self.inner.is_empty()
-                || self.end().unwrap() < window_start
+                || window_start.saturating_sub(self.end().unwrap()) >= self.min_refetch_distance
                 || self.tid().unwrap() != tid as i32
                 || self.start().unwrap() > window_start
             {
@@ -111,6 +121,11 @@ impl RecordBuffer {
                 }
 
                 let pos = record.pos();
+
+                // skip records before the start
+                if pos < start as i64 {
+                    continue;
+                }
 
                 if self.cache_cigar {
                     Rc::get_mut(&mut record).unwrap().cache_cigar();
@@ -160,7 +175,6 @@ mod tests {
     #[test]
     fn test_buffer() {
         let reader = bam::IndexedReader::from_path(&"test/test.bam").unwrap();
-
         let mut buffer = RecordBuffer::new(reader, false);
 
         buffer.fetch(b"CHROMOSOME_I", 1, 5).unwrap();
