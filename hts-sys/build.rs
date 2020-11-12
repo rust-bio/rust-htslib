@@ -42,6 +42,7 @@ const FILES: &[&str] = &[
     "thread_pool.c",
     "vcf.c",
     "vcfutils.c",
+    "wrapper.c",
     "cram/cram_codecs.c",
     "cram/cram_decode.c",
     "cram/cram_encode.c",
@@ -83,7 +84,7 @@ fn main() {
     let want_static = cfg!(feature = "static") || env::var("HTS_STATIC").is_ok();
 
     if want_static {
-        cfg.warnings(true).static_flag(true).pic(true);
+        cfg.warnings(false).static_flag(true).pic(true);
     } else {
         cfg.warnings(true).static_flag(false).pic(true); 
     }
