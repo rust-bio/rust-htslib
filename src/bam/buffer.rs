@@ -4,6 +4,7 @@
 // except according to those terms.
 
 use std::collections::{vec_deque, VecDeque};
+use std::mem;
 use std::rc::Rc;
 use std::str;
 
@@ -23,6 +24,7 @@ pub struct RecordBuffer {
     overflow: Option<Rc<bam::Record>>,
     cache_cigar: bool,
     min_refetch_distance: u64,
+    buffer_record: Rc<bam::Record>,
 }
 
 unsafe impl Sync for RecordBuffer {}
@@ -42,6 +44,7 @@ impl RecordBuffer {
             overflow: None,
             cache_cigar,
             min_refetch_distance: 1,
+            buffer_record: Rc::new(bam::Record::new()),
         }
     }
 
@@ -107,25 +110,28 @@ impl RecordBuffer {
 
             // extend to the right
             loop {
-                let mut record = Rc::new(bam::Record::new());
-                if self
+                match self
                     .reader
-                    .read(Rc::get_mut(&mut record).unwrap())
-                    .is_none()
+                    .read(Rc::get_mut(&mut self.buffer_record).unwrap())
                 {
-                    break;
+                    None => break,
+                    Some(res) => res?,
                 }
 
-                if record.is_unmapped() {
+                if self.buffer_record.is_unmapped() {
                     continue;
                 }
 
-                let pos = record.pos();
+                let pos = self.buffer_record.pos();
 
                 // skip records before the start
                 if pos < start as i64 {
                     continue;
                 }
+
+                // Record is kept, do not reuse it for next iteration
+                // and thus create a new one.
+                let mut record = mem::replace(&mut self.buffer_record, Rc::new(bam::Record::new()));
 
                 if self.cache_cigar {
                     Rc::get_mut(&mut record).unwrap().cache_cigar();

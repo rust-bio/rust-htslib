@@ -1327,7 +1327,7 @@ mod tests {
         let mut reader = Reader::from_path("test/test_svlen.vcf").unwrap();
 
         let mut record = reader.empty_record();
-        reader.read(&mut record).unwrap();
+        reader.read(&mut record).unwrap().unwrap();
 
         assert_eq!(record.info(b"SVLEN").integer().unwrap(), Some(&[-127][..]));
     }
@@ -1366,7 +1366,7 @@ mod tests {
     fn test_alt_allele_dosage() {
         let path = &"test/test_string.vcf";
         let mut bcf = Reader::from_path(path).expect("Error opening file.");
-        let header = bcf.header();
+        let _header = bcf.header();
         // FORMAT fields of first record of the vcf should look like:
         // GT:FS1:FN1	./1:LongString1:1	1/1:ss1:2
         let mut first_record = bcf.records().next().unwrap().expect("Fail to read record");
