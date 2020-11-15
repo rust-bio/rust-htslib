@@ -83,9 +83,9 @@ fn main() {
     let want_static = cfg!(feature = "static") || env::var("HTS_STATIC").is_ok();
 
     if want_static {
-        cfg.warnings(true).static_flag(true).pic(true);
+        cfg.warnings(false).static_flag(true).pic(true);
     } else {
-        cfg.warnings(true).static_flag(false).pic(true); 
+        cfg.warnings(false).static_flag(false).pic(true);
     }
 
     if let Ok(z_inc) = env::var("DEP_Z_INCLUDE") {
