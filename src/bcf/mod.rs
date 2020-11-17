@@ -783,6 +783,7 @@ fn bcf_open(target: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
 mod tests {
     use super::*;
     use crate::bcf::header::Id;
+    use crate::bcf::record::GenotypeAllele;
     use crate::bcf::record::Numeric;
     use crate::bcf::Reader;
     use std::convert::TryFrom;
@@ -1216,6 +1217,15 @@ mod tests {
             record.push_info_flag(b"X1").unwrap();
 
             record
+                .push_genotypes(&[
+                    GenotypeAllele::Unphased(0),
+                    GenotypeAllele::Unphased(1),
+                    GenotypeAllele::Unphased(1),
+                    GenotypeAllele::Phased(1),
+                ])
+                .unwrap();
+
+            record
                 .push_format_string(b"FS1", &[&b"yes"[..], &b"no"[..]])
                 .unwrap();
             record.push_format_integer(b"FF1", &[43, 11]).unwrap();
@@ -1360,6 +1370,22 @@ mod tests {
         let _ = reader.read(&mut rec);
 
         assert_eq!(rec.info(b"X").string().unwrap().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn test_genotype_allele_conversion() {
+        let allele = GenotypeAllele::Unphased(1);
+        let converted: i32 = allele.into();
+        let expected = 4;
+        assert_eq!(converted, expected);
+    }
+
+    #[test]
+    fn test_genotype_missing_allele_conversion() {
+        let allele = GenotypeAllele::PhasedMissing;
+        let converted: i32 = allele.into();
+        let expected = 1;
+        assert_eq!(converted, expected);
     }
 
     #[test]
