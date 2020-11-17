@@ -1386,6 +1386,7 @@ mod tests {
         let converted: i32 = allele.into();
         let expected = 1;
         assert_eq!(converted, expected);
+    }
 
     #[test]
     fn test_alt_allele_dosage() {
