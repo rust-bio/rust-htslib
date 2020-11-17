@@ -370,6 +370,18 @@ impl Record {
     }
 
     /// Get genotypes as vector of one `Genotype` per sample.
+    /// # Example
+    /// Parsing genotype field (`GT` tag) from a VCF record:
+    /// ```
+    /// use crate::rust_htslib::bcf::{Reader, Read};
+    /// let mut vcf = Reader::from_path(&"test/test_string.vcf").expect("Error opening file.");
+    /// let expected = ["./1", "1|1", "0/1", "0|1", "1|.", "1/1"];
+    /// for (rec, exp_gt) in vcf.records().zip(expected.iter()) {
+    ///     let mut rec = rec.expect("Error reading record.");
+    ///     let genotypes = rec.genotypes().expect("Error reading genotypes");
+    ///     assert_eq!(&format!("{}", genotypes.get(0)), exp_gt);
+    /// }
+    /// ```
     pub fn genotypes(&mut self) -> Result<Genotypes<'_>> {
         Ok(Genotypes {
             encoded: self.format(b"GT").integer()?,

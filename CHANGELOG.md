@@ -2,9 +2,32 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [next]
+## [0.34.0] - 2020-11-13
+### Added
+- Ability to set minimum refetch distance in `bam::RecordBuffer`.
+
+## [0.33.0] - 2020-11-04
+### Changes
 - BREAKING: Rename feature 'serde' as 'serde_feature' (for technical reasons)
 - BREAKING: Consolidate module-wide errors into a crate-wide error module
+- Making `bcf::IndexedReader` always unpack records to reflect the behaviour of `bcf::Reader`.
+- Adding `bcf::errors::Error::FileNotFound` and using it.
+- Fixes for musl compilation (@brainstorm).
+- Improved BCF constants handling (@juliangehring)
+- Fixes for tabix reader (@felix-clark, @brainstorm).
+- Fixes for BCF handling (@holtgrewe, @tedil).
+- Documentation improvements (@vsoch, @brainstorm, @edmundlth).
+- BREAKING: Improved, more ergonomic BAM fetch API (@TiberiusPrime, @brainstorm, @tedil).
+- BREAKING: Let BamRecordExtensions return iterators instead of vectors (@TiberiusPrime).
+- Handle all errors via a unified single thiserror based enum (@landesfeind).
+- BREAKING: BAM read API now returns Option<Result> (@slazicoicr).
+### Added
+- Support for reading indexed FASTA files (@landesfeind, @pmarks, @brainstorm).
+- Support for shared threadpools when reading and writing BAM (@pmarks, @nlhepler).
+- Serde support for Cigar strings (@FelixMoelder, @pmarks, @johanneskoester).
+- Expose bgzf functionality (@landesfeind).
+- Iterator over BAM records using Rc-pointers (@TiberiusPrime, @tedil).
+- Ability to obtain pairs of read and genome intervals from BAM (aligned_block_pairs) (@TiberiusPrime, @brainstorm).
 
 ## [0.32.0] - 2020-07-09
 ### Changes

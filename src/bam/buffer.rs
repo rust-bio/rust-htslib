@@ -4,6 +4,7 @@
 // except according to those terms.
 
 use std::collections::{vec_deque, VecDeque};
+use std::mem;
 use std::rc::Rc;
 use std::str;
 
@@ -22,6 +23,8 @@ pub struct RecordBuffer {
     inner: VecDeque<Rc<bam::Record>>,
     overflow: Option<Rc<bam::Record>>,
     cache_cigar: bool,
+    min_refetch_distance: u64,
+    buffer_record: Rc<bam::Record>,
 }
 
 unsafe impl Sync for RecordBuffer {}
@@ -40,7 +43,17 @@ impl RecordBuffer {
             inner: VecDeque::new(),
             overflow: None,
             cache_cigar,
+            min_refetch_distance: 1,
+            buffer_record: Rc::new(bam::Record::new()),
         }
+    }
+
+    /// maximum distance to previous fetch window such that a
+    /// new fetch operation is performed. If the distance is smaller, buffer will simply
+    /// read through until the start of the new fetch window (probably saving some time
+    /// by avoiding the random access).
+    pub fn set_min_refetch_distance(&mut self, min_refetch_distance: u64) {
+        self.min_refetch_distance = min_refetch_distance;
     }
 
     /// Return start position of buffer
@@ -74,7 +87,7 @@ impl RecordBuffer {
             let mut deleted = 0;
             let window_start = start;
             if self.inner.is_empty()
-                || self.end().unwrap() < window_start
+                || window_start.saturating_sub(self.end().unwrap()) >= self.min_refetch_distance
                 || self.tid().unwrap() != tid as i32
                 || self.start().unwrap() > window_start
             {
@@ -97,20 +110,28 @@ impl RecordBuffer {
 
             // extend to the right
             loop {
-                let mut record = Rc::new(bam::Record::new());
-                if self
+                match self
                     .reader
-                    .read(Rc::get_mut(&mut record).unwrap())
-                    .is_none()
+                    .read(Rc::get_mut(&mut self.buffer_record).unwrap())
                 {
-                    break;
+                    None => break,
+                    Some(res) => res?,
                 }
 
-                if record.is_unmapped() {
+                if self.buffer_record.is_unmapped() {
                     continue;
                 }
 
-                let pos = record.pos();
+                let pos = self.buffer_record.pos();
+
+                // skip records before the start
+                if pos < start as i64 {
+                    continue;
+                }
+
+                // Record is kept, do not reuse it for next iteration
+                // and thus create a new one.
+                let mut record = mem::replace(&mut self.buffer_record, Rc::new(bam::Record::new()));
 
                 if self.cache_cigar {
                     Rc::get_mut(&mut record).unwrap().cache_cigar();
@@ -160,7 +181,6 @@ mod tests {
     #[test]
     fn test_buffer() {
         let reader = bam::IndexedReader::from_path(&"test/test.bam").unwrap();
-
         let mut buffer = RecordBuffer::new(reader, false);
 
         buffer.fetch(b"CHROMOSOME_I", 1, 5).unwrap();
