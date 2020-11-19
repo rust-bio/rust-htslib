@@ -767,7 +767,7 @@ unsafe impl Sync for Record {}
 /// Info tag representation.
 #[derive(Debug)]
 pub struct Info<'a> {
-    record: &'a mut Record,
+    record: &'a Record,
     tag: &'a [u8],
     buffer: *mut ::std::os::raw::c_void,
     buffer_len: i32,
