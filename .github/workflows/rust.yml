@@ -109,15 +109,15 @@ jobs:
           command: test
           args: --target x86_64-unknown-linux-musl --all-features --verbose
 
-  Testing-OSX:
+  Testing-OSX-Intel-Catalina:
     needs: Formatting
-    runs-on: macOS-latest
+    runs-on: macOS-10.15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2.3.4
         with:
           submodules: true
-      
+
       - name: Install htslib dependencies
         run: brew install bzip2 zlib xz curl-openssl
 
@@ -135,6 +135,63 @@ jobs:
           command: test
           args: --release --all-features --verbose
 
+  Testing-OSX-Intel-BigSur:
+    needs: Formatting
+    runs-on: macOS-11.0
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2.3.4
+        with:
+          submodules: true
+
+      - name: Install htslib dependencies
+        run: brew install bzip2 zlib xz curl-openssl
+
+      # Test for Intel OSX
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: x86_64-apple-darwin
+          override: true
+
+      - name: Test build without default features for the default x86_64 OSX target
+        uses: actions-rs/cargo@v1.0.1
+        with:
+          use-cross: false  # cross is not supported on GHA OSX runner, see: https://github.community/t/why-is-docker-not-installed-on-macos/17017
+          command: test
+          args: --release --all-features --verbose
+
+
+  Testing-OSX-M1-BigSur:
+    needs: Formatting
+    runs-on: macOS-11.0
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2.3.4
+        with:
+          submodules: true
+
+      - name: Install htslib dependencies
+        run: brew install bzip2 zlib xz curl-openssl
+
+      # Test for M1 macs
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          target: aarch64-apple-darwin
+          override: true
+
+      - name: Test build without default features for the default x86_64 OSX target
+        uses: actions-rs/cargo@v1.0.1
+        with:
+          use-cross: false  # cross is not supported on GHA OSX runner, see: https://github.community/t/why-is-docker-not-installed-on-macos/17017
+          command: test
+          args: --release --all-features --verbose
+
+#  Testing-OSX-MUSL-BigSur:
+#   needs: Formatting
+#   runs-on: macOS-11.0
+#   steps:
       # Test MUSL builds on OSX
       #
       # - uses: actions-rs/toolchain@v1
