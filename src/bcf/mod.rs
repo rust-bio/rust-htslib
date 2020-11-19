@@ -1343,7 +1343,10 @@ mod tests {
         let mut record = reader.empty_record();
         reader.read(&mut record).unwrap().unwrap();
 
-        assert_eq!(*record.info(b"SVLEN").integer().unwrap().unwrap(), &[-127][..]);
+        assert_eq!(
+            *record.info(b"SVLEN").integer().unwrap().unwrap(),
+            &[-127][..]
+        );
     }
 
     #[test]
@@ -1439,9 +1442,19 @@ mod tests {
     #[test]
     fn test_obs_cornercase() {
         let mut reader = Reader::from_path("test/obs-cornercase.vcf").unwrap();
-        let mut first_record = reader.records().next().unwrap().expect("Fail to read record");
+        let mut first_record = reader
+            .records()
+            .next()
+            .unwrap()
+            .expect("Fail to read record");
 
-        assert_eq!(*first_record.info(b"EVENT").string().unwrap().unwrap(), [b"gridss33fb_1085"]);
-        assert_eq!(*first_record.info(b"MATEID").string().unwrap().unwrap(), [b"gridss33fb_1085h"]);
+        assert_eq!(
+            *first_record.info(b"EVENT").string().unwrap().unwrap(),
+            [b"gridss33fb_1085"]
+        );
+        assert_eq!(
+            *first_record.info(b"MATEID").string().unwrap().unwrap(),
+            [b"gridss33fb_1085h"]
+        );
     }
 }

@@ -4,12 +4,12 @@
 // except according to those terms.
 
 use std::borrow::{Borrow, BorrowMut};
-use std::ops::Deref;
-use std::marker::PhantomData;
 use std::f32;
 use std::ffi;
 use std::fmt;
 use std::i32;
+use std::marker::PhantomData;
+use std::ops::Deref;
 use std::ptr;
 use std::rc::Rc;
 use std::slice;
@@ -115,7 +115,9 @@ impl<'a, T: 'a + fmt::Debug, B: Borrow<Buffer> + 'a> Deref for BufferBacked<'a, 
     }
 }
 
-impl<'a, T: 'a + fmt::Debug + fmt::Display, B: Borrow<Buffer> + 'a> fmt::Display for BufferBacked<'a, T, B> {
+impl<'a, T: 'a + fmt::Debug + fmt::Display, B: Borrow<Buffer> + 'a> fmt::Display
+    for BufferBacked<'a, T, B>
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.value, f)
     }
@@ -914,7 +916,7 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, 'b, B> {
                             .expect("Bug: returned string should not be empty.")
                     })
                     .collect(),
-                    self.buffer
+                    self.buffer,
                 )
             })
         })
