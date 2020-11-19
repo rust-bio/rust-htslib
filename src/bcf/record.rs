@@ -773,6 +773,12 @@ pub struct Info<'a> {
     buffer_len: i32,
 }
 
+impl Drop for Info {
+    fn drop(&mut self) {
+        unsafe { ::libc::free(self.buffer as *mut ::libc::c_void); }
+    }
+}
+
 impl<'a> Info<'a> {
     /// Short description of info tag.
     pub fn desc(&self) -> String {
