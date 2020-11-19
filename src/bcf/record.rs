@@ -4,6 +4,8 @@
 // except according to those terms.
 
 use std::borrow::{Borrow, BorrowMut};
+use std::ops::Deref;
+use std::marker::PhantomData;
 use std::f32;
 use std::ffi;
 use std::fmt;
@@ -14,6 +16,7 @@ use std::slice;
 use std::str;
 
 use bio_types::genome;
+use derive_new::new;
 
 use crate::bcf::header::{HeaderView, Id};
 use crate::bcf::Error;
@@ -73,6 +76,7 @@ impl NumericUtils for i32 {
 }
 
 /// A buffer for info or format data.
+#[derive(Debug)]
 pub struct Buffer {
     inner: *mut ::std::os::raw::c_void,
     len: i32,
@@ -92,6 +96,28 @@ impl Drop for Buffer {
         unsafe {
             ::libc::free(self.inner as *mut ::libc::c_void);
         }
+    }
+}
+
+#[derive(new, Debug)]
+pub struct BufferBacked<'a, T: 'a + fmt::Debug, B: Borrow<Buffer> + 'a> {
+    value: T,
+    buffer: B,
+    #[new(default)]
+    phantom: PhantomData<&'a B>,
+}
+
+impl<'a, T: 'a + fmt::Debug, B: Borrow<Buffer> + 'a> Deref for BufferBacked<'a, T, B> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.value
+    }
+}
+
+impl<'a, T: 'a + fmt::Debug + fmt::Display, B: Borrow<Buffer> + 'a> fmt::Display for BufferBacked<'a, T, B> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.value, f)
     }
 }
 
@@ -362,7 +388,7 @@ impl Record {
         self.inner_mut().qual = qual;
     }
 
-    pub fn info<'a>(&'a mut self, tag: &'a [u8]) -> Info<'_, Buffer> {
+    pub fn info<'a, 'b>(&'a mut self, tag: &'a [u8]) -> Info<'a, 'b, Buffer> {
         self.info_shared_buffer(tag, Buffer::new())
     }
 
@@ -371,11 +397,12 @@ impl Record {
         &'a mut self,
         tag: &'a [u8],
         buffer: B,
-    ) -> Info<'_, B> {
+    ) -> Info<'a, 'b, B> {
         Info {
             record: self,
             tag,
             buffer,
+            phantom: std::marker::PhantomData,
         }
     }
 
@@ -801,13 +828,14 @@ unsafe impl Sync for Record {}
 
 /// Info tag representation.
 #[derive(Debug)]
-pub struct Info<'a, B: BorrowMut<Buffer> + Borrow<Buffer> + 'a> {
+pub struct Info<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> {
     record: &'a Record,
     tag: &'a [u8],
     buffer: B,
+    phantom: std::marker::PhantomData<&'b B>,
 }
 
-impl<'a, B: BorrowMut<Buffer> + Borrow<Buffer> + 'a> Info<'a, B> {
+impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, 'b, B> {
     /// Short description of info tag.
     pub fn desc(&self) -> String {
         str::from_utf8(self.tag).unwrap().to_owned()
@@ -839,12 +867,12 @@ impl<'a, B: BorrowMut<Buffer> + Borrow<Buffer> + 'a> Info<'a, B> {
     /// Get integers from tag. `None` if tag not present in record.
     ///
     /// Import `bcf::record::Numeric` for missing value handling.
-    pub fn integer(&mut self) -> Result<Option<&'a [i32]>> {
+    pub fn integer(mut self) -> Result<Option<BufferBacked<'b, &'b [i32], B>>> {
         self.data(htslib::BCF_HT_INT).map(|data| {
             data.map(|(n, ret)| {
                 let values =
                     unsafe { slice::from_raw_parts(self.buffer.borrow().inner as *const i32, n) };
-                &values[..ret as usize]
+                BufferBacked::new(&values[..ret as usize], self.buffer)
             })
         })
     }
@@ -852,12 +880,12 @@ impl<'a, B: BorrowMut<Buffer> + Borrow<Buffer> + 'a> Info<'a, B> {
     /// Get floats from tag. `None` if tag not present in record.
     ///
     /// Import `bcf::record::Numeric` for missing value handling.
-    pub fn float(&mut self) -> Result<Option<&'a [f32]>> {
+    pub fn float(mut self) -> Result<Option<BufferBacked<'b, &'b [f32], B>>> {
         self.data(htslib::BCF_HT_REAL).map(|data| {
             data.map(|(n, ret)| {
                 let values =
                     unsafe { slice::from_raw_parts(self.buffer.borrow().inner as *const f32, n) };
-                &values[..ret as usize]
+                BufferBacked::new(&values[..ret as usize], self.buffer)
             })
         })
     }
@@ -871,27 +899,30 @@ impl<'a, B: BorrowMut<Buffer> + Borrow<Buffer> + 'a> Info<'a, B> {
     }
 
     /// Get strings from tag. `None` if tag not present in record.
-    pub fn string(&mut self) -> Result<Option<Vec<&'a [u8]>>> {
+    pub fn string(mut self) -> Result<Option<BufferBacked<'b, Vec<&'b [u8]>, B>>> {
         self.data(htslib::BCF_HT_STR).map(|data| {
             data.map(|(_, ret)| {
-                unsafe {
-                    slice::from_raw_parts(self.buffer.borrow().inner as *const u8, ret as usize)
-                }
-                .split(|c| *c == b',')
-                .map(|s| {
-                    // stop at zero character
-                    s.split(|c| *c == 0u8)
-                        .next()
-                        .expect("Bug: returned string should not be empty.")
-                })
-                .collect()
+                BufferBacked::new(
+                    unsafe {
+                        slice::from_raw_parts(self.buffer.borrow().inner as *const u8, ret as usize)
+                    }
+                    .split(|c| *c == b',')
+                    .map(|s| {
+                        // stop at zero character
+                        s.split(|c| *c == 0u8)
+                            .next()
+                            .expect("Bug: returned string should not be empty.")
+                    })
+                    .collect(),
+                    self.buffer
+                )
             })
         })
     }
 }
 
-unsafe impl<'a, B: BorrowMut<Buffer> + Borrow<Buffer> + 'a> Send for Info<'a, B> {}
-unsafe impl<'a, B: BorrowMut<Buffer> + Borrow<Buffer> + 'a> Sync for Info<'a, B> {}
+unsafe impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Send for Info<'a, 'b, B> {}
+unsafe impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Sync for Info<'a, 'b, B> {}
 
 fn trim_slice<T: PartialEq + NumericUtils>(s: &[T]) -> &[T] {
     s.split(|v| v.is_vector_end())
