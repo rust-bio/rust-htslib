@@ -14,20 +14,17 @@ use std::slice;
 use std::str;
 
 use bio_types::genome;
-use ieee754::Ieee754;
-use itertools::Itertools;
 
-use crate::bcf::errors::Result;
 use crate::bcf::header::{HeaderView, Id};
 use crate::bcf::Error;
+use crate::errors::Result;
 use crate::htslib;
 
 const MISSING_INTEGER: i32 = i32::MIN;
 const VECTOR_END_INTEGER: i32 = i32::MIN + 1;
-lazy_static! {
-    static ref MISSING_FLOAT: f32 = Ieee754::from_bits(0x7F80_0001);
-    static ref VECTOR_END_FLOAT: f32 = Ieee754::from_bits(0x7F80_0002);
-}
+
+const MISSING_FLOAT: u32 = 0x7F80_0001;
+const VECTOR_END_FLOAT: u32 = 0x7F80_0002;
 
 /// Common methods for numeric INFO and FORMAT entries
 pub trait Numeric {
@@ -40,11 +37,11 @@ pub trait Numeric {
 
 impl Numeric for f32 {
     fn is_missing(&self) -> bool {
-        self.bits() == MISSING_FLOAT.bits()
+        self.to_bits() == MISSING_FLOAT
     }
 
     fn missing() -> f32 {
-        *MISSING_FLOAT
+        MISSING_FLOAT as f32
     }
 }
 
@@ -65,7 +62,7 @@ trait NumericUtils {
 
 impl NumericUtils for f32 {
     fn is_vector_end(&self) -> bool {
-        self.bits() == VECTOR_END_FLOAT.bits()
+        self.to_bits() == VECTOR_END_FLOAT
     }
 }
 
@@ -191,7 +188,7 @@ impl Record {
         {
             Ok(())
         } else {
-            Err(Error::SetValues)
+            Err(Error::BcfSetValues)
         }
     }
 
@@ -204,7 +201,7 @@ impl Record {
         {
             Ok(())
         } else {
-            Err(Error::SetValues)
+            Err(Error::BcfSetValues)
         }
     }
 
@@ -216,7 +213,7 @@ impl Record {
         {
             Ok(())
         } else {
-            Err(Error::SetValues)
+            Err(Error::BcfSetValues)
         }
     }
 
@@ -328,7 +325,7 @@ impl Record {
         {
             Ok(())
         } else {
-            Err(Error::SetValues)
+            Err(Error::BcfSetValues)
         }
     }
 
@@ -357,9 +354,34 @@ impl Record {
         self.inner().n_allele()
     }
 
-    // TODO fn push_genotypes(&mut self, Genotypes) {}?
+    /// Add/replace genotypes in FORMAT GT tag.
+    ///
+    /// # Arguments
+    ///
+    /// - `genotypes` - a flattened, two-dimensional array of GenotypeAllele,
+    ///                 the first dimension contains one array for each sample.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if GT tag is not present in header.
+    pub fn push_genotypes(&mut self, genotypes: &[GenotypeAllele]) -> Result<()> {
+        let encoded: Vec<i32> = genotypes.iter().map(|gt| i32::from(*gt)).collect();
+        self.push_format_integer(b"GT", &encoded)
+    }
 
     /// Get genotypes as vector of one `Genotype` per sample.
+    /// # Example
+    /// Parsing genotype field (`GT` tag) from a VCF record:
+    /// ```
+    /// use crate::rust_htslib::bcf::{Reader, Read};
+    /// let mut vcf = Reader::from_path(&"test/test_string.vcf").expect("Error opening file.");
+    /// let expected = ["./1", "1|1", "0/1", "0|1", "1|.", "1/1"];
+    /// for (rec, exp_gt) in vcf.records().zip(expected.iter()) {
+    ///     let mut rec = rec.expect("Error reading record.");
+    ///     let genotypes = rec.genotypes().expect("Error reading genotypes");
+    ///     assert_eq!(&format!("{}", genotypes.get(0)), exp_gt);
+    /// }
+    /// ```
     pub fn genotypes(&mut self) -> Result<Genotypes<'_>> {
         Ok(Genotypes {
             encoded: self.format(b"GT").integer()?,
@@ -432,7 +454,7 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(Error::SetTag {
+                Err(Error::BcfSetTag {
                     tag: str::from_utf8(tag).unwrap().to_owned(),
                 })
             }
@@ -441,7 +463,8 @@ impl Record {
 
     // TODO: should we add convenience methods clear_format_*?
 
-    /// Add a string-typed FORMAT tag.
+    /// Add a string-typed FORMAT tag. Note that genotypes are treated as a special case
+    /// and cannot be added with this method. See instead [push_genotypes](#method.push_genotypes).
     ///
     /// # Arguments
     ///
@@ -477,7 +500,7 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(Error::SetTag {
+                Err(Error::BcfSetTag {
                     tag: str::from_utf8(tag).unwrap().to_owned(),
                 })
             }
@@ -519,7 +542,7 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(Error::SetTag {
+                Err(Error::BcfSetTag {
                     tag: str::from_utf8(tag).unwrap().to_owned(),
                 })
             }
@@ -574,7 +597,7 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(Error::SetTag {
+                Err(Error::BcfSetTag {
                     tag: str::from_utf8(tag).unwrap().to_owned(),
                 })
             }
@@ -584,7 +607,7 @@ impl Record {
     /// Remove unused alleles.
     pub fn trim_alleles(&mut self) -> Result<()> {
         match unsafe { htslib::bcf_trim_alleles(self.header().inner, self.inner) } {
-            -1 => Err(Error::RemoveAlleles),
+            -1 => Err(Error::BcfRemoveAlleles),
             _ => Ok(()),
         }
     }
@@ -607,7 +630,7 @@ impl Record {
         }
 
         match ret {
-            -1 => Err(Error::RemoveAlleles),
+            -1 => Err(Error::BcfRemoveAlleles),
             _ => Ok(()),
         }
     }
@@ -677,6 +700,18 @@ impl fmt::Display for GenotypeAllele {
     }
 }
 
+impl From<GenotypeAllele> for i32 {
+    fn from(allele: GenotypeAllele) -> i32 {
+        let (allele, phased) = match allele {
+            GenotypeAllele::UnphasedMissing => (-1, 0),
+            GenotypeAllele::PhasedMissing => (-1, 1),
+            GenotypeAllele::Unphased(a) => (a, 0),
+            GenotypeAllele::Phased(a) => (a, 1),
+        };
+        allele + 1 << 1 | phased
+    }
+}
+
 custom_derive! {
     /// Genotype representation as a vector of `GenotypeAllele`.
     #[derive(NewtypeDeref, Debug, Clone, PartialEq, Eq, Hash)]
@@ -715,7 +750,7 @@ impl<'a> Genotypes<'a> {
         Genotype(
             igt.iter()
                 .map(|&e| GenotypeAllele::from_encoded(e))
-                .collect_vec(),
+                .collect(),
         )
     }
 }
@@ -761,8 +796,8 @@ impl<'a> Info<'a> {
         self.record.buffer_len = n;
 
         match ret {
-            -1 => Err(Error::UndefinedTag { tag: self.desc() }),
-            -2 => Err(Error::UnexpectedType { tag: self.desc() }),
+            -1 => Err(Error::BcfUndefinedTag { tag: self.desc() }),
+            -2 => Err(Error::BcfUnexpectedType { tag: self.desc() }),
             -3 => Ok(None),
             ret => Ok(Some((n as usize, ret))),
         }
@@ -882,9 +917,9 @@ impl<'a> Format<'a> {
         };
         self.record.buffer_len = n;
         match ret {
-            -1 => Err(Error::UndefinedTag { tag: self.desc() }),
-            -2 => Err(Error::UnexpectedType { tag: self.desc() }),
-            -3 => Err(Error::MissingTag {
+            -1 => Err(Error::BcfUndefinedTag { tag: self.desc() }),
+            -2 => Err(Error::BcfUnexpectedType { tag: self.desc() }),
+            -3 => Err(Error::BcfMissingTag {
                 tag: self.desc(),
                 record: self.record.desc(),
             }),

@@ -14,13 +14,16 @@ use std::str;
 use std::str::FromStr;
 use std::u32;
 
+use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::bam::errors::Result;
 use crate::bam::Error;
 use crate::bam::HeaderView;
+use crate::errors::Result;
 use crate::htslib;
 use crate::utils;
+#[cfg(feature = "serde_feature")]
+use serde::{self, Deserialize, Serialize};
 
 use bio_types::alignment::{Alignment, AlignmentMode, AlignmentOperation};
 use bio_types::genome;
@@ -162,7 +165,7 @@ impl Record {
         if succ == 0 {
             Ok(record)
         } else {
-            Err(Error::ParseSAM {
+            Err(Error::BamParseSAM {
                 rec: str::from_utf8(&sam_copy).unwrap().to_owned(),
             })
         }
@@ -543,7 +546,7 @@ impl Record {
         .into_view(self.pos())
     }
 
-    fn seq_len(&self) -> usize {
+    pub fn seq_len(&self) -> usize {
         self.inner().core.l_qseq as usize
     }
 
@@ -714,7 +717,7 @@ impl SequenceRead for Record {
     }
 
     fn base(&self, i: usize) -> u8 {
-        decode_base(encoded_base(self.seq_data(), i))
+        *decode_base_unchecked(encoded_base(self.seq_data(), i))
     }
 
     fn base_qual(&self, i: usize) -> u8 {
@@ -817,12 +820,19 @@ static ENCODE_BASE: [u8; 256] = [
     15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
 ];
 
+#[inline]
 fn encoded_base(encoded_seq: &[u8], i: usize) -> u8 {
     (encoded_seq[i / 2] >> ((!i & 1) << 2)) & 0b1111
 }
 
-fn decode_base(base: u8) -> u8 {
-    DECODE_BASE[base as usize]
+#[inline]
+unsafe fn encoded_base_unchecked(encoded_seq: &[u8], i: usize) -> u8 {
+    (encoded_seq.get_unchecked(i / 2) >> ((!i & 1) << 2)) & 0b1111
+}
+
+#[inline]
+fn decode_base_unchecked(base: u8) -> &'static u8 {
+    unsafe { DECODE_BASE.get_unchecked(base as usize) }
 }
 
 /// The sequence of a record.
@@ -837,6 +847,20 @@ impl<'a> Seq<'a> {
     #[inline]
     pub fn encoded_base(&self, i: usize) -> u8 {
         encoded_base(self.encoded, i)
+    }
+
+    /// Return encoded base. Complexity: O(1).
+    #[inline]
+    pub unsafe fn encoded_base_unchecked(&self, i: usize) -> u8 {
+        encoded_base_unchecked(self.encoded, i)
+    }
+
+    /// Obtain decoded base without performing bounds checking.
+    /// Use index based access seq()[i], for checked, safe access.
+    /// Complexity: O(1).
+    #[inline]
+    pub unsafe fn decoded_base_unchecked(&self, i: usize) -> u8 {
+        *decode_base_unchecked(self.encoded_base_unchecked(i))
     }
 
     /// Return decoded sequence. Complexity: O(m) with m being the read length.
@@ -859,14 +883,15 @@ impl<'a> ops::Index<usize> for Seq<'a> {
 
     /// Return decoded base at given position within read. Complexity: O(1).
     fn index(&self, index: usize) -> &u8 {
-        &DECODE_BASE[self.encoded_base(index) as usize]
+        decode_base_unchecked(self.encoded_base(index))
     }
 }
 
 unsafe impl<'a> Send for Seq<'a> {}
 unsafe impl<'a> Sync for Seq<'a> {}
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy, Hash)]
+#[cfg_attr(feature = "serde_feature", derive(Serialize, Deserialize))]
+#[derive(PartialEq, PartialOrd, Eq, Debug, Clone, Copy, Hash)]
 pub enum Cigar {
     Match(u32),    // M
     Ins(u32),      // I
@@ -957,11 +982,13 @@ custom_derive! {
     ///    println!("{}", op);
     /// }
     /// ```
+    #[cfg_attr(feature = "serde_feature", derive(Serialize, Deserialize))]
     #[derive(NewtypeDeref,
              NewtypeIndex(usize),
              NewtypeIndexMut(usize),
              NewtypeFrom,
              PartialEq,
+             PartialOrd,
              Eq,
              NewtypeDebug,
              Clone,
@@ -1039,7 +1066,7 @@ impl TryFrom<&[u8]> for CigarString {
 
     /// Create a CigarString from given bytes.
     fn try_from(text: &[u8]) -> Result<Self> {
-        Self::try_from(str::from_utf8(text).map_err(|_| Error::ParseCigar {
+        Self::try_from(str::from_utf8(text).map_err(|_| Error::BamParseCigar {
             msg: "unable to parse as UTF8".to_owned(),
         })?)
     }
@@ -1061,7 +1088,7 @@ impl TryFrom<&str> for CigarString {
                 let n = &caps["n"];
                 let op = &caps["op"];
                 i += n.len() + op.len();
-                let n = u32::from_str(n).map_err(|_| Error::ParseCigar {
+                let n = u32::from_str(n).map_err(|_| Error::BamParseCigar {
                     msg: "expected integer".to_owned(),
                 })?;
                 inner.push(match op {
@@ -1075,13 +1102,13 @@ impl TryFrom<&str> for CigarString {
                     "=" => Cigar::Equal(n),
                     "X" => Cigar::Diff(n),
                     op => {
-                        return Err(Error::ParseCigar {
+                        return Err(Error::BamParseCigar {
                             msg: format!("operation {} not expected", op),
                         });
                     }
                 });
             } else {
-                return Err(Error::ParseCigar {
+                return Err(Error::BamParseCigar {
                     msg: "expected cigar operation [0-9]+[MIDNSHP=X]".to_owned(),
                 });
             }
@@ -1166,6 +1193,28 @@ impl CigarStringView {
         })
     }
 
+    /// Get number of bases hardclipped at the beginning of the alignment.
+    pub fn leading_hardclips(&self) -> i64 {
+        self.first().map_or(0, |cigar| {
+            if let Cigar::HardClip(s) = cigar {
+                *s as i64
+            } else {
+                0
+            }
+        })
+    }
+
+    /// Get number of bases hardclipped at the end of the alignment.
+    pub fn trailing_hardclips(&self) -> i64 {
+        self.last().map_or(0, |cigar| {
+            if let Cigar::HardClip(s) = cigar {
+                *s as i64
+            } else {
+                0
+            }
+        })
+    }
+
     /// For a given position in the reference, get corresponding position within read.
     /// If reference position is outside of the read alignment, return None.
     ///
@@ -1209,17 +1258,17 @@ impl CigarStringView {
                     break;
                 },
                 Cigar::Del(_) => {
-                    return Err(Error::UnexpectedCigarOperation {
+                    return Err(Error::BamUnexpectedCigarOperation {
                         msg: "'deletion' (D) found before any operation describing read sequence".to_owned()
                     });
                 },
                 Cigar::RefSkip(_) => {
-                    return Err(Error::UnexpectedCigarOperation {
+                    return Err(Error::BamUnexpectedCigarOperation {
                         msg: "'reference skip' (N) found before any operation describing read sequence".to_owned()
                     });
                 },
                 Cigar::HardClip(_) if i > 0 && i < self.len()-1 => {
-                    return Err(Error::UnexpectedCigarOperation{
+                    return Err(Error::BamUnexpectedCigarOperation{
                         msg: "'hard clip' (H) found in between operations, contradicting SAMv1 spec that hard clips can only be at the ends of reads".to_owned()
                     });
                 },
@@ -1276,7 +1325,7 @@ impl CigarStringView {
                     j += 1;
                 }
                 Cigar::HardClip(_) if j < self.len() - 1 => {
-                    return Err(Error::UnexpectedCigarOperation{
+                    return Err(Error::BamUnexpectedCigarOperation{
                         msg: "'hard clip' (H) found in between operations, contradicting SAMv1 spec that hard clips can only be at the ends of reads".to_owned()
                     });
                 }
@@ -1285,6 +1334,11 @@ impl CigarStringView {
         }
 
         Ok(None)
+    }
+
+    /// transfer ownership of the Cigar out of the CigarView
+    pub fn take(self) -> CigarString {
+        self.inner
     }
 }
 
