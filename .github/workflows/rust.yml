@@ -186,7 +186,7 @@ jobs:
         uses: actions-rs/cargo@v1.0.1
         with:
           use-cross: false  # cross is not supported on GHA OSX runner, see: https://github.community/t/why-is-docker-not-installed-on-macos/17017
-          command: test
+          command: build
           args: --release --all-features --verbose --target aarch64-apple-darwin
 
 #  Testing-OSX-MUSL-BigSur:
