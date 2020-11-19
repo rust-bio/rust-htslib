@@ -781,6 +781,7 @@ fn bcf_open(target: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
 
 #[cfg(test)]
 mod tests {
+    use super::record::Buffer;
     use super::*;
     use crate::bcf::header::Id;
     use crate::bcf::record::GenotypeAllele;
@@ -803,9 +804,10 @@ mod tests {
             assert_eq!(record.rid().expect("Error reading rid."), 0);
             assert_eq!(record.pos(), 10021 + i as i64);
             assert!((record.qual() - 0f32).abs() < std::f32::EPSILON);
+            let mut buffer = Buffer::new();
             assert!(
                 (record
-                    .info(b"MQ0F")
+                    .info_shared_buffer(b"MQ0F", &mut buffer)
                     .float()
                     .expect("Error reading info.")
                     .expect("Missing tag")[0]
@@ -816,7 +818,7 @@ mod tests {
             if i == 59 {
                 assert!(
                     (record
-                        .info(b"SGB")
+                        .info_shared_buffer(b"SGB", &mut buffer)
                         .float()
                         .expect("Error reading info.")
                         .expect("Missing tag")[0]
@@ -918,12 +920,13 @@ mod tests {
             &b"evenlength"[..],
             &b"ss6"[..],
         ];
+        let mut buffer = Buffer::new();
         for (i, rec) in vcf.records().enumerate() {
             println!("record {}", i);
             let mut record = rec.expect("Error reading record.");
             assert_eq!(
                 record
-                    .info(b"S1")
+                    .info_shared_buffer(b"S1", &mut buffer)
                     .string()
                     .expect("Error reading string.")
                     .expect("Missing tag")[0],
@@ -961,11 +964,12 @@ mod tests {
             &[i32::missing()][..],
         ];
         let f1 = [false, true];
+        let mut buffer = Buffer::new();
         for (i, rec) in vcf.records().enumerate() {
             let mut record = rec.expect("Error reading record.");
             assert_eq!(
                 record
-                    .info(b"F1")
+                    .info_shared_buffer(b"F1", &mut buffer)
                     .float()
                     .expect("Error reading float.")
                     .expect("Missing tag")[0]
@@ -1360,7 +1364,14 @@ mod tests {
         let mut rec = reader.empty_record();
         let _ = reader.read(&mut rec);
 
-        assert_eq!(rec.info(b"ANN").string().unwrap().unwrap().len(), 14);
+        assert_eq!(
+            rec.info_shared_buffer(b"ANN", Buffer::new())
+                .string()
+                .unwrap()
+                .unwrap()
+                .len(),
+            14
+        );
     }
 
     #[test]
@@ -1369,7 +1380,14 @@ mod tests {
         let mut rec = reader.empty_record();
         let _ = reader.read(&mut rec);
 
-        assert_eq!(rec.info(b"X").string().unwrap().unwrap().len(), 2);
+        assert_eq!(
+            rec.info_shared_buffer(b"X", Buffer::new())
+                .string()
+                .unwrap()
+                .unwrap()
+                .len(),
+            2
+        );
     }
 
     #[test]

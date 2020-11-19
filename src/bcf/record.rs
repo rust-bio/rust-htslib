@@ -3,7 +3,7 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::borrow::Borrow;
+use std::borrow::{Borrow, BorrowMut};
 use std::f32;
 use std::ffi;
 use std::fmt;
@@ -69,6 +69,29 @@ impl NumericUtils for f32 {
 impl NumericUtils for i32 {
     fn is_vector_end(&self) -> bool {
         *self == VECTOR_END_INTEGER
+    }
+}
+
+/// A buffer for info or format data.
+pub struct Buffer {
+    inner: *mut ::std::os::raw::c_void,
+    len: i32,
+}
+
+impl Buffer {
+    pub fn new() -> Self {
+        Buffer {
+            inner: ptr::null_mut(),
+            len: 0,
+        }
+    }
+}
+
+impl Drop for Buffer {
+    fn drop(&mut self) {
+        unsafe {
+            ::libc::free(self.inner as *mut ::libc::c_void);
+        }
     }
 }
 
@@ -339,9 +362,21 @@ impl Record {
         self.inner_mut().qual = qual;
     }
 
+    pub fn info<'a>(&'a mut self, tag: &'a [u8]) -> Info<'_, Buffer> {
+        self.info_shared_buffer(tag, Buffer::new())
+    }
+
     /// Get the value of the given info tag.
-    pub fn info<'a>(&'a mut self, tag: &'a [u8]) -> Info<'_> {
-        Info { record: self, tag, buffer: ptr::null_mut(), buffer_len: 0 }
+    pub fn info_shared_buffer<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b>(
+        &'a mut self,
+        tag: &'a [u8],
+        buffer: B,
+    ) -> Info<'_, B> {
+        Info {
+            record: self,
+            tag,
+            buffer,
+        }
     }
 
     /// Get the number of samples.
@@ -766,39 +801,32 @@ unsafe impl Sync for Record {}
 
 /// Info tag representation.
 #[derive(Debug)]
-pub struct Info<'a> {
+pub struct Info<'a, B: BorrowMut<Buffer> + Borrow<Buffer> + 'a> {
     record: &'a Record,
     tag: &'a [u8],
-    buffer: *mut ::std::os::raw::c_void,
-    buffer_len: i32,
+    buffer: B,
 }
 
-impl<'a> Drop for Info<'a> {
-    fn drop(&mut self) {
-        unsafe { ::libc::free(self.buffer as *mut ::libc::c_void); }
-    }
-}
-
-impl<'a> Info<'a> {
+impl<'a, B: BorrowMut<Buffer> + Borrow<Buffer> + 'a> Info<'a, B> {
     /// Short description of info tag.
     pub fn desc(&self) -> String {
         str::from_utf8(self.tag).unwrap().to_owned()
     }
 
     fn data(&mut self, data_type: u32) -> Result<Option<(usize, i32)>> {
-        let mut n: i32 = self.buffer_len;
+        let mut n: i32 = self.buffer.borrow().len;
         let c_str = ffi::CString::new(self.tag).unwrap();
         let ret = unsafe {
             htslib::bcf_get_info_values(
                 self.record.header().inner,
                 self.record.inner,
                 c_str.as_ptr() as *mut i8,
-                &mut self.buffer,
+                &mut self.buffer.borrow_mut().inner,
                 &mut n,
                 data_type as i32,
             )
         };
-        self.buffer_len = n;
+        self.buffer.borrow_mut().len = n;
 
         match ret {
             -1 => Err(Error::BcfUndefinedTag { tag: self.desc() }),
@@ -814,7 +842,8 @@ impl<'a> Info<'a> {
     pub fn integer(&mut self) -> Result<Option<&'a [i32]>> {
         self.data(htslib::BCF_HT_INT).map(|data| {
             data.map(|(n, ret)| {
-                let values = unsafe { slice::from_raw_parts(self.buffer as *const i32, n) };
+                let values =
+                    unsafe { slice::from_raw_parts(self.buffer.borrow().inner as *const i32, n) };
                 &values[..ret as usize]
             })
         })
@@ -826,7 +855,8 @@ impl<'a> Info<'a> {
     pub fn float(&mut self) -> Result<Option<&'a [f32]>> {
         self.data(htslib::BCF_HT_REAL).map(|data| {
             data.map(|(n, ret)| {
-                let values = unsafe { slice::from_raw_parts(self.buffer as *const f32, n) };
+                let values =
+                    unsafe { slice::from_raw_parts(self.buffer.borrow().inner as *const f32, n) };
                 &values[..ret as usize]
             })
         })
@@ -844,22 +874,24 @@ impl<'a> Info<'a> {
     pub fn string(&mut self) -> Result<Option<Vec<&'a [u8]>>> {
         self.data(htslib::BCF_HT_STR).map(|data| {
             data.map(|(_, ret)| {
-                unsafe { slice::from_raw_parts(self.buffer as *const u8, ret as usize) }
-                    .split(|c| *c == b',')
-                    .map(|s| {
-                        // stop at zero character
-                        s.split(|c| *c == 0u8)
-                            .next()
-                            .expect("Bug: returned string should not be empty.")
-                    })
-                    .collect()
+                unsafe {
+                    slice::from_raw_parts(self.buffer.borrow().inner as *const u8, ret as usize)
+                }
+                .split(|c| *c == b',')
+                .map(|s| {
+                    // stop at zero character
+                    s.split(|c| *c == 0u8)
+                        .next()
+                        .expect("Bug: returned string should not be empty.")
+                })
+                .collect()
             })
         })
     }
 }
 
-unsafe impl<'a> Send for Info<'a> {}
-unsafe impl<'a> Sync for Info<'a> {}
+unsafe impl<'a, B: BorrowMut<Buffer> + Borrow<Buffer> + 'a> Send for Info<'a, B> {}
+unsafe impl<'a, B: BorrowMut<Buffer> + Borrow<Buffer> + 'a> Sync for Info<'a, B> {}
 
 fn trim_slice<T: PartialEq + NumericUtils>(s: &[T]) -> &[T] {
     s.split(|v| v.is_vector_end())
