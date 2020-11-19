@@ -129,8 +129,6 @@ impl<'a, T: 'a + fmt::Debug + fmt::Display, B: Borrow<Buffer> + 'a> fmt::Display
 pub struct Record {
     pub inner: *mut htslib::bcf1_t,
     header: Rc<HeaderView>,
-    buffer: *mut ::std::os::raw::c_void,
-    buffer_len: i32,
 }
 
 impl Record {
@@ -142,12 +140,7 @@ impl Record {
             htslib::bcf_unpack(inner, htslib::BCF_UN_ALL as i32);
             inner
         };
-        Record {
-            inner,
-            header,
-            buffer: ptr::null_mut(),
-            buffer_len: 0,
-        }
+        Record { inner, header }
     }
 
     /// Force unpacking of internal record values.
@@ -390,21 +383,20 @@ impl Record {
         self.inner_mut().qual = qual;
     }
 
-    pub fn info<'a, 'b>(&'a mut self, tag: &'a [u8]) -> Info<'a, 'b, Buffer> {
+    pub fn info<'a>(&'a self, tag: &'a [u8]) -> Info<'a, Buffer> {
         self.info_shared_buffer(tag, Buffer::new())
     }
 
     /// Get the value of the given info tag.
     pub fn info_shared_buffer<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b>(
-        &'a mut self,
+        &'a self,
         tag: &'a [u8],
         buffer: B,
-    ) -> Info<'a, 'b, B> {
+    ) -> Info<'a, B> {
         Info {
             record: self,
             tag,
             buffer,
-            phantom: std::marker::PhantomData,
         }
     }
 
@@ -446,15 +438,30 @@ impl Record {
     ///     assert_eq!(&format!("{}", genotypes.get(0)), exp_gt);
     /// }
     /// ```
-    pub fn genotypes(&mut self) -> Result<Genotypes<'_>> {
+    pub fn genotypes(&self) -> Result<Genotypes<'_, Buffer>> {
+        self.genotypes_shared_buffer(Buffer::new())
+    }
+
+    pub fn genotypes_shared_buffer<'a, B>(&self, buffer: B) -> Result<Genotypes<'a, B>>
+    where
+        B: BorrowMut<Buffer> + Borrow<Buffer> + 'a,
+    {
         Ok(Genotypes {
-            encoded: self.format(b"GT").integer()?,
+            encoded: self.format_shared_buffer(b"GT", buffer).integer()?,
         })
     }
 
+    pub fn format<'a>(&'a self, tag: &'a [u8]) -> Format<'a, Buffer> {
+        self.format_shared_buffer(tag, Buffer::new())
+    }
+
     /// Get the value of the given format tag for each sample.
-    pub fn format<'a>(&'a mut self, tag: &'a [u8]) -> Format<'_> {
-        Format::new(self, tag)
+    pub fn format_shared_buffer<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b>(
+        &'a self,
+        tag: &'a [u8],
+        buffer: B,
+    ) -> Format<'a, B> {
+        Format::new(self, tag, buffer)
     }
 
     /// Add/replace an integer-typed FORMAT tag.
@@ -798,12 +805,15 @@ impl fmt::Display for Genotype {
 }
 
 /// Lazy representation of genotypes, that does no computation until a particular genotype is queried.
-#[derive(Debug, Clone)]
-pub struct Genotypes<'a> {
-    encoded: Vec<&'a [i32]>,
+#[derive(Debug)]
+pub struct Genotypes<'a, B>
+where
+    B: Borrow<Buffer> + 'a,
+{
+    encoded: BufferBacked<'a, Vec<&'a [i32]>, B>,
 }
 
-impl<'a> Genotypes<'a> {
+impl<'a, B: Borrow<Buffer> + 'a> Genotypes<'a, B> {
     /// Get genotype of ith sample. So far, only supports diploid genotypes.
     ///
     /// Note that the result complies with the BCF spec. This means that the
@@ -830,14 +840,13 @@ unsafe impl Sync for Record {}
 
 /// Info tag representation.
 #[derive(Debug)]
-pub struct Info<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> {
+pub struct Info<'a, B: BorrowMut<Buffer> + Borrow<Buffer>> {
     record: &'a Record,
     tag: &'a [u8],
     buffer: B,
-    phantom: std::marker::PhantomData<&'b B>,
 }
 
-impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, 'b, B> {
+impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, B> {
     /// Short description of info tag.
     pub fn desc(&self) -> String {
         str::from_utf8(self.tag).unwrap().to_owned()
@@ -869,6 +878,11 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, 'b, B> {
     /// Get integers from tag. `None` if tag not present in record.
     ///
     /// Import `bcf::record::Numeric` for missing value handling.
+    ///
+    /// **Attention:** the returned BufferBacked which holds the data has to be kept in scope
+    /// as along as the data is accessed. If parts of the data are accessed while
+    /// the BufferBacked object is already dropped, you will access unallocated
+    /// memory.
     pub fn integer(mut self) -> Result<Option<BufferBacked<'b, &'b [i32], B>>> {
         self.data(htslib::BCF_HT_INT).map(|data| {
             data.map(|(n, ret)| {
@@ -882,6 +896,11 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, 'b, B> {
     /// Get floats from tag. `None` if tag not present in record.
     ///
     /// Import `bcf::record::Numeric` for missing value handling.
+    ///
+    /// **Attention:** the returned BufferBacked which holds the data has to be kept in scope
+    /// as along as the data is accessed. If parts of the data are accessed while
+    /// the BufferBacked object is already dropped, you will access unallocated
+    /// memory.
     pub fn float(mut self) -> Result<Option<BufferBacked<'b, &'b [f32], B>>> {
         self.data(htslib::BCF_HT_REAL).map(|data| {
             data.map(|(n, ret)| {
@@ -901,6 +920,11 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, 'b, B> {
     }
 
     /// Get strings from tag. `None` if tag not present in record.
+    ///
+    /// **Attention:** the returned BufferBacked which holds the data has to be kept in scope
+    /// as along as the data is accessed. If parts of the data are accessed while
+    /// the BufferBacked object is already dropped, you will access unallocated
+    /// memory.
     pub fn string(mut self) -> Result<Option<BufferBacked<'b, Vec<&'b [u8]>, B>>> {
         self.data(htslib::BCF_HT_STR).map(|data| {
             data.map(|(_, ret)| {
@@ -923,8 +947,8 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, 'b, B> {
     }
 }
 
-unsafe impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Send for Info<'a, 'b, B> {}
-unsafe impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Sync for Info<'a, 'b, B> {}
+unsafe impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Send for Info<'a, B> {}
+unsafe impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Sync for Info<'a, B> {}
 
 fn trim_slice<T: PartialEq + NumericUtils>(s: &[T]) -> &[T] {
     s.split(|v| v.is_vector_end())
@@ -934,15 +958,16 @@ fn trim_slice<T: PartialEq + NumericUtils>(s: &[T]) -> &[T] {
 
 // Representation of per-sample data.
 #[derive(Debug)]
-pub struct Format<'a> {
-    record: &'a mut Record,
+pub struct Format<'a, B: BorrowMut<Buffer> + Borrow<Buffer>> {
+    record: &'a Record,
     tag: &'a [u8],
     inner: *mut htslib::bcf_fmt_t,
+    buffer: B,
 }
 
-impl<'a> Format<'a> {
+impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Format<'a, B> {
     /// Create new format data in a given record.
-    fn new(record: &'a mut Record, tag: &'a [u8]) -> Format<'a> {
+    fn new(record: &'a Record, tag: &'a [u8], buffer: B) -> Format<'a, B> {
         let c_str = ffi::CString::new(tag).unwrap();
         let inner = unsafe {
             htslib::bcf_get_fmt(
@@ -951,7 +976,12 @@ impl<'a> Format<'a> {
                 c_str.as_ptr() as *mut i8,
             )
         };
-        Format { record, tag, inner }
+        Format {
+            record,
+            tag,
+            inner,
+            buffer,
+        }
     }
 
     /// Provide short description of format entry (just the tag name).
@@ -973,19 +1003,19 @@ impl<'a> Format<'a> {
 
     /// Read and decode format data into a given type.
     fn data(&mut self, data_type: u32) -> Result<(usize, i32)> {
-        let mut n: i32 = self.record.buffer_len;
+        let mut n: i32 = self.buffer.borrow().len;
         let c_str = ffi::CString::new(self.tag).unwrap();
         let ret = unsafe {
             htslib::bcf_get_format_values(
                 self.record.header().inner,
                 self.record.inner,
                 c_str.as_ptr() as *mut i8,
-                &mut self.record.buffer,
+                &mut self.buffer.borrow_mut().inner,
                 &mut n,
                 data_type as i32,
             )
         };
-        self.record.buffer_len = n;
+        self.buffer.borrow_mut().len = n;
         match ret {
             -1 => Err(Error::BcfUndefinedTag { tag: self.desc() }),
             -2 => Err(Error::BcfUnexpectedType { tag: self.desc() }),
@@ -998,43 +1028,67 @@ impl<'a> Format<'a> {
     }
 
     /// Get format data as integers.
-    pub fn integer(&mut self) -> Result<Vec<&'a [i32]>> {
+    ///
+    /// **Attention:** the returned BufferBacked which holds the data has to be kept in scope
+    /// as along as the data is accessed. If parts of the data are accessed while
+    /// the BufferBacked object is already dropped, you will access unallocated
+    /// memory.
+    pub fn integer(mut self) -> Result<BufferBacked<'b, Vec<&'b [i32]>, B>> {
         self.data(htslib::BCF_HT_INT).map(|(n, _)| {
-            unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) }
-                .chunks(self.values_per_sample())
-                .map(|s| trim_slice(s))
-                .collect()
+            BufferBacked::new(
+                unsafe { slice::from_raw_parts(self.buffer.borrow_mut().inner as *const i32, n) }
+                    .chunks(self.values_per_sample())
+                    .map(|s| trim_slice(s))
+                    .collect(),
+                self.buffer,
+            )
         })
     }
 
     /// Get format data as floats.
-    pub fn float(&mut self) -> Result<Vec<&'a [f32]>> {
+    ///
+    /// **Attention:** the returned BufferBacked which holds the data has to be kept in scope
+    /// as along as the data is accessed. If parts of the data are accessed while
+    /// the BufferBacked object is already dropped, you will access unallocated
+    /// memory.
+    pub fn float(mut self) -> Result<BufferBacked<'b, Vec<&'b [f32]>, B>> {
         self.data(htslib::BCF_HT_REAL).map(|(n, _)| {
-            unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) }
-                .chunks(self.values_per_sample())
-                .map(|s| trim_slice(s))
-                .collect()
+            BufferBacked::new(
+                unsafe { slice::from_raw_parts(self.buffer.borrow_mut().inner as *const f32, n) }
+                    .chunks(self.values_per_sample())
+                    .map(|s| trim_slice(s))
+                    .collect(),
+                self.buffer,
+            )
         })
     }
 
     /// Get format data as byte slices. To obtain the values strings, use `std::str::from_utf8`.
-    pub fn string(&mut self) -> Result<Vec<&'a [u8]>> {
+    ///
+    /// **Attention:** the returned BufferBacked which holds the data has to be kept in scope
+    /// as along as the data is accessed. If parts of the data are accessed while
+    /// the BufferBacked object is already dropped, you will access unallocated
+    /// memory.
+    pub fn string(mut self) -> Result<BufferBacked<'b, Vec<&'b [u8]>, B>> {
         self.data(htslib::BCF_HT_STR).map(|(n, _)| {
-            unsafe { slice::from_raw_parts(self.record.buffer as *const u8, n) }
-                .chunks(self.values_per_sample())
-                .map(|s| {
-                    // stop at zero character
-                    s.split(|c| *c == 0u8)
-                        .next()
-                        .expect("Bug: returned string should not be empty.")
-                })
-                .collect()
+            BufferBacked::new(
+                unsafe { slice::from_raw_parts(self.buffer.borrow_mut().inner as *const u8, n) }
+                    .chunks(self.values_per_sample())
+                    .map(|s| {
+                        // stop at zero character
+                        s.split(|c| *c == 0u8)
+                            .next()
+                            .expect("Bug: returned string should not be empty.")
+                    })
+                    .collect(),
+                self.buffer,
+            )
         })
     }
 }
 
-unsafe impl<'a> Send for Format<'a> {}
-unsafe impl<'a> Sync for Format<'a> {}
+unsafe impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Send for Format<'a, B> {}
+unsafe impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Sync for Format<'a, B> {}
 
 #[derive(Debug)]
 pub struct Filters<'a> {

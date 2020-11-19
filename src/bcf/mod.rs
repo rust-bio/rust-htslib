@@ -798,7 +798,7 @@ mod tests {
         assert_eq!(bcf.header.samples(), [b"NA12878.subsample-0.25-0"]);
 
         for (i, rec) in bcf.records().enumerate() {
-            let mut record = rec.expect("Error reading record.");
+            let record = rec.expect("Error reading record.");
             assert_eq!(record.sample_count(), 1);
 
             assert_eq!(record.rid().expect("Error reading rid."), 0);
@@ -1442,7 +1442,7 @@ mod tests {
     #[test]
     fn test_obs_cornercase() {
         let mut reader = Reader::from_path("test/obs-cornercase.vcf").unwrap();
-        let mut first_record = reader
+        let first_record = reader
             .records()
             .next()
             .unwrap()
@@ -1457,4 +1457,24 @@ mod tests {
             [b"gridss33fb_1085h"]
         );
     }
+
+    // #[test]
+    // fn test_buffer_lifetime() {
+    //     let mut reader = Reader::from_path("test/obs-cornercase.vcf").unwrap();
+    //     let first_record = reader
+    //         .records()
+    //         .next()
+    //         .unwrap()
+    //         .expect("Fail to read record");
+
+    //     fn get_value<'a, 'b>(record: &'a Record) -> &'b [u8] {
+    //         // FIXME: this should not be possible, because the slice outlives the buffer.
+    //         let buffer: BufferBacked<'b, _, _> = record.info(b"EVENT").string().unwrap().unwrap();
+    //         let value: &'b [u8] = buffer[0];
+    //         value
+    //     }
+
+    //     let buffered = first_record.info(b"EVENT").string().unwrap().unwrap();
+    //     assert_eq!(get_value(&first_record), buffered[0]);
+    // }
 }
