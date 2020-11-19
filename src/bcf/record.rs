@@ -341,7 +341,7 @@ impl Record {
 
     /// Get the value of the given info tag.
     pub fn info<'a>(&'a mut self, tag: &'a [u8]) -> Info<'_> {
-        Info { record: self, tag }
+        Info { record: self, tag, buffer: ptr::null_mut(), buffer_len: 0 }
     }
 
     /// Get the number of samples.
