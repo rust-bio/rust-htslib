@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.35.0] - 2020-11-19
+### Changes
+- BREAKING: info and format field access in BCF records now allocates a separate buffer each time. In addition, it is also possible to pass a buffer that has been created manually before (@johanneskoester)
+- Fixes for building on macOS (@brainstorm)
+
+### Added
+- ability to push genotypes into BCF record (@MaltheSR, @tedil).
+
 ## [0.34.0] - 2020-11-13
 ### Added
 - Ability to set minimum refetch distance in `bam::RecordBuffer`.
