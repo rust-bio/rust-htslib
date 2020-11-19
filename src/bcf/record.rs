@@ -757,9 +757,6 @@ impl<'a> Genotypes<'a> {
 
 impl Drop for Record {
     fn drop(&mut self) {
-        if !self.buffer.is_null() {
-            unsafe { ::libc::free(self.buffer as *mut ::libc::c_void) };
-        }
         unsafe { htslib::bcf_destroy(self.inner) };
     }
 }
@@ -772,6 +769,8 @@ unsafe impl Sync for Record {}
 pub struct Info<'a> {
     record: &'a mut Record,
     tag: &'a [u8],
+    buffer: *mut ::std::os::raw::c_void,
+    buffer_len: i32,
 }
 
 impl<'a> Info<'a> {
@@ -781,19 +780,19 @@ impl<'a> Info<'a> {
     }
 
     fn data(&mut self, data_type: u32) -> Result<Option<(usize, i32)>> {
-        let mut n: i32 = self.record.buffer_len;
+        let mut n: i32 = self.buffer_len;
         let c_str = ffi::CString::new(self.tag).unwrap();
         let ret = unsafe {
             htslib::bcf_get_info_values(
                 self.record.header().inner,
                 self.record.inner,
                 c_str.as_ptr() as *mut i8,
-                &mut self.record.buffer,
+                &mut self.buffer,
                 &mut n,
                 data_type as i32,
             )
         };
-        self.record.buffer_len = n;
+        self.buffer_len = n;
 
         match ret {
             -1 => Err(Error::BcfUndefinedTag { tag: self.desc() }),
@@ -809,7 +808,7 @@ impl<'a> Info<'a> {
     pub fn integer(&mut self) -> Result<Option<&'a [i32]>> {
         self.data(htslib::BCF_HT_INT).map(|data| {
             data.map(|(n, ret)| {
-                let values = unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) };
+                let values = unsafe { slice::from_raw_parts(self.buffer as *const i32, n) };
                 &values[..ret as usize]
             })
         })
@@ -821,7 +820,7 @@ impl<'a> Info<'a> {
     pub fn float(&mut self) -> Result<Option<&'a [f32]>> {
         self.data(htslib::BCF_HT_REAL).map(|data| {
             data.map(|(n, ret)| {
-                let values = unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) };
+                let values = unsafe { slice::from_raw_parts(self.buffer as *const f32, n) };
                 &values[..ret as usize]
             })
         })
@@ -839,7 +838,7 @@ impl<'a> Info<'a> {
     pub fn string(&mut self) -> Result<Option<Vec<&'a [u8]>>> {
         self.data(htslib::BCF_HT_STR).map(|data| {
             data.map(|(_, ret)| {
-                unsafe { slice::from_raw_parts(self.record.buffer as *const u8, ret as usize) }
+                unsafe { slice::from_raw_parts(self.buffer as *const u8, ret as usize) }
                     .split(|c| *c == b',')
                     .map(|s| {
                         // stop at zero character
