@@ -111,7 +111,7 @@ jobs:
 
   Testing-OSX-Intel-Catalina:
     needs: Formatting
-    runs-on: macOS-10.15
+    runs-on: macos-10.15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2.3.4
@@ -137,7 +137,7 @@ jobs:
 
   Testing-OSX-Intel-BigSur:
     needs: Formatting
-    runs-on: macOS-11.0
+    runs-on: macos-11.0
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2.3.4
@@ -164,7 +164,7 @@ jobs:
 
   Testing-OSX-M1-BigSur:
     needs: Formatting
-    runs-on: macOS-11.0
+    runs-on: macos-11.0
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2.3.4
@@ -189,35 +189,34 @@ jobs:
           command: build
           args: --release --all-features --verbose --target aarch64-apple-darwin
 
-#  Testing-OSX-MUSL-BigSur:
-#   needs: Formatting
-#   runs-on: macOS-11.0
-#   steps:
-      # Test MUSL builds on OSX
-      #
-      # - uses: actions-rs/toolchain@v1.0.6
-      #   with:
-      #     toolchain: stable
-      #     target: x86_64-unknown-linux-musl
-      #     override: true
+  Testing-OSX-MUSL-BigSur:
+    needs: Formatting
+    runs-on: macos-11.0
+    steps:
+        - name: Install rs toolchain
+        - uses: actions-rs/toolchain@v1.0.6
+          with:
+            toolchain: stable
+            target: x86_64-unknown-linux-musl
+            override: true
 
-      # - name: Install OSX musl-cross
-      #   run: brew install FiloSottile/musl-cross/musl-cross
+        - name: Install OSX musl-cross
+          run: brew install FiloSottile/musl-cross/musl-cross
 
-      # # https://github.com/FiloSottile/homebrew-musl-cross/issues/16
-      # - name: Provide musl-gcc symlink for the right musl arch
-      #   run: ln -sf /usr/local/opt/musl-cross/libexec/bin/x86_64-linux-musl-gcc /usr/local/bin/musl-gcc
+        # https://github.com/FiloSottile/homebrew-musl-cross/issues/16
+        - name: Provide musl-gcc symlink for the right musl arch
+          run: ln -sf /usr/local/opt/musl-cross/libexec/bin/x86_64-linux-musl-gcc /usr/local/bin/musl-gcc
 
-      # - name: Test musl build without default features
-      #   uses: actions-rs/cargo@v1
-      #   with:
-      #     use-cross: false  # cross is not supported on GHA OSX runner, see: https://github.community/t/why-is-docker-not-installed-on-macos/17017
-      #     command: test
-      #     args: --release --target x86_64-unknown-linux-musl --no-default-features
+        - name: Test musl build without default features
+          uses: actions-rs/cargo@v1
+          with:
+            use-cross: false  # cross is not supported on GHA OSX runner, see: https://github.community/t/why-is-docker-not-installed-on-macos/17017
+            command: build
+            args: --release --target x86_64-unknown-linux-musl --no-default-features
 
-      # - name: Test musl build with all features and debug symbols (non --release) on OSX
-      #   uses: actions-rs/cargo@v1.0.1
-      #   with:
-      #     use-cross: false
-      #     command: test
-      #     args: --target x86_64-unknown-linux-musl --all-features --verbose
+        - name: Test musl build with all features and debug symbols (non --release) on OSX
+          uses: actions-rs/cargo@v1.0.1
+          with:
+            use-cross: false
+            command: build
+            args: --target x86_64-unknown-linux-musl --all-features --verbose
