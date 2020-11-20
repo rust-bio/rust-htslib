@@ -6,14 +6,13 @@
 //! Module for working with SAM, BAM, and CRAM files.
 
 pub mod buffer;
-pub mod errors;
 pub mod ext;
 pub mod header;
 pub mod index;
 pub mod pileup;
 pub mod record;
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "serde_feature")]
 pub mod record_serde;
 
 use std::ffi;
@@ -24,10 +23,12 @@ use std::str;
 
 use url::Url;
 
+use crate::errors::{Error, Result};
 use crate::htslib;
+use crate::tpool::ThreadPool;
+use crate::utils::path_as_bytes;
 
 pub use crate::bam::buffer::RecordBuffer;
-pub use crate::bam::errors::{Error, Result};
 pub use crate::bam::header::Header;
 pub use crate::bam::record::Record;
 use std::convert::TryInto;
@@ -35,11 +36,21 @@ use std::convert::TryInto;
 /// # Safety
 ///
 /// Implementation for `Read::set_threads` and `Writer::set_threads`.
-pub unsafe fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
+unsafe fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
     assert!(n_threads != 0, "n_threads must be > 0");
 
     if htslib::hts_set_threads(htsfile, n_threads as i32) != 0 {
         Err(Error::SetThreads)
+    } else {
+        Ok(())
+    }
+}
+
+unsafe fn set_thread_pool(htsfile: *mut htslib::htsFile, tpool: &ThreadPool) -> Result<()> {
+    let mut b = tpool.handle.borrow_mut();
+
+    if htslib::hts_set_thread_pool(htsfile, &mut b.inner as *mut _) != 0 {
+        Err(Error::ThreadPool)
     } else {
         Ok(())
     }
@@ -64,7 +75,7 @@ pub unsafe fn set_fai_filename<P: AsRef<Path>>(
     if htslib::hts_set_fai_filename(htsfile, c_str.as_ptr()) == 0 {
         Ok(())
     } else {
-        Err(Error::InvalidReferencePath { path: p.to_owned() })
+        Err(Error::BamInvalidReferencePath { path: p.to_owned() })
     }
 }
 
@@ -80,14 +91,71 @@ pub trait Read: Sized {
     ///
     /// # Returns
     ///
-    /// `Ok(true)` if record was read without error, Ok(false) if there is no more record in the file.
-    fn read(&mut self, record: &mut record::Record) -> Result<bool>;
+    /// Some(Ok(())) if the record was read and None if no more records to read
+    ///
+    /// Example:
+    /// ```
+    /// use rust_htslib::errors::Error;
+    /// use rust_htslib::bam::{Read, IndexedReader, Record};
+    ///
+    /// let mut bam = IndexedReader::from_path(&"test/test.bam").unwrap();
+    /// bam.fetch((0, 1000, 2000)); // reads on tid 0, from 1000bp to 2000bp
+    /// let mut record = Record::new();
+    /// while let Some(result) = bam.read(&mut record) {
+    ///     match result {
+    ///         Ok(_) => {
+    ///             println!("Read sequence: {:?}", record.seq().as_bytes());
+    ///         },
+    ///         Err(_) => panic!("BAM parsing failed...")
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Consider using [`rc_records`](#tymethod.rc_records) instead.
+    fn read(&mut self, record: &mut record::Record) -> Option<Result<()>>;
 
     /// Iterator over the records of the seeked region.
     /// Note that, while being convenient, this is less efficient than pre-allocating a
     /// `Record` and reading into it with the `read` method, since every iteration involves
     /// the allocation of a new `Record`.
+    ///
+    /// This is about 10% slower than record in micro benchmarks.
+    ///
+    /// Consider using [`rc_records`](#tymethod.rc_records) instead.
     fn records(&mut self) -> Records<'_, Self>;
+
+    /// Records iterator using an Rc to avoid allocating a Record each turn.
+    /// This is about 1% slower than the [`read`](#tymethod.read) based API in micro benchmarks,
+    /// but has nicer ergonomics (and might not actually be slower in your applications).
+    ///
+    /// Example:
+    /// ```
+    /// use rust_htslib::errors::Error;
+    /// use rust_htslib::bam::{Read, Reader, Record};
+    /// use rust_htslib::htslib; // for BAM_F*
+    /// let mut bam = Reader::from_path(&"test/test.bam").unwrap();
+    ///
+    /// for read in
+    ///     bam.rc_records()
+    ///     .map(|x| x.expect("Failure parsing Bam file"))
+    ///     .filter(|read|
+    ///         read.flags()
+    ///          & (htslib::BAM_FUNMAP
+    ///              | htslib::BAM_FSECONDARY
+    ///              | htslib::BAM_FQCFAIL
+    ///              | htslib::BAM_FDUP) as u16
+    ///          == 0
+    ///     )
+    ///     .filter(|read| !read.is_reverse()) {
+    ///     println!("Found a forward read: {:?}", read.qname());
+    /// }
+    ///
+    /// //or to add the read qnames into a Vec
+    /// let collected: Vec<_> = bam.rc_records().map(|read| read.unwrap().qname().to_vec()).collect();
+    ///
+    ///
+    /// ```
+    fn rc_records(&mut self) -> RcRecords<'_, Self>;
 
     /// Iterator over pileups.
     fn pileup(&mut self) -> pileup::Pileups<'_, Self>;
@@ -115,7 +183,7 @@ pub trait Read: Sized {
         if ret == 0 {
             Ok(())
         } else {
-            Err(Error::Seek)
+            Err(Error::FileSeek)
         }
     }
 
@@ -139,21 +207,15 @@ pub trait Read: Sized {
     fn set_threads(&mut self, n_threads: usize) -> Result<()> {
         unsafe { set_threads(self.htsfile(), n_threads) }
     }
-}
 
-fn path_as_bytes<'a, P: 'a + AsRef<Path>>(path: P, must_exist: bool) -> Result<Vec<u8>> {
-    if path.as_ref().exists() || !must_exist {
-        Ok(path
-            .as_ref()
-            .to_str()
-            .ok_or(Error::NonUnicodePath)?
-            .as_bytes()
-            .to_owned())
-    } else {
-        Err(Error::FileNotFound {
-            path: path.as_ref().to_owned(),
-        })
-    }
+    /// Use a shared thread-pool for writing. This permits controlling the total
+    /// thread count when multiple readers and writers are working simultaneously.
+    /// A thread pool can be created with `crate::tpool::ThreadPool::new(n_threads)`
+    ///
+    /// # Arguments
+    ///
+    /// * `tpool` - thread pool to use for compression work.
+    fn set_thread_pool(&mut self, tpool: &ThreadPool) -> Result<()>;
 }
 
 /// A BAM reader.
@@ -161,6 +223,7 @@ fn path_as_bytes<'a, P: 'a + AsRef<Path>>(path: P, must_exist: bool) -> Result<V
 pub struct Reader {
     htsfile: *mut htslib::htsFile,
     header: Rc<HeaderView>,
+    tpool: Option<ThreadPool>,
 }
 
 unsafe impl Send for Reader {}
@@ -197,6 +260,7 @@ impl Reader {
         Ok(Reader {
             htsfile,
             header: Rc::new(HeaderView::new(header)),
+            tpool: None,
         })
     }
 
@@ -243,7 +307,7 @@ impl Reader {
 
 impl Read for Reader {
     /// Read the next BAM record into the given `Record`.
-    /// Returns a true result if a record was read, or false if there are no more records.
+    /// Returns `None` if there are no more records.
     ///
     /// This method is useful if you want to read records as fast as possible as the
     /// `Record` can be reused. A more ergonomic approach is to use the [records](Reader::records)
@@ -255,18 +319,20 @@ impl Read for Reader {
     /// # Examples
     ///
     /// ```
-    /// use rust_htslib::bam::{Error, Read, Reader, Record};
+    /// use rust_htslib::errors::Error;
+    /// use rust_htslib::bam::{Read, Reader, Record};
     ///
     /// let mut bam = Reader::from_path(&"test/test.bam")?;
     /// let mut record = Record::new();
     ///
     /// // Print the TID of each record
-    /// while bam.read(&mut record)? {
+    /// while let Some(r) = bam.read(&mut record) {
+    ///    r.expect("Failed to parse record");
     ///    println!("TID: {}", record.tid())
     /// }
     /// # Ok::<(), Error>(())
     /// ```
-    fn read(&mut self, record: &mut record::Record) -> Result<bool> {
+    fn read(&mut self, record: &mut record::Record) -> Option<Result<()>> {
         match unsafe {
             htslib::sam_read1(
                 self.htsfile,
@@ -274,13 +340,13 @@ impl Read for Reader {
                 record.inner_ptr_mut(),
             )
         } {
-            -1 => Ok(false),
-            -2 => Err(Error::TruncatedRecord),
-            -4 => Err(Error::InvalidRecord),
+            -1 => None,
+            -2 => Some(Err(Error::BamTruncatedRecord)),
+            -4 => Some(Err(Error::BamInvalidRecord)),
             _ => {
                 record.set_header(Rc::clone(&self.header));
 
-                Ok(true)
+                Some(Ok(()))
             }
         }
     }
@@ -291,6 +357,13 @@ impl Read for Reader {
     /// the allocation of a new `Record`.
     fn records(&mut self) -> Records<'_, Self> {
         Records { reader: self }
+    }
+
+    fn rc_records(&mut self) -> RcRecords<'_, Self> {
+        RcRecords {
+            reader: self,
+            record: Rc::new(record::Record::new()),
+        }
     }
 
     fn pileup(&mut self) -> pileup::Pileups<'_, Self> {
@@ -311,6 +384,12 @@ impl Read for Reader {
     fn header(&self) -> &HeaderView {
         &self.header
     }
+
+    fn set_thread_pool(&mut self, tpool: &ThreadPool) -> Result<()> {
+        unsafe { set_thread_pool(self.htsfile(), tpool)? }
+        self.tpool = Some(tpool.clone());
+        Ok(())
+    }
 }
 
 impl Drop for Reader {
@@ -321,12 +400,160 @@ impl Drop for Reader {
     }
 }
 
+/// Conversion type for start/stop coordinates
+/// only public because it's leaked by the conversions
+#[doc(hidden)]
+pub struct FetchCoordinate(i64);
+
+//the old sam spec
+impl From<i32> for FetchCoordinate {
+    fn from(coord: i32) -> FetchCoordinate {
+        FetchCoordinate(coord as i64)
+    }
+}
+
+// to support un-annotated literals (type interference fails on those)
+impl From<u32> for FetchCoordinate {
+    fn from(coord: u32) -> FetchCoordinate {
+        FetchCoordinate(coord as i64)
+    }
+}
+
+//the new sam spec
+impl From<i64> for FetchCoordinate {
+    fn from(coord: i64) -> FetchCoordinate {
+        FetchCoordinate(coord)
+    }
+}
+
+//what some of our header methods return
+impl From<u64> for FetchCoordinate {
+    fn from(coord: u64) -> FetchCoordinate {
+        FetchCoordinate(coord.try_into().expect("Coordinate exceeded 2^^63-1"))
+    }
+}
+
+/// Enum for [IndexdReader.fetch()](struct.IndexedReader.html#method.fetch) arguments.
+///
+/// tids may be converted From<>:
+/// * i32 (correct as per spec)
+/// * u32 (because of header.tid. Will panic if above 2^31-1).
+///
+///Coordinates may be (via FetchCoordinate)
+/// * i32 (as of the sam v1 spec)
+/// * i64 (as of the htslib 'large coordinate' extension (even though they are not supported in BAM)
+/// * u32 (because that's what rust literals will default to)
+/// * u64 (because of header.target_len(). Will panic if above 2^^63-1).
+#[derive(Debug)]
+pub enum FetchDefinition<'a> {
+    /// tid, start, stop,
+    Region(i32, i64, i64),
+    /// 'named-reference', start, stop tuple.
+    RegionString(&'a [u8], i64, i64),
+    ///complete reference. May be i32 or u32 (which panics if above 2^31-')
+    CompleteTid(i32),
+    ///complete reference by name (&[u8] or &str)
+    String(&'a [u8]),
+    /// Every read
+    All,
+    /// Only reads with the BAM flag BAM_FUNMAP (which might not be all reads with reference = -1)
+    Unmapped,
+}
+impl<'a, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(i32, X, Y)>
+    for FetchDefinition<'a>
+{
+    fn from(tup: (i32, X, Y)) -> FetchDefinition<'a> {
+        let start: FetchCoordinate = tup.1.into();
+        let stop: FetchCoordinate = tup.2.into();
+        FetchDefinition::Region(tup.0, start.0, stop.0)
+    }
+}
+impl<'a, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(u32, X, Y)>
+    for FetchDefinition<'a>
+{
+    fn from(tup: (u32, X, Y)) -> FetchDefinition<'a> {
+        let start: FetchCoordinate = tup.1.into();
+        let stop: FetchCoordinate = tup.2.into();
+        FetchDefinition::Region(
+            tup.0.try_into().expect("Tid exceeded 2^31-1"),
+            start.0,
+            stop.0,
+        )
+    }
+}
+
+//non tuple impls
+impl<'a> From<i32> for FetchDefinition<'a> {
+    fn from(tid: i32) -> FetchDefinition<'a> {
+        FetchDefinition::CompleteTid(tid)
+    }
+}
+
+impl<'a> From<u32> for FetchDefinition<'a> {
+    fn from(tid: u32) -> FetchDefinition<'a> {
+        let tid: i32 = tid.try_into().expect("tid exceeded 2^31-1");
+        FetchDefinition::CompleteTid(tid)
+    }
+}
+
+impl<'a> From<&'a str> for FetchDefinition<'a> {
+    fn from(s: &'a str) -> FetchDefinition<'a> {
+        FetchDefinition::String(s.as_bytes())
+    }
+}
+
+//also accept &[u8;n] literals
+impl<'a> From<&'a [u8]> for FetchDefinition<'a> {
+    fn from(s: &'a [u8]) -> FetchDefinition<'a> {
+        FetchDefinition::String(s)
+    }
+}
+
+//also accept &[u8;n] literals
+impl<'a, T: AsRef<[u8]>> From<&'a T> for FetchDefinition<'a> {
+    fn from(s: &'a T) -> FetchDefinition<'a> {
+        FetchDefinition::String(s.as_ref())
+    }
+}
+
+impl<'a, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(&'a str, X, Y)>
+    for FetchDefinition<'a>
+{
+    fn from(tup: (&'a str, X, Y)) -> FetchDefinition<'a> {
+        let start: FetchCoordinate = tup.1.into();
+        let stop: FetchCoordinate = tup.2.into();
+        FetchDefinition::RegionString(tup.0.as_bytes(), start.0, stop.0)
+    }
+}
+
+impl<'a, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(&'a [u8], X, Y)>
+    for FetchDefinition<'a>
+{
+    fn from(tup: (&'a [u8], X, Y)) -> FetchDefinition<'a> {
+        let start: FetchCoordinate = tup.1.into();
+        let stop: FetchCoordinate = tup.2.into();
+        FetchDefinition::RegionString(tup.0, start.0, stop.0)
+    }
+}
+
+//also accept &[u8;n] literals
+impl<'a, T: AsRef<[u8]>, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(&'a T, X, Y)>
+    for FetchDefinition<'a>
+{
+    fn from(tup: (&'a T, X, Y)) -> FetchDefinition<'a> {
+        let start: FetchCoordinate = tup.1.into();
+        let stop: FetchCoordinate = tup.2.into();
+        FetchDefinition::RegionString(tup.0.as_ref(), start.0, stop.0)
+    }
+}
+
 #[derive(Debug)]
 pub struct IndexedReader {
     htsfile: *mut htslib::htsFile,
     header: Rc<HeaderView>,
     idx: *mut htslib::hts_idx_t,
     itr: Option<*mut htslib::hts_itr_t>,
+    tpool: Option<ThreadPool>,
 }
 
 unsafe impl Send for IndexedReader {}
@@ -363,7 +590,7 @@ impl IndexedReader {
         let c_str = ffi::CString::new(path).unwrap();
         let idx = unsafe { htslib::sam_index_load(htsfile, c_str.as_ptr()) };
         if idx.is_null() {
-            Err(Error::InvalidIndex {
+            Err(Error::BamInvalidIndex {
                 target: str::from_utf8(path).unwrap().to_owned(),
             })
         } else {
@@ -372,6 +599,7 @@ impl IndexedReader {
                 header: Rc::new(HeaderView::new(header)),
                 idx,
                 itr: None,
+                tpool: None,
             })
         }
     }
@@ -390,7 +618,7 @@ impl IndexedReader {
             htslib::sam_index_load2(htsfile, c_str_path.as_ptr(), c_str_index_path.as_ptr())
         };
         if idx.is_null() {
-            Err(Error::InvalidIndex {
+            Err(Error::BamInvalidIndex {
                 target: str::from_utf8(path).unwrap().to_owned(),
             })
         } else {
@@ -399,11 +627,90 @@ impl IndexedReader {
                 header: Rc::new(HeaderView::new(header)),
                 idx,
                 itr: None,
+                tpool: None,
             })
         }
     }
 
-    pub fn fetch(&mut self, tid: u32, beg: u64, end: u64) -> Result<()> {
+    /// Define the region from which .read() or .records will retrieve reads.
+    ///
+    /// Both iterating (with [.records()](trait.Read.html#tymethod.records)) and looping without allocation (with [.read()](trait.Read.html#tymethod.read) are a two stage process:
+    /// 1. 'fetch' the region of interest
+    /// 2. iter/loop trough the reads.
+    ///
+    /// Example:
+    /// ```
+    /// use rust_htslib::bam::{IndexedReader, Read};
+    /// let mut bam = IndexedReader::from_path(&"test/test.bam").unwrap();
+    /// bam.fetch(("chrX", 10000, 20000)); // coordinates 10000..20000 on reference named "chrX"
+    /// for read in bam.records() {
+    ///     println!("read name: {:?}", read.unwrap().qname());
+    /// }
+    /// ```
+    ///
+    /// The arguments may be anything that can be converted into a FetchDefinition
+    /// such as
+    ///
+    /// * fetch(tid: u32) -> fetch everything on this reference
+    /// * fetch(reference_name: &[u8] | &str) -> fetch everything on this reference
+    /// * fetch((tid: i32, start: i64, stop: i64)): -> fetch in this region on this tid
+    /// * fetch((reference_name: &[u8] | &str, start: i64, stop: i64) -> fetch in this region on this tid
+    /// * fetch(FetchDefinition::All) or fetch(".") -> Fetch overything
+    /// * fetch(FetchDefinition::Unmapped) or fetch("*") -> Fetch unmapped (as signified by the 'unmapped' flag in the BAM - might be unreliable with some aligners.
+    ///
+    /// The start / stop coordinates will take i64 (the correct type as of htslib's 'large
+    /// coordinates' expansion), i32, u32, and u64 (with a possible panic! if the coordinate
+    /// won't fit an i64).
+    ///
+    /// This replaces the old fetch and fetch_str implementations.
+    pub fn fetch<'a, T: Into<FetchDefinition<'a>>>(&mut self, fetch_definition: T) -> Result<()> {
+        //this 'compile time redirect' safes us
+        //from monomorphing the 'meat' of the fetch function
+        self._inner_fetch(fetch_definition.into())
+    }
+
+    fn _inner_fetch<'a>(&mut self, fetch_definition: FetchDefinition<'a>) -> Result<()> {
+        match fetch_definition {
+            FetchDefinition::Region(tid, start, stop) => {
+                self._fetch_by_coord_tuple(tid, start, stop)
+            }
+            FetchDefinition::RegionString(s, start, stop) => {
+                let tid = self.header().tid(s);
+                match tid {
+                    Some(tid) => self._fetch_by_coord_tuple(tid as i32, start, stop),
+                    None => Err(Error::Fetch),
+                }
+            }
+            FetchDefinition::CompleteTid(tid) => {
+                let len = self.header().target_len(tid as u32);
+                match len {
+                    Some(len) => self._fetch_by_coord_tuple(tid, 0, len as i64),
+                    None => Err(Error::Fetch),
+                }
+            }
+            FetchDefinition::String(s) => {
+                // either a target-name or a samtools style definition
+                let tid = self.header().tid(s);
+                match tid {
+                    Some(tid) => {
+                        //'large position' spec says target len must will fit into an i64.
+                        let len: i64 = self
+                            .header
+                            .target_len(tid as u32)
+                            .unwrap()
+                            .try_into()
+                            .unwrap();
+                        self._fetch_by_coord_tuple(tid as i32, 0, len)
+                    }
+                    None => self._fetch_by_str(&s),
+                }
+            }
+            FetchDefinition::All => self._fetch_by_str(b"."),
+            FetchDefinition::Unmapped => self._fetch_by_str(b"*"),
+        }
+    }
+
+    fn _fetch_by_coord_tuple(&mut self, tid: i32, beg: i64, end: i64) -> Result<()> {
         if let Some(itr) = self.itr {
             unsafe { htslib::hts_itr_destroy(itr) }
         }
@@ -416,13 +723,8 @@ impl IndexedReader {
             Ok(())
         }
     }
-    /// Fetch reads from a region using a samtools region string.
-    /// Region strings are of the format b"chr1:1-1000".
-    ///
-    /// # Arguments
-    ///
-    /// * `region` - A binary string
-    pub fn fetch_str(&mut self, region: &[u8]) -> Result<()> {
+
+    fn _fetch_by_str(&mut self, region: &[u8]) -> Result<()> {
         if let Some(itr) = self.itr {
             unsafe { htslib::hts_itr_destroy(itr) }
         }
@@ -472,21 +774,21 @@ impl IndexedReader {
 }
 
 impl Read for IndexedReader {
-    fn read(&mut self, record: &mut record::Record) -> Result<bool> {
+    fn read(&mut self, record: &mut record::Record) -> Option<Result<()>> {
         match self.itr {
             Some(itr) => {
                 match itr_next(self.htsfile, itr, &mut record.inner as *mut htslib::bam1_t) {
-                    -1 => Ok(false),
-                    -2 => Err(Error::TruncatedRecord),
-                    -4 => Err(Error::InvalidRecord),
+                    -1 => None,
+                    -2 => Some(Err(Error::BamTruncatedRecord)),
+                    -4 => Some(Err(Error::BamInvalidRecord)),
                     _ => {
                         record.set_header(Rc::clone(&self.header));
 
-                        Ok(true)
+                        Some(Ok(()))
                     }
                 }
             }
-            None => Ok(false),
+            None => None,
         }
     }
 
@@ -496,6 +798,13 @@ impl Read for IndexedReader {
     /// the allocation of a new `Record`.
     fn records(&mut self) -> Records<'_, Self> {
         Records { reader: self }
+    }
+
+    fn rc_records(&mut self) -> RcRecords<'_, Self> {
+        RcRecords {
+            reader: self,
+            record: Rc::new(record::Record::new()),
+        }
     }
 
     fn pileup(&mut self) -> pileup::Pileups<'_, Self> {
@@ -515,6 +824,12 @@ impl Read for IndexedReader {
 
     fn header(&self) -> &HeaderView {
         &self.header
+    }
+
+    fn set_thread_pool(&mut self, tpool: &ThreadPool) -> Result<()> {
+        unsafe { set_thread_pool(self.htsfile(), tpool)? }
+        self.tpool = Some(tpool.clone());
+        Ok(())
     }
 }
 
@@ -552,6 +867,7 @@ impl Format {
 pub struct Writer {
     f: *mut htslib::htsFile,
     header: Rc<HeaderView>,
+    tpool: Option<ThreadPool>,
 }
 
 unsafe impl Send for Writer {}
@@ -594,7 +910,7 @@ impl Writer {
 
         // sam_hdr_parse does not populate the text and l_text fields of the header_record.
         // This causes non-SQ headers to be dropped in the output BAM file.
-        // To avoid this, we copy the full header to a new C-string that is allocated with malloc,
+        // To avoid this, we copy the All header to a new C-string that is allocated with malloc,
         // and set this into header_record manually.
         let header_record = unsafe {
             let mut header_string = header.to_bytes();
@@ -628,6 +944,7 @@ impl Writer {
         Ok(Writer {
             f,
             header: Rc::new(HeaderView::new(header_record)),
+            tpool: None,
         })
     }
 
@@ -641,6 +958,19 @@ impl Writer {
         unsafe { set_threads(self.f, n_threads) }
     }
 
+    /// Use a shared thread-pool for writing. This permits controlling the total
+    /// thread count when multiple readers and writers are working simultaneously.
+    /// A thread pool can be created with `crate::tpool::ThreadPool::new(n_threads)`
+    ///
+    /// # Arguments
+    ///
+    /// * `tpool` - thread pool to use for compression work.
+    pub fn set_thread_pool(&mut self, tpool: &ThreadPool) -> Result<()> {
+        unsafe { set_thread_pool(self.f, tpool)? }
+        self.tpool = Some(tpool.clone());
+        Ok(())
+    }
+
     /// Write record to BAM.
     ///
     /// # Arguments
@@ -648,7 +978,7 @@ impl Writer {
     /// * `record` - the record to write
     pub fn write(&mut self, record: &record::Record) -> Result<()> {
         if unsafe { htslib::sam_write1(self.f, self.header.inner(), record.inner_ptr()) } == -1 {
-            Err(Error::Write)
+            Err(Error::WriteRecord)
         } else {
             Ok(())
         }
@@ -683,7 +1013,7 @@ impl Writer {
             )
         } {
             0 => Ok(()),
-            _ => Err(Error::InvalidCompressionLevel { level }),
+            _ => Err(Error::BamInvalidCompressionLevel { level }),
         }
     }
 }
@@ -710,7 +1040,7 @@ impl CompressionLevel {
             CompressionLevel::Fastest => Ok(1),
             CompressionLevel::Maximum => Ok(9),
             CompressionLevel::Level(i @ 0..=9) => Ok(i),
-            CompressionLevel::Level(i) => Err(Error::InvalidCompressionLevel { level: i }),
+            CompressionLevel::Level(i) => Err(Error::BamInvalidCompressionLevel { level: i }),
         }
     }
 }
@@ -735,9 +1065,39 @@ impl<'a, R: Read> Iterator for Records<'a, R> {
     fn next(&mut self) -> Option<Result<record::Record>> {
         let mut record = record::Record::new();
         match self.reader.read(&mut record) {
-            Ok(false) => None,
-            Ok(true) => Some(Ok(record)),
-            Err(err) => Some(Err(err)),
+            None => None,
+            Some(Ok(_)) => Some(Ok(record)),
+            Some(Err(err)) => Some(Err(err)),
+        }
+    }
+}
+
+/// Iterator over the records of a BAM, using an Rc.
+///
+/// See [rc_records](trait.Read.html#tymethod.rc_records).
+#[derive(Debug)]
+pub struct RcRecords<'a, R: Read> {
+    reader: &'a mut R,
+    record: Rc<record::Record>,
+}
+
+impl<'a, R: Read> Iterator for RcRecords<'a, R> {
+    type Item = Result<Rc<record::Record>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut record = match Rc::get_mut(&mut self.record) {
+            //not make_mut, we don't need a clone
+            Some(x) => x,
+            None => {
+                self.record = Rc::new(record::Record::new());
+                Rc::get_mut(&mut self.record).unwrap()
+            }
+        };
+
+        match self.reader.read(&mut record) {
+            None => None,
+            Some(Ok(_)) => Some(Ok(Rc::clone(&self.record))),
+            Some(Err(err)) => Some(Err(err)),
         }
     }
 }
@@ -758,9 +1118,9 @@ impl<'a, R: Read> Iterator for ChunkIterator<'a, R> {
         }
         let mut record = record::Record::new();
         match self.reader.read(&mut record) {
-            Ok(false) => None,
-            Ok(true) => Some(Ok(record)),
-            Err(err) => Some(Err(err)),
+            None => None,
+            Some(Ok(_)) => Some(Ok(record)),
+            Some(Err(err)) => Some(Err(err)),
         }
     }
 }
@@ -772,7 +1132,7 @@ fn hts_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
     let c_str = ffi::CString::new(mode).unwrap();
     let ret = unsafe { htslib::hts_open(cpath.as_ptr(), c_str.as_ptr()) };
     if ret.is_null() {
-        Err(Error::Open {
+        Err(Error::BamOpen {
             target: path.to_owned(),
         })
     } else {
@@ -780,10 +1140,11 @@ fn hts_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
             unsafe {
                 // Comparison against 'htsFormatCategory_sequence_data' doesn't handle text files correctly
                 // hence the explicit checks against all supported exact formats
-                if (*ret).format.format != htslib::htsExactFormat_bam
+                if (*ret).format.format != htslib::htsExactFormat_sam
+                    && (*ret).format.format != htslib::htsExactFormat_bam
                     && (*ret).format.format != htslib::htsExactFormat_cram
                 {
-                    return Err(Error::Open {
+                    return Err(Error::BamOpen {
                         target: path.to_owned(),
                     });
                 }
@@ -946,7 +1307,6 @@ mod tests {
     use std::fs;
     use std::path::Path;
     use std::str;
-    use tempdir;
 
     fn gold() -> (
         [&'static [u8]; 6],
@@ -1003,7 +1363,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         (names, flags, seqs, quals, cigars)
     }
 
-    fn compare_inner_bam_cram_records(cram_records: &Vec<Record>, bam_records: &Vec<Record>) {
+    fn compare_inner_bam_cram_records(cram_records: &[Record], bam_records: &[Record]) {
         // Selectively compares bam1_t struct fields from BAM and CRAM
         for (c1, b1) in cram_records.iter().zip(bam_records.iter()) {
             // CRAM vs BAM l_data is off by 3, see: https://github.com/rust-bio/rust-htslib/pull/184#issuecomment-590133544
@@ -1033,7 +1393,6 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
         for (i, record) in bam.records().enumerate() {
             let rec = record.expect("Expected valid record");
-            println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
             assert_eq!(rec.qname(), names[i]);
             assert_eq!(rec.flags(), flags[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
@@ -1066,18 +1425,17 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     #[test]
     fn test_seek() {
-        let mut bam = Reader::from_path(&Path::new("test/test.bam"))
-            .ok()
-            .expect("Error opening file.");
+        let mut bam = Reader::from_path(&Path::new("test/test.bam")).expect("Error opening file.");
 
         let mut names_by_voffset = HashMap::new();
 
         let mut offset = bam.tell();
         let mut rec = Record::new();
         loop {
-            if !bam.read(&mut rec).expect("error reading bam") {
-                break;
-            }
+            match bam.read(&mut rec) {
+                Some(r) => r.expect("error reading bam"),
+                None => break,
+            };
             let qname = str::from_utf8(rec.qname()).unwrap().to_string();
             println!("{} {}", offset, qname);
             names_by_voffset.insert(offset, qname);
@@ -1087,17 +1445,18 @@ CCCCCCCCCCCCCCCCCCC"[..],
         for (offset, qname) in names_by_voffset.iter() {
             println!("{} {}", offset, qname);
             bam.seek(*offset).unwrap();
-            bam.read(&mut rec).unwrap();
-            let rec_qname = str::from_utf8(rec.qname()).ok().unwrap().to_string();
+            match bam.read(&mut rec) {
+                Some(r) => r.unwrap(),
+                None => {}
+            };
+            let rec_qname = str::from_utf8(rec.qname()).unwrap().to_string();
             assert_eq!(qname, &rec_qname);
         }
     }
 
     #[test]
     fn test_read_sam_header() {
-        let bam = Reader::from_path(&"test/test.bam")
-            .ok()
-            .expect("Error opening file.");
+        let bam = Reader::from_path(&"test/test.bam").expect("Error opening file.");
 
         let true_header = "@SQ\tSN:CHROMOSOME_I\tLN:15072423\n@SQ\tSN:CHROMOSOME_II\tLN:15279345\
              \n@SQ\tSN:CHROMOSOME_III\tLN:13783700\n@SQ\tSN:CHROMOSOME_IV\tLN:17493793\n@SQ\t\
@@ -1105,6 +1464,14 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .to_string();
         let header_text = String::from_utf8(bam.header.as_bytes().to_owned()).unwrap();
         assert_eq!(header_text, true_header);
+    }
+
+    #[test]
+    fn test_read_against_sam() {
+        let mut bam = Reader::from_path("./test/bam2sam_out.sam").unwrap();
+        for read in bam.records() {
+            let _read = read.unwrap();
+        }
     }
 
     fn _test_read_indexed_common(mut bam: IndexedReader) {
@@ -1116,19 +1483,17 @@ CCCCCCCCCCCCCCCCCCC"[..],
         assert!(bam.header.target_len(tid_1).expect("Expected target len.") == 15072423);
 
         // fetch to position containing reads
-        bam.fetch(tid_1, 0, 2)
-            .ok()
+        bam.fetch((tid_1, 0, 2))
             .expect("Expected successful fetch.");
         assert!(bam.records().count() == 6);
 
         // compare reads
-        bam.fetch(tid_1, 0, 2)
-            .ok()
+        bam.fetch((tid_1, 0, 2))
             .expect("Expected successful fetch.");
         for (i, record) in bam.records().enumerate() {
             let rec = record.expect("Expected valid record");
 
-            println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
+            println!("{}", str::from_utf8(rec.qname()).unwrap());
             assert_eq!(rec.qname(), names[i]);
             assert_eq!(rec.flags(), flags[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
@@ -1140,25 +1505,45 @@ CCCCCCCCCCCCCCCCCCC"[..],
         }
 
         // fetch to empty position
-        bam.fetch(tid_2, 1, 1).expect("Expected successful fetch.");
+        bam.fetch((tid_2, 1, 1))
+            .expect("Expected successful fetch.");
         assert!(bam.records().count() == 0);
 
         // repeat with byte-string based fetch
 
         // fetch to position containing reads
-        bam.fetch_str(format!("{}:{}-{}", str::from_utf8(sq_1).unwrap(), 0, 2).as_bytes())
-            .ok()
+        // using coordinate-string chr:start-stop
+        bam.fetch(format!("{}:{}-{}", str::from_utf8(sq_1).unwrap(), 0, 2).as_bytes())
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        // using &str and exercising some of the coordinate conversion funcs
+        bam.fetch((str::from_utf8(sq_1).unwrap(), 0 as u32, 2 as u64))
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        // using a slice
+        bam.fetch((&sq_1[..], 0, 2))
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        // using a literal
+        bam.fetch((sq_1, 0, 2)).expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+
+        // using a tid
+        bam.fetch((0i32, 0u32, 2i64))
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        // using a tid:u32
+        bam.fetch((0u32, 0u32, 2i64))
             .expect("Expected successful fetch.");
         assert!(bam.records().count() == 6);
 
         // compare reads
-        bam.fetch_str(format!("{}:{}-{}", str::from_utf8(sq_1).unwrap(), 0, 2).as_bytes())
-            .ok()
+        bam.fetch(format!("{}:{}-{}", str::from_utf8(sq_1).unwrap(), 0, 2).as_bytes())
             .expect("Expected successful fetch.");
         for (i, record) in bam.records().enumerate() {
             let rec = record.expect("Expected valid record");
 
-            println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
+            println!("{}", str::from_utf8(rec.qname()).unwrap());
             assert_eq!(rec.qname(), names[i]);
             assert_eq!(rec.flags(), flags[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
@@ -1170,16 +1555,46 @@ CCCCCCCCCCCCCCCCCCC"[..],
         }
 
         // fetch to empty position
-        bam.fetch_str(format!("{}:{}-{}", str::from_utf8(sq_2).unwrap(), 1, 1).as_bytes())
+        bam.fetch(format!("{}:{}-{}", str::from_utf8(sq_2).unwrap(), 1, 1).as_bytes())
             .expect("Expected successful fetch.");
         assert!(bam.records().count() == 0);
+
+        //all on a tid
+        bam.fetch(0).expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        //all on a tid:u32
+        bam.fetch(0u32).expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+
+        //all on a tid - by &[u8]
+        bam.fetch(sq_1).expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        //all on a tid - by str
+        bam.fetch(str::from_utf8(sq_1).unwrap())
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+
+        //all reads
+        bam.fetch(FetchDefinition::All)
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+
+        //all reads
+        bam.fetch(".").expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+
+        //all unmapped
+        bam.fetch(FetchDefinition::Unmapped)
+            .expect("Expected successful fetch.");
+        assert_eq!(bam.records().count(), 1); // expect one 'truncade record' Record.
+
+        bam.fetch("*").expect("Expected successful fetch.");
+        assert_eq!(bam.records().count(), 1); // expect one 'truncade record' Record.
     }
 
     #[test]
     fn test_read_indexed() {
-        let bam = IndexedReader::from_path(&"test/test.bam")
-            .ok()
-            .expect("Expected valid index.");
+        let bam = IndexedReader::from_path(&"test/test.bam").expect("Expected valid index.");
         _test_read_indexed_common(bam);
     }
     #[test]
@@ -1188,7 +1603,6 @@ CCCCCCCCCCCCCCCCCCC"[..],
             &"test/test_different_index_name.bam",
             &"test/test.bam.bai",
         )
-        .ok()
         .expect("Expected valid index.");
         _test_read_indexed_common(bam);
     }
@@ -1268,7 +1682,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
 
             // Equal length qname
-            assert!(rec.qname()[0] != 'X' as u8);
+            assert!(rec.qname()[0] != b'X');
             rec.set_qname(b"X");
             assert_eq!(rec.qname(), b"X");
 
@@ -1313,12 +1727,12 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 .push_tag(b"SN", &"1")
                 .push_tag(b"LN", &10000000),
         );
-        let mut header = HeaderView::from_header(&_header);
+        let header = HeaderView::from_header(&_header);
 
         let line =
             b"blah1	0	1	1	255	1M	*	0	0	A	F	CB:Z:AAAA-1	UR:Z:AAAA	UB:Z:AAAA	GX:Z:G1	xf:i:1	fx:Z:G1\tli:i:0\ttf:Z:cC";
 
-        let mut rec = Record::from_sam(&mut header, line).unwrap();
+        let mut rec = Record::from_sam(&header, line).unwrap();
         assert_eq!(rec.qname(), b"blah1");
         rec.set_qname(b"r0");
         assert_eq!(rec.qname(), b"r0");
@@ -1326,9 +1740,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     #[test]
     fn test_remove_aux() {
-        let mut bam = Reader::from_path(&Path::new("test/test.bam"))
-            .ok()
-            .expect("Error opening file.");
+        let mut bam = Reader::from_path(&Path::new("test/test.bam")).expect("Error opening file.");
 
         for record in bam.records() {
             let mut rec = record.expect("Expected valid record");
@@ -1352,8 +1764,9 @@ CCCCCCCCCCCCCCCCCCC"[..],
     fn test_write() {
         let (names, _, seqs, quals, cigars) = gold();
 
-        let tmp = tempdir::TempDir::new("rust-htslib")
-            .ok()
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
             .expect("Cannot create temp dir");
         let bampath = tmp.path().join("test.bam");
         println!("{:?}", bampath);
@@ -1367,7 +1780,6 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 ),
                 Format::BAM,
             )
-            .ok()
             .expect("Error opening file.");
 
             for i in 0..names.len() {
@@ -1375,18 +1787,19 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 rec.set(names[i], Some(&cigars[i]), seqs[i], quals[i]);
                 rec.push_aux(b"NM", &Aux::Integer(15));
 
-                bam.write(&mut rec).expect("Failed to write record.");
+                bam.write(&rec).expect("Failed to write record.");
             }
         }
 
         {
-            let mut bam = Reader::from_path(&bampath)
-                .ok()
-                .expect("Error opening file.");
+            let mut bam = Reader::from_path(&bampath).expect("Error opening file.");
 
             for i in 0..names.len() {
                 let mut rec = record::Record::new();
-                bam.read(&mut rec).expect("Failed to read record.");
+                match bam.read(&mut rec) {
+                    Some(r) => r.expect("Failed to read record."),
+                    None => {}
+                };
 
                 assert_eq!(rec.qname(), names[i]);
                 assert_eq!(*rec.cigar(), cigars[i]);
@@ -1403,8 +1816,9 @@ CCCCCCCCCCCCCCCCCCC"[..],
     fn test_write_threaded() {
         let (names, _, seqs, quals, cigars) = gold();
 
-        let tmp = tempdir::TempDir::new("rust-htslib")
-            .ok()
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
             .expect("Cannot create temp dir");
         let bampath = tmp.path().join("test.bam");
         println!("{:?}", bampath);
@@ -1418,7 +1832,6 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 ),
                 Format::BAM,
             )
-            .ok()
             .expect("Error opening file.");
             bam.set_threads(4).unwrap();
 
@@ -1429,14 +1842,12 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 rec.push_aux(b"NM", &Aux::Integer(15));
                 rec.set_pos(i as i64);
 
-                bam.write(&mut rec).expect("Failed to write record.");
+                bam.write(&rec).expect("Failed to write record.");
             }
         }
 
         {
-            let mut bam = Reader::from_path(&bampath)
-                .ok()
-                .expect("Error opening file.");
+            let mut bam = Reader::from_path(&bampath).expect("Error opening file.");
 
             for (i, _rec) in bam.records().enumerate() {
                 let idx = i % names.len();
@@ -1456,19 +1867,97 @@ CCCCCCCCCCCCCCCCCCC"[..],
     }
 
     #[test]
+    fn test_write_shared_tpool() {
+        let (names, _, seqs, quals, cigars) = gold();
+
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
+        let bampath1 = tmp.path().join("test1.bam");
+        let bampath2 = tmp.path().join("test2.bam");
+
+        {
+            let (mut bam1, mut bam2) = {
+                let pool = crate::tpool::ThreadPool::new(4).unwrap();
+
+                let mut bam1 = Writer::from_path(
+                    &bampath1,
+                    Header::new().push_record(
+                        HeaderRecord::new(b"SQ")
+                            .push_tag(b"SN", &"chr1")
+                            .push_tag(b"LN", &15072423),
+                    ),
+                    Format::BAM,
+                )
+                .expect("Error opening file.");
+
+                let mut bam2 = Writer::from_path(
+                    &bampath2,
+                    Header::new().push_record(
+                        HeaderRecord::new(b"SQ")
+                            .push_tag(b"SN", &"chr1")
+                            .push_tag(b"LN", &15072423),
+                    ),
+                    Format::BAM,
+                )
+                .expect("Error opening file.");
+
+                bam1.set_thread_pool(&pool).unwrap();
+                bam2.set_thread_pool(&pool).unwrap();
+                (bam1, bam2)
+            };
+
+            for i in 0..10000 {
+                let mut rec = record::Record::new();
+                let idx = i % names.len();
+                rec.set(names[idx], Some(&cigars[idx]), seqs[idx], quals[idx]);
+                rec.push_aux(b"NM", &Aux::Integer(15));
+                rec.set_pos(i as i64);
+
+                bam1.write(&rec).expect("Failed to write record.");
+                bam2.write(&rec).expect("Failed to write record.");
+            }
+        }
+
+        {
+            let pool = crate::tpool::ThreadPool::new(2).unwrap();
+
+            for p in vec![bampath1, bampath2] {
+                let mut bam = Reader::from_path(&p).expect("Error opening file.");
+                bam.set_thread_pool(&pool).unwrap();
+
+                for (i, _rec) in bam.iter_chunk(None, None).enumerate() {
+                    let idx = i % names.len();
+
+                    let rec = _rec.expect("Failed to read record.");
+
+                    assert_eq!(rec.pos(), i as i64);
+                    assert_eq!(rec.qname(), names[idx]);
+                    assert_eq!(*rec.cigar(), cigars[idx]);
+                    assert_eq!(rec.seq().as_bytes(), seqs[idx]);
+                    assert_eq!(rec.qual(), quals[idx]);
+                    assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+                }
+            }
+        }
+
+        tmp.close().expect("Failed to delete temp dir");
+    }
+
+    #[test]
     fn test_copy_template() {
         // Verify that BAM headers are transmitted correctly when using an existing BAM as a
         // template for headers.
 
-        let tmp = tempdir::TempDir::new("rust-htslib")
-            .ok()
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
             .expect("Cannot create temp dir");
         let bampath = tmp.path().join("test.bam");
         println!("{:?}", bampath);
 
-        let mut input_bam = Reader::from_path(&"test/test.bam")
-            .ok()
-            .expect("Error opening file.");
+        let mut input_bam = Reader::from_path(&"test/test.bam").expect("Error opening file.");
 
         {
             let mut bam = Writer::from_path(
@@ -1476,20 +1965,15 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 &Header::from_template(&input_bam.header()),
                 Format::BAM,
             )
-            .ok()
             .expect("Error opening file.");
 
             for rec in input_bam.records() {
-                bam.write(&rec.unwrap())
-                    .ok()
-                    .expect("Failed to write record.");
+                bam.write(&rec.unwrap()).expect("Failed to write record.");
             }
         }
 
         {
-            let copy_bam = Reader::from_path(&bampath)
-                .ok()
-                .expect("Error opening file.");
+            let copy_bam = Reader::from_path(&bampath).expect("Error opening file.");
 
             // Verify that the header came across correctly
             assert_eq!(input_bam.header().as_bytes(), copy_bam.header().as_bytes());
@@ -1502,9 +1986,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
     fn test_pileup() {
         let (_, _, seqs, quals, _) = gold();
 
-        let mut bam = Reader::from_path(&"test/test.bam")
-            .ok()
-            .expect("Error opening file.");
+        let mut bam = Reader::from_path(&"test/test.bam").expect("Error opening file.");
         let pileups = bam.pileup();
         for pileup in pileups.take(26) {
             let _pileup = pileup.expect("Expected successful pileup.");
@@ -1523,16 +2005,14 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     #[test]
     fn test_idx_pileup() {
-        let mut bam = IndexedReader::from_path(&"test/test.bam")
-            .ok()
-            .expect("Error opening file.");
+        let mut bam = IndexedReader::from_path(&"test/test.bam").expect("Error opening file.");
         // read without fetch
         for pileup in bam.pileup() {
             pileup.unwrap();
         }
         // go back again
         let tid = bam.header().tid(b"CHROMOSOME_I").unwrap();
-        bam.fetch(tid, 0, 5).unwrap();
+        bam.fetch((tid, 0, 5)).unwrap();
         for p in bam.pileup() {
             println!("{}", p.unwrap().pos())
         }
@@ -1555,7 +2035,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
         let sam_recs: Vec<Record> = sam
             .split(|x| *x == b'\n')
-            .filter(|x| x.len() > 0 && x[0] != b'@')
+            .filter(|x| !x.is_empty() && x[0] != b'@')
             .map(|line| Record::from_sam(rdr.header(), line).unwrap())
             .collect();
 
@@ -1569,9 +2049,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         // test the cached and uncached ways of getting the cigar string.
 
         let (_, _, _, _, cigars) = gold();
-        let mut bam = Reader::from_path(&Path::new("test/test.bam"))
-            .ok()
-            .expect("Error opening file.");
+        let mut bam = Reader::from_path(&Path::new("test/test.bam")).expect("Error opening file.");
 
         for (i, record) in bam.records().enumerate() {
             let rec = record.expect("Expected valid record");
@@ -1619,8 +2097,9 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let bam_records: Vec<Record> = bam_reader.records().map(|v| v.unwrap()).collect();
 
         // New CRAM file
-        let tmp = tempdir::TempDir::new("rust-htslib")
-            .ok()
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
             .expect("Cannot create temp dir");
         let cram_path = tmp.path().join("test.cram");
 
@@ -1655,7 +2134,6 @@ CCCCCCCCCCCCCCCCCCC"[..],
             );
 
             let mut cram_writer = Writer::from_path(&cram_path, &header, Format::CRAM)
-                .ok()
                 .expect("Error opening CRAM file.");
             cram_writer.set_reference(ref_path).unwrap();
 
@@ -1663,7 +2141,6 @@ CCCCCCCCCCCCCCCCCCC"[..],
             for rec in bam_records.iter() {
                 cram_writer
                     .write(&rec)
-                    .ok()
                     .expect("Faied to write record to CRAM.");
             }
         }
@@ -1699,7 +2176,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     #[test]
     fn test_write_compression() {
-        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let input_bam_path = "test/test.bam";
 
         // test levels with decreasing compression factor
@@ -1720,7 +2200,8 @@ CCCCCCCCCCCCCCCCCCC"[..],
                         Writer::from_path(&output_bam_path, &header, Format::BAM).unwrap();
                     writer.set_compression_level(*level).unwrap();
                     for record in reader.records() {
-                        writer.write(&record.unwrap()).unwrap();
+                        let r = record.unwrap();
+                        writer.write(&r).unwrap();
                     }
                 }
                 fs::metadata(output_bam_path).unwrap().len()
@@ -1728,6 +2209,15 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .collect();
 
         // check that out BAM file sizes are in decreasing order, in line with the expected compression factor
+        println!("testing compression leves: {:?}", levels_to_test);
+        println!("got compressed sizes: {:?}", file_sizes);
+
+        // libdeflate comes out with a slightly bigger file on Max compression
+        // than on Level(6), so skip that check
+        #[cfg(feature = "libdeflate")]
+        assert!(file_sizes[1..].windows(2).all(|size| size[0] <= size[1]));
+
+        #[cfg(not(feature = "libdeflate"))]
         assert!(file_sizes.windows(2).all(|size| size[0] <= size[1]));
 
         tmp.close().expect("Failed to delete temp dir");
@@ -1756,7 +2246,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     #[test]
     fn test_sam_writer_example() {
-        fn from_bam_with_filter<'a, 'b, F>(bamfile: &'a str, samfile: &'b str, f: F) -> bool
+        fn from_bam_with_filter<F>(bamfile: &str, samfile: &str, f: F) -> bool
         where
             F: Fn(&record::Record) -> Option<bool>,
         {
@@ -1772,7 +2262,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                     None => return true,
                     Some(false) => {}
                     Some(true) => {
-                        if let Err(_) = sam_writer.write(&parsed) {
+                        if sam_writer.write(&parsed).is_err() {
                             return false;
                         }
                     }
@@ -1798,5 +2288,59 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .read_to_end(&mut written)
             .is_ok());
         assert_eq!(expected, written);
+    }
+
+    // #[cfg(feature = "curl")]
+    // #[test]
+    // fn test_http_connect() {
+    //     let url: Url = Url::parse(
+    //         "https://raw.githubusercontent.com/brainstorm/tiny-test-data/master/wgs/mt.bam",
+    //     )
+    //     .unwrap();
+    //     let r = Reader::from_url(&url);
+    //     println!("{:#?}", r);
+    //     let r = r.unwrap();
+
+    //     assert_eq!(r.header().target_names()[0], b"chr1");
+    // }
+
+    #[test]
+    fn test_rc_records() {
+        let (names, flags, seqs, quals, cigars) = gold();
+        let mut bam = Reader::from_path(&Path::new("test/test.bam")).expect("Error opening file.");
+        let del_len = [1, 1, 1, 1, 1, 100000];
+
+        for (i, record) in bam.rc_records().enumerate() {
+            //let rec = record.expect("Expected valid record");
+            let rec = record.unwrap();
+            println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
+            assert_eq!(rec.qname(), names[i]);
+            assert_eq!(rec.flags(), flags[i]);
+            assert_eq!(rec.seq().as_bytes(), seqs[i]);
+
+            let cigar = rec.cigar();
+            assert_eq!(*cigar, cigars[i]);
+
+            let end_pos = cigar.end_pos();
+            assert_eq!(end_pos, rec.pos() + 100 + del_len[i]);
+            assert_eq!(
+                cigar
+                    .read_pos(end_pos as u32 - 10, false, false)
+                    .unwrap()
+                    .unwrap(),
+                90
+            );
+            assert_eq!(
+                cigar
+                    .read_pos(rec.pos() as u32 + 20, false, false)
+                    .unwrap()
+                    .unwrap(),
+                20
+            );
+            assert_eq!(cigar.read_pos(4000000, false, false).unwrap(), None);
+            // fix qual offset
+            let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
+            assert_eq!(rec.qual(), &qual[..]);
+        }
     }
 }

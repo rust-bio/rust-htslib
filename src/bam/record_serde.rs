@@ -1,8 +1,8 @@
 use std::fmt;
 
-use serde_base::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
-use serde_base::ser::SerializeStruct;
-use serde_base::{Serialize, Serializer};
+use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
+use serde::ser::SerializeStruct;
+use serde::{Serialize, Serializer};
 use serde_bytes::{ByteBuf, Bytes};
 
 use crate::bam::record::Record;
@@ -319,9 +319,7 @@ mod tests {
 
     #[test]
     fn test_bincode() {
-        let mut bam = Reader::from_path(&Path::new("test/test.bam"))
-            .ok()
-            .expect("Error opening file.");
+        let mut bam = Reader::from_path(&Path::new("test/test.bam")).expect("Error opening file.");
 
         let mut recs = Vec::new();
         for record in bam.records() {
@@ -335,9 +333,7 @@ mod tests {
 
     #[test]
     fn test_serde_json() {
-        let mut bam = Reader::from_path(&Path::new("test/test.bam"))
-            .ok()
-            .expect("Error opening file.");
+        let mut bam = Reader::from_path(&Path::new("test/test.bam")).expect("Error opening file.");
 
         let mut recs = Vec::new();
         for record in bam.records() {

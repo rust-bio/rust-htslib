@@ -4,6 +4,7 @@
 // except according to those terms.
 
 use crate::bam::HeaderView;
+use lazy_static::lazy_static;
 use linear_map::LinearMap;
 use regex::Regex;
 use std::collections::HashMap;
@@ -65,15 +66,17 @@ impl Header {
     pub fn to_hashmap(&self) -> HashMap<String, Vec<LinearMap<String, String>>> {
         let mut header_map = HashMap::default();
 
-        let rec_type_re = Regex::new(r"@([A-Z][A-Z])").unwrap();
-        let tag_re = Regex::new(r"([A-Za-z][A-Za-z0-9]):([ -~]+)").unwrap();
+        lazy_static! {
+            static ref REC_TYPE_RE: Regex = Regex::new(r"@([A-Z][A-Z])").unwrap();
+            static ref TAG_RE: Regex = Regex::new(r"([A-Za-z][A-Za-z0-9]):([ -~]+)").unwrap();
+        }
 
         let header_string = String::from_utf8(self.to_bytes()).unwrap();
 
         for line in header_string.split('\n').filter(|x| !x.is_empty()) {
             let parts: Vec<_> = line.split('\t').filter(|x| !x.is_empty()).collect();
             // assert!(rec_type_re.is_match(parts[0]));
-            let record_type = rec_type_re
+            let record_type = REC_TYPE_RE
                 .captures(parts[0])
                 .unwrap()
                 .get(1)
@@ -82,7 +85,7 @@ impl Header {
                 .to_owned();
             let mut field = LinearMap::default();
             for part in parts.iter().skip(1) {
-                let cap = tag_re.captures(part).unwrap();
+                let cap = TAG_RE.captures(part).unwrap();
                 let tag = cap.get(1).unwrap().as_str().to_owned();
                 let value = cap.get(2).unwrap().as_str().to_owned();
                 field.insert(tag, value);
