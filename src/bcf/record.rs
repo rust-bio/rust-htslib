@@ -1121,3 +1121,20 @@ impl<'a> Iterator for Filters<'a> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_missing_float() {
+        let expected: u32 = 0x7F80_0001;
+        assert_eq!(MISSING_FLOAT.bits(), expected);
+    }
+
+    #[test]
+    fn test_vector_end_float() {
+        let expected: u32 = 0x7F80_0002;
+        assert_eq!(VECTOR_END_FLOAT.bits(), expected);
+    }
+}
