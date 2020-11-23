@@ -30,6 +30,7 @@ thiserror = "1"
 hts-sys = { version = "1.11.0", path = "hts-sys", default-features = false }
 derefable = "0.1"
 derive-new = "0.5"
+ieee754 = "0.2"
 
 [features]
 default = ["bzip2", "lzma", "curl"]
