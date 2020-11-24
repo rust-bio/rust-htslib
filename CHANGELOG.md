@@ -2,6 +2,16 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.35.2] - 2020-11-23
+### Changes
+- let hts-sys dependency comply to semver.
+
+## [0.35.1] - 2020-11-23
+### Changes
+- Fixed wrongly define missing value constants in bcf::record (@johanneskoester).
+- Bump hts-sys depedency to the latest version, containing build fixes for macOS (@johanneskoester).
+
+
 ## [0.35.0] - 2020-11-19
 ### Changes
 - BREAKING: info and format field access in BCF records now allocates a separate buffer each time. In addition, it is also possible to pass a buffer that has been created manually before (@johanneskoester)
