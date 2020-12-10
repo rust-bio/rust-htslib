@@ -10,7 +10,9 @@
 //! Note that BCF corresponds to the in-memory representation of BCF/VCF records in Htslib
 //! itself. Thus, it comes without a runtime penalty for parsing, in contrast to reading VCF
 //! files.
-//! # Example
+//!
+//! # Example (reading)
+//!
 //!   - Obtaining 0-based locus index of the VCF record.
 //!   - Obtaining alleles of the VCF record.
 //!   - calculate alt-allele dosage in a mutli-sample VCF / BCF
@@ -53,6 +55,52 @@
 //!         }
 //!     }
 //! }
+//! ```
+//!
+//! # Example (writing)
+//!
+//!   - Setting up a VCF writer from scratch (including a simple header)
+//!   - Creating a VCF record and writing it to the VCF file
+//!
+//! ```
+//! use rust_htslib::bcf::{Format, Writer};
+//! use rust_htslib::bcf::header::Header;
+//! use rust_htslib::bcf::record::GenotypeAllele;
+//!
+//! // Create minimal VCF header with a single contig and a single sample
+//! let mut header = Header::new();
+//! let header_contig_line = r#"##contig=<ID=1,length=10>"#;
+//! header.push_record(header_contig_line.as_bytes());
+//! let header_gt_line = r#"##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">"#;
+//! header.push_record(header_gt_line.as_bytes());
+//! header.push_sample("test_sample".as_bytes());
+//!
+//! // Write uncompressed VCF to stdout with above header and get an empty record
+//! let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+//! let mut record = vcf.empty_record();
+//!
+//! // Set chrom and pos to 1 and 7, respectively - note the 0-based positions
+//! let rid = vcf.header().name2rid(b"1").unwrap();
+//! record.set_rid(Some(rid));
+//! record.set_pos(6);
+//!
+//! // Set record genotype to 0|1 - note first allele is always unphased
+//! let alleles = &[GenotypeAllele::Unphased(0), GenotypeAllele::Phased(1)];
+//! record.push_genotypes(alleles).unwrap();
+//!
+//! // Write record
+//! vcf.write(&record).unwrap()
+//! ```
+//!
+//! This will print the following VCF to stdout:
+//!
+//! ```lang-none
+//! ##fileformat=VCFv4.2
+//! ##FILTER=<ID=PASS,Description="All filters passed">
+//! ##contig=<ID=1,length=10>
+//! ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+//! #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  test_sample
+//! 1       7       .       .       .       0       .       .       GT      0|1
 //! ```
 
 use std::ffi;
