@@ -747,6 +747,10 @@ pub enum GenotypeAllele {
 
 impl GenotypeAllele {
     /// Decode given integer according to BCF standard.
+    #[deprecated(
+        since = "0.36.0",
+        note = "Please use the conversion trait From<i32> for GenotypeAllele instead."
+    )]
     pub fn from_encoded(encoded: i32) -> Self {
         match (encoded, encoded & 1) {
             (0, 0) => GenotypeAllele::UnphasedMissing,
@@ -783,7 +787,19 @@ impl From<GenotypeAllele> for i32 {
             GenotypeAllele::Unphased(a) => (a, 0),
             GenotypeAllele::Phased(a) => (a, 1),
         };
-        allele + 1 << 1 | phased
+        (allele + 1) << 1 | phased
+    }
+}
+
+impl From<i32> for GenotypeAllele {
+    fn from(encoded: i32) -> GenotypeAllele {
+        match (encoded, encoded & 1) {
+            (0, 0) => GenotypeAllele::UnphasedMissing,
+            (1, 1) => GenotypeAllele::PhasedMissing,
+            (e, 1) => GenotypeAllele::Phased((e >> 1) - 1),
+            (e, 0) => GenotypeAllele::Unphased((e >> 1) - 1),
+            _ => panic!("unexpected phasing type"),
+        }
     }
 }
 
@@ -825,11 +841,7 @@ impl<'a, B: Borrow<Buffer> + 'a> Genotypes<'a, B> {
     /// this method will return `[Unphased(1), Phased(1)]`.
     pub fn get(&self, i: usize) -> Genotype {
         let igt = self.encoded[i];
-        Genotype(
-            igt.iter()
-                .map(|&e| GenotypeAllele::from_encoded(e))
-                .collect(),
-        )
+        Genotype(igt.iter().map(|&e| GenotypeAllele::from(e)).collect())
     }
 }
 

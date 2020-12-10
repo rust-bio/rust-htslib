@@ -1399,6 +1399,8 @@ mod tests {
         let converted: i32 = allele.into();
         let expected = 4;
         assert_eq!(converted, expected);
+        let reverse_conversion = GenotypeAllele::from(expected);
+        assert_eq!(allele, reverse_conversion);
     }
 
     #[test]
@@ -1407,6 +1409,8 @@ mod tests {
         let converted: i32 = allele.into();
         let expected = 1;
         assert_eq!(converted, expected);
+        let reverse_conversion = GenotypeAllele::from(expected);
+        assert_eq!(allele, reverse_conversion);
     }
 
     #[test]
