@@ -3,17 +3,22 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::borrow::Borrow;
+use std::borrow::{Borrow, BorrowMut};
 use std::f32;
 use std::ffi;
 use std::fmt;
 use std::i32;
+use std::marker::PhantomData;
+use std::ops::Deref;
 use std::ptr;
 use std::rc::Rc;
 use std::slice;
 use std::str;
 
 use bio_types::genome;
+use derive_new::new;
+use ieee754::Ieee754;
+use lazy_static::lazy_static;
 
 use crate::bcf::header::{HeaderView, Id};
 use crate::bcf::Error;
@@ -23,8 +28,10 @@ use crate::htslib;
 const MISSING_INTEGER: i32 = i32::MIN;
 const VECTOR_END_INTEGER: i32 = i32::MIN + 1;
 
-const MISSING_FLOAT: u32 = 0x7F80_0001;
-const VECTOR_END_FLOAT: u32 = 0x7F80_0002;
+lazy_static! {
+    static ref MISSING_FLOAT: f32 = Ieee754::from_bits(0x7F80_0001);
+    static ref VECTOR_END_FLOAT: f32 = Ieee754::from_bits(0x7F80_0002);
+}
 
 /// Common methods for numeric INFO and FORMAT entries
 pub trait Numeric {
@@ -37,11 +44,11 @@ pub trait Numeric {
 
 impl Numeric for f32 {
     fn is_missing(&self) -> bool {
-        self.to_bits() == MISSING_FLOAT
+        self.bits() == MISSING_FLOAT.bits()
     }
 
     fn missing() -> f32 {
-        MISSING_FLOAT as f32
+        *MISSING_FLOAT
     }
 }
 
@@ -62,7 +69,7 @@ trait NumericUtils {
 
 impl NumericUtils for f32 {
     fn is_vector_end(&self) -> bool {
-        self.to_bits() == VECTOR_END_FLOAT
+        self.bits() == VECTOR_END_FLOAT.bits()
     }
 }
 
@@ -72,14 +79,60 @@ impl NumericUtils for i32 {
     }
 }
 
+/// A buffer for info or format data.
+#[derive(Debug)]
+pub struct Buffer {
+    inner: *mut ::std::os::raw::c_void,
+    len: i32,
+}
+
+impl Buffer {
+    pub fn new() -> Self {
+        Buffer {
+            inner: ptr::null_mut(),
+            len: 0,
+        }
+    }
+}
+
+impl Drop for Buffer {
+    fn drop(&mut self) {
+        unsafe {
+            ::libc::free(self.inner as *mut ::libc::c_void);
+        }
+    }
+}
+
+#[derive(new, Debug)]
+pub struct BufferBacked<'a, T: 'a + fmt::Debug, B: Borrow<Buffer> + 'a> {
+    value: T,
+    buffer: B,
+    #[new(default)]
+    phantom: PhantomData<&'a B>,
+}
+
+impl<'a, T: 'a + fmt::Debug, B: Borrow<Buffer> + 'a> Deref for BufferBacked<'a, T, B> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.value
+    }
+}
+
+impl<'a, T: 'a + fmt::Debug + fmt::Display, B: Borrow<Buffer> + 'a> fmt::Display
+    for BufferBacked<'a, T, B>
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.value, f)
+    }
+}
+
 /// A BCF record.
 /// New records can be created by the `empty_record` methods of `bcf::Reader` and `bcf::Writer`.
 #[derive(Debug)]
 pub struct Record {
     pub inner: *mut htslib::bcf1_t,
     header: Rc<HeaderView>,
-    buffer: *mut ::std::os::raw::c_void,
-    buffer_len: i32,
 }
 
 impl Record {
@@ -91,12 +144,7 @@ impl Record {
             htslib::bcf_unpack(inner, htslib::BCF_UN_ALL as i32);
             inner
         };
-        Record {
-            inner,
-            header,
-            buffer: ptr::null_mut(),
-            buffer_len: 0,
-        }
+        Record { inner, header }
     }
 
     /// Force unpacking of internal record values.
@@ -339,9 +387,21 @@ impl Record {
         self.inner_mut().qual = qual;
     }
 
+    pub fn info<'a>(&'a self, tag: &'a [u8]) -> Info<'a, Buffer> {
+        self.info_shared_buffer(tag, Buffer::new())
+    }
+
     /// Get the value of the given info tag.
-    pub fn info<'a>(&'a mut self, tag: &'a [u8]) -> Info<'_> {
-        Info { record: self, tag }
+    pub fn info_shared_buffer<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b>(
+        &'a self,
+        tag: &'a [u8],
+        buffer: B,
+    ) -> Info<'a, B> {
+        Info {
+            record: self,
+            tag,
+            buffer,
+        }
     }
 
     /// Get the number of samples.
@@ -354,18 +414,58 @@ impl Record {
         self.inner().n_allele()
     }
 
-    // TODO fn push_genotypes(&mut self, Genotypes) {}?
+    /// Add/replace genotypes in FORMAT GT tag.
+    ///
+    /// # Arguments
+    ///
+    /// - `genotypes` - a flattened, two-dimensional array of GenotypeAllele,
+    ///                 the first dimension contains one array for each sample.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if GT tag is not present in header.
+    pub fn push_genotypes(&mut self, genotypes: &[GenotypeAllele]) -> Result<()> {
+        let encoded: Vec<i32> = genotypes.iter().map(|gt| i32::from(*gt)).collect();
+        self.push_format_integer(b"GT", &encoded)
+    }
 
     /// Get genotypes as vector of one `Genotype` per sample.
-    pub fn genotypes(&mut self) -> Result<Genotypes<'_>> {
+    /// # Example
+    /// Parsing genotype field (`GT` tag) from a VCF record:
+    /// ```
+    /// use crate::rust_htslib::bcf::{Reader, Read};
+    /// let mut vcf = Reader::from_path(&"test/test_string.vcf").expect("Error opening file.");
+    /// let expected = ["./1", "1|1", "0/1", "0|1", "1|.", "1/1"];
+    /// for (rec, exp_gt) in vcf.records().zip(expected.iter()) {
+    ///     let mut rec = rec.expect("Error reading record.");
+    ///     let genotypes = rec.genotypes().expect("Error reading genotypes");
+    ///     assert_eq!(&format!("{}", genotypes.get(0)), exp_gt);
+    /// }
+    /// ```
+    pub fn genotypes(&self) -> Result<Genotypes<'_, Buffer>> {
+        self.genotypes_shared_buffer(Buffer::new())
+    }
+
+    pub fn genotypes_shared_buffer<'a, B>(&self, buffer: B) -> Result<Genotypes<'a, B>>
+    where
+        B: BorrowMut<Buffer> + Borrow<Buffer> + 'a,
+    {
         Ok(Genotypes {
-            encoded: self.format(b"GT").integer()?,
+            encoded: self.format_shared_buffer(b"GT", buffer).integer()?,
         })
     }
 
+    pub fn format<'a>(&'a self, tag: &'a [u8]) -> Format<'a, Buffer> {
+        self.format_shared_buffer(tag, Buffer::new())
+    }
+
     /// Get the value of the given format tag for each sample.
-    pub fn format<'a>(&'a mut self, tag: &'a [u8]) -> Format<'_> {
-        Format::new(self, tag)
+    pub fn format_shared_buffer<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b>(
+        &'a self,
+        tag: &'a [u8],
+        buffer: B,
+    ) -> Format<'a, B> {
+        Format::new(self, tag, buffer)
     }
 
     /// Add/replace an integer-typed FORMAT tag.
@@ -438,7 +538,8 @@ impl Record {
 
     // TODO: should we add convenience methods clear_format_*?
 
-    /// Add a string-typed FORMAT tag.
+    /// Add a string-typed FORMAT tag. Note that genotypes are treated as a special case
+    /// and cannot be added with this method. See instead [push_genotypes](#method.push_genotypes).
     ///
     /// # Arguments
     ///
@@ -674,6 +775,18 @@ impl fmt::Display for GenotypeAllele {
     }
 }
 
+impl From<GenotypeAllele> for i32 {
+    fn from(allele: GenotypeAllele) -> i32 {
+        let (allele, phased) = match allele {
+            GenotypeAllele::UnphasedMissing => (-1, 0),
+            GenotypeAllele::PhasedMissing => (-1, 1),
+            GenotypeAllele::Unphased(a) => (a, 0),
+            GenotypeAllele::Phased(a) => (a, 1),
+        };
+        allele + 1 << 1 | phased
+    }
+}
+
 custom_derive! {
     /// Genotype representation as a vector of `GenotypeAllele`.
     #[derive(NewtypeDeref, Debug, Clone, PartialEq, Eq, Hash)]
@@ -696,12 +809,15 @@ impl fmt::Display for Genotype {
 }
 
 /// Lazy representation of genotypes, that does no computation until a particular genotype is queried.
-#[derive(Debug, Clone)]
-pub struct Genotypes<'a> {
-    encoded: Vec<&'a [i32]>,
+#[derive(Debug)]
+pub struct Genotypes<'a, B>
+where
+    B: Borrow<Buffer> + 'a,
+{
+    encoded: BufferBacked<'a, Vec<&'a [i32]>, B>,
 }
 
-impl<'a> Genotypes<'a> {
+impl<'a, B: Borrow<Buffer> + 'a> Genotypes<'a, B> {
     /// Get genotype of ith sample. So far, only supports diploid genotypes.
     ///
     /// Note that the result complies with the BCF spec. This means that the
@@ -719,9 +835,6 @@ impl<'a> Genotypes<'a> {
 
 impl Drop for Record {
     fn drop(&mut self) {
-        if !self.buffer.is_null() {
-            unsafe { ::libc::free(self.buffer as *mut ::libc::c_void) };
-        }
         unsafe { htslib::bcf_destroy(self.inner) };
     }
 }
@@ -731,31 +844,32 @@ unsafe impl Sync for Record {}
 
 /// Info tag representation.
 #[derive(Debug)]
-pub struct Info<'a> {
-    record: &'a mut Record,
+pub struct Info<'a, B: BorrowMut<Buffer> + Borrow<Buffer>> {
+    record: &'a Record,
     tag: &'a [u8],
+    buffer: B,
 }
 
-impl<'a> Info<'a> {
+impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, B> {
     /// Short description of info tag.
     pub fn desc(&self) -> String {
         str::from_utf8(self.tag).unwrap().to_owned()
     }
 
     fn data(&mut self, data_type: u32) -> Result<Option<(usize, i32)>> {
-        let mut n: i32 = self.record.buffer_len;
+        let mut n: i32 = self.buffer.borrow().len;
         let c_str = ffi::CString::new(self.tag).unwrap();
         let ret = unsafe {
             htslib::bcf_get_info_values(
                 self.record.header().inner,
                 self.record.inner,
                 c_str.as_ptr() as *mut i8,
-                &mut self.record.buffer,
+                &mut self.buffer.borrow_mut().inner,
                 &mut n,
                 data_type as i32,
             )
         };
-        self.record.buffer_len = n;
+        self.buffer.borrow_mut().len = n;
 
         match ret {
             -1 => Err(Error::BcfUndefinedTag { tag: self.desc() }),
@@ -768,11 +882,17 @@ impl<'a> Info<'a> {
     /// Get integers from tag. `None` if tag not present in record.
     ///
     /// Import `bcf::record::Numeric` for missing value handling.
-    pub fn integer(&mut self) -> Result<Option<&'a [i32]>> {
+    ///
+    /// **Attention:** the returned BufferBacked which holds the data has to be kept in scope
+    /// as along as the data is accessed. If parts of the data are accessed while
+    /// the BufferBacked object is already dropped, you will access unallocated
+    /// memory.
+    pub fn integer(mut self) -> Result<Option<BufferBacked<'b, &'b [i32], B>>> {
         self.data(htslib::BCF_HT_INT).map(|data| {
             data.map(|(n, ret)| {
-                let values = unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) };
-                &values[..ret as usize]
+                let values =
+                    unsafe { slice::from_raw_parts(self.buffer.borrow().inner as *const i32, n) };
+                BufferBacked::new(&values[..ret as usize], self.buffer)
             })
         })
     }
@@ -780,11 +900,17 @@ impl<'a> Info<'a> {
     /// Get floats from tag. `None` if tag not present in record.
     ///
     /// Import `bcf::record::Numeric` for missing value handling.
-    pub fn float(&mut self) -> Result<Option<&'a [f32]>> {
+    ///
+    /// **Attention:** the returned BufferBacked which holds the data has to be kept in scope
+    /// as along as the data is accessed. If parts of the data are accessed while
+    /// the BufferBacked object is already dropped, you will access unallocated
+    /// memory.
+    pub fn float(mut self) -> Result<Option<BufferBacked<'b, &'b [f32], B>>> {
         self.data(htslib::BCF_HT_REAL).map(|data| {
             data.map(|(n, ret)| {
-                let values = unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) };
-                &values[..ret as usize]
+                let values =
+                    unsafe { slice::from_raw_parts(self.buffer.borrow().inner as *const f32, n) };
+                BufferBacked::new(&values[..ret as usize], self.buffer)
             })
         })
     }
@@ -798,10 +924,18 @@ impl<'a> Info<'a> {
     }
 
     /// Get strings from tag. `None` if tag not present in record.
-    pub fn string(&mut self) -> Result<Option<Vec<&'a [u8]>>> {
+    ///
+    /// **Attention:** the returned BufferBacked which holds the data has to be kept in scope
+    /// as along as the data is accessed. If parts of the data are accessed while
+    /// the BufferBacked object is already dropped, you will access unallocated
+    /// memory.
+    pub fn string(mut self) -> Result<Option<BufferBacked<'b, Vec<&'b [u8]>, B>>> {
         self.data(htslib::BCF_HT_STR).map(|data| {
             data.map(|(_, ret)| {
-                unsafe { slice::from_raw_parts(self.record.buffer as *const u8, ret as usize) }
+                BufferBacked::new(
+                    unsafe {
+                        slice::from_raw_parts(self.buffer.borrow().inner as *const u8, ret as usize)
+                    }
                     .split(|c| *c == b',')
                     .map(|s| {
                         // stop at zero character
@@ -809,14 +943,16 @@ impl<'a> Info<'a> {
                             .next()
                             .expect("Bug: returned string should not be empty.")
                     })
-                    .collect()
+                    .collect(),
+                    self.buffer,
+                )
             })
         })
     }
 }
 
-unsafe impl<'a> Send for Info<'a> {}
-unsafe impl<'a> Sync for Info<'a> {}
+unsafe impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Send for Info<'a, B> {}
+unsafe impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Sync for Info<'a, B> {}
 
 fn trim_slice<T: PartialEq + NumericUtils>(s: &[T]) -> &[T] {
     s.split(|v| v.is_vector_end())
@@ -826,15 +962,16 @@ fn trim_slice<T: PartialEq + NumericUtils>(s: &[T]) -> &[T] {
 
 // Representation of per-sample data.
 #[derive(Debug)]
-pub struct Format<'a> {
-    record: &'a mut Record,
+pub struct Format<'a, B: BorrowMut<Buffer> + Borrow<Buffer>> {
+    record: &'a Record,
     tag: &'a [u8],
     inner: *mut htslib::bcf_fmt_t,
+    buffer: B,
 }
 
-impl<'a> Format<'a> {
+impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Format<'a, B> {
     /// Create new format data in a given record.
-    fn new(record: &'a mut Record, tag: &'a [u8]) -> Format<'a> {
+    fn new(record: &'a Record, tag: &'a [u8], buffer: B) -> Format<'a, B> {
         let c_str = ffi::CString::new(tag).unwrap();
         let inner = unsafe {
             htslib::bcf_get_fmt(
@@ -843,7 +980,12 @@ impl<'a> Format<'a> {
                 c_str.as_ptr() as *mut i8,
             )
         };
-        Format { record, tag, inner }
+        Format {
+            record,
+            tag,
+            inner,
+            buffer,
+        }
     }
 
     /// Provide short description of format entry (just the tag name).
@@ -865,19 +1007,19 @@ impl<'a> Format<'a> {
 
     /// Read and decode format data into a given type.
     fn data(&mut self, data_type: u32) -> Result<(usize, i32)> {
-        let mut n: i32 = self.record.buffer_len;
+        let mut n: i32 = self.buffer.borrow().len;
         let c_str = ffi::CString::new(self.tag).unwrap();
         let ret = unsafe {
             htslib::bcf_get_format_values(
                 self.record.header().inner,
                 self.record.inner,
                 c_str.as_ptr() as *mut i8,
-                &mut self.record.buffer,
+                &mut self.buffer.borrow_mut().inner,
                 &mut n,
                 data_type as i32,
             )
         };
-        self.record.buffer_len = n;
+        self.buffer.borrow_mut().len = n;
         match ret {
             -1 => Err(Error::BcfUndefinedTag { tag: self.desc() }),
             -2 => Err(Error::BcfUnexpectedType { tag: self.desc() }),
@@ -890,43 +1032,67 @@ impl<'a> Format<'a> {
     }
 
     /// Get format data as integers.
-    pub fn integer(&mut self) -> Result<Vec<&'a [i32]>> {
+    ///
+    /// **Attention:** the returned BufferBacked which holds the data has to be kept in scope
+    /// as along as the data is accessed. If parts of the data are accessed while
+    /// the BufferBacked object is already dropped, you will access unallocated
+    /// memory.
+    pub fn integer(mut self) -> Result<BufferBacked<'b, Vec<&'b [i32]>, B>> {
         self.data(htslib::BCF_HT_INT).map(|(n, _)| {
-            unsafe { slice::from_raw_parts(self.record.buffer as *const i32, n) }
-                .chunks(self.values_per_sample())
-                .map(|s| trim_slice(s))
-                .collect()
+            BufferBacked::new(
+                unsafe { slice::from_raw_parts(self.buffer.borrow_mut().inner as *const i32, n) }
+                    .chunks(self.values_per_sample())
+                    .map(|s| trim_slice(s))
+                    .collect(),
+                self.buffer,
+            )
         })
     }
 
     /// Get format data as floats.
-    pub fn float(&mut self) -> Result<Vec<&'a [f32]>> {
+    ///
+    /// **Attention:** the returned BufferBacked which holds the data has to be kept in scope
+    /// as along as the data is accessed. If parts of the data are accessed while
+    /// the BufferBacked object is already dropped, you will access unallocated
+    /// memory.
+    pub fn float(mut self) -> Result<BufferBacked<'b, Vec<&'b [f32]>, B>> {
         self.data(htslib::BCF_HT_REAL).map(|(n, _)| {
-            unsafe { slice::from_raw_parts(self.record.buffer as *const f32, n) }
-                .chunks(self.values_per_sample())
-                .map(|s| trim_slice(s))
-                .collect()
+            BufferBacked::new(
+                unsafe { slice::from_raw_parts(self.buffer.borrow_mut().inner as *const f32, n) }
+                    .chunks(self.values_per_sample())
+                    .map(|s| trim_slice(s))
+                    .collect(),
+                self.buffer,
+            )
         })
     }
 
     /// Get format data as byte slices. To obtain the values strings, use `std::str::from_utf8`.
-    pub fn string(&mut self) -> Result<Vec<&'a [u8]>> {
+    ///
+    /// **Attention:** the returned BufferBacked which holds the data has to be kept in scope
+    /// as along as the data is accessed. If parts of the data are accessed while
+    /// the BufferBacked object is already dropped, you will access unallocated
+    /// memory.
+    pub fn string(mut self) -> Result<BufferBacked<'b, Vec<&'b [u8]>, B>> {
         self.data(htslib::BCF_HT_STR).map(|(n, _)| {
-            unsafe { slice::from_raw_parts(self.record.buffer as *const u8, n) }
-                .chunks(self.values_per_sample())
-                .map(|s| {
-                    // stop at zero character
-                    s.split(|c| *c == 0u8)
-                        .next()
-                        .expect("Bug: returned string should not be empty.")
-                })
-                .collect()
+            BufferBacked::new(
+                unsafe { slice::from_raw_parts(self.buffer.borrow_mut().inner as *const u8, n) }
+                    .chunks(self.values_per_sample())
+                    .map(|s| {
+                        // stop at zero character
+                        s.split(|c| *c == 0u8)
+                            .next()
+                            .expect("Bug: returned string should not be empty.")
+                    })
+                    .collect(),
+                self.buffer,
+            )
         })
     }
 }
 
-unsafe impl<'a> Send for Format<'a> {}
-unsafe impl<'a> Sync for Format<'a> {}
+unsafe impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Send for Format<'a, B> {}
+unsafe impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Sync for Format<'a, B> {}
 
 #[derive(Debug)]
 pub struct Filters<'a> {
@@ -953,5 +1119,22 @@ impl<'a> Iterator for Filters<'a> {
             self.idx += 1;
             Some(Id(unsafe { *self.record.inner().d.flt.offset(i) } as u32))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_missing_float() {
+        let expected: u32 = 0x7F80_0001;
+        assert_eq!(MISSING_FLOAT.bits(), expected);
+    }
+
+    #[test]
+    fn test_vector_end_float() {
+        let expected: u32 = 0x7F80_0002;
+        assert_eq!(VECTOR_END_FLOAT.bits(), expected);
     }
 }

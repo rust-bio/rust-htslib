@@ -717,7 +717,7 @@ impl SequenceRead for Record {
     }
 
     fn base(&self, i: usize) -> u8 {
-        decode_base(encoded_base(self.seq_data(), i))
+        *decode_base_unchecked(encoded_base(self.seq_data(), i))
     }
 
     fn base_qual(&self, i: usize) -> u8 {
@@ -820,12 +820,19 @@ static ENCODE_BASE: [u8; 256] = [
     15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
 ];
 
+#[inline]
 fn encoded_base(encoded_seq: &[u8], i: usize) -> u8 {
     (encoded_seq[i / 2] >> ((!i & 1) << 2)) & 0b1111
 }
 
-fn decode_base(base: u8) -> u8 {
-    DECODE_BASE[base as usize]
+#[inline]
+unsafe fn encoded_base_unchecked(encoded_seq: &[u8], i: usize) -> u8 {
+    (encoded_seq.get_unchecked(i / 2) >> ((!i & 1) << 2)) & 0b1111
+}
+
+#[inline]
+fn decode_base_unchecked(base: u8) -> &'static u8 {
+    unsafe { DECODE_BASE.get_unchecked(base as usize) }
 }
 
 /// The sequence of a record.
@@ -840,6 +847,20 @@ impl<'a> Seq<'a> {
     #[inline]
     pub fn encoded_base(&self, i: usize) -> u8 {
         encoded_base(self.encoded, i)
+    }
+
+    /// Return encoded base. Complexity: O(1).
+    #[inline]
+    pub unsafe fn encoded_base_unchecked(&self, i: usize) -> u8 {
+        encoded_base_unchecked(self.encoded, i)
+    }
+
+    /// Obtain decoded base without performing bounds checking.
+    /// Use index based access seq()[i], for checked, safe access.
+    /// Complexity: O(1).
+    #[inline]
+    pub unsafe fn decoded_base_unchecked(&self, i: usize) -> u8 {
+        *decode_base_unchecked(self.encoded_base_unchecked(i))
     }
 
     /// Return decoded sequence. Complexity: O(m) with m being the read length.
@@ -862,7 +883,7 @@ impl<'a> ops::Index<usize> for Seq<'a> {
 
     /// Return decoded base at given position within read. Complexity: O(1).
     fn index(&self, index: usize) -> &u8 {
-        &DECODE_BASE[self.encoded_base(index) as usize]
+        decode_base_unchecked(self.encoded_base(index))
     }
 }
 
