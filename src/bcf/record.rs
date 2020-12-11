@@ -185,7 +185,7 @@ impl Record {
     /// Get the reference id of the record.
     ///
     /// To look up the contig name,
-    /// use [HeaderView::rid2name](../header/struct.HeaderView.html#method.rid2name).
+    /// use [`HeaderView::rid2name`](../header/struct.HeaderView.html#method.rid2name).
     ///
     /// # Returns
     ///
@@ -201,12 +201,13 @@ impl Record {
     /// Update the reference id of the record.
     ///
     /// To look up reference id for a contig name,
-    /// use [HeaderView::name2rid](../header/struct.HeaderView.html#method.name2rid).
+    /// use [`HeaderView::name2rid`](../header/struct.HeaderView.html#method.name2rid).
     ///
     /// # Example
     ///
-    /// Example assumes we have a Record `record` from a VCF with a header containing region named `1`.
-    /// See module documentation for how to set up VCF, header, and record.
+    /// Example assumes we have a Record `record` from a VCF with a header containing region
+    /// named `1`. See [module documentation](../index.html#example-writing) for how to set
+    /// up VCF, header, and record.
     ///
     /// ```
     /// # use rust_htslib::bcf::{Format, Writer};
@@ -453,7 +454,8 @@ impl Record {
     /// # Example
     ///
     /// Example assumes we have a Record `record` from a VCF with a `GT` `FORMAT` tag.
-    /// See module documentation for how to set up VCF, header, and record.
+    /// See [module documentation](../index.html#example-writing) for how to set up
+    /// VCF, header, and record.
     ///
     /// ```
     /// # use rust_htslib::bcf::{Format, Writer};
@@ -545,7 +547,8 @@ impl Record {
     /// # Example
     ///
     /// Example assumes we have a Record `record` from a VCF with an `AF` `FORMAT` tag.
-    /// See module documentation for how to set up VCF, header, and record.
+    /// See [module documentation](../index.html#example-writing) for how to set up
+    /// VCF, header, and record.
     ///
     /// ```
     /// # use rust_htslib::bcf::{Format, Writer};
