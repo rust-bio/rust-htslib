@@ -184,7 +184,8 @@ impl Record {
 
     /// Get the reference id of the record.
     ///
-    /// To look up the contig name, use `bcf::header::HeaderView::rid2name`.
+    /// To look up the contig name,
+    /// use [`HeaderView::rid2name`](../header/struct.HeaderView.html#method.rid2name).
     ///
     /// # Returns
     ///
@@ -197,7 +198,32 @@ impl Record {
         }
     }
 
-    // Update the internal reference ID number.
+    /// Update the reference id of the record.
+    ///
+    /// To look up reference id for a contig name,
+    /// use [`HeaderView::name2rid`](../header/struct.HeaderView.html#method.name2rid).
+    ///
+    /// # Example
+    ///
+    /// Example assumes we have a Record `record` from a VCF with a header containing region
+    /// named `1`. See [module documentation](../index.html#example-writing) for how to set
+    /// up VCF, header, and record.
+    ///
+    /// ```
+    /// # use rust_htslib::bcf::{Format, Writer};
+    /// # use rust_htslib::bcf::header::Header;
+    /// # let mut header = Header::new();
+    /// # let header_contig_line = r#"##contig=<ID=1,length=10>"#;
+    /// # header.push_record(header_contig_line.as_bytes());
+    /// # header.push_sample("test_sample".as_bytes());
+    /// # let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+    /// # let mut record = vcf.empty_record();
+    /// let rid = record.header().name2rid(b"1").ok();
+    /// record.set_rid(rid);
+    /// assert_eq!(record.rid(), rid);
+    /// let name = record.header().rid2name(record.rid().unwrap()).ok();
+    /// assert_eq!(Some("1".as_bytes()), name);
+    /// ```
     pub fn set_rid(&mut self, rid: Option<u32>) {
         match rid {
             Some(rid) => self.inner_mut().rid = rid as i32,
@@ -424,6 +450,29 @@ impl Record {
     /// # Errors
     ///
     /// Returns error if GT tag is not present in header.
+    ///
+    /// # Example
+    ///
+    /// Example assumes we have a Record `record` from a VCF with a `GT` `FORMAT` tag.
+    /// See [module documentation](../index.html#example-writing) for how to set up
+    /// VCF, header, and record.
+    ///
+    /// ```
+    /// # use rust_htslib::bcf::{Format, Writer};
+    /// # use rust_htslib::bcf::header::Header;
+    /// # use rust_htslib::bcf::record::GenotypeAllele;
+    /// # let mut header = Header::new();
+    /// # let header_contig_line = r#"##contig=<ID=1,length=10>"#;
+    /// # header.push_record(header_contig_line.as_bytes());
+    /// # let header_gt_line = r#"##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">"#;
+    /// # header.push_record(header_gt_line.as_bytes());
+    /// # header.push_sample("test_sample".as_bytes());
+    /// # let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+    /// # let mut record = vcf.empty_record();
+    /// let alleles = &[GenotypeAllele::Unphased(1), GenotypeAllele::Unphased(1)];
+    /// record.push_genotypes(alleles);
+    /// assert_eq!("1/1", &format!("{}", record.genotypes().unwrap().get(0)));
+    /// ```
     pub fn push_genotypes(&mut self, genotypes: &[GenotypeAllele]) -> Result<()> {
         let encoded: Vec<i32> = genotypes.iter().map(|gt| i32::from(*gt)).collect();
         self.push_format_integer(b"GT", &encoded)
@@ -494,6 +543,28 @@ impl Record {
     /// # Errors
     ///
     /// Returns error if tag is not present in header.
+    ///
+    /// # Example
+    ///
+    /// Example assumes we have a Record `record` from a VCF with an `AF` `FORMAT` tag.
+    /// See [module documentation](../index.html#example-writing) for how to set up
+    /// VCF, header, and record.
+    ///
+    /// ```
+    /// # use rust_htslib::bcf::{Format, Writer};
+    /// # use rust_htslib::bcf::header::Header;
+    /// # use rust_htslib::bcf::record::GenotypeAllele;
+    /// # let mut header = Header::new();
+    /// # let header_contig_line = r#"##contig=<ID=1,length=10>"#;
+    /// # header.push_record(header_contig_line.as_bytes());
+    /// # let header_af_line = r#"##FORMAT=<ID=AF,Number=1,Type=Float,Description="Frequency">"#;
+    /// # header.push_record(header_af_line.as_bytes());
+    /// # header.push_sample("test_sample".as_bytes());
+    /// # let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+    /// # let mut record = vcf.empty_record();
+    /// record.push_format_float(b"AF", &[0.5]);
+    /// assert_eq!(0.5, record.format(b"AF").float().unwrap()[0][0]);
+    /// ```
     pub fn push_format_float(&mut self, tag: &[u8], data: &[f32]) -> Result<()> {
         self.push_format(tag, data, htslib::BCF_HT_REAL)
     }
@@ -747,6 +818,10 @@ pub enum GenotypeAllele {
 
 impl GenotypeAllele {
     /// Decode given integer according to BCF standard.
+    #[deprecated(
+        since = "0.36.0",
+        note = "Please use the conversion trait From<i32> for GenotypeAllele instead."
+    )]
     pub fn from_encoded(encoded: i32) -> Self {
         match (encoded, encoded & 1) {
             (0, 0) => GenotypeAllele::UnphasedMissing,
@@ -783,7 +858,19 @@ impl From<GenotypeAllele> for i32 {
             GenotypeAllele::Unphased(a) => (a, 0),
             GenotypeAllele::Phased(a) => (a, 1),
         };
-        allele + 1 << 1 | phased
+        (allele + 1) << 1 | phased
+    }
+}
+
+impl From<i32> for GenotypeAllele {
+    fn from(encoded: i32) -> GenotypeAllele {
+        match (encoded, encoded & 1) {
+            (0, 0) => GenotypeAllele::UnphasedMissing,
+            (1, 1) => GenotypeAllele::PhasedMissing,
+            (e, 1) => GenotypeAllele::Phased((e >> 1) - 1),
+            (e, 0) => GenotypeAllele::Unphased((e >> 1) - 1),
+            _ => panic!("unexpected phasing type"),
+        }
     }
 }
 
@@ -825,11 +912,7 @@ impl<'a, B: Borrow<Buffer> + 'a> Genotypes<'a, B> {
     /// this method will return `[Unphased(1), Phased(1)]`.
     pub fn get(&self, i: usize) -> Genotype {
         let igt = self.encoded[i];
-        Genotype(
-            igt.iter()
-                .map(|&e| GenotypeAllele::from_encoded(e))
-                .collect(),
-        )
+        Genotype(igt.iter().map(|&e| GenotypeAllele::from(e)).collect())
     }
 }
 
