@@ -878,7 +878,7 @@ mod tests {
             // the artificial "not observed" allele is present in each record.
             assert_eq!(record.alleles().iter().last().unwrap(), b"<X>");
 
-            let mut fmt = record.format(b"PL");
+            let fmt = record.format(b"PL");
             let pl = fmt.integer().expect("Error reading format.");
             assert_eq!(pl.len(), 1);
             if i == 59 {
@@ -971,7 +971,7 @@ mod tests {
         let mut buffer = Buffer::new();
         for (i, rec) in vcf.records().enumerate() {
             println!("record {}", i);
-            let mut record = rec.expect("Error reading record.");
+            let record = rec.expect("Error reading record.");
             assert_eq!(
                 record
                     .info_shared_buffer(b"S1", &mut buffer)
@@ -1014,7 +1014,7 @@ mod tests {
         let f1 = [false, true];
         let mut buffer = Buffer::new();
         for (i, rec) in vcf.records().enumerate() {
-            let mut record = rec.expect("Error reading record.");
+            let record = rec.expect("Error reading record.");
             assert_eq!(
                 record
                     .info_shared_buffer(b"F1", &mut buffer)
@@ -1044,7 +1044,7 @@ mod tests {
         let mut vcf = Reader::from_path(&"test/test_string.vcf").expect("Error opening file.");
         let expected = ["./1", "1|1", "0/1", "0|1", "1|.", "1/1"];
         for (rec, exp_gt) in vcf.records().zip(expected.iter()) {
-            let mut rec = rec.expect("Error reading record.");
+            let rec = rec.expect("Error reading record.");
             let genotypes = rec.genotypes().expect("Error reading genotypes");
             assert_eq!(&format!("{}", genotypes.get(0)), exp_gt);
         }
@@ -1468,7 +1468,7 @@ mod tests {
         let _header = bcf.header();
         // FORMAT fields of first record of the vcf should look like:
         // GT:FS1:FN1	./1:LongString1:1	1/1:ss1:2
-        let mut first_record = bcf.records().next().unwrap().expect("Fail to read record");
+        let first_record = bcf.records().next().unwrap().expect("Fail to read record");
         let sample_count = usize::try_from(first_record.sample_count()).unwrap();
         assert_eq!(sample_count, 2);
         let mut n_ref = vec![0; sample_count];
