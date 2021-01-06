@@ -6,7 +6,6 @@
 use std::convert::TryFrom;
 use std::ffi;
 use std::fmt;
-use std::marker::PhantomData;
 use std::mem::{size_of, MaybeUninit};
 use std::ops;
 use std::rc::Rc;
@@ -848,11 +847,17 @@ impl AuxArrayElement for i32 {}
 impl AuxArrayElement for u32 {}
 impl AuxArrayElement for f32 {}
 
+enum AuxArrayDataType<'a, T> {
+    TargetType(&'a [T]),
+    RawBytes(&'a [u8]),
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct AuxArray<'a, T: AuxArrayElement> {
-    data_type: PhantomData<T>,
-    array: &'a [u8],
+    array: AuxArrayDataType<'a, T>,
 }
+
+impl<'a, T> AuxArray<'a, T> where T: AuxArrayElement {}
 
 static DECODE_BASE: &[u8] = b"=ACMGRSVTWYHKDBN";
 static ENCODE_BASE: [u8; 256] = [
