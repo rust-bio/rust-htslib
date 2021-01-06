@@ -838,16 +838,6 @@ pub enum Aux<'a> {
 unsafe impl<'a> Send for Aux<'a> {}
 unsafe impl<'a> Sync for Aux<'a> {}
 
-pub trait AuxArrayElement: Copy {}
-
-impl AuxArrayElement for i8 {}
-impl AuxArrayElement for u8 {}
-impl AuxArrayElement for i16 {}
-impl AuxArrayElement for u16 {}
-impl AuxArrayElement for i32 {}
-impl AuxArrayElement for u32 {}
-impl AuxArrayElement for f32 {}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct AuxArray<'a, T: AuxArrayElement> {
     data_type: PhantomData<T>,
