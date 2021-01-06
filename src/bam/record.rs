@@ -15,6 +15,7 @@ use std::str;
 use std::str::FromStr;
 use std::u32;
 
+use byteorder::{ByteOrder, LittleEndian};
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -842,6 +843,66 @@ unsafe impl<'a> Sync for Aux<'a> {}
 pub struct AuxArray<'a, T: AuxArrayElement> {
     data_type: PhantomData<T>,
     array: &'a [u8],
+}
+
+impl<'a> AuxArray<'a, i8> {
+    pub fn get(&self, index: usize) -> i8 {
+        let i8_size = std::mem::size_of::<i8>();
+        unsafe {
+            slice::from_raw_parts(
+                self.array[index * std::i8_size..][..1]
+                    .as_ptr()
+                    .cast::<i8>(),
+                i8_size,
+            )
+        }
+        [0]
+    }
+}
+impl<'a> AuxArray<'a, u8> {
+    pub fn get(&self, index: usize) -> u8 {
+        self.array[index * std::mem::size_of::<u8>()]
+    }
+}
+impl<'a> AuxArray<'a, i16> {
+    pub fn get(&self, index: usize) -> i16 {
+        LittleEndian::read_i16(&self.array[index * std::mem::size_of::<i16>()..])
+    }
+}
+impl<'a> AuxArray<'a, u16> {
+    pub fn get(&self, index: usize) -> u16 {
+        LittleEndian::read_u16(&self.array[index * std::mem::size_of::<u16>()..])
+    }
+}
+impl<'a> AuxArray<'a, i32> {
+    pub fn get(&self, index: usize) -> i32 {
+        LittleEndian::read_i32(&self.array[index * std::mem::size_of::<i32>()..])
+    }
+}
+impl<'a> AuxArray<'a, u32> {
+    pub fn get(&self, index: usize) -> u32 {
+        LittleEndian::read_u32(&self.array[index * std::mem::size_of::<u32>()..])
+    }
+}
+impl<'a> AuxArray<'a, i64> {
+    pub fn get(&self, index: usize) -> i64 {
+        LittleEndian::read_i64(&self.array[index * std::mem::size_of::<i64>()..])
+    }
+}
+impl<'a> AuxArray<'a, u64> {
+    pub fn get(&self, index: usize) -> u64 {
+        LittleEndian::read_u64(&self.array[index * std::mem::size_of::<u64>()..])
+    }
+}
+impl<'a> AuxArray<'a, f32> {
+    pub fn get(&self, index: usize) -> f32 {
+        LittleEndian::read_f32(&self.array[index * std::mem::size_of::<f32>()..])
+    }
+}
+impl<'a> AuxArray<'a, f64> {
+    pub fn get(&self, index: usize) -> f64 {
+        LittleEndian::read_f64(&self.array[index * std::mem::size_of::<f64>()..])
+    }
 }
 
 static DECODE_BASE: &[u8] = b"=ACMGRSVTWYHKDBN";
