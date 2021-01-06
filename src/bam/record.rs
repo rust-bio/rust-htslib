@@ -834,37 +834,6 @@ pub enum Aux<'a> {
     ArrayFloat(AuxArray<'a, f32>),
 }
 
-impl<'a> Aux<'a> {
-    /// Get string from aux data (panics if not a string).
-    pub fn string(&self) -> &'a [u8] {
-        match *self {
-            Aux::String(x) => x,
-            _ => panic!("not a string"),
-        }
-    }
-
-    pub fn float(&self) -> f64 {
-        match *self {
-            Aux::Float(x) => x,
-            _ => panic!("not a float"),
-        }
-    }
-
-    pub fn integer(&self) -> i64 {
-        match *self {
-            Aux::Integer(x) => x,
-            _ => panic!("not an integer"),
-        }
-    }
-
-    pub fn char(&self) -> u8 {
-        match *self {
-            Aux::Char(x) => x,
-            _ => panic!("not a character"),
-        }
-    }
-}
-
 unsafe impl<'a> Send for Aux<'a> {}
 unsafe impl<'a> Sync for Aux<'a> {}
 
