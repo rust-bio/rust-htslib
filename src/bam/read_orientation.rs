@@ -3,6 +3,8 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[cfg(feature = "serde_feature")]
+use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display};
 
 use crate::bam;
@@ -39,7 +41,11 @@ impl<'a> From<&'a bam::Record> for ReadOrientation {
     /// is not properly paired, mates are not mapping to the same contig, or mates start at the
     /// same position.
     fn from(record: &bam::Record) -> Self {
-        if record.is_paired() && !record.is_unmapped() && !record.is_mate_unmapped() && record.tid() == record.mtid() {
+        if record.is_paired()
+            && !record.is_unmapped()
+            && !record.is_mate_unmapped()
+            && record.tid() == record.mtid()
+        {
             if record.pos() == record.mpos() {
                 // both reads start at the same position, we cannot decide on the orientation.
                 return ReadOrientation::None;
