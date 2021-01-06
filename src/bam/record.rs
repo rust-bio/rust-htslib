@@ -6,7 +6,6 @@
 use std::convert::TryFrom;
 use std::ffi;
 use std::fmt;
-use std::marker::PhantomData;
 use std::mem::{size_of, MaybeUninit};
 use std::ops;
 use std::rc::Rc;
@@ -15,7 +14,7 @@ use std::str;
 use std::str::FromStr;
 use std::u32;
 
-use byteorder::{ByteOrder, LittleEndian};
+use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -583,51 +582,240 @@ impl Record {
                 c_str.as_ptr() as *mut i8,
             )
         };
+        if aux.is_null() {
+            None
+        } else {
+            unsafe { Self::read_aux_field(aux).map(|(aux_field, _length)| aux_field) }
+        }
+    }
 
-        unsafe {
-            if aux.is_null() {
-                return None;
-            }
+    unsafe fn read_aux_field<'a>(aux: *const u8) -> Option<(Aux<'a>, usize)> {
+        const OFFSET: isize = 1;
+        if aux.is_null() {
+            None
+        } else {
             match *aux {
-                b'c' | b'C' | b's' | b'S' | b'i' | b'I' => {
-                    Some(Aux::Integer(htslib::bam_aux2i(aux) as i64))
+                b'A' => {
+                    let length = size_of::<u8>();
+                    Some((Aux::Char(*aux.offset(OFFSET)), length))
                 }
-                b'f' | b'd' => Some(Aux::Float(htslib::bam_aux2f(aux))),
-                b'A' => Some(Aux::Char(htslib::bam_aux2A(aux) as u8)),
+                b'c' => {
+                    let length = size_of::<i8>();
+                    Some((Aux::I8(*aux.offset(OFFSET).cast::<i8>()), length))
+                }
+                b'C' => {
+                    let length = size_of::<u8>();
+                    Some((Aux::U8(*aux.offset(OFFSET)), length))
+                }
+                b's' => {
+                    let length = size_of::<i16>();
+                    Some((
+                        Aux::I16(
+                            slice::from_raw_parts(aux.offset(OFFSET), length)
+                                .read_i16::<LittleEndian>()
+                                .ok()?,
+                        ),
+                        length,
+                    ))
+                }
+                b'S' => {
+                    let length = size_of::<u16>();
+                    Some((
+                        Aux::U16(
+                            slice::from_raw_parts(aux.offset(OFFSET), length)
+                                .read_u16::<LittleEndian>()
+                                .ok()?,
+                        ),
+                        length,
+                    ))
+                }
+                b'i' => {
+                    let length = size_of::<i32>();
+                    Some((
+                        Aux::I32(
+                            slice::from_raw_parts(aux.offset(OFFSET), length)
+                                .read_i32::<LittleEndian>()
+                                .ok()?,
+                        ),
+                        length,
+                    ))
+                }
+                b'I' => {
+                    let length = size_of::<u32>();
+                    Some((
+                        Aux::U32(
+                            slice::from_raw_parts(aux.offset(OFFSET), length)
+                                .read_u32::<LittleEndian>()
+                                .ok()?,
+                        ),
+                        length,
+                    ))
+                }
+                b'f' => {
+                    let length = size_of::<f32>();
+                    Some((
+                        Aux::Float(
+                            slice::from_raw_parts(aux.offset(OFFSET), length)
+                                .read_f32::<LittleEndian>()
+                                .ok()?,
+                        ),
+                        length,
+                    ))
+                }
+                b'd' => {
+                    let length = size_of::<f64>();
+                    Some((
+                        Aux::Double(
+                            slice::from_raw_parts(aux.offset(OFFSET), length)
+                                .read_f64::<LittleEndian>()
+                                .ok()?,
+                        ),
+                        length,
+                    ))
+                }
                 b'Z' | b'H' => {
-                    let f = aux.offset(1) as *const i8;
-                    let x = ffi::CStr::from_ptr(f).to_bytes();
-                    Some(Aux::String(x))
+                    let x = ffi::CStr::from_ptr(aux.offset(OFFSET).cast::<i8>())
+                        .to_str()
+                        .ok()?;
+                    Some((Aux::String(x), x.len()))
                 }
+                b'B' => Self::read_aux_array_types(aux),
                 _ => None,
             }
         }
     }
 
+    unsafe fn read_aux_array_types<'a>(aux: *const u8) -> Option<(Aux<'a>, usize)> {
+        let tag_type = *aux.offset(1);
+
+        // Offset to skip b'B', type, and count fields
+        const OFFSET: isize = 6;
+
+        let length = slice::from_raw_parts(aux.offset(2), 4)
+            .read_u32::<LittleEndian>()
+            .ok()? as usize;
+
+        match tag_type {
+            b'c' => Some((
+                Aux::ArrayI8(AuxArray::<'a, i8>::from_bytes(slice::from_raw_parts(
+                    aux.offset(OFFSET),
+                    length,
+                ))),
+                length,
+            )),
+            b'C' => Some((
+                Aux::ArrayU8(AuxArray::<'a, u8>::from_bytes(slice::from_raw_parts(
+                    aux.offset(OFFSET),
+                    length,
+                ))),
+                length,
+            )),
+            b's' => Some((
+                Aux::ArrayI16(AuxArray::<'a, i16>::from_bytes(slice::from_raw_parts(
+                    aux.offset(OFFSET),
+                    length * size_of::<i16>(),
+                ))),
+                length,
+            )),
+            b'S' => Some((
+                Aux::ArrayU16(AuxArray::<'a, u16>::from_bytes(slice::from_raw_parts(
+                    aux.offset(OFFSET),
+                    length * size_of::<u16>(),
+                ))),
+                length,
+            )),
+            b'i' => Some((
+                Aux::ArrayI32(AuxArray::<'a, i32>::from_bytes(slice::from_raw_parts(
+                    aux.offset(OFFSET),
+                    length * size_of::<i32>(),
+                ))),
+                length,
+            )),
+            b'I' => Some((
+                Aux::ArrayU32(AuxArray::<'a, u32>::from_bytes(slice::from_raw_parts(
+                    aux.offset(OFFSET),
+                    length * size_of::<u32>(),
+                ))),
+                length,
+            )),
+            b'f' => Some((
+                Aux::ArrayFloat(AuxArray::<f32>::from_bytes(slice::from_raw_parts(
+                    aux.offset(OFFSET),
+                    length * size_of::<f32>(),
+                ))),
+                length,
+            )),
+            _ => None,
+        }
+    }
+
     /// Add auxiliary data.
-    pub fn push_aux(&mut self, tag: &[u8], value: &Aux<'_>) {
+    pub fn push_aux<T>(&mut self, tag: &[u8], value: Aux<'_>) {
         let ctag = tag.as_ptr() as *mut i8;
         let ret = unsafe {
-            match *value {
-                Aux::Integer(v) => htslib::bam_aux_append(
+            match value {
+                Aux::Char(v) => htslib::bam_aux_append(
+                    self.inner_ptr_mut(),
+                    ctag,
+                    b'A' as i8,
+                    size_of::<u8>() as i32,
+                    [v].as_mut_ptr() as *mut u8,
+                ),
+                Aux::I8(v) => htslib::bam_aux_append(
+                    self.inner_ptr_mut(),
+                    ctag,
+                    b'c' as i8,
+                    size_of::<i8>() as i32,
+                    [v].as_mut_ptr() as *mut u8,
+                ),
+                Aux::U8(v) => htslib::bam_aux_append(
+                    self.inner_ptr_mut(),
+                    ctag,
+                    b'C' as i8,
+                    size_of::<u8>() as i32,
+                    [v].as_mut_ptr() as *mut u8,
+                ),
+                Aux::I16(v) => htslib::bam_aux_append(
+                    self.inner_ptr_mut(),
+                    ctag,
+                    b's' as i8,
+                    size_of::<i16>() as i32,
+                    [v].as_mut_ptr() as *mut u8,
+                ),
+                Aux::U16(v) => htslib::bam_aux_append(
+                    self.inner_ptr_mut(),
+                    ctag,
+                    b'S' as i8,
+                    size_of::<u16>() as i32,
+                    [v].as_mut_ptr() as *mut u8,
+                ),
+                Aux::I32(v) => htslib::bam_aux_append(
                     self.inner_ptr_mut(),
                     ctag,
                     b'i' as i8,
-                    4,
+                    size_of::<i32>() as i32,
+                    [v].as_mut_ptr() as *mut u8,
+                ),
+                Aux::U32(v) => htslib::bam_aux_append(
+                    self.inner_ptr_mut(),
+                    ctag,
+                    b'I' as i8,
+                    size_of::<u32>() as i32,
                     [v].as_mut_ptr() as *mut u8,
                 ),
                 Aux::Float(v) => htslib::bam_aux_append(
                     self.inner_ptr_mut(),
                     ctag,
                     b'f' as i8,
-                    4,
+                    size_of::<f32>() as i32,
                     [v].as_mut_ptr() as *mut u8,
                 ),
-                Aux::Char(v) => htslib::bam_aux_append(
+                // Not part of specs but implemented in `htslib`:
+                Aux::Double(v) => htslib::bam_aux_append(
                     self.inner_ptr_mut(),
                     ctag,
-                    b'A' as i8,
-                    1,
+                    b'd' as i8,
+                    size_of::<f64>() as i32,
                     [v].as_mut_ptr() as *mut u8,
                 ),
                 Aux::String(v) => {
@@ -640,6 +828,66 @@ impl Record {
                         c_str.as_ptr() as *mut u8,
                     )
                 }
+                Aux::HexByteArray(v) => {
+                    let c_str = ffi::CString::new(v).unwrap();
+                    htslib::bam_aux_append(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'H' as i8,
+                        (v.len() + 1) as i32,
+                        c_str.as_ptr() as *mut u8,
+                    )
+                }
+                Aux::ArrayI8(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
+                    self.inner_ptr_mut(),
+                    ctag,
+                    b'c',
+                    v.len() as u32,
+                    v.as_mut_ptr() as *mut ::libc::c_void,
+                ),
+                Aux::ArrayU8(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
+                    self.inner_ptr_mut(),
+                    ctag,
+                    b'C',
+                    v.len() as u32,
+                    v.as_mut_ptr() as *mut ::libc::c_void,
+                ),
+                Aux::ArrayI16(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
+                    self.inner_ptr_mut(),
+                    ctag,
+                    b's',
+                    v.len() as u32,
+                    v.as_mut_ptr() as *mut ::libc::c_void,
+                ),
+                Aux::ArrayU16(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
+                    self.inner_ptr_mut(),
+                    ctag,
+                    b'S',
+                    v.len() as u32,
+                    v.as_mut_ptr() as *mut ::libc::c_void,
+                ),
+                Aux::ArrayI32(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
+                    self.inner_ptr_mut(),
+                    ctag,
+                    b'i',
+                    v.len() as u32,
+                    v.as_mut_ptr() as *mut ::libc::c_void,
+                ),
+                Aux::ArrayU32(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
+                    self.inner_ptr_mut(),
+                    ctag,
+                    b'I',
+                    v.len() as u32,
+                    v.as_mut_ptr() as *mut ::libc::c_void,
+                ),
+                Aux::ArrayFloat(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
+                    self.inner_ptr_mut(),
+                    ctag,
+                    b'f',
+                    v.len() as u32,
+                    v.as_mut_ptr() as *mut ::libc::c_void,
+                ),
+                _ => 0,
             }
         };
 
@@ -814,7 +1062,7 @@ impl genome::AbstractInterval for Record {
 }
 
 /// Auxiliary record data.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum Aux<'a> {
     Char(u8),
     I8(i8),
@@ -839,71 +1087,132 @@ pub enum Aux<'a> {
 unsafe impl<'a> Send for Aux<'a> {}
 unsafe impl<'a> Sync for Aux<'a> {}
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct AuxArray<'a, T: AuxArrayElement> {
-    data_type: PhantomData<T>,
-    array: &'a [u8],
+#[derive(Debug, PartialEq)]
+pub enum AuxArray<'a, T> {
+    TargetType(&'a mut [T]),
+    RawType(&'a [u8]),
+}
+
+// Specify types which can be used in aux arrays to restrict From impls
+pub trait AuxArrayType {}
+impl AuxArrayType for i8 {}
+impl AuxArrayType for u8 {}
+impl AuxArrayType for i16 {}
+impl AuxArrayType for u16 {}
+impl AuxArrayType for i32 {}
+impl AuxArrayType for u32 {}
+impl AuxArrayType for f32 {}
+
+impl<'a, T> From<&'a mut [T]> for AuxArray<'a, T>
+where
+    T: AuxArrayType,
+{
+    fn from(src: &'a mut [T]) -> Self {
+        AuxArray::TargetType(src)
+    }
+}
+
+impl<'a, T> AuxArray<'a, T>
+where
+    T: AuxArrayType,
+{
+    fn from_bytes(bytes: &'a [u8]) -> Self {
+        Self::RawType(bytes)
+    }
 }
 
 impl<'a> AuxArray<'a, i8> {
     pub fn get(&self, index: usize) -> i8 {
         let i8_size = std::mem::size_of::<i8>();
-        unsafe {
-            slice::from_raw_parts(
-                self.array[index * std::i8_size..][..1]
-                    .as_ptr()
-                    .cast::<i8>(),
-                i8_size,
-            )
+        match self {
+            AuxArray::TargetType(v) => (*v)[index],
+            AuxArray::RawType(v) => unsafe {
+                // FIXME: Find more elegant way to do this
+                slice::from_raw_parts((*v)[index * i8_size..][..1].as_ptr().cast::<i8>(), i8_size)
+                    [0]
+            },
         }
-        [0]
     }
 }
 impl<'a> AuxArray<'a, u8> {
     pub fn get(&self, index: usize) -> u8 {
-        self.array[index * std::mem::size_of::<u8>()]
+        match self {
+            AuxArray::TargetType(v) => (*v)[index],
+            AuxArray::RawType(v) => (*v)[index * std::mem::size_of::<u8>()],
+        }
     }
 }
 impl<'a> AuxArray<'a, i16> {
     pub fn get(&self, index: usize) -> i16 {
-        LittleEndian::read_i16(&self.array[index * std::mem::size_of::<i16>()..])
+        match self {
+            AuxArray::TargetType(v) => (*v)[index],
+            AuxArray::RawType(v) => {
+                LittleEndian::read_i16(&(*v)[index * std::mem::size_of::<i16>()..])
+            }
+        }
     }
 }
 impl<'a> AuxArray<'a, u16> {
     pub fn get(&self, index: usize) -> u16 {
-        LittleEndian::read_u16(&self.array[index * std::mem::size_of::<u16>()..])
+        match self {
+            AuxArray::TargetType(v) => (*v)[index],
+            AuxArray::RawType(v) => {
+                LittleEndian::read_u16(&(*v)[index * std::mem::size_of::<u16>()..])
+            }
+        }
     }
 }
 impl<'a> AuxArray<'a, i32> {
     pub fn get(&self, index: usize) -> i32 {
-        LittleEndian::read_i32(&self.array[index * std::mem::size_of::<i32>()..])
+        match self {
+            AuxArray::TargetType(v) => (*v)[index],
+            AuxArray::RawType(v) => {
+                LittleEndian::read_i32(&(*v)[index * std::mem::size_of::<i32>()..])
+            }
+        }
     }
 }
 impl<'a> AuxArray<'a, u32> {
     pub fn get(&self, index: usize) -> u32 {
-        LittleEndian::read_u32(&self.array[index * std::mem::size_of::<u32>()..])
+        match self {
+            AuxArray::TargetType(v) => (*v)[index],
+            AuxArray::RawType(v) => {
+                LittleEndian::read_u32(&(*v)[index * std::mem::size_of::<u32>()..])
+            }
+        }
     }
 }
 impl<'a> AuxArray<'a, i64> {
     pub fn get(&self, index: usize) -> i64 {
-        LittleEndian::read_i64(&self.array[index * std::mem::size_of::<i64>()..])
+        match self {
+            AuxArray::TargetType(v) => (*v)[index],
+            AuxArray::RawType(v) => {
+                LittleEndian::read_i64(&(*v)[index * std::mem::size_of::<i64>()..])
+            }
+        }
     }
 }
 impl<'a> AuxArray<'a, u64> {
     pub fn get(&self, index: usize) -> u64 {
-        LittleEndian::read_u64(&self.array[index * std::mem::size_of::<u64>()..])
+        match self {
+            AuxArray::TargetType(v) => (*v)[index],
+            AuxArray::RawType(v) => {
+                LittleEndian::read_u64(&(*v)[index * std::mem::size_of::<u64>()..])
+            }
+        }
     }
 }
 impl<'a> AuxArray<'a, f32> {
     pub fn get(&self, index: usize) -> f32 {
-        LittleEndian::read_f32(&self.array[index * std::mem::size_of::<f32>()..])
+        match self {
+            AuxArray::TargetType(v) => (*v)[index],
+            AuxArray::RawType(v) => {
+                LittleEndian::read_f32(&(*v)[index * std::mem::size_of::<f32>()..])
+            }
+        }
     }
 }
-impl<'a> AuxArray<'a, f64> {
-    pub fn get(&self, index: usize) -> f64 {
-        LittleEndian::read_f64(&self.array[index * std::mem::size_of::<f64>()..])
-    }
-}
+// There is no f64 array variant
 
 static DECODE_BASE: &[u8] = b"=ACMGRSVTWYHKDBN";
 static ENCODE_BASE: [u8; 256] = [
