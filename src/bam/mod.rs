@@ -10,6 +10,7 @@ pub mod ext;
 pub mod header;
 pub mod index;
 pub mod pileup;
+pub mod read_orientation;
 pub mod record;
 
 #[cfg(feature = "serde_feature")]
