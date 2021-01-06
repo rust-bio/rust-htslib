@@ -39,7 +39,7 @@ impl<'a> From<&'a bam::Record> for ReadOrientation {
     /// is not properly paired, mates are not mapping to the same contig, or mates start at the
     /// same position.
     fn from(record: &bam::Record) -> Self {
-        if record.is_paired() && record.is_proper_pair() && record.tid() == record.mtid() {
+        if record.is_paired() && !record.is_unmapped() && !record.is_mate_unmapped() && record.tid() == record.mtid() {
             if record.pos() == record.mpos() {
                 // both reads start at the same position, we cannot decide on the orientation.
                 return ReadOrientation::None;
@@ -86,9 +86,10 @@ mod tests {
     #[test]
     fn test_read_orientation_f1r2() {
         let mut bam = bam::Reader::from_path(&"test/test_paired.sam").unwrap();
-        let mut record = bam::Record::new();
-        bam.read(&mut record).unwrap().unwrap();
 
-        assert_eq!(ReadOrientation::from(&record), ReadOrientation::F1R2);
+        for res in bam.records() {
+            let record = res.unwrap();
+            assert_eq!(ReadOrientation::from(&record), ReadOrientation::F1R2);
+        }
     }
 }
