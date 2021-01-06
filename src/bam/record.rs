@@ -6,6 +6,7 @@
 use std::convert::TryFrom;
 use std::ffi;
 use std::fmt;
+use std::marker::PhantomData;
 use std::mem::{size_of, MaybeUninit};
 use std::ops;
 use std::rc::Rc;
@@ -836,6 +837,22 @@ pub enum Aux<'a> {
 
 unsafe impl<'a> Send for Aux<'a> {}
 unsafe impl<'a> Sync for Aux<'a> {}
+
+pub trait AuxArrayElement: Copy {}
+
+impl AuxArrayElement for i8 {}
+impl AuxArrayElement for u8 {}
+impl AuxArrayElement for i16 {}
+impl AuxArrayElement for u16 {}
+impl AuxArrayElement for i32 {}
+impl AuxArrayElement for u32 {}
+impl AuxArrayElement for f32 {}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AuxArray<'a, T: AuxArrayElement> {
+    data_type: PhantomData<T>,
+    array: &'a [u8],
+}
 
 static DECODE_BASE: &[u8] = b"=ACMGRSVTWYHKDBN";
 static ENCODE_BASE: [u8; 256] = [
