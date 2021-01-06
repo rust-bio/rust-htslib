@@ -103,4 +103,5 @@ For other contributors, see [here](https://github.com/rust-bio/rust-htslib/graph
 
 ## License
 
-Licensed under the MIT license http://opensource.org/licenses/MIT. This project may not be copied, modified, or distributed except according to those terms.
+Licensed under the MIT license https://opensource.org/licenses/MIT. This project may not be copied, modified, or distributed except according to those terms.
+Some test files are taken from https://github.com/samtools/htslib.
