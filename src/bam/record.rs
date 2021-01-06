@@ -1668,7 +1668,7 @@ mod tests {
 #[cfg(test)]
 mod alignment_cigar_tests {
     use super::*;
-    use crate::bam::{Reader,Read};
+    use crate::bam::{Read, Reader};
     use bio_types::alignment::AlignmentOperation::{Del, Ins, Match, Subst, Xclip, Yclip};
     use bio_types::alignment::{Alignment, AlignmentMode};
 
