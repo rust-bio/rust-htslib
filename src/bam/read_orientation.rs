@@ -3,16 +3,26 @@
 // This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use strum_macros::AsRefStr;
+use strum_macros::{AsRefStr, Display};
 
 use crate::bam;
 
 /// Representation of read orientation
 /// (e.g. F1R2 means that the forward read comes first on the reference contig,
 /// followed by the reverse read, on the same contig).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, AsRefStr)]
+///
+/// This enum can be pretty-printed into a readable string repesentation:
+///
+/// ```rust
+/// use rust_htslib::bam::read_orientation::ReadOrientation;
+/// // format into string
+/// println!("{}", ReadOrientation::F1R2);
+/// // obtain string via `AsRef<&'static str>`
+/// assert_eq!(ReadOrientation::R1F2.as_ref(), "R1F2");
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, AsRefStr, Display)]
 #[cfg_attr(feature = "serde_feature", derive(Serialize, Deserialize))]
-pub(crate) enum ReadOrientation {
+pub enum ReadOrientation {
     F1R2,
     F2R1,
     R1F2,
