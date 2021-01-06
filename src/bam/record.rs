@@ -812,12 +812,26 @@ impl genome::AbstractInterval for Record {
 }
 
 /// Auxiliary record data.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Aux<'a> {
-    Integer(i64),
-    String(&'a [u8]),
-    Float(f64),
     Char(u8),
+    I8(i8),
+    U8(u8),
+    I16(i16),
+    U16(u16),
+    I32(i32),
+    U32(u32),
+    Float(f32),
+    Double(f64), // Not part of specs but implemented in `htslib`
+    String(&'a str),
+    HexByteArray(&'a str),
+    ArrayI8(AuxArray<'a, i8>),
+    ArrayU8(AuxArray<'a, u8>),
+    ArrayI16(AuxArray<'a, i16>),
+    ArrayU16(AuxArray<'a, u16>),
+    ArrayI32(AuxArray<'a, i32>),
+    ArrayU32(AuxArray<'a, u32>),
+    ArrayFloat(AuxArray<'a, f32>),
 }
 
 impl<'a> Aux<'a> {
