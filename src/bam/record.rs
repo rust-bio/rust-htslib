@@ -591,6 +591,7 @@ impl Record {
 
     unsafe fn read_aux_field<'a>(aux: *const u8) -> Option<(Aux<'a>, usize)> {
         const OFFSET: isize = 1;
+
         if aux.is_null() {
             None
         } else {
@@ -750,7 +751,7 @@ impl Record {
     }
 
     /// Add auxiliary data.
-    pub fn push_aux<T>(&mut self, tag: &[u8], value: Aux<'_>) {
+    pub fn push_aux(&mut self, tag: &[u8], value: Aux<'_>) {
         let ctag = tag.as_ptr() as *mut i8;
         let ret = unsafe {
             match value {
