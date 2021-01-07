@@ -14,7 +14,7 @@ use std::str;
 use std::str::FromStr;
 use std::u32;
 
-use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
+use byteorder::{LittleEndian, ReadBytesExt};
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -1103,6 +1103,7 @@ impl AuxArrayType for i32 {}
 impl AuxArrayType for u32 {}
 impl AuxArrayType for f32 {}
 
+/// Create AuxArrays from slices of allowed target types
 impl<'a, T> From<&'a mut [T]> for AuxArray<'a, T>
 where
     T: AuxArrayType,
@@ -1116,98 +1117,141 @@ impl<'a, T> AuxArray<'a, T>
 where
     T: AuxArrayType,
 {
+    /// Create AuxArrays from raw byte slices of bam::Record
     fn from_bytes(bytes: &'a [u8]) -> Self {
         Self::RawType(bytes)
     }
 }
 
 impl<'a> AuxArray<'a, i8> {
-    pub fn get(&self, index: usize) -> i8 {
-        let i8_size = std::mem::size_of::<i8>();
+    pub fn get(&self, index: usize) -> Option<i8> {
         match self {
-            AuxArray::TargetType(v) => (*v)[index],
-            AuxArray::RawType(v) => unsafe {
-                // FIXME: Find more elegant way to do this
-                slice::from_raw_parts((*v)[index * i8_size..][..1].as_ptr().cast::<i8>(), i8_size)
-                    [0]
-            },
+            AuxArray::TargetType(v) => (*v).get(index).copied(),
+            AuxArray::RawType(v) => {
+                if index > (*v).len() {
+                    return None;
+                }
+                std::io::Cursor::new(&(*v)[index..][..1]).read_i8().ok()
+            }
         }
     }
 }
 impl<'a> AuxArray<'a, u8> {
-    pub fn get(&self, index: usize) -> u8 {
+    pub fn get(&self, index: usize) -> Option<u8> {
         match self {
-            AuxArray::TargetType(v) => (*v)[index],
-            AuxArray::RawType(v) => (*v)[index * std::mem::size_of::<u8>()],
+            AuxArray::TargetType(v) => (*v).get(index).copied(),
+            AuxArray::RawType(v) => (*v).get(index).copied(),
         }
     }
 }
 impl<'a> AuxArray<'a, i16> {
-    pub fn get(&self, index: usize) -> i16 {
+    pub fn get(&self, index: usize) -> Option<i16> {
         match self {
-            AuxArray::TargetType(v) => (*v)[index],
+            AuxArray::TargetType(v) => (*v).get(index).copied(),
             AuxArray::RawType(v) => {
-                LittleEndian::read_i16(&(*v)[index * std::mem::size_of::<i16>()..])
+                let type_size = std::mem::size_of::<i16>();
+                if index * type_size + type_size > (*v).len() {
+                    return None;
+                }
+                std::io::Cursor::new(&(*v)[index * type_size..][..type_size])
+                    .read_i16::<LittleEndian>()
+                    .ok()
             }
         }
     }
 }
 impl<'a> AuxArray<'a, u16> {
-    pub fn get(&self, index: usize) -> u16 {
+    pub fn get(&self, index: usize) -> Option<u16> {
         match self {
-            AuxArray::TargetType(v) => (*v)[index],
+            AuxArray::TargetType(v) => (*v).get(index).copied(),
             AuxArray::RawType(v) => {
-                LittleEndian::read_u16(&(*v)[index * std::mem::size_of::<u16>()..])
+                let type_size = std::mem::size_of::<u16>();
+                if index * type_size + type_size > (*v).len() {
+                    return None;
+                }
+                std::io::Cursor::new(&(*v)[index * type_size..][..type_size])
+                    .read_u16::<LittleEndian>()
+                    .ok()
             }
         }
     }
 }
 impl<'a> AuxArray<'a, i32> {
-    pub fn get(&self, index: usize) -> i32 {
+    pub fn get(&self, index: usize) -> Option<i32> {
         match self {
-            AuxArray::TargetType(v) => (*v)[index],
+            AuxArray::TargetType(v) => (*v).get(index).copied(),
             AuxArray::RawType(v) => {
-                LittleEndian::read_i32(&(*v)[index * std::mem::size_of::<i32>()..])
+                let type_size = std::mem::size_of::<i32>();
+                if index * type_size + type_size > (*v).len() {
+                    return None;
+                }
+                std::io::Cursor::new(&(*v)[index * type_size..][..type_size])
+                    .read_i32::<LittleEndian>()
+                    .ok()
             }
         }
     }
 }
 impl<'a> AuxArray<'a, u32> {
-    pub fn get(&self, index: usize) -> u32 {
+    pub fn get(&self, index: usize) -> Option<u32> {
         match self {
-            AuxArray::TargetType(v) => (*v)[index],
+            AuxArray::TargetType(v) => (*v).get(index).copied(),
             AuxArray::RawType(v) => {
-                LittleEndian::read_u32(&(*v)[index * std::mem::size_of::<u32>()..])
+                let type_size = std::mem::size_of::<u32>();
+                if index * type_size + type_size > (*v).len() {
+                    return None;
+                }
+                std::io::Cursor::new(&(*v)[index * type_size..][..type_size])
+                    .read_u32::<LittleEndian>()
+                    .ok()
             }
         }
     }
 }
 impl<'a> AuxArray<'a, i64> {
-    pub fn get(&self, index: usize) -> i64 {
+    pub fn get(&self, index: usize) -> Option<i64> {
         match self {
-            AuxArray::TargetType(v) => (*v)[index],
+            AuxArray::TargetType(v) => (*v).get(index).copied(),
             AuxArray::RawType(v) => {
-                LittleEndian::read_i64(&(*v)[index * std::mem::size_of::<i64>()..])
+                let type_size = std::mem::size_of::<i64>();
+                if index * type_size + type_size > (*v).len() {
+                    return None;
+                }
+                std::io::Cursor::new(&(*v)[index * type_size..][..type_size])
+                    .read_i64::<LittleEndian>()
+                    .ok()
             }
         }
     }
 }
 impl<'a> AuxArray<'a, u64> {
-    pub fn get(&self, index: usize) -> u64 {
+    pub fn get(&self, index: usize) -> Option<u64> {
         match self {
-            AuxArray::TargetType(v) => (*v)[index],
+            AuxArray::TargetType(v) => (*v).get(index).copied(),
             AuxArray::RawType(v) => {
-                LittleEndian::read_u64(&(*v)[index * std::mem::size_of::<u64>()..])
+                let type_size = std::mem::size_of::<u64>();
+                if index * type_size + type_size > (*v).len() {
+                    return None;
+                }
+                std::io::Cursor::new(&(*v)[index * type_size..][..type_size])
+                    .read_u64::<LittleEndian>()
+                    .ok()
             }
         }
     }
 }
 impl<'a> AuxArray<'a, f32> {
-    pub fn get(&self, index: usize) -> f32 {
+    pub fn get(&self, index: usize) -> Option<f32> {
         match self {
-            AuxArray::TargetType(v) => (*v)[index],
+            AuxArray::TargetType(v) => (*v).get(index).copied(),
             AuxArray::RawType(v) => {
-                LittleEndian::read_f32(&(*v)[index * std::mem::size_of::<f32>()..])
+                let type_size = std::mem::size_of::<f32>();
+                if index * type_size + type_size > (*v).len() {
+                    return None;
+                }
+                std::io::Cursor::new(&(*v)[index * type_size..][..type_size])
+                    .read_f32::<LittleEndian>()
+                    .ok()
             }
         }
     }
