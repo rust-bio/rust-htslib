@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.36.0] - 2020-11-23
+### Changes
+- Improved genotype API in VCF/BCF records (@MaltheSR).
+- Read pair orientation inference for BAM records (@johanneskoester).
+
 ## [0.35.2] - 2020-11-23
 ### Changes
 - let hts-sys dependency comply to semver.
