@@ -28,6 +28,7 @@ use serde::{self, Deserialize, Serialize};
 use bio_types::alignment::{Alignment, AlignmentMode, AlignmentOperation};
 use bio_types::genome;
 use bio_types::sequence::SequenceRead;
+use bio_types::sequence::SequenceReadPairOrientation;
 use bio_types::strand::ReqStrand;
 
 /// A macro creating methods for flag access.
@@ -664,6 +665,50 @@ impl Record {
         }
     }
 
+    /// Infer read pair orientation from record. Returns `SequenceReadPairOrientation::None` if record
+    /// is not paired, mates are not mapping to the same contig, or mates start at the
+    /// same position.
+    pub fn read_pair_orientation(&self) -> SequenceReadPairOrientation {
+        if self.is_paired()
+            && !self.is_unmapped()
+            && !self.is_mate_unmapped()
+            && self.tid() == self.mtid()
+        {
+            if self.pos() == self.mpos() {
+                // both reads start at the same position, we cannot decide on the orientation.
+                return SequenceReadPairOrientation::None;
+            }
+
+            let (is_reverse, is_first_in_template, is_mate_reverse) = if self.pos() < self.mpos() {
+                // given record is the left one
+                (
+                    self.is_reverse(),
+                    self.is_first_in_template(),
+                    self.is_mate_reverse(),
+                )
+            } else {
+                // given record is the right one
+                (
+                    self.is_mate_reverse(),
+                    self.is_last_in_template(),
+                    self.is_reverse(),
+                )
+            };
+            match (is_reverse, is_first_in_template, is_mate_reverse) {
+                (false, false, false) => SequenceReadPairOrientation::F2F1,
+                (false, false, true) => SequenceReadPairOrientation::F2R1,
+                (false, true, false) => SequenceReadPairOrientation::F1F2,
+                (true, false, false) => SequenceReadPairOrientation::R2F1,
+                (false, true, true) => SequenceReadPairOrientation::F1R2,
+                (true, false, true) => SequenceReadPairOrientation::R2R1,
+                (true, true, false) => SequenceReadPairOrientation::R1F2,
+                (true, true, true) => SequenceReadPairOrientation::R1R2,
+            }
+        } else {
+            SequenceReadPairOrientation::None
+        }
+    }
+
     flag!(is_paired, set_paired, unset_paired, 1u16);
     flag!(is_proper_pair, set_proper_pair, unset_proper_pair, 2u16);
     flag!(is_unmapped, set_unmapped, unset_unmapped, 4u16);
@@ -726,6 +771,10 @@ impl SequenceRead for Record {
 
     fn len(&self) -> usize {
         self.seq_len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 
@@ -1619,6 +1668,7 @@ mod tests {
 #[cfg(test)]
 mod alignment_cigar_tests {
     use super::*;
+    use crate::bam::{Read, Reader};
     use bio_types::alignment::AlignmentOperation::{Del, Ins, Match, Subst, Xclip, Yclip};
     use bio_types::alignment::{Alignment, AlignmentMode};
 
@@ -1715,5 +1765,18 @@ mod alignment_cigar_tests {
             CigarString::from_alignment(&alignment, false).0,
             vec![Cigar::Diff(1), Cigar::Equal(1), Cigar::Diff(1)]
         );
+    }
+
+    #[test]
+    fn test_read_orientation_f1r2() {
+        let mut bam = Reader::from_path(&"test/test_paired.sam").unwrap();
+
+        for res in bam.records() {
+            let record = res.unwrap();
+            assert_eq!(
+                record.read_pair_orientation(),
+                SequenceReadPairOrientation::F1R2
+            );
+        }
     }
 }
