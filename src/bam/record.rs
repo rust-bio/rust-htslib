@@ -839,54 +839,55 @@ impl Record {
                         c_str.as_ptr() as *mut u8,
                     )
                 }
+                // Not sure it's safe casting an immutable slice to a mutable pointer here
                 Aux::ArrayI8(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
                     self.inner_ptr_mut(),
                     ctag,
                     b'c',
                     v.len() as u32,
-                    v.as_mut_ptr() as *mut ::libc::c_void,
+                    v.as_ptr() as *mut ::libc::c_void,
                 ),
                 Aux::ArrayU8(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
                     self.inner_ptr_mut(),
                     ctag,
                     b'C',
                     v.len() as u32,
-                    v.as_mut_ptr() as *mut ::libc::c_void,
+                    v.as_ptr() as *mut ::libc::c_void,
                 ),
                 Aux::ArrayI16(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
                     self.inner_ptr_mut(),
                     ctag,
                     b's',
                     v.len() as u32,
-                    v.as_mut_ptr() as *mut ::libc::c_void,
+                    v.as_ptr() as *mut ::libc::c_void,
                 ),
                 Aux::ArrayU16(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
                     self.inner_ptr_mut(),
                     ctag,
                     b'S',
                     v.len() as u32,
-                    v.as_mut_ptr() as *mut ::libc::c_void,
+                    v.as_ptr() as *mut ::libc::c_void,
                 ),
                 Aux::ArrayI32(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
                     self.inner_ptr_mut(),
                     ctag,
                     b'i',
                     v.len() as u32,
-                    v.as_mut_ptr() as *mut ::libc::c_void,
+                    v.as_ptr() as *mut ::libc::c_void,
                 ),
                 Aux::ArrayU32(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
                     self.inner_ptr_mut(),
                     ctag,
                     b'I',
                     v.len() as u32,
-                    v.as_mut_ptr() as *mut ::libc::c_void,
+                    v.as_ptr() as *mut ::libc::c_void,
                 ),
                 Aux::ArrayFloat(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
                     self.inner_ptr_mut(),
                     ctag,
                     b'f',
                     v.len() as u32,
-                    v.as_mut_ptr() as *mut ::libc::c_void,
+                    v.as_ptr() as *mut ::libc::c_void,
                 ),
                 _ => 0,
             }
@@ -1090,7 +1091,7 @@ unsafe impl<'a> Sync for Aux<'a> {}
 
 #[derive(Debug, PartialEq)]
 pub enum AuxArray<'a, T> {
-    TargetType(&'a mut [T]),
+    TargetType(&'a [T]),
     RawType(&'a [u8]),
 }
 
@@ -1105,11 +1106,11 @@ impl AuxArrayType for u32 {}
 impl AuxArrayType for f32 {}
 
 /// Create AuxArrays from slices of allowed target types
-impl<'a, T> From<&'a mut [T]> for AuxArray<'a, T>
+impl<'a, T> From<&'a [T]> for AuxArray<'a, T>
 where
     T: AuxArrayType,
 {
-    fn from(src: &'a mut [T]) -> Self {
+    fn from(src: &'a [T]) -> Self {
         AuxArray::TargetType(src)
     }
 }
