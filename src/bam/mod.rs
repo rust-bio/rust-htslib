@@ -1616,14 +1616,14 @@ CCCCCCCCCCCCCCCCCCC"[..],
         rec.set(names[0], Some(&cigars[0]), seqs[0], quals[0]);
         // note: this segfaults if you push_aux() before set()
         //       because set() obliterates aux
-        rec.push_aux(b"NM", &Aux::Integer(15));
+        rec.push_aux(b"NM", Aux::I32(15));
 
         assert_eq!(rec.qname(), names[0]);
         assert_eq!(*rec.cigar(), cigars[0]);
         assert_eq!(rec.seq().as_bytes(), seqs[0]);
         assert_eq!(rec.qual(), quals[0]);
         assert!(rec.is_reverse());
-        assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+        assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
     }
 
     #[test]
@@ -1635,11 +1635,11 @@ CCCCCCCCCCCCCCCCCCC"[..],
             b"AAA",
             b"III",
         );
-        rec.push_aux(b"AS", &Aux::Integer(12345));
+        rec.push_aux(b"AS", Aux::I32(12345));
         assert_eq!(rec.qname(), b"123");
         assert_eq!(rec.seq().as_bytes(), b"AAA");
         assert_eq!(rec.qual(), b"III");
-        assert_eq!(rec.aux(b"AS").unwrap(), Aux::Integer(12345));
+        assert_eq!(rec.aux(b"AS").unwrap(), Aux::I32(12345));
 
         rec.set(
             b"1234",
@@ -1650,7 +1650,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         assert_eq!(rec.qname(), b"1234");
         assert_eq!(rec.seq().as_bytes(), b"AAAA");
         assert_eq!(rec.qual(), b"IIII");
-        assert_eq!(rec.aux(b"AS").unwrap(), Aux::Integer(12345));
+        assert_eq!(rec.aux(b"AS").unwrap(), Aux::I32(12345));
 
         rec.set(
             b"12",
@@ -1661,7 +1661,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         assert_eq!(rec.qname(), b"12");
         assert_eq!(rec.seq().as_bytes(), b"AA");
         assert_eq!(rec.qual(), b"II");
-        assert_eq!(rec.aux(b"AS").unwrap(), Aux::Integer(12345));
+        assert_eq!(rec.aux(b"AS").unwrap(), Aux::I32(12345));
     }
 
     #[test]
@@ -1673,13 +1673,13 @@ CCCCCCCCCCCCCCCCCCC"[..],
         for i in 0..names.len() {
             let mut rec = record::Record::new();
             rec.set(names[i], Some(&cigars[i]), seqs[i], quals[i]);
-            rec.push_aux(b"NM", &Aux::Integer(15));
+            rec.push_aux(b"NM", Aux::I32(15));
 
             assert_eq!(rec.qname(), names[i]);
             assert_eq!(*rec.cigar(), cigars[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
             assert_eq!(rec.qual(), quals[i]);
-            assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+            assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
 
             // Equal length qname
             assert!(rec.qname()[0] != b'X');
@@ -1696,7 +1696,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             assert_eq!(*rec.cigar(), cigars[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
             assert_eq!(rec.qual(), quals[i]);
-            assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+            assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
 
             // Shorter qname
             let shorter_name = b"42";
@@ -1706,7 +1706,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             assert_eq!(*rec.cigar(), cigars[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
             assert_eq!(rec.qual(), quals[i]);
-            assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+            assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
 
             // Zero-length qname
             rec.set_qname(b"");
@@ -1715,7 +1715,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             assert_eq!(*rec.cigar(), cigars[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
             assert_eq!(rec.qual(), quals[i]);
-            assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+            assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
         }
     }
 
@@ -1785,7 +1785,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             for i in 0..names.len() {
                 let mut rec = record::Record::new();
                 rec.set(names[i], Some(&cigars[i]), seqs[i], quals[i]);
-                rec.push_aux(b"NM", &Aux::Integer(15));
+                rec.push_aux(b"NM", Aux::I32(15));
 
                 bam.write(&rec).expect("Failed to write record.");
             }
@@ -1805,7 +1805,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 assert_eq!(*rec.cigar(), cigars[i]);
                 assert_eq!(rec.seq().as_bytes(), seqs[i]);
                 assert_eq!(rec.qual(), quals[i]);
-                assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+                assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
             }
         }
 
@@ -1839,7 +1839,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 let mut rec = record::Record::new();
                 let idx = i % names.len();
                 rec.set(names[idx], Some(&cigars[idx]), seqs[idx], quals[idx]);
-                rec.push_aux(b"NM", &Aux::Integer(15));
+                rec.push_aux(b"NM", Aux::I32(15));
                 rec.set_pos(i as i64);
 
                 bam.write(&rec).expect("Failed to write record.");
@@ -1859,7 +1859,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 assert_eq!(*rec.cigar(), cigars[idx]);
                 assert_eq!(rec.seq().as_bytes(), seqs[idx]);
                 assert_eq!(rec.qual(), quals[idx]);
-                assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+                assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
             }
         }
 
@@ -1912,7 +1912,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 let mut rec = record::Record::new();
                 let idx = i % names.len();
                 rec.set(names[idx], Some(&cigars[idx]), seqs[idx], quals[idx]);
-                rec.push_aux(b"NM", &Aux::Integer(15));
+                rec.push_aux(b"NM", Aux::I32(15));
                 rec.set_pos(i as i64);
 
                 bam1.write(&rec).expect("Failed to write record.");
@@ -1937,7 +1937,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                     assert_eq!(*rec.cigar(), cigars[idx]);
                     assert_eq!(rec.seq().as_bytes(), seqs[idx]);
                     assert_eq!(rec.qual(), quals[idx]);
-                    assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+                    assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
                 }
             }
         }
