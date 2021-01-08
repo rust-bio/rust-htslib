@@ -582,11 +582,7 @@ impl Record {
                 c_str.as_ptr() as *mut i8,
             )
         };
-        if aux.is_null() {
-            None
-        } else {
-            unsafe { Self::read_aux_field(aux).map(|(aux_field, _length)| aux_field) }
-        }
+        unsafe { Self::read_aux_field(aux).map(|(aux_field, _length)| aux_field) }
     }
 
     unsafe fn read_aux_field<'a>(aux: *const u8) -> Option<(Aux<'a>, usize)> {
