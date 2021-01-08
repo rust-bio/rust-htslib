@@ -597,81 +597,81 @@ impl Record {
         } else {
             match *aux {
                 b'A' => {
-                    let length = size_of::<u8>();
-                    Some((Aux::Char(*aux.offset(OFFSET)), length))
+                    let type_size = size_of::<u8>();
+                    Some((Aux::Char(*aux.offset(OFFSET)), type_size))
                 }
                 b'c' => {
-                    let length = size_of::<i8>();
-                    Some((Aux::I8(*aux.offset(OFFSET).cast::<i8>()), length))
+                    let type_size = size_of::<i8>();
+                    Some((Aux::I8(*aux.offset(OFFSET).cast::<i8>()), type_size))
                 }
                 b'C' => {
-                    let length = size_of::<u8>();
-                    Some((Aux::U8(*aux.offset(OFFSET)), length))
+                    let type_size = size_of::<u8>();
+                    Some((Aux::U8(*aux.offset(OFFSET)), type_size))
                 }
                 b's' => {
-                    let length = size_of::<i16>();
+                    let type_size = size_of::<i16>();
                     Some((
                         Aux::I16(
-                            slice::from_raw_parts(aux.offset(OFFSET), length)
+                            slice::from_raw_parts(aux.offset(OFFSET), type_size)
                                 .read_i16::<LittleEndian>()
                                 .ok()?,
                         ),
-                        length,
+                        type_size,
                     ))
                 }
                 b'S' => {
-                    let length = size_of::<u16>();
+                    let type_size = size_of::<u16>();
                     Some((
                         Aux::U16(
-                            slice::from_raw_parts(aux.offset(OFFSET), length)
+                            slice::from_raw_parts(aux.offset(OFFSET), type_size)
                                 .read_u16::<LittleEndian>()
                                 .ok()?,
                         ),
-                        length,
+                        type_size,
                     ))
                 }
                 b'i' => {
-                    let length = size_of::<i32>();
+                    let type_size = size_of::<i32>();
                     Some((
                         Aux::I32(
-                            slice::from_raw_parts(aux.offset(OFFSET), length)
+                            slice::from_raw_parts(aux.offset(OFFSET), type_size)
                                 .read_i32::<LittleEndian>()
                                 .ok()?,
                         ),
-                        length,
+                        type_size,
                     ))
                 }
                 b'I' => {
-                    let length = size_of::<u32>();
+                    let type_size = size_of::<u32>();
                     Some((
                         Aux::U32(
-                            slice::from_raw_parts(aux.offset(OFFSET), length)
+                            slice::from_raw_parts(aux.offset(OFFSET), type_size)
                                 .read_u32::<LittleEndian>()
                                 .ok()?,
                         ),
-                        length,
+                        type_size,
                     ))
                 }
                 b'f' => {
-                    let length = size_of::<f32>();
+                    let type_size = size_of::<f32>();
                     Some((
                         Aux::Float(
-                            slice::from_raw_parts(aux.offset(OFFSET), length)
+                            slice::from_raw_parts(aux.offset(OFFSET), type_size)
                                 .read_f32::<LittleEndian>()
                                 .ok()?,
                         ),
-                        length,
+                        type_size,
                     ))
                 }
                 b'd' => {
-                    let length = size_of::<f64>();
+                    let type_size = size_of::<f64>();
                     Some((
                         Aux::Double(
-                            slice::from_raw_parts(aux.offset(OFFSET), length)
+                            slice::from_raw_parts(aux.offset(OFFSET), type_size)
                                 .read_f64::<LittleEndian>()
                                 .ok()?,
                         ),
-                        length,
+                        type_size,
                     ))
                 }
                 b'Z' | b'H' => {
