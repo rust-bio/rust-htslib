@@ -1096,19 +1096,19 @@ pub enum AuxArray<'a, T> {
 }
 
 // Specify types which can be used in aux arrays to restrict From impls
-pub trait AuxArrayType {}
-impl AuxArrayType for i8 {}
-impl AuxArrayType for u8 {}
-impl AuxArrayType for i16 {}
-impl AuxArrayType for u16 {}
-impl AuxArrayType for i32 {}
-impl AuxArrayType for u32 {}
-impl AuxArrayType for f32 {}
+pub trait AuxArrayElement {}
+impl AuxArrayElement for i8 {}
+impl AuxArrayElement for u8 {}
+impl AuxArrayElement for i16 {}
+impl AuxArrayElement for u16 {}
+impl AuxArrayElement for i32 {}
+impl AuxArrayElement for u32 {}
+impl AuxArrayElement for f32 {}
 
 /// Create AuxArrays from slices of allowed target types
 impl<'a, T> From<&'a [T]> for AuxArray<'a, T>
 where
-    T: AuxArrayType,
+    T: AuxArrayElement,
 {
     fn from(src: &'a [T]) -> Self {
         AuxArray::TargetType(src)
@@ -1117,7 +1117,7 @@ where
 
 impl<'a, T> AuxArray<'a, T>
 where
-    T: AuxArrayType,
+    T: AuxArrayElement,
 {
     /// Create AuxArrays from raw byte slices of bam::Record
     fn from_bytes(bytes: &'a [u8]) -> Self {
