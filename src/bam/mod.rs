@@ -2352,8 +2352,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let mut test_record = bam::Record::from_sam(
             &mut bam::HeaderView::from_header(&bam_header),
             "ali1\t4\t*\t0\t0\t*\t*\t0\t0\tAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTT\tFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF".as_bytes(),
-        )
-            .unwrap();
+        ).unwrap();
 
         let array_i8: Vec<i8> = vec![std::i8::MIN, -1, 0, 1, std::i8::MAX];
         let array_u8: Vec<u8> = vec![std::u8::MIN, 0, 1, std::u8::MAX];
@@ -2363,66 +2362,51 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let array_u32: Vec<u32> = vec![std::u32::MIN, 0, 1, std::u32::MAX];
         let array_f32: Vec<f32> = vec![std::f32::MIN, 0.0, -0.0, 0.1, 0.99, std::f32::MAX];
 
-        test_record.push_aux(b"XA", bam::record::Aux::ArrayI8(array_i8.as_slice().into()));
-        test_record.push_aux(b"XB", bam::record::Aux::ArrayU8(array_u8.as_slice().into()));
-        test_record.push_aux(
-            b"XC",
-            bam::record::Aux::ArrayI16(array_i16.as_slice().into()),
-        );
-        test_record.push_aux(
-            b"XD",
-            bam::record::Aux::ArrayU16(array_u16.as_slice().into()),
-        );
-        test_record.push_aux(
-            b"XE",
-            bam::record::Aux::ArrayI32(array_i32.as_slice().into()),
-        );
-        test_record.push_aux(
-            b"XF",
-            bam::record::Aux::ArrayU32(array_u32.as_slice().into()),
-        );
-        test_record.push_aux(
-            b"XG",
-            bam::record::Aux::ArrayFloat(array_f32.as_slice().into()),
-        );
+        test_record.push_aux(b"XA", Aux::ArrayI8(array_i8.as_slice().into()));
+        test_record.push_aux(b"XB", Aux::ArrayU8(array_u8.as_slice().into()));
+        test_record.push_aux(b"XC", Aux::ArrayI16(array_i16.as_slice().into()));
+        test_record.push_aux(b"XD", Aux::ArrayU16(array_u16.as_slice().into()));
+        test_record.push_aux(b"XE", Aux::ArrayI32(array_i32.as_slice().into()));
+        test_record.push_aux(b"XF", Aux::ArrayU32(array_u32.as_slice().into()));
+        test_record.push_aux(b"XG", Aux::ArrayFloat(array_f32.as_slice().into()));
 
-        if let bam::record::Aux::ArrayI8(array) = test_record.aux(b"XA").unwrap() {
+        if let Some(Aux::ArrayI8(array)) = test_record.aux(b"XA") {
             let aux_array_content = array.iter().collect::<Vec<_>>();
             assert_eq!(aux_array_content, array_i8);
         } else {
             panic!("Aux tag not found");
         }
-        if let bam::record::Aux::ArrayU8(array) = test_record.aux(b"XB").unwrap() {
+        if let Some(Aux::ArrayU8(array)) = test_record.aux(b"XB") {
             let aux_array_content = array.iter().collect::<Vec<_>>();
             assert_eq!(aux_array_content, array_u8);
         } else {
             panic!("Aux tag not found");
         }
-        if let bam::record::Aux::ArrayI16(array) = test_record.aux(b"XC").unwrap() {
+        if let Some(Aux::ArrayI16(array)) = test_record.aux(b"XC") {
             let aux_array_content = array.iter().collect::<Vec<_>>();
             assert_eq!(aux_array_content, array_i16);
         } else {
             panic!("Aux tag not found");
         }
-        if let bam::record::Aux::ArrayU16(array) = test_record.aux(b"XD").unwrap() {
+        if let Some(Aux::ArrayU16(array)) = test_record.aux(b"XD") {
             let aux_array_content = array.iter().collect::<Vec<_>>();
             assert_eq!(aux_array_content, array_u16);
         } else {
             panic!("Aux tag not found");
         }
-        if let bam::record::Aux::ArrayI32(array) = test_record.aux(b"XE").unwrap() {
+        if let Some(Aux::ArrayI32(array)) = test_record.aux(b"XE") {
             let aux_array_content = array.iter().collect::<Vec<_>>();
             assert_eq!(aux_array_content, array_i32);
         } else {
             panic!("Aux tag not found");
         }
-        if let bam::record::Aux::ArrayU32(array) = test_record.aux(b"XF").unwrap() {
+        if let Some(Aux::ArrayU32(array)) = test_record.aux(b"XF") {
             let aux_array_content = array.iter().collect::<Vec<_>>();
             assert_eq!(aux_array_content, array_u32);
         } else {
             panic!("Aux tag not found");
         }
-        if let bam::record::Aux::ArrayFloat(array) = test_record.aux(b"XG").unwrap() {
+        if let Some(Aux::ArrayFloat(array)) = test_record.aux(b"XG") {
             let aux_array_content = array.iter().collect::<Vec<_>>();
             assert_eq!(aux_array_content, array_f32);
         } else {
