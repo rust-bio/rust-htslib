@@ -698,49 +698,43 @@ impl Record {
 
         match tag_type {
             b'c' => Some((
-                Aux::ArrayI8(AuxArray::<'a, i8>::from_bytes(slice::from_raw_parts(
-                    aux.offset(OFFSET),
-                    length,
-                ))),
+                Aux::ArrayI8(StandardAuxArray::<'a, i8>::from_bytes(
+                    slice::from_raw_parts(aux.offset(OFFSET), length),
+                )),
                 length,
             )),
             b'C' => Some((
-                Aux::ArrayU8(AuxArray::<'a, u8>::from_bytes(slice::from_raw_parts(
-                    aux.offset(OFFSET),
-                    length,
-                ))),
+                Aux::ArrayU8(StandardAuxArray::<'a, u8>::from_bytes(
+                    slice::from_raw_parts(aux.offset(OFFSET), length),
+                )),
                 length,
             )),
             b's' => Some((
-                Aux::ArrayI16(AuxArray::<'a, i16>::from_bytes(slice::from_raw_parts(
-                    aux.offset(OFFSET),
-                    length * size_of::<i16>(),
-                ))),
+                Aux::ArrayI16(StandardAuxArray::<'a, i16>::from_bytes(
+                    slice::from_raw_parts(aux.offset(OFFSET), length * size_of::<i16>()),
+                )),
                 length,
             )),
             b'S' => Some((
-                Aux::ArrayU16(AuxArray::<'a, u16>::from_bytes(slice::from_raw_parts(
-                    aux.offset(OFFSET),
-                    length * size_of::<u16>(),
-                ))),
+                Aux::ArrayU16(StandardAuxArray::<'a, u16>::from_bytes(
+                    slice::from_raw_parts(aux.offset(OFFSET), length * size_of::<u16>()),
+                )),
                 length,
             )),
             b'i' => Some((
-                Aux::ArrayI32(AuxArray::<'a, i32>::from_bytes(slice::from_raw_parts(
-                    aux.offset(OFFSET),
-                    length * size_of::<i32>(),
-                ))),
+                Aux::ArrayI32(StandardAuxArray::<'a, i32>::from_bytes(
+                    slice::from_raw_parts(aux.offset(OFFSET), length * size_of::<i32>()),
+                )),
                 length,
             )),
             b'I' => Some((
-                Aux::ArrayU32(AuxArray::<'a, u32>::from_bytes(slice::from_raw_parts(
-                    aux.offset(OFFSET),
-                    length * size_of::<u32>(),
-                ))),
+                Aux::ArrayU32(StandardAuxArray::<'a, u32>::from_bytes(
+                    slice::from_raw_parts(aux.offset(OFFSET), length * size_of::<u32>()),
+                )),
                 length,
             )),
             b'f' => Some((
-                Aux::ArrayFloat(AuxArray::<f32>::from_bytes(slice::from_raw_parts(
+                Aux::ArrayFloat(StandardAuxArray::<f32>::from_bytes(slice::from_raw_parts(
                     aux.offset(OFFSET),
                     length * size_of::<f32>(),
                 ))),
@@ -840,49 +834,49 @@ impl Record {
                     )
                 }
                 // Not sure it's safe casting an immutable slice to a mutable pointer here
-                Aux::ArrayI8(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
+                Aux::ArrayI8(StandardAuxArray::TargetType(v)) => htslib::bam_aux_update_array(
                     self.inner_ptr_mut(),
                     ctag,
                     b'c',
                     v.len() as u32,
                     v.as_ptr() as *mut ::libc::c_void,
                 ),
-                Aux::ArrayU8(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
+                Aux::ArrayU8(StandardAuxArray::TargetType(v)) => htslib::bam_aux_update_array(
                     self.inner_ptr_mut(),
                     ctag,
                     b'C',
                     v.len() as u32,
                     v.as_ptr() as *mut ::libc::c_void,
                 ),
-                Aux::ArrayI16(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
+                Aux::ArrayI16(StandardAuxArray::TargetType(v)) => htslib::bam_aux_update_array(
                     self.inner_ptr_mut(),
                     ctag,
                     b's',
                     v.len() as u32,
                     v.as_ptr() as *mut ::libc::c_void,
                 ),
-                Aux::ArrayU16(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
+                Aux::ArrayU16(StandardAuxArray::TargetType(v)) => htslib::bam_aux_update_array(
                     self.inner_ptr_mut(),
                     ctag,
                     b'S',
                     v.len() as u32,
                     v.as_ptr() as *mut ::libc::c_void,
                 ),
-                Aux::ArrayI32(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
+                Aux::ArrayI32(StandardAuxArray::TargetType(v)) => htslib::bam_aux_update_array(
                     self.inner_ptr_mut(),
                     ctag,
                     b'i',
                     v.len() as u32,
                     v.as_ptr() as *mut ::libc::c_void,
                 ),
-                Aux::ArrayU32(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
+                Aux::ArrayU32(StandardAuxArray::TargetType(v)) => htslib::bam_aux_update_array(
                     self.inner_ptr_mut(),
                     ctag,
                     b'I',
                     v.len() as u32,
                     v.as_ptr() as *mut ::libc::c_void,
                 ),
-                Aux::ArrayFloat(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
+                Aux::ArrayFloat(StandardAuxArray::TargetType(v)) => htslib::bam_aux_update_array(
                     self.inner_ptr_mut(),
                     ctag,
                     b'f',
@@ -1077,20 +1071,20 @@ pub enum Aux<'a> {
     Double(f64), // Not part of specs but implemented in `htslib`
     String(&'a str),
     HexByteArray(&'a str),
-    ArrayI8(AuxArray<'a, i8>),
-    ArrayU8(AuxArray<'a, u8>),
-    ArrayI16(AuxArray<'a, i16>),
-    ArrayU16(AuxArray<'a, u16>),
-    ArrayI32(AuxArray<'a, i32>),
-    ArrayU32(AuxArray<'a, u32>),
-    ArrayFloat(AuxArray<'a, f32>),
+    ArrayI8(StandardAuxArray<'a, i8>),
+    ArrayU8(StandardAuxArray<'a, u8>),
+    ArrayI16(StandardAuxArray<'a, i16>),
+    ArrayU16(StandardAuxArray<'a, u16>),
+    ArrayI32(StandardAuxArray<'a, i32>),
+    ArrayU32(StandardAuxArray<'a, u32>),
+    ArrayFloat(StandardAuxArray<'a, f32>),
 }
 
 unsafe impl<'a> Send for Aux<'a> {}
 unsafe impl<'a> Sync for Aux<'a> {}
 
 #[derive(Debug, PartialEq)]
-pub enum AuxArray<'a, T> {
+pub enum StandardAuxArray<'a, T> {
     TargetType(&'a [T]),
     RawType(&'a [u8]),
 }
@@ -1106,21 +1100,25 @@ impl AuxArrayElement for u32 {}
 impl AuxArrayElement for f32 {}
 
 /// Create AuxArrays from slices of allowed target types
-impl<'a, T> From<&'a [T]> for AuxArray<'a, T>
+impl<'a, T> From<&'a [T]> for StandardAuxArray<'a, T>
 where
     T: AuxArrayElement,
 {
     fn from(src: &'a [T]) -> Self {
-        AuxArray::TargetType(src)
+        StandardAuxArray::TargetType(src)
     }
 }
 
-pub trait AuxArrayTrait {
+pub trait AuxArray {
     type Type;
     fn get(&self, index: usize) -> Option<Self::Type>;
+    fn len(&self) -> usize;
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
-impl<'a, T> AuxArray<'a, T>
+impl<'a, T> StandardAuxArray<'a, T>
 where
     T: AuxArrayElement,
 {
@@ -1128,41 +1126,63 @@ where
     fn from_bytes(bytes: &'a [u8]) -> Self {
         Self::RawType(bytes)
     }
+
+    fn len(&self) -> usize {
+        match self {
+            StandardAuxArray::TargetType(a) => a.len(),
+            StandardAuxArray::RawType(a) => a.len() / std::mem::size_of::<T>(),
+        }
+    }
+
+    pub fn iter(&self) -> AuxArrayIterator<Self> {
+        AuxArrayIterator {
+            index: 0,
+            array: self,
+        }
+    }
 }
 
-impl<'a> AuxArrayTrait for AuxArray<'a, i8> {
+impl<'a> AuxArray for StandardAuxArray<'a, i8> {
     type Type = i8;
 
     fn get(&self, index: usize) -> Option<Self::Type> {
         match self {
-            AuxArray::TargetType(v) => (*v).get(index).copied(),
-            AuxArray::RawType(v) => {
-                if index > (*v).len() {
+            StandardAuxArray::TargetType(v) => (*v).get(index).copied(),
+            StandardAuxArray::RawType(v) => {
+                if index >= (*v).len() {
                     return None;
                 }
                 std::io::Cursor::new(&(*v)[index..][..1]).read_i8().ok()
             }
         }
     }
+
+    fn len(&self) -> usize {
+        self.len()
+    }
 }
-impl<'a> AuxArrayTrait for AuxArray<'a, u8> {
+impl<'a> AuxArray for StandardAuxArray<'a, u8> {
     type Type = u8;
 
     fn get(&self, index: usize) -> Option<Self::Type> {
         match self {
-            AuxArray::TargetType(v) => (*v).get(index).copied(),
-            AuxArray::RawType(v) => (*v).get(index).copied(),
+            StandardAuxArray::TargetType(v) => (*v).get(index).copied(),
+            StandardAuxArray::RawType(v) => (*v).get(index).copied(),
         }
     }
+
+    fn len(&self) -> usize {
+        self.len()
+    }
 }
-impl<'a> AuxArrayTrait for AuxArray<'a, i16> {
+impl<'a> AuxArray for StandardAuxArray<'a, i16> {
     type Type = i16;
 
     fn get(&self, index: usize) -> Option<Self::Type> {
         match self {
-            AuxArray::TargetType(v) => (*v).get(index).copied(),
-            AuxArray::RawType(v) => {
-                let type_size = std::mem::size_of::<i16>();
+            StandardAuxArray::TargetType(v) => (*v).get(index).copied(),
+            StandardAuxArray::RawType(v) => {
+                let type_size = std::mem::size_of::<Self::Type>();
                 if index * type_size + type_size > (*v).len() {
                     return None;
                 }
@@ -1172,14 +1192,18 @@ impl<'a> AuxArrayTrait for AuxArray<'a, i16> {
             }
         }
     }
+
+    fn len(&self) -> usize {
+        self.len()
+    }
 }
-impl<'a> AuxArrayTrait for AuxArray<'a, u16> {
+impl<'a> AuxArray for StandardAuxArray<'a, u16> {
     type Type = u16;
 
     fn get(&self, index: usize) -> Option<Self::Type> {
         match self {
-            AuxArray::TargetType(v) => (*v).get(index).copied(),
-            AuxArray::RawType(v) => {
+            StandardAuxArray::TargetType(v) => (*v).get(index).copied(),
+            StandardAuxArray::RawType(v) => {
                 let type_size = std::mem::size_of::<u16>();
                 if index * type_size + type_size > (*v).len() {
                     return None;
@@ -1190,14 +1214,18 @@ impl<'a> AuxArrayTrait for AuxArray<'a, u16> {
             }
         }
     }
+
+    fn len(&self) -> usize {
+        self.len()
+    }
 }
-impl<'a> AuxArrayTrait for AuxArray<'a, i32> {
+impl<'a> AuxArray for StandardAuxArray<'a, i32> {
     type Type = i32;
 
     fn get(&self, index: usize) -> Option<Self::Type> {
         match self {
-            AuxArray::TargetType(v) => (*v).get(index).copied(),
-            AuxArray::RawType(v) => {
+            StandardAuxArray::TargetType(v) => (*v).get(index).copied(),
+            StandardAuxArray::RawType(v) => {
                 let type_size = std::mem::size_of::<i32>();
                 if index * type_size + type_size > (*v).len() {
                     return None;
@@ -1208,14 +1236,18 @@ impl<'a> AuxArrayTrait for AuxArray<'a, i32> {
             }
         }
     }
+
+    fn len(&self) -> usize {
+        self.len()
+    }
 }
-impl<'a> AuxArrayTrait for AuxArray<'a, u32> {
+impl<'a> AuxArray for StandardAuxArray<'a, u32> {
     type Type = u32;
 
     fn get(&self, index: usize) -> Option<Self::Type> {
         match self {
-            AuxArray::TargetType(v) => (*v).get(index).copied(),
-            AuxArray::RawType(v) => {
+            StandardAuxArray::TargetType(v) => (*v).get(index).copied(),
+            StandardAuxArray::RawType(v) => {
                 let type_size = std::mem::size_of::<u32>();
                 if index * type_size + type_size > (*v).len() {
                     return None;
@@ -1226,14 +1258,18 @@ impl<'a> AuxArrayTrait for AuxArray<'a, u32> {
             }
         }
     }
+
+    fn len(&self) -> usize {
+        self.len()
+    }
 }
-impl<'a> AuxArrayTrait for AuxArray<'a, f32> {
+impl<'a> AuxArray for StandardAuxArray<'a, f32> {
     type Type = f32;
 
     fn get(&self, index: usize) -> Option<Self::Type> {
         match self {
-            AuxArray::TargetType(v) => (*v).get(index).copied(),
-            AuxArray::RawType(v) => {
+            StandardAuxArray::TargetType(v) => (*v).get(index).copied(),
+            StandardAuxArray::RawType(v) => {
                 let type_size = std::mem::size_of::<f32>();
                 if index * type_size + type_size > (*v).len() {
                     return None;
@@ -1244,16 +1280,20 @@ impl<'a> AuxArrayTrait for AuxArray<'a, f32> {
             }
         }
     }
+
+    fn len(&self) -> usize {
+        self.len()
+    }
 }
 
-pub struct AuxArrayIterator<T> {
+pub struct AuxArrayIterator<'a, T> {
     index: usize,
-    array: T,
+    array: &'a T,
 }
 
-impl<T> Iterator for AuxArrayIterator<T>
+impl<'a, T> Iterator for AuxArrayIterator<'a, T>
 where
-    T: AuxArrayTrait,
+    T: AuxArray,
 {
     type Item = T::Type;
     fn next(&mut self) -> Option<Self::Item> {
@@ -1262,10 +1302,10 @@ where
         value
     }
 
-    // fn size_hint(&self) -> (usize, Option<usize>) {
-    //     let array_length = self.array.0.len() / std::mem::size_of::<T>() - self.index;
-    //     (array_length, Some(array_length))
-    // }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let array_length = self.array.len() - self.index;
+        (array_length, Some(array_length))
+    }
 }
 
 static DECODE_BASE: &[u8] = b"=ACMGRSVTWYHKDBN";
