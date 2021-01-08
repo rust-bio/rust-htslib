@@ -835,57 +835,114 @@ impl Record {
                         c_str.as_ptr() as *mut u8,
                     )
                 }
-                // Not sure it's safe casting an immutable slice to a mutable pointer here
-                Aux::ArrayI8(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
-                    self.inner_ptr_mut(),
-                    ctag,
-                    b'c',
-                    v.len() as u32,
-                    v.as_ptr() as *mut ::libc::c_void,
-                ),
-                Aux::ArrayU8(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
-                    self.inner_ptr_mut(),
-                    ctag,
-                    b'C',
-                    v.len() as u32,
-                    v.as_ptr() as *mut ::libc::c_void,
-                ),
-                Aux::ArrayI16(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
-                    self.inner_ptr_mut(),
-                    ctag,
-                    b's',
-                    v.len() as u32,
-                    v.as_ptr() as *mut ::libc::c_void,
-                ),
-                Aux::ArrayU16(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
-                    self.inner_ptr_mut(),
-                    ctag,
-                    b'S',
-                    v.len() as u32,
-                    v.as_ptr() as *mut ::libc::c_void,
-                ),
-                Aux::ArrayI32(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
-                    self.inner_ptr_mut(),
-                    ctag,
-                    b'i',
-                    v.len() as u32,
-                    v.as_ptr() as *mut ::libc::c_void,
-                ),
-                Aux::ArrayU32(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
-                    self.inner_ptr_mut(),
-                    ctag,
-                    b'I',
-                    v.len() as u32,
-                    v.as_ptr() as *mut ::libc::c_void,
-                ),
-                Aux::ArrayFloat(AuxArray::TargetType(v)) => htslib::bam_aux_update_array(
-                    self.inner_ptr_mut(),
-                    ctag,
-                    b'f',
-                    v.len() as u32,
-                    v.as_ptr() as *mut ::libc::c_void,
-                ),
-                _ => -1,
+                // Not sure it's safe to cast an immutable slice to a mutable pointer in the following branches
+                Aux::ArrayI8(aux_array) => match aux_array {
+                    AuxArray::TargetType(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'c',
+                        inner.len() as u32,
+                        inner.as_ptr() as *mut ::libc::c_void,
+                    ),
+                    AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'c',
+                        inner.len() as u32,
+                        inner.as_ptr() as *mut ::libc::c_void,
+                    ),
+                },
+                Aux::ArrayU8(aux_array) => match aux_array {
+                    AuxArray::TargetType(inner) | AuxArray::RawLeBytes(inner) => {
+                        htslib::bam_aux_update_array(
+                            self.inner_ptr_mut(),
+                            ctag,
+                            b'C',
+                            inner.len() as u32,
+                            inner.as_ptr() as *mut ::libc::c_void,
+                        )
+                    }
+                },
+                Aux::ArrayI16(aux_array) => match aux_array {
+                    AuxArray::TargetType(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b's',
+                        inner.len() as u32,
+                        inner.as_ptr() as *mut ::libc::c_void,
+                    ),
+                    AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b's',
+                        (inner.len() / std::mem::size_of::<i16>()) as u32,
+                        inner.as_ptr() as *mut ::libc::c_void,
+                    ),
+                },
+                Aux::ArrayU16(aux_array) => match aux_array {
+                    AuxArray::TargetType(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'S',
+                        inner.len() as u32,
+                        inner.as_ptr() as *mut ::libc::c_void,
+                    ),
+                    AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'S',
+                        (inner.len() / std::mem::size_of::<u16>()) as u32,
+                        inner.as_ptr() as *mut ::libc::c_void,
+                    ),
+                },
+                Aux::ArrayI32(aux_array) => match aux_array {
+                    AuxArray::TargetType(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'i',
+                        inner.len() as u32,
+                        inner.as_ptr() as *mut ::libc::c_void,
+                    ),
+                    AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'i',
+                        (inner.len() / std::mem::size_of::<i32>()) as u32,
+                        inner.as_ptr() as *mut ::libc::c_void,
+                    ),
+                },
+                Aux::ArrayU32(aux_array) => match aux_array {
+                    AuxArray::TargetType(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'I',
+                        inner.len() as u32,
+                        inner.as_ptr() as *mut ::libc::c_void,
+                    ),
+                    AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'I',
+                        (inner.len() / std::mem::size_of::<u32>()) as u32,
+                        inner.as_ptr() as *mut ::libc::c_void,
+                    ),
+                },
+                Aux::ArrayFloat(aux_array) => match aux_array {
+                    AuxArray::TargetType(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'f',
+                        inner.len() as u32,
+                        inner.as_ptr() as *mut ::libc::c_void,
+                    ),
+                    AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'f',
+                        (inner.len() / std::mem::size_of::<f32>()) as u32,
+                        inner.as_ptr() as *mut ::libc::c_void,
+                    ),
+                },
             }
         };
 
