@@ -69,6 +69,8 @@ pub enum Error {
     BamBuildIndex,
     #[error("failed to create SAM/BAM/CRAM pileup")]
     BamPileup,
+    #[error("failed to add aux field")]
+    BamAux,
 
     // Errors for BCF
     #[error("error allocating internal data structure for BCF/VCF reader (out of memory?)")]

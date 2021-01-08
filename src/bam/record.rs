@@ -747,7 +747,7 @@ impl Record {
     }
 
     /// Add auxiliary data.
-    pub fn push_aux(&mut self, tag: &[u8], value: Aux<'_>) {
+    pub fn push_aux(&mut self, tag: &[u8], value: Aux<'_>) -> Result<()> {
         let ctag = tag.as_ptr() as *mut i8;
         let ret = unsafe {
             match value {
@@ -885,12 +885,14 @@ impl Record {
                     v.len() as u32,
                     v.as_ptr() as *mut ::libc::c_void,
                 ),
-                _ => 0,
+                _ => -1,
             }
         };
 
         if ret < 0 {
-            panic!("htslib ran out of memory in push_aux");
+            Err(Error::BamAux)
+        } else {
+            Ok(())
         }
     }
 
