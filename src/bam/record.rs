@@ -1115,6 +1115,11 @@ where
     }
 }
 
+pub trait AuxArrayTrait {
+    type Type;
+    fn get(&self, index: usize) -> Option<Self::Type>;
+}
+
 impl<'a, T> AuxArray<'a, T>
 where
     T: AuxArrayElement,
@@ -1125,8 +1130,10 @@ where
     }
 }
 
-impl<'a> AuxArray<'a, i8> {
-    pub fn get(&self, index: usize) -> Option<i8> {
+impl<'a> AuxArrayTrait for AuxArray<'a, i8> {
+    type Type = i8;
+
+    fn get(&self, index: usize) -> Option<Self::Type> {
         match self {
             AuxArray::TargetType(v) => (*v).get(index).copied(),
             AuxArray::RawType(v) => {
@@ -1138,16 +1145,20 @@ impl<'a> AuxArray<'a, i8> {
         }
     }
 }
-impl<'a> AuxArray<'a, u8> {
-    pub fn get(&self, index: usize) -> Option<u8> {
+impl<'a> AuxArrayTrait for AuxArray<'a, u8> {
+    type Type = u8;
+
+    fn get(&self, index: usize) -> Option<Self::Type> {
         match self {
             AuxArray::TargetType(v) => (*v).get(index).copied(),
             AuxArray::RawType(v) => (*v).get(index).copied(),
         }
     }
 }
-impl<'a> AuxArray<'a, i16> {
-    pub fn get(&self, index: usize) -> Option<i16> {
+impl<'a> AuxArrayTrait for AuxArray<'a, i16> {
+    type Type = i16;
+
+    fn get(&self, index: usize) -> Option<Self::Type> {
         match self {
             AuxArray::TargetType(v) => (*v).get(index).copied(),
             AuxArray::RawType(v) => {
@@ -1162,8 +1173,10 @@ impl<'a> AuxArray<'a, i16> {
         }
     }
 }
-impl<'a> AuxArray<'a, u16> {
-    pub fn get(&self, index: usize) -> Option<u16> {
+impl<'a> AuxArrayTrait for AuxArray<'a, u16> {
+    type Type = u16;
+
+    fn get(&self, index: usize) -> Option<Self::Type> {
         match self {
             AuxArray::TargetType(v) => (*v).get(index).copied(),
             AuxArray::RawType(v) => {
@@ -1178,8 +1191,10 @@ impl<'a> AuxArray<'a, u16> {
         }
     }
 }
-impl<'a> AuxArray<'a, i32> {
-    pub fn get(&self, index: usize) -> Option<i32> {
+impl<'a> AuxArrayTrait for AuxArray<'a, i32> {
+    type Type = i32;
+
+    fn get(&self, index: usize) -> Option<Self::Type> {
         match self {
             AuxArray::TargetType(v) => (*v).get(index).copied(),
             AuxArray::RawType(v) => {
@@ -1194,8 +1209,10 @@ impl<'a> AuxArray<'a, i32> {
         }
     }
 }
-impl<'a> AuxArray<'a, u32> {
-    pub fn get(&self, index: usize) -> Option<u32> {
+impl<'a> AuxArrayTrait for AuxArray<'a, u32> {
+    type Type = u32;
+
+    fn get(&self, index: usize) -> Option<Self::Type> {
         match self {
             AuxArray::TargetType(v) => (*v).get(index).copied(),
             AuxArray::RawType(v) => {
@@ -1210,40 +1227,10 @@ impl<'a> AuxArray<'a, u32> {
         }
     }
 }
-impl<'a> AuxArray<'a, i64> {
-    pub fn get(&self, index: usize) -> Option<i64> {
-        match self {
-            AuxArray::TargetType(v) => (*v).get(index).copied(),
-            AuxArray::RawType(v) => {
-                let type_size = std::mem::size_of::<i64>();
-                if index * type_size + type_size > (*v).len() {
-                    return None;
-                }
-                std::io::Cursor::new(&(*v)[index * type_size..][..type_size])
-                    .read_i64::<LittleEndian>()
-                    .ok()
-            }
-        }
-    }
-}
-impl<'a> AuxArray<'a, u64> {
-    pub fn get(&self, index: usize) -> Option<u64> {
-        match self {
-            AuxArray::TargetType(v) => (*v).get(index).copied(),
-            AuxArray::RawType(v) => {
-                let type_size = std::mem::size_of::<u64>();
-                if index * type_size + type_size > (*v).len() {
-                    return None;
-                }
-                std::io::Cursor::new(&(*v)[index * type_size..][..type_size])
-                    .read_u64::<LittleEndian>()
-                    .ok()
-            }
-        }
-    }
-}
-impl<'a> AuxArray<'a, f32> {
-    pub fn get(&self, index: usize) -> Option<f32> {
+impl<'a> AuxArrayTrait for AuxArray<'a, f32> {
+    type Type = f32;
+
+    fn get(&self, index: usize) -> Option<Self::Type> {
         match self {
             AuxArray::TargetType(v) => (*v).get(index).copied(),
             AuxArray::RawType(v) => {
@@ -1258,7 +1245,28 @@ impl<'a> AuxArray<'a, f32> {
         }
     }
 }
-// There is no f64 array variant
+
+pub struct AuxArrayIterator<T> {
+    index: usize,
+    array: T,
+}
+
+impl<T> Iterator for AuxArrayIterator<T>
+where
+    T: AuxArrayTrait,
+{
+    type Item = T::Type;
+    fn next(&mut self) -> Option<Self::Item> {
+        let value = self.array.get(self.index);
+        self.index += 1;
+        value
+    }
+
+    // fn size_hint(&self) -> (usize, Option<usize>) {
+    //     let array_length = self.array.0.len() / std::mem::size_of::<T>() - self.index;
+    //     (array_length, Some(array_length))
+    // }
+}
 
 static DECODE_BASE: &[u8] = b"=ACMGRSVTWYHKDBN";
 static ENCODE_BASE: [u8; 256] = [
