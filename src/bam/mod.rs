@@ -2362,55 +2362,257 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let array_u32: Vec<u32> = vec![std::u32::MIN, 0, 1, std::u32::MAX];
         let array_f32: Vec<f32> = vec![std::f32::MIN, 0.0, -0.0, 0.1, 0.99, std::f32::MAX];
 
-        test_record.push_aux(b"XA", Aux::ArrayI8(array_i8.as_slice().into()));
-        test_record.push_aux(b"XB", Aux::ArrayU8(array_u8.as_slice().into()));
-        test_record.push_aux(b"XC", Aux::ArrayI16(array_i16.as_slice().into()));
-        test_record.push_aux(b"XD", Aux::ArrayU16(array_u16.as_slice().into()));
-        test_record.push_aux(b"XE", Aux::ArrayI32(array_i32.as_slice().into()));
-        test_record.push_aux(b"XF", Aux::ArrayU32(array_u32.as_slice().into()));
-        test_record.push_aux(b"XG", Aux::ArrayFloat(array_f32.as_slice().into()));
+        assert!(test_record
+            .push_aux(b"XA", Aux::ArrayI8(array_i8.as_slice().into()))
+            .is_ok());
+        assert!(test_record
+            .push_aux(b"XB", Aux::ArrayU8(array_u8.as_slice().into()))
+            .is_ok());
+        assert!(test_record
+            .push_aux(b"XC", Aux::ArrayI16(array_i16.as_slice().into()))
+            .is_ok());
+        assert!(test_record
+            .push_aux(b"XD", Aux::ArrayU16(array_u16.as_slice().into()))
+            .is_ok());
+        assert!(test_record
+            .push_aux(b"XE", Aux::ArrayI32(array_i32.as_slice().into()))
+            .is_ok());
+        assert!(test_record
+            .push_aux(b"XF", Aux::ArrayU32(array_u32.as_slice().into()))
+            .is_ok());
+        assert!(test_record
+            .push_aux(b"XG", Aux::ArrayFloat(array_f32.as_slice().into()))
+            .is_ok());
 
-        if let Some(Aux::ArrayI8(array)) = test_record.aux(b"XA") {
-            let aux_array_content = array.iter().collect::<Vec<_>>();
-            assert_eq!(aux_array_content, array_i8);
-        } else {
-            panic!("Aux tag not found");
+        {
+            let tag = b"XA";
+            if let Some(Aux::ArrayI8(array)) = test_record.aux(tag) {
+                // Retrieve aux array
+                let aux_array_content = array.iter().collect::<Vec<_>>();
+                assert_eq!(aux_array_content, array_i8);
+
+                // Copy the stored aux array to another record
+                {
+                    let mut copy_test_record = test_record.clone();
+
+                    // Pushing a field with an existing tag should fail
+                    assert!(copy_test_record.push_aux(tag, Aux::I8(3)).is_err());
+
+                    // Remove aux array from target record
+                    copy_test_record.remove_aux(tag);
+                    assert!(copy_test_record.aux(tag).is_none());
+
+                    // Copy array to target record
+                    let src_aux = test_record.aux(tag).unwrap();
+                    assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
+                    if let Some(Aux::ArrayI8(array)) = copy_test_record.aux(tag) {
+                        let aux_array_content_copied = array.iter().collect::<Vec<_>>();
+                        assert_eq!(aux_array_content_copied, array_i8);
+                    } else {
+                        panic!("Aux tag not found");
+                    }
+                }
+            } else {
+                panic!("Aux tag not found");
+            }
         }
-        if let Some(Aux::ArrayU8(array)) = test_record.aux(b"XB") {
-            let aux_array_content = array.iter().collect::<Vec<_>>();
-            assert_eq!(aux_array_content, array_u8);
-        } else {
-            panic!("Aux tag not found");
+
+        {
+            let tag = b"XB";
+            if let Some(Aux::ArrayU8(array)) = test_record.aux(tag) {
+                // Retrieve aux array
+                let aux_array_content = array.iter().collect::<Vec<_>>();
+                assert_eq!(aux_array_content, array_u8);
+
+                // Copy the stored aux array to another record
+                {
+                    let mut copy_test_record = test_record.clone();
+
+                    // Pushing a field with an existing tag should fail
+                    assert!(copy_test_record.push_aux(tag, Aux::U8(3)).is_err());
+
+                    // Remove aux array from target record
+                    copy_test_record.remove_aux(tag);
+                    assert!(copy_test_record.aux(tag).is_none());
+
+                    // Copy array to target record
+                    let src_aux = test_record.aux(tag).unwrap();
+                    assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
+                    if let Some(Aux::ArrayU8(array)) = copy_test_record.aux(tag) {
+                        let aux_array_content_copied = array.iter().collect::<Vec<_>>();
+                        assert_eq!(aux_array_content_copied, array_u8);
+                    } else {
+                        panic!("Aux tag not found");
+                    }
+                }
+            } else {
+                panic!("Aux tag not found");
+            }
         }
-        if let Some(Aux::ArrayI16(array)) = test_record.aux(b"XC") {
-            let aux_array_content = array.iter().collect::<Vec<_>>();
-            assert_eq!(aux_array_content, array_i16);
-        } else {
-            panic!("Aux tag not found");
+
+        {
+            let tag = b"XC";
+            if let Some(Aux::ArrayI16(array)) = test_record.aux(tag) {
+                // Retrieve aux array
+                let aux_array_content = array.iter().collect::<Vec<_>>();
+                assert_eq!(aux_array_content, array_i16);
+
+                // Copy the stored aux array to another record
+                {
+                    let mut copy_test_record = test_record.clone();
+
+                    // Pushing a field with an existing tag should fail
+                    assert!(copy_test_record.push_aux(tag, Aux::I16(3)).is_err());
+
+                    // Remove aux array from target record
+                    copy_test_record.remove_aux(tag);
+                    assert!(copy_test_record.aux(tag).is_none());
+
+                    // Copy array to target record
+                    let src_aux = test_record.aux(tag).unwrap();
+                    assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
+                    if let Some(Aux::ArrayI16(array)) = copy_test_record.aux(tag) {
+                        let aux_array_content_copied = array.iter().collect::<Vec<_>>();
+                        assert_eq!(aux_array_content_copied, array_i16);
+                    } else {
+                        panic!("Aux tag not found");
+                    }
+                }
+            } else {
+                panic!("Aux tag not found");
+            }
         }
-        if let Some(Aux::ArrayU16(array)) = test_record.aux(b"XD") {
-            let aux_array_content = array.iter().collect::<Vec<_>>();
-            assert_eq!(aux_array_content, array_u16);
-        } else {
-            panic!("Aux tag not found");
+
+        {
+            let tag = b"XD";
+            if let Some(Aux::ArrayU16(array)) = test_record.aux(tag) {
+                // Retrieve aux array
+                let aux_array_content = array.iter().collect::<Vec<_>>();
+                assert_eq!(aux_array_content, array_u16);
+
+                // Copy the stored aux array to another record
+                {
+                    let mut copy_test_record = test_record.clone();
+
+                    // Pushing a field with an existing tag should fail
+                    assert!(copy_test_record.push_aux(tag, Aux::U16(3)).is_err());
+
+                    // Remove aux array from target record
+                    copy_test_record.remove_aux(tag);
+                    assert!(copy_test_record.aux(tag).is_none());
+
+                    // Copy array to target record
+                    let src_aux = test_record.aux(tag).unwrap();
+                    assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
+                    if let Some(Aux::ArrayU16(array)) = copy_test_record.aux(tag) {
+                        let aux_array_content_copied = array.iter().collect::<Vec<_>>();
+                        assert_eq!(aux_array_content_copied, array_u16);
+                    } else {
+                        panic!("Aux tag not found");
+                    }
+                }
+            } else {
+                panic!("Aux tag not found");
+            }
         }
-        if let Some(Aux::ArrayI32(array)) = test_record.aux(b"XE") {
-            let aux_array_content = array.iter().collect::<Vec<_>>();
-            assert_eq!(aux_array_content, array_i32);
-        } else {
-            panic!("Aux tag not found");
+
+        {
+            let tag = b"XE";
+            if let Some(Aux::ArrayI32(array)) = test_record.aux(tag) {
+                // Retrieve aux array
+                let aux_array_content = array.iter().collect::<Vec<_>>();
+                assert_eq!(aux_array_content, array_i32);
+
+                // Copy the stored aux array to another record
+                {
+                    let mut copy_test_record = test_record.clone();
+
+                    // Pushing a field with an existing tag should fail
+                    assert!(copy_test_record.push_aux(tag, Aux::I32(3)).is_err());
+
+                    // Remove aux array from target record
+                    copy_test_record.remove_aux(tag);
+                    assert!(copy_test_record.aux(tag).is_none());
+
+                    // Copy array to target record
+                    let src_aux = test_record.aux(tag).unwrap();
+                    assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
+                    if let Some(Aux::ArrayI32(array)) = copy_test_record.aux(tag) {
+                        let aux_array_content_copied = array.iter().collect::<Vec<_>>();
+                        assert_eq!(aux_array_content_copied, array_i32);
+                    } else {
+                        panic!("Aux tag not found");
+                    }
+                }
+            } else {
+                panic!("Aux tag not found");
+            }
         }
-        if let Some(Aux::ArrayU32(array)) = test_record.aux(b"XF") {
-            let aux_array_content = array.iter().collect::<Vec<_>>();
-            assert_eq!(aux_array_content, array_u32);
-        } else {
-            panic!("Aux tag not found");
+
+        {
+            let tag = b"XF";
+            if let Some(Aux::ArrayU32(array)) = test_record.aux(tag) {
+                // Retrieve aux array
+                let aux_array_content = array.iter().collect::<Vec<_>>();
+                assert_eq!(aux_array_content, array_u32);
+
+                // Copy the stored aux array to another record
+                {
+                    let mut copy_test_record = test_record.clone();
+
+                    // Pushing a field with an existing tag should fail
+                    assert!(copy_test_record.push_aux(tag, Aux::U32(3)).is_err());
+
+                    // Remove aux array from target record
+                    copy_test_record.remove_aux(tag);
+                    assert!(copy_test_record.aux(tag).is_none());
+
+                    // Copy array to target record
+                    let src_aux = test_record.aux(tag).unwrap();
+                    assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
+                    if let Some(Aux::ArrayU32(array)) = copy_test_record.aux(tag) {
+                        let aux_array_content_copied = array.iter().collect::<Vec<_>>();
+                        assert_eq!(aux_array_content_copied, array_u32);
+                    } else {
+                        panic!("Aux tag not found");
+                    }
+                }
+            } else {
+                panic!("Aux tag not found");
+            }
         }
-        if let Some(Aux::ArrayFloat(array)) = test_record.aux(b"XG") {
-            let aux_array_content = array.iter().collect::<Vec<_>>();
-            assert_eq!(aux_array_content, array_f32);
-        } else {
-            panic!("Aux tag not found");
+
+        {
+            let tag = b"XG";
+            if let Some(Aux::ArrayFloat(array)) = test_record.aux(tag) {
+                // Retrieve aux array
+                let aux_array_content = array.iter().collect::<Vec<_>>();
+                assert_eq!(aux_array_content, array_f32);
+
+                // Copy the stored aux array to another record
+                {
+                    let mut copy_test_record = test_record.clone();
+
+                    // Pushing a field with an existing tag should fail
+                    assert!(copy_test_record.push_aux(tag, Aux::Float(3.0)).is_err());
+
+                    // Remove aux array from target record
+                    copy_test_record.remove_aux(tag);
+                    assert!(copy_test_record.aux(tag).is_none());
+
+                    // Copy array to target record
+                    let src_aux = test_record.aux(tag).unwrap();
+                    assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
+                    if let Some(Aux::ArrayFloat(array)) = copy_test_record.aux(tag) {
+                        let aux_array_content_copied = array.iter().collect::<Vec<_>>();
+                        assert_eq!(aux_array_content_copied, array_f32);
+                    } else {
+                        panic!("Aux tag not found");
+                    }
+                }
+            } else {
+                panic!("Aux tag not found");
+            }
         }
     }
 }
