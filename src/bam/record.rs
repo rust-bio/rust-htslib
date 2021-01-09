@@ -748,6 +748,13 @@ impl Record {
 
     /// Add auxiliary data.
     pub fn push_aux(&mut self, tag: &[u8], value: Aux<'_>) -> Result<()> {
+        // Don't allow pushing aux data when the given tag is already present in the record
+        // `htslib` seems to allow this (for non-array values), which can lead to problems
+        // since retrieving aux fields consumes &[u8; 2] and yields one field only.
+        if self.aux(tag).is_some() {
+            return Err(Error::BamAuxTagAlreadyPresent);
+        }
+
         let ctag = tag.as_ptr() as *mut i8;
         let ret = unsafe {
             match value {
