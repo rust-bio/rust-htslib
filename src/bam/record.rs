@@ -573,7 +573,10 @@ impl Record {
             [..self.seq_len()]
     }
 
-    /// Get auxiliary data (tags).
+    /// Look up an auxiliary field by its tag.
+    ///
+    /// Only the first two bytes of a given tag are used for the look-up of a field.
+    /// See [`Aux`] for more details.
     pub fn aux(&self, tag: &[u8]) -> Result<Aux<'_>> {
         let c_str = ffi::CString::new(tag).unwrap();
         let aux = unsafe {
@@ -746,18 +749,28 @@ impl Record {
         }
     }
 
+    /// Returns an iterator over the auxiliary fields of the record.
+    ///
+    /// The iteration gets aborted as soon as an error occurs
     pub fn aux_iter(&self) -> AuxIterator {
         AuxIterator {
-            aux: &self.data()[self.qname_capacity()
-                + self.cigar_len() * 4
+            // In order to get to the aux data section of a `bam::Record`
+            // we need to skip fields in front of it
+            aux: &self.data()[
+                // NUL terminated read name:
+                self.qname_capacity()
+                // CIGAR (uint32_t):
+                + self.cigar_len() * std::mem::size_of::<u32>()
+                // Read sequence (4-bit encoded):
                 + (self.seq_len() + 1) / 2
+                // Base qualities (char):
                 + self.seq_len()..],
         }
     }
 
     /// Add auxiliary data.
     pub fn push_aux(&mut self, tag: &[u8], value: Aux<'_>) -> Result<()> {
-        // Don't allow pushing aux data when the given tag is already present in the record
+        // Don't allow pushing aux data when the given tag is already present in the record.
         // `htslib` seems to allow this (for non-array values), which can lead to problems
         // since retrieving aux fields consumes &[u8; 2] and yields one field only.
         if self.aux(tag).is_ok() {
@@ -1135,6 +1148,55 @@ impl genome::AbstractInterval for Record {
 }
 
 /// Auxiliary record data.
+///
+/// # Examples
+///
+/// ```
+/// use rust_htslib::{
+///     bam,
+///     bam::record::{Aux, AuxArray},
+///     errors::Error,
+/// };
+///
+/// //Set up BAM record
+/// let bam_header = bam::Header::new();
+/// let mut record = bam::Record::from_sam(
+///     &mut bam::HeaderView::from_header(&bam_header),
+///     "ali1\t4\t*\t0\t0\t*\t*\t0\t0\tACGT\tFFFF".as_bytes(),
+/// )
+/// .unwrap();
+///
+/// // Add an integer field
+/// let aux_integer_field = Aux::I32(1234);
+/// record.push_aux(b"XI", aux_integer_field).unwrap();
+///
+/// match record.aux(b"XI") {
+///     Ok(value) => {
+///         // Typically, callers expect an aux field to be of a certain type.
+///         // If that's not the case, the value can be `match`ed exhaustively.
+///         if let Aux::I32(v) = value {
+///             assert_eq!(v, 1234);
+///         }
+///     }
+///     Err(e) => {
+///         panic!("Error reading aux field: {}", e);
+///     }
+/// }
+///
+/// // Add an array field
+/// let array_like_data = vec![0.4, 0.3, 0.2, 0.1];
+/// let slice_of_data = &array_like_data;
+/// let aux_array: AuxArray<f32> = slice_of_data.into();
+/// let aux_array_field = Aux::ArrayFloat(aux_array);
+/// record.push_aux(b"XA", aux_array_field).unwrap();
+///
+/// if let Ok(Aux::ArrayFloat(array)) = record.aux(b"XA") {
+///     let read_array = array.iter().collect::<Vec<_>>();
+///     assert_eq!(read_array, array_like_data);
+/// } else {
+///     panic!("Could not read array data");
+/// }
+/// ```
 #[derive(Debug, PartialEq)]
 pub enum Aux<'a> {
     Char(u8),
@@ -1201,6 +1263,42 @@ impl AuxArrayElement for f32 {
     }
 }
 
+/// Provides access to aux arrays.
+///
+/// Holds either a slice of a supported target type to be stored in an aux field
+/// or a raw byte slice pointing to record data.
+///
+/// Provides methods to either retrieve single elements or an iterator over all
+/// values in the array.
+///
+/// # Examples
+///
+/// ```
+/// use rust_htslib::{bam, bam::record::{Aux, AuxArray}};
+///
+/// //Set up BAM record
+/// let bam_header = bam::Header::new();
+/// let mut record = bam::Record::from_sam(
+///         &mut bam::HeaderView::from_header(&bam_header),
+///         "ali1\t4\t*\t0\t0\t*\t*\t0\t0\tACGT\tFFFF".as_bytes(),
+///     ).unwrap();
+///
+/// let data = vec![0.4, 0.3, 0.2, 0.1];
+/// let slice_of_data = &data;
+/// let aux_array: AuxArray<f32> = slice_of_data.into();
+/// let aux_field = Aux::ArrayFloat(aux_array);
+/// record.push_aux(b"XA", aux_field);
+///
+/// if let Ok(Aux::ArrayFloat(array)) = record.aux(b"XA") {
+///     // Retrieve the second element from the array
+///     assert_eq!(array.get(1).unwrap(), 0.3);
+///     // Iterate over the array and collect it into a `Vec`
+///     let read_array = array.iter().collect::<Vec<_>>();
+///     assert_eq!(read_array, data);
+/// } else {
+///     panic!("Could not read array data");
+/// }
+/// ```
 #[derive(Debug, PartialEq)]
 pub enum AuxArray<'a, T> {
     TargetType(&'a [T]),
@@ -1222,6 +1320,7 @@ impl<'a, T> AuxArray<'a, T>
 where
     T: AuxArrayElement,
 {
+    /// Returns the element at a position or None if out of bounds.
     pub fn get(&self, index: usize) -> Option<T> {
         match self {
             AuxArray::TargetType(v) => v.get(index).copied(),
@@ -1235,6 +1334,7 @@ where
         }
     }
 
+    /// Returns the number of elements in the array.
     pub fn len(&self) -> usize {
         match self {
             AuxArray::TargetType(a) => a.len(),
@@ -1242,10 +1342,12 @@ where
         }
     }
 
+    /// Returns true if the array contains no elements.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
+    /// Returns an iterator over the array.
     pub fn iter(&self) -> AuxArrayIterator<T> {
         AuxArrayIterator {
             index: 0,
@@ -1253,12 +1355,15 @@ where
         }
     }
 
-    /// Create AuxArrays from raw byte slices of bam::Record
+    /// Create AuxArrays from raw byte slices borrowed from `bam::Record`
     fn from_bytes(bytes: &'a [u8]) -> Self {
         Self::RawLeBytes(bytes)
     }
 }
 
+/// Aux array iterator
+///
+/// This struct is created by the [`AuxArray::iter`] method.
 pub struct AuxArrayIterator<'a, T> {
     index: usize,
     array: &'a AuxArray<'a, T>,
