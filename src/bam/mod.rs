@@ -1617,7 +1617,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         rec.set(names[0], Some(&cigars[0]), seqs[0], quals[0]);
         // note: this segfaults if you push_aux() before set()
         //       because set() obliterates aux
-        rec.push_aux(b"NM", Aux::I32(15));
+        rec.push_aux(b"NM", Aux::I32(15)).unwrap();
 
         assert_eq!(rec.qname(), names[0]);
         assert_eq!(*rec.cigar(), cigars[0]);
@@ -1636,7 +1636,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             b"AAA",
             b"III",
         );
-        rec.push_aux(b"AS", Aux::I32(12345));
+        rec.push_aux(b"AS", Aux::I32(12345)).unwrap();
         assert_eq!(rec.qname(), b"123");
         assert_eq!(rec.seq().as_bytes(), b"AAA");
         assert_eq!(rec.qual(), b"III");
@@ -1674,7 +1674,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         for i in 0..names.len() {
             let mut rec = record::Record::new();
             rec.set(names[i], Some(&cigars[i]), seqs[i], quals[i]);
-            rec.push_aux(b"NM", Aux::I32(15));
+            rec.push_aux(b"NM", Aux::I32(15)).unwrap();
 
             assert_eq!(rec.qname(), names[i]);
             assert_eq!(*rec.cigar(), cigars[i]);
@@ -1786,7 +1786,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             for i in 0..names.len() {
                 let mut rec = record::Record::new();
                 rec.set(names[i], Some(&cigars[i]), seqs[i], quals[i]);
-                rec.push_aux(b"NM", Aux::I32(15));
+                rec.push_aux(b"NM", Aux::I32(15)).unwrap();
 
                 bam.write(&rec).expect("Failed to write record.");
             }
@@ -1840,7 +1840,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 let mut rec = record::Record::new();
                 let idx = i % names.len();
                 rec.set(names[idx], Some(&cigars[idx]), seqs[idx], quals[idx]);
-                rec.push_aux(b"NM", Aux::I32(15));
+                rec.push_aux(b"NM", Aux::I32(15)).unwrap();
                 rec.set_pos(i as i64);
 
                 bam.write(&rec).expect("Failed to write record.");
@@ -1913,7 +1913,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 let mut rec = record::Record::new();
                 let idx = i % names.len();
                 rec.set(names[idx], Some(&cigars[idx]), seqs[idx], quals[idx]);
-                rec.push_aux(b"NM", Aux::I32(15));
+                rec.push_aux(b"NM", Aux::I32(15)).unwrap();
                 rec.set_pos(i as i64);
 
                 bam1.write(&rec).expect("Failed to write record.");
