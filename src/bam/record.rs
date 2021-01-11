@@ -1207,13 +1207,14 @@ pub enum AuxArray<'a, T> {
     RawLeBytes(&'a [u8]),
 }
 
-/// Create AuxArrays from slices of allowed target types
-impl<'a, T> From<&'a [T]> for AuxArray<'a, T>
+/// Create AuxArrays from slices of allowed target types.
+impl<'a, I, T> From<&'a T> for AuxArray<'a, I>
 where
-    T: AuxArrayElement,
+    I: AuxArrayElement,
+    T: AsRef<[I]> + ?Sized,
 {
-    fn from(src: &'a [T]) -> Self {
-        AuxArray::TargetType(src)
+    fn from(src: &'a T) -> Self {
+        AuxArray::TargetType(src.as_ref())
     }
 }
 
