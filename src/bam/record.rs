@@ -746,6 +746,15 @@ impl Record {
         }
     }
 
+    pub fn aux_iter(&self) -> AuxIterator {
+        AuxIterator {
+            aux: &self.data()[self.qname_capacity()
+                + self.cigar_len() * 4
+                + (self.seq_len() + 1) / 2
+                + self.seq_len()..],
+        }
+    }
+
     /// Add auxiliary data.
     pub fn push_aux(&mut self, tag: &[u8], value: Aux<'_>) -> Result<()> {
         // Don't allow pushing aux data when the given tag is already present in the record
@@ -1268,6 +1277,41 @@ where
     fn size_hint(&self) -> (usize, Option<usize>) {
         let array_length = self.array.len() - self.index;
         (array_length, Some(array_length))
+    }
+}
+
+pub struct AuxIterator<'a> {
+    aux: &'a [u8],
+}
+
+impl<'a> Iterator for AuxIterator<'a> {
+    type Item = Result<(&'a [u8], Aux<'a>)>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // We're finished
+        if self.aux.is_empty() {
+            return None;
+        }
+        // Incomplete aux data
+        if (1..=3).contains(&self.aux.len()) {
+            // In the case of an error, we can not safely advance in the aux data, so we terminate the Iteration
+            self.aux = &[];
+            return Some(Err(Error::BamAuxParsingError));
+        }
+        let tag = &self.aux[..2];
+        Some(unsafe {
+            let data_ptr = self.aux[2..].as_ptr();
+            Record::read_aux_field(data_ptr)
+                .map(|(aux, offset)| {
+                    self.aux = &self.aux[offset..];
+                    (tag, aux)
+                })
+                .map_err(|e| {
+                    // In the case of an error, we can not safely advance in the aux data, so we terminate the Iteration
+                    self.aux = &[];
+                    e
+                })
+        })
     }
 }
 
