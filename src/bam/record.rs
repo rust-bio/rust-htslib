@@ -574,7 +574,7 @@ impl Record {
     }
 
     /// Get auxiliary data (tags).
-    pub fn aux(&self, tag: &[u8]) -> Option<Aux<'_>> {
+    pub fn aux(&self, tag: &[u8]) -> Result<Aux<'_>> {
         let c_str = ffi::CString::new(tag).unwrap();
         let aux = unsafe {
             htslib::bam_aux_get(
@@ -585,87 +585,87 @@ impl Record {
         unsafe { Self::read_aux_field(aux).map(|(aux_field, _length)| aux_field) }
     }
 
-    unsafe fn read_aux_field<'a>(aux: *const u8) -> Option<(Aux<'a>, usize)> {
+    unsafe fn read_aux_field<'a>(aux: *const u8) -> Result<(Aux<'a>, usize)> {
         const OFFSET: isize = 1;
 
         if aux.is_null() {
-            None
+            Err(Error::BamAuxTagNotFound)
         } else {
             match *aux {
                 b'A' => {
                     let type_size = size_of::<u8>();
-                    Some((Aux::Char(*aux.offset(OFFSET)), type_size))
+                    Ok((Aux::Char(*aux.offset(OFFSET)), type_size + 3))
                 }
                 b'c' => {
                     let type_size = size_of::<i8>();
-                    Some((Aux::I8(*aux.offset(OFFSET).cast::<i8>()), type_size))
+                    Ok((Aux::I8(*aux.offset(OFFSET).cast::<i8>()), type_size + 3))
                 }
                 b'C' => {
                     let type_size = size_of::<u8>();
-                    Some((Aux::U8(*aux.offset(OFFSET)), type_size))
+                    Ok((Aux::U8(*aux.offset(OFFSET)), type_size + 3))
                 }
                 b's' => {
                     let type_size = size_of::<i16>();
-                    Some((
+                    Ok((
                         Aux::I16(
-                            slice::from_raw_parts(aux.offset(OFFSET), type_size)
+                            slice::from_raw_parts(aux.offset(OFFSET), type_size + 3)
                                 .read_i16::<LittleEndian>()
-                                .ok()?,
+                                .map_err(|_| Error::BamAuxParsingError)?,
                         ),
                         type_size,
                     ))
                 }
                 b'S' => {
                     let type_size = size_of::<u16>();
-                    Some((
+                    Ok((
                         Aux::U16(
-                            slice::from_raw_parts(aux.offset(OFFSET), type_size)
+                            slice::from_raw_parts(aux.offset(OFFSET), type_size + 3)
                                 .read_u16::<LittleEndian>()
-                                .ok()?,
+                                .map_err(|_| Error::BamAuxParsingError)?,
                         ),
                         type_size,
                     ))
                 }
                 b'i' => {
                     let type_size = size_of::<i32>();
-                    Some((
+                    Ok((
                         Aux::I32(
-                            slice::from_raw_parts(aux.offset(OFFSET), type_size)
+                            slice::from_raw_parts(aux.offset(OFFSET), type_size + 3)
                                 .read_i32::<LittleEndian>()
-                                .ok()?,
+                                .map_err(|_| Error::BamAuxParsingError)?,
                         ),
                         type_size,
                     ))
                 }
                 b'I' => {
                     let type_size = size_of::<u32>();
-                    Some((
+                    Ok((
                         Aux::U32(
-                            slice::from_raw_parts(aux.offset(OFFSET), type_size)
+                            slice::from_raw_parts(aux.offset(OFFSET), type_size + 3)
                                 .read_u32::<LittleEndian>()
-                                .ok()?,
+                                .map_err(|_| Error::BamAuxParsingError)?,
                         ),
                         type_size,
                     ))
                 }
                 b'f' => {
                     let type_size = size_of::<f32>();
-                    Some((
+                    Ok((
                         Aux::Float(
-                            slice::from_raw_parts(aux.offset(OFFSET), type_size)
+                            slice::from_raw_parts(aux.offset(OFFSET), type_size + 3)
                                 .read_f32::<LittleEndian>()
-                                .ok()?,
+                                .map_err(|_| Error::BamAuxParsingError)?,
                         ),
                         type_size,
                     ))
                 }
                 b'd' => {
                     let type_size = size_of::<f64>();
-                    Some((
+                    Ok((
                         Aux::Double(
-                            slice::from_raw_parts(aux.offset(OFFSET), type_size)
+                            slice::from_raw_parts(aux.offset(OFFSET), type_size + 3)
                                 .read_f64::<LittleEndian>()
-                                .ok()?,
+                                .map_err(|_| Error::BamAuxParsingError)?,
                         ),
                         type_size,
                     ))
@@ -673,16 +673,16 @@ impl Record {
                 b'Z' | b'H' => {
                     let x = ffi::CStr::from_ptr(aux.offset(OFFSET).cast::<i8>())
                         .to_str()
-                        .ok()?;
-                    Some((Aux::String(x), x.len()))
+                        .map_err(|_| Error::BamAuxParsingError)?;
+                    Ok((Aux::String(x), x.len() + 3))
                 }
                 b'B' => Self::read_aux_array_types(aux),
-                _ => None,
+                _ => Err(Error::BamAuxUnknownType),
             }
         }
     }
 
-    unsafe fn read_aux_array_types<'a>(aux: *const u8) -> Option<(Aux<'a>, usize)> {
+    unsafe fn read_aux_array_types<'a>(aux: *const u8) -> Result<(Aux<'a>, usize)> {
         let tag_type = *aux.offset(1);
 
         // Offset to skip b'B', type, and count fields
@@ -690,59 +690,59 @@ impl Record {
 
         let length = slice::from_raw_parts(aux.offset(2), 4)
             .read_u32::<LittleEndian>()
-            .ok()? as usize;
+            .map_err(|_| Error::BamAuxParsingError)? as usize;
 
         match tag_type {
-            b'c' => Some((
+            b'c' => Ok((
                 Aux::ArrayI8(AuxArray::<'a, i8>::from_bytes(slice::from_raw_parts(
                     aux.offset(OFFSET),
                     length,
                 ))),
-                length,
+                length + 8,
             )),
-            b'C' => Some((
+            b'C' => Ok((
                 Aux::ArrayU8(AuxArray::<'a, u8>::from_bytes(slice::from_raw_parts(
                     aux.offset(OFFSET),
                     length,
                 ))),
-                length,
+                length + 8,
             )),
-            b's' => Some((
+            b's' => Ok((
                 Aux::ArrayI16(AuxArray::<'a, i16>::from_bytes(slice::from_raw_parts(
                     aux.offset(OFFSET),
                     length * size_of::<i16>(),
                 ))),
-                length,
+                length * std::mem::size_of::<i16>() + 8,
             )),
-            b'S' => Some((
+            b'S' => Ok((
                 Aux::ArrayU16(AuxArray::<'a, u16>::from_bytes(slice::from_raw_parts(
                     aux.offset(OFFSET),
                     length * size_of::<u16>(),
                 ))),
-                length,
+                length * std::mem::size_of::<u16>() + 8,
             )),
-            b'i' => Some((
+            b'i' => Ok((
                 Aux::ArrayI32(AuxArray::<'a, i32>::from_bytes(slice::from_raw_parts(
                     aux.offset(OFFSET),
                     length * size_of::<i32>(),
                 ))),
-                length,
+                length * std::mem::size_of::<i32>() + 8,
             )),
-            b'I' => Some((
+            b'I' => Ok((
                 Aux::ArrayU32(AuxArray::<'a, u32>::from_bytes(slice::from_raw_parts(
                     aux.offset(OFFSET),
                     length * size_of::<u32>(),
                 ))),
-                length,
+                length * std::mem::size_of::<u32>() + 8,
             )),
-            b'f' => Some((
+            b'f' => Ok((
                 Aux::ArrayFloat(AuxArray::<f32>::from_bytes(slice::from_raw_parts(
                     aux.offset(OFFSET),
                     length * size_of::<f32>(),
                 ))),
-                length,
+                length * std::mem::size_of::<f32>() + 8,
             )),
-            _ => None,
+            _ => Err(Error::BamAuxUnknownType),
         }
     }
 
@@ -751,7 +751,7 @@ impl Record {
         // Don't allow pushing aux data when the given tag is already present in the record
         // `htslib` seems to allow this (for non-array values), which can lead to problems
         // since retrieving aux fields consumes &[u8; 2] and yields one field only.
-        if self.aux(tag).is_some() {
+        if self.aux(tag).is_ok() {
             return Err(Error::BamAuxTagAlreadyPresent);
         }
 

@@ -70,8 +70,15 @@ pub enum Error {
     #[error("failed to create SAM/BAM/CRAM pileup")]
     BamPileup,
 
+    // Errors for BAM auxiliary fields
     #[error("failed to add aux field (out of memory?)")]
     BamAux,
+    #[error("failed to parse aux data")]
+    BamAuxParsingError,
+    #[error("the specified tag does could not be found")]
+    BamAuxTagNotFound,
+    #[error("data type of aux field is not known")]
+    BamAuxUnknownType,
     #[error("failed to add aux field, tag is already present")]
     BamAuxTagAlreadyPresent,
 

@@ -1303,6 +1303,7 @@ mod tests {
     use super::header::HeaderRecord;
     use super::record::{Aux, Cigar, CigarString};
     use super::*;
+    use crate::errors::Error::BamAuxTagNotFound;
     use std::collections::HashMap;
     use std::fs;
     use std::path::Path;
@@ -1501,7 +1502,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             // fix qual offset
             let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
             assert_eq!(rec.qual(), &qual[..]);
-            assert_eq!(rec.aux(b"NotAvailableAux"), None);
+            assert_eq!(rec.aux(b"NotAvailableAux"), Err(BamAuxTagNotFound));
         }
 
         // fetch to empty position
@@ -1551,7 +1552,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             // fix qual offset
             let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
             assert_eq!(rec.qual(), &qual[..]);
-            assert_eq!(rec.aux(b"NotAvailableAux"), None);
+            assert_eq!(rec.aux(b"NotAvailableAux"), Err(Error::BamAuxTagNotFound));
         }
 
         // fetch to empty position
@@ -1745,18 +1746,18 @@ CCCCCCCCCCCCCCCCCCC"[..],
         for record in bam.records() {
             let mut rec = record.expect("Expected valid record");
 
-            if rec.aux(b"XS").is_some() {
+            if rec.aux(b"XS").is_ok() {
                 rec.remove_aux(b"XS");
             }
 
-            if rec.aux(b"YT").is_some() {
+            if rec.aux(b"YT").is_ok() {
                 rec.remove_aux(b"YT");
             }
 
             rec.remove_aux(b"ab");
 
-            assert_eq!(rec.aux(b"XS"), None);
-            assert_eq!(rec.aux(b"YT"), None);
+            assert_eq!(rec.aux(b"XS"), Err(Error::BamAuxTagNotFound));
+            assert_eq!(rec.aux(b"YT"), Err(Error::BamAuxTagNotFound));
         }
     }
 
@@ -2386,7 +2387,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
         {
             let tag = b"XA";
-            if let Some(Aux::ArrayI8(array)) = test_record.aux(tag) {
+            if let Ok(Aux::ArrayI8(array)) = test_record.aux(tag) {
                 // Retrieve aux array
                 let aux_array_content = array.iter().collect::<Vec<_>>();
                 assert_eq!(aux_array_content, array_i8);
@@ -2400,12 +2401,12 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
                     // Remove aux array from target record
                     copy_test_record.remove_aux(tag);
-                    assert!(copy_test_record.aux(tag).is_none());
+                    assert!(copy_test_record.aux(tag).is_err());
 
                     // Copy array to target record
                     let src_aux = test_record.aux(tag).unwrap();
                     assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
-                    if let Some(Aux::ArrayI8(array)) = copy_test_record.aux(tag) {
+                    if let Ok(Aux::ArrayI8(array)) = copy_test_record.aux(tag) {
                         let aux_array_content_copied = array.iter().collect::<Vec<_>>();
                         assert_eq!(aux_array_content_copied, array_i8);
                     } else {
@@ -2419,7 +2420,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
         {
             let tag = b"XB";
-            if let Some(Aux::ArrayU8(array)) = test_record.aux(tag) {
+            if let Ok(Aux::ArrayU8(array)) = test_record.aux(tag) {
                 // Retrieve aux array
                 let aux_array_content = array.iter().collect::<Vec<_>>();
                 assert_eq!(aux_array_content, array_u8);
@@ -2433,12 +2434,12 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
                     // Remove aux array from target record
                     copy_test_record.remove_aux(tag);
-                    assert!(copy_test_record.aux(tag).is_none());
+                    assert!(copy_test_record.aux(tag).is_err());
 
                     // Copy array to target record
                     let src_aux = test_record.aux(tag).unwrap();
                     assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
-                    if let Some(Aux::ArrayU8(array)) = copy_test_record.aux(tag) {
+                    if let Ok(Aux::ArrayU8(array)) = copy_test_record.aux(tag) {
                         let aux_array_content_copied = array.iter().collect::<Vec<_>>();
                         assert_eq!(aux_array_content_copied, array_u8);
                     } else {
@@ -2452,7 +2453,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
         {
             let tag = b"XC";
-            if let Some(Aux::ArrayI16(array)) = test_record.aux(tag) {
+            if let Ok(Aux::ArrayI16(array)) = test_record.aux(tag) {
                 // Retrieve aux array
                 let aux_array_content = array.iter().collect::<Vec<_>>();
                 assert_eq!(aux_array_content, array_i16);
@@ -2466,12 +2467,12 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
                     // Remove aux array from target record
                     copy_test_record.remove_aux(tag);
-                    assert!(copy_test_record.aux(tag).is_none());
+                    assert!(copy_test_record.aux(tag).is_err());
 
                     // Copy array to target record
                     let src_aux = test_record.aux(tag).unwrap();
                     assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
-                    if let Some(Aux::ArrayI16(array)) = copy_test_record.aux(tag) {
+                    if let Ok(Aux::ArrayI16(array)) = copy_test_record.aux(tag) {
                         let aux_array_content_copied = array.iter().collect::<Vec<_>>();
                         assert_eq!(aux_array_content_copied, array_i16);
                     } else {
@@ -2485,7 +2486,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
         {
             let tag = b"XD";
-            if let Some(Aux::ArrayU16(array)) = test_record.aux(tag) {
+            if let Ok(Aux::ArrayU16(array)) = test_record.aux(tag) {
                 // Retrieve aux array
                 let aux_array_content = array.iter().collect::<Vec<_>>();
                 assert_eq!(aux_array_content, array_u16);
@@ -2499,12 +2500,12 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
                     // Remove aux array from target record
                     copy_test_record.remove_aux(tag);
-                    assert!(copy_test_record.aux(tag).is_none());
+                    assert!(copy_test_record.aux(tag).is_err());
 
                     // Copy array to target record
                     let src_aux = test_record.aux(tag).unwrap();
                     assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
-                    if let Some(Aux::ArrayU16(array)) = copy_test_record.aux(tag) {
+                    if let Ok(Aux::ArrayU16(array)) = copy_test_record.aux(tag) {
                         let aux_array_content_copied = array.iter().collect::<Vec<_>>();
                         assert_eq!(aux_array_content_copied, array_u16);
                     } else {
@@ -2518,7 +2519,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
         {
             let tag = b"XE";
-            if let Some(Aux::ArrayI32(array)) = test_record.aux(tag) {
+            if let Ok(Aux::ArrayI32(array)) = test_record.aux(tag) {
                 // Retrieve aux array
                 let aux_array_content = array.iter().collect::<Vec<_>>();
                 assert_eq!(aux_array_content, array_i32);
@@ -2532,12 +2533,12 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
                     // Remove aux array from target record
                     copy_test_record.remove_aux(tag);
-                    assert!(copy_test_record.aux(tag).is_none());
+                    assert!(copy_test_record.aux(tag).is_err());
 
                     // Copy array to target record
                     let src_aux = test_record.aux(tag).unwrap();
                     assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
-                    if let Some(Aux::ArrayI32(array)) = copy_test_record.aux(tag) {
+                    if let Ok(Aux::ArrayI32(array)) = copy_test_record.aux(tag) {
                         let aux_array_content_copied = array.iter().collect::<Vec<_>>();
                         assert_eq!(aux_array_content_copied, array_i32);
                     } else {
@@ -2551,7 +2552,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
         {
             let tag = b"XF";
-            if let Some(Aux::ArrayU32(array)) = test_record.aux(tag) {
+            if let Ok(Aux::ArrayU32(array)) = test_record.aux(tag) {
                 // Retrieve aux array
                 let aux_array_content = array.iter().collect::<Vec<_>>();
                 assert_eq!(aux_array_content, array_u32);
@@ -2565,12 +2566,12 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
                     // Remove aux array from target record
                     copy_test_record.remove_aux(tag);
-                    assert!(copy_test_record.aux(tag).is_none());
+                    assert!(copy_test_record.aux(tag).is_err());
 
                     // Copy array to target record
                     let src_aux = test_record.aux(tag).unwrap();
                     assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
-                    if let Some(Aux::ArrayU32(array)) = copy_test_record.aux(tag) {
+                    if let Ok(Aux::ArrayU32(array)) = copy_test_record.aux(tag) {
                         let aux_array_content_copied = array.iter().collect::<Vec<_>>();
                         assert_eq!(aux_array_content_copied, array_u32);
                     } else {
@@ -2584,7 +2585,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
         {
             let tag = b"XG";
-            if let Some(Aux::ArrayFloat(array)) = test_record.aux(tag) {
+            if let Ok(Aux::ArrayFloat(array)) = test_record.aux(tag) {
                 // Retrieve aux array
                 let aux_array_content = array.iter().collect::<Vec<_>>();
                 assert_eq!(aux_array_content, array_f32);
@@ -2598,12 +2599,12 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
                     // Remove aux array from target record
                     copy_test_record.remove_aux(tag);
-                    assert!(copy_test_record.aux(tag).is_none());
+                    assert!(copy_test_record.aux(tag).is_err());
 
                     // Copy array to target record
                     let src_aux = test_record.aux(tag).unwrap();
                     assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
-                    if let Some(Aux::ArrayFloat(array)) = copy_test_record.aux(tag) {
+                    if let Ok(Aux::ArrayFloat(array)) = copy_test_record.aux(tag) {
                         let aux_array_content_copied = array.iter().collect::<Vec<_>>();
                         assert_eq!(aux_array_content_copied, array_f32);
                     } else {
