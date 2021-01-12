@@ -1451,6 +1451,10 @@ where
 ///
 /// This struct is created by the [`Record::aux_iter`] method.
 ///
+/// This iterator returns `Result`s that wrap tuples containing
+/// a slice which represents the two-byte tag (`&[u8; 2]`) as
+/// well as an `Aux` enum that wraps the associated value.
+///
 /// When an error occurs, the `Err` variant will be returned
 /// and the iterator will not be able to advance anymore.
 pub struct AuxIter<'a> {
