@@ -73,6 +73,8 @@ pub enum Error {
     // Errors for BAM auxiliary fields
     #[error("failed to add aux field (out of memory?)")]
     BamAux,
+    #[error("provided string contains internal 0 byte(s)")]
+    BamAuxStringError,
     #[error("failed to parse aux data")]
     BamAuxParsingError,
     #[error("the specified tag does could not be found")]

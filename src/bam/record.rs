@@ -848,7 +848,7 @@ impl Record {
                     [v].as_mut_ptr() as *mut u8,
                 ),
                 Aux::String(v) => {
-                    let c_str = ffi::CString::new(v).unwrap();
+                    let c_str = ffi::CString::new(v).map_err(|_| Error::BamAuxStringError)?;
                     htslib::bam_aux_append(
                         self.inner_ptr_mut(),
                         ctag,
@@ -858,7 +858,7 @@ impl Record {
                     )
                 }
                 Aux::HexByteArray(v) => {
-                    let c_str = ffi::CString::new(v).unwrap();
+                    let c_str = ffi::CString::new(v).map_err(|_| Error::BamAuxStringError)?;
                     htslib::bam_aux_append(
                         self.inner_ptr_mut(),
                         ctag,
