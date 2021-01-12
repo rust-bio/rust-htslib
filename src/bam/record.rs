@@ -752,7 +752,8 @@ impl Record {
 
     /// Returns an iterator over the auxiliary fields of the record.
     ///
-    /// The iteration gets aborted as soon as an error occurs
+    /// When an error occurs, the `Err` variant will be returned
+    /// and the iterator will not be able to advance anymore.
     pub fn aux_iter(&self) -> AuxIterator {
         AuxIterator {
             // In order to get to the aux data section of a `bam::Record`
@@ -1153,7 +1154,7 @@ impl genome::AbstractInterval for Record {
     }
 }
 
-/// Auxiliary record data.
+/// Auxiliary record data
 ///
 /// # Examples
 ///
@@ -1228,7 +1229,7 @@ pub enum Aux<'a> {
 unsafe impl<'a> Send for Aux<'a> {}
 unsafe impl<'a> Sync for Aux<'a> {}
 
-// Specify types that can be used in aux arrays
+/// Types that can be used in aux arrays.
 pub trait AuxArrayElement: Copy {
     fn from_le_bytes(bytes: &[u8]) -> Option<Self>;
 }
@@ -1311,7 +1312,7 @@ pub enum AuxArray<'a, T> {
     RawLeBytes(AuxArrayRawLeBytes<'a, T>),
 }
 
-/// Encapsulates slice of target type
+/// Encapsulates slice of target type.
 #[derive(Debug, PartialEq)]
 pub struct AuxArrayTargetType<'a, T> {
     slice: &'a [T],
@@ -1330,7 +1331,7 @@ where
     }
 }
 
-/// Encapsulates slice of raw bytes to prevent it from being accidentally accessed
+/// Encapsulates slice of raw bytes to prevent it from being accidentally accessed.
 #[derive(Debug, PartialEq)]
 pub struct AuxArrayRawLeBytes<'a, T> {
     slice: &'a [u8],
@@ -1400,7 +1401,7 @@ where
         }
     }
 
-    /// Create AuxArrays from raw byte slices borrowed from `bam::Record`
+    /// Create AuxArrays from raw byte slices borrowed from `bam::Record`.
     fn from_bytes(bytes: &'a [u8]) -> Self {
         Self::RawLeBytes(AuxArrayRawLeBytes {
             slice: bytes,
@@ -1434,6 +1435,12 @@ where
     }
 }
 
+/// Auxiliary data iterator
+///
+/// This struct is created by the [`Record::aux_iter`] method.
+///
+/// When an error occurs, the `Err` variant will be returned
+/// and the iterator will not be able to advance anymore.
 pub struct AuxIterator<'a> {
     aux: &'a [u8],
 }
