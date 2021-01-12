@@ -6,6 +6,7 @@
 use std::convert::TryFrom;
 use std::ffi;
 use std::fmt;
+use std::marker::PhantomData;
 use std::mem::{size_of, MaybeUninit};
 use std::ops;
 use std::rc::Rc;
@@ -871,26 +872,31 @@ impl Record {
                         ctag,
                         b'c',
                         inner.len() as u32,
-                        inner.as_ptr() as *mut ::libc::c_void,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
                     ),
                     AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
                         self.inner_ptr_mut(),
                         ctag,
                         b'c',
                         inner.len() as u32,
-                        inner.as_ptr() as *mut ::libc::c_void,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
                     ),
                 },
                 Aux::ArrayU8(aux_array) => match aux_array {
-                    AuxArray::TargetType(inner) | AuxArray::RawLeBytes(inner) => {
-                        htslib::bam_aux_update_array(
-                            self.inner_ptr_mut(),
-                            ctag,
-                            b'C',
-                            inner.len() as u32,
-                            inner.as_ptr() as *mut ::libc::c_void,
-                        )
-                    }
+                    AuxArray::TargetType(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'C',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                    AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'C',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
                 },
                 Aux::ArrayI16(aux_array) => match aux_array {
                     AuxArray::TargetType(inner) => htslib::bam_aux_update_array(
@@ -898,14 +904,14 @@ impl Record {
                         ctag,
                         b's',
                         inner.len() as u32,
-                        inner.as_ptr() as *mut ::libc::c_void,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
                     ),
                     AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
                         self.inner_ptr_mut(),
                         ctag,
                         b's',
-                        (inner.len() / std::mem::size_of::<i16>()) as u32,
-                        inner.as_ptr() as *mut ::libc::c_void,
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
                     ),
                 },
                 Aux::ArrayU16(aux_array) => match aux_array {
@@ -914,14 +920,14 @@ impl Record {
                         ctag,
                         b'S',
                         inner.len() as u32,
-                        inner.as_ptr() as *mut ::libc::c_void,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
                     ),
                     AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
                         self.inner_ptr_mut(),
                         ctag,
                         b'S',
-                        (inner.len() / std::mem::size_of::<u16>()) as u32,
-                        inner.as_ptr() as *mut ::libc::c_void,
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
                     ),
                 },
                 Aux::ArrayI32(aux_array) => match aux_array {
@@ -930,14 +936,14 @@ impl Record {
                         ctag,
                         b'i',
                         inner.len() as u32,
-                        inner.as_ptr() as *mut ::libc::c_void,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
                     ),
                     AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
                         self.inner_ptr_mut(),
                         ctag,
                         b'i',
-                        (inner.len() / std::mem::size_of::<i32>()) as u32,
-                        inner.as_ptr() as *mut ::libc::c_void,
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
                     ),
                 },
                 Aux::ArrayU32(aux_array) => match aux_array {
@@ -946,14 +952,14 @@ impl Record {
                         ctag,
                         b'I',
                         inner.len() as u32,
-                        inner.as_ptr() as *mut ::libc::c_void,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
                     ),
                     AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
                         self.inner_ptr_mut(),
                         ctag,
                         b'I',
-                        (inner.len() / std::mem::size_of::<u32>()) as u32,
-                        inner.as_ptr() as *mut ::libc::c_void,
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
                     ),
                 },
                 Aux::ArrayFloat(aux_array) => match aux_array {
@@ -962,14 +968,14 @@ impl Record {
                         ctag,
                         b'f',
                         inner.len() as u32,
-                        inner.as_ptr() as *mut ::libc::c_void,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
                     ),
                     AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
                         self.inner_ptr_mut(),
                         ctag,
                         b'f',
-                        (inner.len() / std::mem::size_of::<f32>()) as u32,
-                        inner.as_ptr() as *mut ::libc::c_void,
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
                     ),
                 },
             }
@@ -1301,8 +1307,51 @@ impl AuxArrayElement for f32 {
 /// ```
 #[derive(Debug, PartialEq)]
 pub enum AuxArray<'a, T> {
-    TargetType(&'a [T]),
-    RawLeBytes(&'a [u8]),
+    TargetType(AuxArrayTargetType<'a, T>),
+    RawLeBytes(AuxArrayRawLeBytes<'a, T>),
+}
+
+/// Encapsulates slice of target type
+#[derive(Debug, PartialEq)]
+pub struct AuxArrayTargetType<'a, T> {
+    slice: &'a [T],
+}
+
+impl<'a, T> AuxArrayTargetType<'a, T>
+where
+    T: AuxArrayElement,
+{
+    fn get(&self, index: usize) -> Option<T> {
+        self.slice.get(index).copied()
+    }
+
+    fn len(&self) -> usize {
+        self.slice.len()
+    }
+}
+
+/// Encapsulates slice of raw bytes to prevent it from being accidentally accessed
+#[derive(Debug, PartialEq)]
+pub struct AuxArrayRawLeBytes<'a, T> {
+    slice: &'a [u8],
+    phantom_data: PhantomData<T>,
+}
+
+impl<'a, T> AuxArrayRawLeBytes<'a, T>
+where
+    T: AuxArrayElement,
+{
+    fn get(&self, index: usize) -> Option<T> {
+        let type_size = std::mem::size_of::<T>();
+        if index * type_size + type_size > self.slice.len() {
+            return None;
+        }
+        T::from_le_bytes(&self.slice[index * type_size..][..type_size])
+    }
+
+    fn len(&self) -> usize {
+        self.slice.len() / std::mem::size_of::<T>()
+    }
 }
 
 /// Create AuxArrays from slices of allowed target types.
@@ -1312,7 +1361,9 @@ where
     T: AsRef<[I]> + ?Sized,
 {
     fn from(src: &'a T) -> Self {
-        AuxArray::TargetType(src.as_ref())
+        AuxArray::TargetType(AuxArrayTargetType {
+            slice: src.as_ref(),
+        })
     }
 }
 
@@ -1323,14 +1374,8 @@ where
     /// Returns the element at a position or None if out of bounds.
     pub fn get(&self, index: usize) -> Option<T> {
         match self {
-            AuxArray::TargetType(v) => v.get(index).copied(),
-            AuxArray::RawLeBytes(v) => {
-                let type_size = std::mem::size_of::<T>();
-                if index * type_size + type_size > v.len() {
-                    return None;
-                }
-                T::from_le_bytes(&v[index * type_size..][..type_size])
-            }
+            AuxArray::TargetType(v) => v.get(index),
+            AuxArray::RawLeBytes(v) => v.get(index),
         }
     }
 
@@ -1338,7 +1383,7 @@ where
     pub fn len(&self) -> usize {
         match self {
             AuxArray::TargetType(a) => a.len(),
-            AuxArray::RawLeBytes(a) => a.len() / std::mem::size_of::<T>(),
+            AuxArray::RawLeBytes(a) => a.len(),
         }
     }
 
@@ -1357,7 +1402,10 @@ where
 
     /// Create AuxArrays from raw byte slices borrowed from `bam::Record`
     fn from_bytes(bytes: &'a [u8]) -> Self {
-        Self::RawLeBytes(bytes)
+        Self::RawLeBytes(AuxArrayRawLeBytes {
+            slice: bytes,
+            phantom_data: PhantomData,
+        })
     }
 }
 
