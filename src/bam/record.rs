@@ -754,8 +754,8 @@ impl Record {
     ///
     /// When an error occurs, the `Err` variant will be returned
     /// and the iterator will not be able to advance anymore.
-    pub fn aux_iter(&self) -> AuxIterator {
-        AuxIterator {
+    pub fn aux_iter(&self) -> AuxIter {
+        AuxIter {
             // In order to get to the aux data section of a `bam::Record`
             // we need to skip fields in front of it
             aux: &self.data()[
@@ -1394,8 +1394,8 @@ where
     }
 
     /// Returns an iterator over the array.
-    pub fn iter(&self) -> AuxArrayIterator<T> {
-        AuxArrayIterator {
+    pub fn iter(&self) -> AuxArrayIter<T> {
+        AuxArrayIter {
             index: 0,
             array: self,
         }
@@ -1413,12 +1413,12 @@ where
 /// Aux array iterator
 ///
 /// This struct is created by the [`AuxArray::iter`] method.
-pub struct AuxArrayIterator<'a, T> {
+pub struct AuxArrayIter<'a, T> {
     index: usize,
     array: &'a AuxArray<'a, T>,
 }
 
-impl<T> Iterator for AuxArrayIterator<'_, T>
+impl<T> Iterator for AuxArrayIter<'_, T>
 where
     T: AuxArrayElement,
 {
@@ -1441,11 +1441,11 @@ where
 ///
 /// When an error occurs, the `Err` variant will be returned
 /// and the iterator will not be able to advance anymore.
-pub struct AuxIterator<'a> {
+pub struct AuxIter<'a> {
     aux: &'a [u8],
 }
 
-impl<'a> Iterator for AuxIterator<'a> {
+impl<'a> Iterator for AuxIter<'a> {
     type Item = Result<(&'a [u8], Aux<'a>)>;
 
     fn next(&mut self) -> Option<Self::Item> {
