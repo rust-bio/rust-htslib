@@ -696,6 +696,7 @@ impl Record {
             .read_u32::<LittleEndian>()
             .map_err(|_| Error::BamAuxParsingError)? as usize;
 
+        // Return tuples of an `Aux` enum and the length of data + metadata in bytes
         match tag_type {
             b'c' => Ok((
                 Aux::ArrayI8(AuxArray::<'a, i8>::from_bytes(slice::from_raw_parts(
@@ -1156,6 +1157,10 @@ impl genome::AbstractInterval for Record {
 
 /// Auxiliary record data
 ///
+/// The specification allows a wide range of types to be stored as an auxiliary data field of a BAM record.
+///
+/// Please note that the [`Aux::Double`] variant is _not_ part of the specification, but it is supported by `htslib`.
+///
 /// # Examples
 ///
 /// ```
@@ -1272,23 +1277,30 @@ impl AuxArrayElement for f32 {
 
 /// Provides access to aux arrays.
 ///
-/// Holds either a slice of a supported target type to be stored in an aux field
-/// or a raw byte slice pointing to record data.
+/// Provides methods to either retrieve single elements or an iterator over the
+/// array.
 ///
-/// Provides methods to either retrieve single elements or an iterator over all
-/// values in the array.
+/// This type is used for wrapping both, array data that was read from a
+/// BAM record and slices of data that are going to be stored in one.
+///
+/// In order to be able to add an `AuxArray` field to a BAM record, `AuxArray`s
+/// can be constructed via the `From` trait which is implemented for all
+/// supported types (see [`AuxArrayElement`] for a list).
 ///
 /// # Examples
 ///
 /// ```
-/// use rust_htslib::{bam, bam::record::{Aux, AuxArray}};
+/// use rust_htslib::{
+///     bam,
+///     bam::record::{Aux, AuxArray},
+/// };
 ///
 /// //Set up BAM record
 /// let bam_header = bam::Header::new();
 /// let mut record = bam::Record::from_sam(
-///         &mut bam::HeaderView::from_header(&bam_header),
-///         "ali1\t4\t*\t0\t0\t*\t*\t0\t0\tACGT\tFFFF".as_bytes(),
-///     ).unwrap();
+///     &mut bam::HeaderView::from_header(&bam_header),
+///     "ali1\t4\t*\t0\t0\t*\t*\t0\t0\tACGT\tFFFF".as_bytes(),
+/// ).unwrap();
 ///
 /// let data = vec![0.4, 0.3, 0.2, 0.1];
 /// let slice_of_data = &data;
