@@ -2363,27 +2363,27 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let array_u32: Vec<u32> = vec![std::u32::MIN, 0, 1, std::u32::MAX];
         let array_f32: Vec<f32> = vec![std::f32::MIN, 0.0, -0.0, 0.1, 0.99, std::f32::MAX];
 
-        assert!(test_record
+        test_record
             .push_aux(b"XA", Aux::ArrayI8((&array_i8).into()))
-            .is_ok());
-        assert!(test_record
+            .unwrap();
+        test_record
             .push_aux(b"XB", Aux::ArrayU8((&array_u8).into()))
-            .is_ok());
-        assert!(test_record
+            .unwrap();
+        test_record
             .push_aux(b"XC", Aux::ArrayI16((&array_i16).into()))
-            .is_ok());
-        assert!(test_record
+            .unwrap();
+        test_record
             .push_aux(b"XD", Aux::ArrayU16((&array_u16).into()))
-            .is_ok());
-        assert!(test_record
+            .unwrap();
+        test_record
             .push_aux(b"XE", Aux::ArrayI32((&array_i32).into()))
-            .is_ok());
-        assert!(test_record
+            .unwrap();
+        test_record
             .push_aux(b"XF", Aux::ArrayU32((&array_u32).into()))
-            .is_ok());
-        assert!(test_record
+            .unwrap();
+        test_record
             .push_aux(b"XG", Aux::ArrayFloat((&array_f32).into()))
-            .is_ok());
+            .unwrap();
 
         {
             let tag = b"XA";
