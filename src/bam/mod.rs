@@ -1747,14 +1747,14 @@ CCCCCCCCCCCCCCCCCCC"[..],
             let mut rec = record.expect("Expected valid record");
 
             if rec.aux(b"XS").is_ok() {
-                rec.remove_aux(b"XS");
+                rec.remove_aux(b"XS").unwrap();
             }
 
             if rec.aux(b"YT").is_ok() {
-                rec.remove_aux(b"YT");
+                rec.remove_aux(b"YT").unwrap();
             }
 
-            rec.remove_aux(b"ab");
+            assert!(rec.remove_aux(b"ab").is_err());
 
             assert_eq!(rec.aux(b"XS"), Err(Error::BamAuxTagNotFound));
             assert_eq!(rec.aux(b"YT"), Err(Error::BamAuxTagNotFound));
@@ -2400,7 +2400,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                     assert!(copy_test_record.push_aux(tag, Aux::I8(3)).is_err());
 
                     // Remove aux array from target record
-                    copy_test_record.remove_aux(tag);
+                    copy_test_record.remove_aux(tag).unwrap();
                     assert!(copy_test_record.aux(tag).is_err());
 
                     // Copy array to target record
@@ -2433,7 +2433,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                     assert!(copy_test_record.push_aux(tag, Aux::U8(3)).is_err());
 
                     // Remove aux array from target record
-                    copy_test_record.remove_aux(tag);
+                    copy_test_record.remove_aux(tag).unwrap();
                     assert!(copy_test_record.aux(tag).is_err());
 
                     // Copy array to target record
@@ -2466,7 +2466,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                     assert!(copy_test_record.push_aux(tag, Aux::I16(3)).is_err());
 
                     // Remove aux array from target record
-                    copy_test_record.remove_aux(tag);
+                    copy_test_record.remove_aux(tag).unwrap();
                     assert!(copy_test_record.aux(tag).is_err());
 
                     // Copy array to target record
@@ -2499,7 +2499,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                     assert!(copy_test_record.push_aux(tag, Aux::U16(3)).is_err());
 
                     // Remove aux array from target record
-                    copy_test_record.remove_aux(tag);
+                    copy_test_record.remove_aux(tag).unwrap();
                     assert!(copy_test_record.aux(tag).is_err());
 
                     // Copy array to target record
@@ -2532,7 +2532,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                     assert!(copy_test_record.push_aux(tag, Aux::I32(3)).is_err());
 
                     // Remove aux array from target record
-                    copy_test_record.remove_aux(tag);
+                    copy_test_record.remove_aux(tag).unwrap();
                     assert!(copy_test_record.aux(tag).is_err());
 
                     // Copy array to target record
@@ -2565,7 +2565,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                     assert!(copy_test_record.push_aux(tag, Aux::U32(3)).is_err());
 
                     // Remove aux array from target record
-                    copy_test_record.remove_aux(tag);
+                    copy_test_record.remove_aux(tag).unwrap();
                     assert!(copy_test_record.aux(tag).is_err());
 
                     // Copy array to target record
@@ -2598,7 +2598,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                     assert!(copy_test_record.push_aux(tag, Aux::Float(3.0)).is_err());
 
                     // Remove aux array from target record
-                    copy_test_record.remove_aux(tag);
+                    copy_test_record.remove_aux(tag).unwrap();
                     assert!(copy_test_record.aux(tag).is_err());
 
                     // Copy array to target record
