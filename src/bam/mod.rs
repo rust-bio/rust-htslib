@@ -2645,4 +2645,61 @@ CCCCCCCCCCCCCCCCCCC"[..],
             }
         }
     }
+
+    #[test]
+    fn test_aux_scalars() {
+        use crate::bam;
+
+        let bam_header = bam::Header::new();
+        let mut test_record = bam::Record::from_sam(
+            &mut bam::HeaderView::from_header(&bam_header),
+            "ali1\t4\t*\t0\t0\t*\t*\t0\t0\tAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTT\tFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF".as_bytes(),
+        ).unwrap();
+
+        test_record.push_aux(b"XA", Aux::I8(i8::MIN)).unwrap();
+        test_record.push_aux(b"XB", Aux::I8(i8::MAX)).unwrap();
+        test_record.push_aux(b"XC", Aux::U8(u8::MIN)).unwrap();
+        test_record.push_aux(b"XD", Aux::U8(u8::MAX)).unwrap();
+        test_record.push_aux(b"XE", Aux::I16(i16::MIN)).unwrap();
+        test_record.push_aux(b"XF", Aux::I16(i16::MAX)).unwrap();
+        test_record.push_aux(b"XG", Aux::U16(u16::MIN)).unwrap();
+        test_record.push_aux(b"XH", Aux::U16(u16::MAX)).unwrap();
+        test_record.push_aux(b"XI", Aux::I32(i32::MIN)).unwrap();
+        test_record.push_aux(b"XJ", Aux::I32(i32::MAX)).unwrap();
+        test_record.push_aux(b"XK", Aux::U32(u32::MIN)).unwrap();
+        test_record.push_aux(b"XL", Aux::U32(u32::MAX)).unwrap();
+        test_record
+            .push_aux(b"XM", Aux::Float(std::f32::consts::PI))
+            .unwrap();
+        test_record
+            .push_aux(b"XN", Aux::Double(std::f64::consts::PI))
+            .unwrap();
+        test_record
+            .push_aux(b"XO", Aux::String("Test str"))
+            .unwrap();
+        test_record.push_aux(b"XP", Aux::I8(0)).unwrap();
+
+        let collected_aux_fields = test_record.aux_iter().collect::<Result<Vec<_>>>().unwrap();
+        assert_eq!(
+            collected_aux_fields,
+            vec![
+                (&b"XA"[..], Aux::I8(i8::MIN)),
+                (&b"XB"[..], Aux::I8(i8::MAX)),
+                (&b"XC"[..], Aux::U8(u8::MIN)),
+                (&b"XD"[..], Aux::U8(u8::MAX)),
+                (&b"XE"[..], Aux::I16(i16::MIN)),
+                (&b"XF"[..], Aux::I16(i16::MAX)),
+                (&b"XG"[..], Aux::U16(u16::MIN)),
+                (&b"XH"[..], Aux::U16(u16::MAX)),
+                (&b"XI"[..], Aux::I32(i32::MIN)),
+                (&b"XJ"[..], Aux::I32(i32::MAX)),
+                (&b"XK"[..], Aux::U32(u32::MIN)),
+                (&b"XL"[..], Aux::U32(u32::MAX)),
+                (&b"XM"[..], Aux::Float(std::f32::consts::PI)),
+                (&b"XN"[..], Aux::Double(std::f64::consts::PI)),
+                (&b"XO"[..], Aux::String("Test str")),
+                (&b"XP"[..], Aux::I8(0)),
+            ]
+        );
+    }
 }
