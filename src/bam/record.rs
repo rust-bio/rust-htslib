@@ -990,8 +990,8 @@ impl Record {
     }
 
     // Delete auxiliary tag.
-    pub fn remove_aux(&mut self, tag: &[u8]) -> bool {
-        let c_str = ffi::CString::new(tag).unwrap();
+    pub fn remove_aux(&mut self, tag: &[u8]) -> Result<()> {
+        let c_str = ffi::CString::new(tag).map_err(|_| Error::BamAuxStringError)?;
         let aux = unsafe {
             htslib::bam_aux_get(
                 &self.inner as *const htslib::bam1_t,
@@ -1000,10 +1000,10 @@ impl Record {
         };
         unsafe {
             if aux.is_null() {
-                false
+                Err(Error::BamAuxTagNotFound)
             } else {
                 htslib::bam_aux_del(self.inner_ptr_mut(), aux);
-                true
+                Ok(())
             }
         }
     }
