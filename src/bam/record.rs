@@ -612,73 +612,72 @@ impl Record {
                     let type_size = size_of::<i16>();
                     Ok((
                         Aux::I16(
-                            slice::from_raw_parts(aux.offset(OFFSET), type_size + 3)
+                            slice::from_raw_parts(aux.offset(OFFSET), type_size)
                                 .read_i16::<LittleEndian>()
                                 .map_err(|_| Error::BamAuxParsingError)?,
                         ),
-                        type_size,
+                        type_size + 3,
                     ))
                 }
                 b'S' => {
                     let type_size = size_of::<u16>();
                     Ok((
                         Aux::U16(
-                            slice::from_raw_parts(aux.offset(OFFSET), type_size + 3)
+                            slice::from_raw_parts(aux.offset(OFFSET), type_size)
                                 .read_u16::<LittleEndian>()
                                 .map_err(|_| Error::BamAuxParsingError)?,
                         ),
-                        type_size,
+                        type_size + 3,
                     ))
                 }
                 b'i' => {
                     let type_size = size_of::<i32>();
                     Ok((
                         Aux::I32(
-                            slice::from_raw_parts(aux.offset(OFFSET), type_size + 3)
+                            slice::from_raw_parts(aux.offset(OFFSET), type_size)
                                 .read_i32::<LittleEndian>()
                                 .map_err(|_| Error::BamAuxParsingError)?,
                         ),
-                        type_size,
+                        type_size + 3,
                     ))
                 }
                 b'I' => {
                     let type_size = size_of::<u32>();
                     Ok((
                         Aux::U32(
-                            slice::from_raw_parts(aux.offset(OFFSET), type_size + 3)
+                            slice::from_raw_parts(aux.offset(OFFSET), type_size)
                                 .read_u32::<LittleEndian>()
                                 .map_err(|_| Error::BamAuxParsingError)?,
                         ),
-                        type_size,
+                        type_size + 3,
                     ))
                 }
                 b'f' => {
                     let type_size = size_of::<f32>();
                     Ok((
                         Aux::Float(
-                            slice::from_raw_parts(aux.offset(OFFSET), type_size + 3)
+                            slice::from_raw_parts(aux.offset(OFFSET), type_size)
                                 .read_f32::<LittleEndian>()
                                 .map_err(|_| Error::BamAuxParsingError)?,
                         ),
-                        type_size,
+                        type_size + 3,
                     ))
                 }
                 b'd' => {
                     let type_size = size_of::<f64>();
                     Ok((
                         Aux::Double(
-                            slice::from_raw_parts(aux.offset(OFFSET), type_size + 3)
+                            slice::from_raw_parts(aux.offset(OFFSET), type_size)
                                 .read_f64::<LittleEndian>()
                                 .map_err(|_| Error::BamAuxParsingError)?,
                         ),
-                        type_size,
+                        type_size + 3,
                     ))
                 }
                 b'Z' | b'H' => {
-                    let x = ffi::CStr::from_ptr(aux.offset(OFFSET).cast::<i8>())
-                        .to_str()
-                        .map_err(|_| Error::BamAuxParsingError)?;
-                    Ok((Aux::String(x), x.len() + 3))
+                    let c_str = ffi::CStr::from_ptr(aux.offset(OFFSET).cast::<i8>());
+                    let rust_str = c_str.to_str().map_err(|_| Error::BamAuxParsingError)?;
+                    Ok((Aux::String(rust_str), c_str.to_bytes_with_nul().len() + 3))
                 }
                 b'B' => Self::read_aux_array_types(aux),
                 _ => Err(Error::BamAuxUnknownType),
