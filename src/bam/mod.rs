@@ -2346,7 +2346,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
     }
 
     #[test]
-    fn test_aux() {
+    fn test_aux_arrays() {
         use crate::bam;
 
         let bam_header = bam::Header::new();
@@ -2616,8 +2616,33 @@ CCCCCCCCCCCCCCCCCCC"[..],
             }
         }
 
-        // let all_aux_data = test_record.aux_iter().collect::<Vec<_>>();
-        // dbg!(&all_aux_data);
-        // panic!();
+        for item in test_record.aux_iter() {
+            match item.unwrap() {
+                (b"XA", Aux::ArrayI8(array)) => {
+                    assert_eq!(&array.iter().collect::<Vec<_>>(), &array_i8);
+                }
+                (b"XB", Aux::ArrayU8(array)) => {
+                    assert_eq!(&array.iter().collect::<Vec<_>>(), &array_u8);
+                }
+                (b"XC", Aux::ArrayI16(array)) => {
+                    assert_eq!(&array.iter().collect::<Vec<_>>(), &array_i16);
+                }
+                (b"XD", Aux::ArrayU16(array)) => {
+                    assert_eq!(&array.iter().collect::<Vec<_>>(), &array_u16);
+                }
+                (b"XE", Aux::ArrayI32(array)) => {
+                    assert_eq!(&array.iter().collect::<Vec<_>>(), &array_i32);
+                }
+                (b"XF", Aux::ArrayU32(array)) => {
+                    assert_eq!(&array.iter().collect::<Vec<_>>(), &array_u32);
+                }
+                (b"XG", Aux::ArrayFloat(array)) => {
+                    assert_eq!(&array.iter().collect::<Vec<_>>(), &array_f32);
+                }
+                _ => {
+                    panic!();
+                }
+            }
+        }
     }
 }
