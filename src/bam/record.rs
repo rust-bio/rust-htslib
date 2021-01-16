@@ -579,7 +579,7 @@ impl Record {
     /// Only the first two bytes of a given tag are used for the look-up of a field.
     /// See [`Aux`] for more details.
     pub fn aux(&self, tag: &[u8]) -> Result<Aux<'_>> {
-        let c_str = ffi::CString::new(tag).unwrap();
+        let c_str = ffi::CString::new(tag).map_err(|_| Error::BamAuxStringError)?;
         let aux = unsafe {
             htslib::bam_aux_get(
                 &self.inner as *const htslib::bam1_t,
