@@ -2347,12 +2347,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     #[test]
     fn test_aux_arrays() {
-        use crate::bam;
-
-        let bam_header = bam::Header::new();
-        let mut test_record = bam::Record::from_sam(
-            &mut bam::HeaderView::from_header(&bam_header),
-            "ali1\t4\t*\t0\t0\t*\t*\t0\t0\tAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTT\tFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF".as_bytes(),
+        let bam_header = Header::new();
+        let mut test_record = Record::from_sam(
+            &mut HeaderView::from_header(&bam_header),
+            "ali1\t4\t*\t0\t0\t*\t*\t0\t0\tACGT\tFFFF".as_bytes(),
         ).unwrap();
 
         let array_i8: Vec<i8> = vec![std::i8::MIN, -1, 0, 1, std::i8::MAX];
@@ -2679,13 +2677,12 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     #[test]
     fn test_aux_scalars() {
-        use crate::bam;
-
-        let bam_header = bam::Header::new();
-        let mut test_record = bam::Record::from_sam(
-            &mut bam::HeaderView::from_header(&bam_header),
-            "ali1\t4\t*\t0\t0\t*\t*\t0\t0\tAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTT\tFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF".as_bytes(),
-        ).unwrap();
+        let bam_header = Header::new();
+        let mut test_record = Record::from_sam(
+            &mut HeaderView::from_header(&bam_header),
+            "ali1\t4\t*\t0\t0\t*\t*\t0\t0\tACGT\tFFFF".as_bytes(),
+        )
+        .unwrap();
 
         test_record.push_aux(b"XA", Aux::I8(i8::MIN)).unwrap();
         test_record.push_aux(b"XB", Aux::I8(i8::MAX)).unwrap();
