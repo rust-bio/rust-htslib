@@ -1317,10 +1317,25 @@ impl AuxArrayElement for f32 {
 ///     panic!("Could not read array data");
 /// }
 /// ```
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum AuxArray<'a, T> {
     TargetType(AuxArrayTargetType<'a, T>),
     RawLeBytes(AuxArrayRawLeBytes<'a, T>),
+}
+
+impl<T> PartialEq<AuxArray<'_, T>> for AuxArray<'_, T>
+where
+    T: AuxArrayElement + PartialEq,
+{
+    fn eq(&self, other: &AuxArray<'_, T>) -> bool {
+        use AuxArray::*;
+        match (self, other) {
+            (TargetType(v), TargetType(v_other)) => v == v_other,
+            (RawLeBytes(v), RawLeBytes(v_other)) => v == v_other,
+            (TargetType(_), RawLeBytes(_)) => self.iter().eq(other.iter()),
+            (RawLeBytes(_), TargetType(_)) => self.iter().eq(other.iter()),
+        }
+    }
 }
 
 /// Create AuxArrays from slices of allowed target types.

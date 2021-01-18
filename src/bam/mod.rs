@@ -2616,6 +2616,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             }
         }
 
+        // Test via `Iterator` impl
         for item in test_record.aux_iter() {
             match item.unwrap() {
                 (b"XA", Aux::ArrayI8(array)) => {
@@ -2644,6 +2645,36 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 }
             }
         }
+
+        // Test via `PartialEq` impl
+        assert_eq!(
+            test_record.aux(b"XA").unwrap(),
+            Aux::ArrayI8((&array_i8).into())
+        );
+        assert_eq!(
+            test_record.aux(b"XB").unwrap(),
+            Aux::ArrayU8((&array_u8).into())
+        );
+        assert_eq!(
+            test_record.aux(b"XC").unwrap(),
+            Aux::ArrayI16((&array_i16).into())
+        );
+        assert_eq!(
+            test_record.aux(b"XD").unwrap(),
+            Aux::ArrayU16((&array_u16).into())
+        );
+        assert_eq!(
+            test_record.aux(b"XE").unwrap(),
+            Aux::ArrayI32((&array_i32).into())
+        );
+        assert_eq!(
+            test_record.aux(b"XF").unwrap(),
+            Aux::ArrayU32((&array_u32).into())
+        );
+        assert_eq!(
+            test_record.aux(b"XG").unwrap(),
+            Aux::ArrayFloat((&array_f32).into())
+        );
     }
 
     #[test]
@@ -2700,6 +2731,66 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 (&b"XO"[..], Aux::String("Test str")),
                 (&b"XP"[..], Aux::I8(0)),
             ]
+        );
+    }
+
+    #[test]
+    fn test_aux_array_partial_eq() {
+        use record::AuxArray;
+
+        // Target types
+        let one_data: Vec<i8> = vec![0, 1, 2, 3, 4, 5, 6];
+        let one_aux_array = AuxArray::from(&one_data);
+
+        let two_data: Vec<i8> = vec![0, 1, 2, 3, 4, 5];
+        let two_aux_array = AuxArray::from(&two_data);
+
+        assert_ne!(&one_data, &two_data);
+        assert_ne!(&one_aux_array, &two_aux_array);
+
+        let one_aux = Aux::ArrayI8(one_aux_array);
+        let two_aux = Aux::ArrayI8(two_aux_array);
+        assert_ne!(&one_aux, &two_aux);
+
+        // Raw bytes
+        let bam_header = Header::new();
+        let mut test_record = Record::from_sam(
+            &mut HeaderView::from_header(&bam_header),
+            "ali1\t4\t*\t0\t0\t*\t*\t0\t0\tACGT\tFFFF".as_bytes(),
+        )
+        .unwrap();
+
+        test_record.push_aux(b"XA", one_aux).unwrap();
+        test_record.push_aux(b"XB", two_aux).unwrap();
+
+        // RawLeBytes == RawLeBytes
+        assert_eq!(
+            test_record.aux(b"XA").unwrap(),
+            test_record.aux(b"XA").unwrap()
+        );
+        // RawLeBytes != RawLeBytes
+        assert_ne!(
+            test_record.aux(b"XA").unwrap(),
+            test_record.aux(b"XB").unwrap()
+        );
+
+        // RawLeBytes == TargetType
+        assert_eq!(
+            test_record.aux(b"XA").unwrap(),
+            Aux::ArrayI8((&one_data).into())
+        );
+        assert_eq!(
+            test_record.aux(b"XB").unwrap(),
+            Aux::ArrayI8((&two_data).into())
+        );
+        // RawLeBytes != TargetType
+        assert_ne!(
+            test_record.aux(b"XA").unwrap(),
+            Aux::ArrayI8((&two_data).into())
+        );
+        assert_ne!(
+            test_record.aux(b"XB").unwrap(),
+            Aux::ArrayI8((&one_data).into())
         );
     }
 }
