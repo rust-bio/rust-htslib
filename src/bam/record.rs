@@ -1323,49 +1323,6 @@ pub enum AuxArray<'a, T> {
     RawLeBytes(AuxArrayRawLeBytes<'a, T>),
 }
 
-/// Encapsulates slice of target type.
-#[derive(Debug, PartialEq)]
-pub struct AuxArrayTargetType<'a, T> {
-    slice: &'a [T],
-}
-
-impl<'a, T> AuxArrayTargetType<'a, T>
-where
-    T: AuxArrayElement,
-{
-    fn get(&self, index: usize) -> Option<T> {
-        self.slice.get(index).copied()
-    }
-
-    fn len(&self) -> usize {
-        self.slice.len()
-    }
-}
-
-/// Encapsulates slice of raw bytes to prevent it from being accidentally accessed.
-#[derive(Debug, PartialEq)]
-pub struct AuxArrayRawLeBytes<'a, T> {
-    slice: &'a [u8],
-    phantom_data: PhantomData<T>,
-}
-
-impl<'a, T> AuxArrayRawLeBytes<'a, T>
-where
-    T: AuxArrayElement,
-{
-    fn get(&self, index: usize) -> Option<T> {
-        let type_size = std::mem::size_of::<T>();
-        if index * type_size + type_size > self.slice.len() {
-            return None;
-        }
-        T::from_le_bytes(&self.slice[index * type_size..][..type_size])
-    }
-
-    fn len(&self) -> usize {
-        self.slice.len() / std::mem::size_of::<T>()
-    }
-}
-
 /// Create AuxArrays from slices of allowed target types.
 impl<'a, I, T> From<&'a T> for AuxArray<'a, I>
 where
@@ -1418,6 +1375,49 @@ where
             slice: bytes,
             phantom_data: PhantomData,
         })
+    }
+}
+
+/// Encapsulates slice of target type.
+#[derive(Debug, PartialEq)]
+pub struct AuxArrayTargetType<'a, T> {
+    slice: &'a [T],
+}
+
+impl<'a, T> AuxArrayTargetType<'a, T>
+where
+    T: AuxArrayElement,
+{
+    fn get(&self, index: usize) -> Option<T> {
+        self.slice.get(index).copied()
+    }
+
+    fn len(&self) -> usize {
+        self.slice.len()
+    }
+}
+
+/// Encapsulates slice of raw bytes to prevent it from being accidentally accessed.
+#[derive(Debug, PartialEq)]
+pub struct AuxArrayRawLeBytes<'a, T> {
+    slice: &'a [u8],
+    phantom_data: PhantomData<T>,
+}
+
+impl<'a, T> AuxArrayRawLeBytes<'a, T>
+where
+    T: AuxArrayElement,
+{
+    fn get(&self, index: usize) -> Option<T> {
+        let type_size = std::mem::size_of::<T>();
+        if index * type_size + type_size > self.slice.len() {
+            return None;
+        }
+        T::from_le_bytes(&self.slice[index * type_size..][..type_size])
+    }
+
+    fn len(&self) -> usize {
+        self.slice.len() / std::mem::size_of::<T>()
     }
 }
 
