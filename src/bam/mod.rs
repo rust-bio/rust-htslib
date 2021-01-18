@@ -1303,7 +1303,6 @@ mod tests {
     use super::header::HeaderRecord;
     use super::record::{Aux, Cigar, CigarString};
     use super::*;
-    use crate::errors::Error::BamAuxTagNotFound;
     use std::collections::HashMap;
     use std::fs;
     use std::path::Path;
@@ -1502,7 +1501,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             // fix qual offset
             let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
             assert_eq!(rec.qual(), &qual[..]);
-            assert_eq!(rec.aux(b"NotAvailableAux"), Err(BamAuxTagNotFound));
+            assert_eq!(rec.aux(b"NotAvailableAux"), Err(Error::BamAuxTagNotFound));
         }
 
         // fetch to empty position
@@ -2351,7 +2350,8 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let mut test_record = Record::from_sam(
             &mut HeaderView::from_header(&bam_header),
             "ali1\t4\t*\t0\t0\t*\t*\t0\t0\tACGT\tFFFF".as_bytes(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let array_i8: Vec<i8> = vec![std::i8::MIN, -1, 0, 1, std::i8::MAX];
         let array_u8: Vec<u8> = vec![std::u8::MIN, 0, 1, std::u8::MAX];
