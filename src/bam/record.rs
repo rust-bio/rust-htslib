@@ -1408,6 +1408,7 @@ where
 }
 
 /// Encapsulates slice of target type.
+#[doc(hidden)]
 #[derive(Debug, PartialEq)]
 pub struct AuxArrayTargetType<'a, T> {
     slice: &'a [T],
@@ -1427,6 +1428,7 @@ where
 }
 
 /// Encapsulates slice of raw bytes to prevent it from being accidentally accessed.
+#[doc(hidden)]
 #[derive(Debug, PartialEq)]
 pub struct AuxArrayRawLeBytes<'a, T> {
     slice: &'a [u8],
