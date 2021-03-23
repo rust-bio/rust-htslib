@@ -28,10 +28,8 @@ serde_bytes = { version = "0.11", optional = true }
 bio-types = ">=0.9"
 thiserror = "1"
 hts-sys = { version = "1.11.1-fix1", path = "hts-sys", default-features = false }
-derefable = "0.1"
 derive-new = "0.5"
 ieee754 = "0.2"
-strum_macros = "0.20"
 
 [features]
 default = ["bzip2", "lzma", "curl"]
