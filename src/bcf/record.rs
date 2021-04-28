@@ -127,8 +127,22 @@ impl<'a, T: 'a + fmt::Debug + fmt::Display, B: Borrow<Buffer> + 'a> fmt::Display
     }
 }
 
-/// A BCF record.
-/// New records can be created by the `empty_record` methods of `bcf::Reader` and `bcf::Writer`.
+/// A VCF/BCF record.
+/// New records can be created by the `empty_record` methods of [`bcf::Reader`](crate::bcf::Reader)
+/// and [`bcf::Writer`](crate::bcf::Writer).
+/// # Example
+/// ```rust
+/// use rust_htslib::bcf::{Format, Writer};
+/// use rust_htslib::bcf::header::Header;
+///
+/// // Create minimal VCF header with a single sample
+/// let mut header = Header::new();
+/// header.push_sample("sample".as_bytes());
+///
+/// // Write uncompressed VCF to stdout with above header and get an empty record
+/// let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+/// let mut record = vcf.empty_record();
+/// ```
 #[derive(Debug)]
 pub struct Record {
     pub inner: *mut htslib::bcf1_t,
@@ -378,7 +392,26 @@ impl Record {
             .collect()
     }
 
-    /// Set alleles.
+    /// Set alleles. The first allele is the reference allele.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use rust_htslib::bcf::{Format, Writer};
+    /// # use rust_htslib::bcf::header::Header;
+    /// #
+    /// # // Create minimal VCF header with a single sample
+    /// # let mut header = Header::new();
+    /// # header.push_sample("sample".as_bytes());
+    /// #
+    /// # // Write uncompressed VCF to stdout with above header and get an empty record
+    /// # let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+    /// # let mut record = vcf.empty_record();
+    /// assert_eq!(record.allele_count(), 0);
+    ///
+    /// let alleles: &[&[u8]] = &[b"A", b"TG"];
+    /// record.set_alleles(alleles).unwrap();
+    /// assert_eq!(record.allele_count(), 2)
+    /// ```
     pub fn set_alleles(&mut self, alleles: &[&[u8]]) -> Result<()> {
         let cstrings: Vec<ffi::CString> = alleles
             .iter()
