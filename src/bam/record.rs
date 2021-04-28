@@ -1121,7 +1121,26 @@ impl TryFrom<&[u8]> for CigarString {
 impl TryFrom<&str> for CigarString {
     type Error = Error;
 
-    /// Create a CigarString from given str.
+    /// Create a CigarString from given &str.
+    /// # Example
+    /// ```
+    /// use rust_htslib::bam::record::*;
+    /// use rust_htslib::bam::record::CigarString;
+    /// use rust_htslib::bam::record::Cigar::*;
+    /// use std::convert::TryFrom;
+    ///
+    /// let cigar_str = "2H10M5X3=2H";
+    /// let cigar = CigarString::try_from("2H10M5X3=2H")
+    ///     .expect("Unable to parse cigar string.");
+    /// let expected_cigar = CigarString(vec![
+    ///     HardClip(2),
+    ///     Match(10),
+    ///     Diff(5),
+    ///     Equal(3),
+    ///     HardClip(2),
+    /// ]);
+    /// assert_eq!(cigar, expected_cigar);
+    /// ```
     fn try_from(text: &str) -> Result<Self> {
         let bytes = text.as_bytes();
         let mut inner = Vec::new();
