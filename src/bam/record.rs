@@ -1140,7 +1140,7 @@ impl TryFrom<&str> for CigarString {
             }
             // get the length of the operation
             let n = u32::from_str(&text[i..j]).map_err(|_| Error::BamParseCigar {
-                msg: format!("Unable to parse &str '{}' to u32.", &test[i..j]).to_owned(),
+                msg: format!("Unable to parse &str '{}' to u32.", &text[i..j]).to_owned(),
             })?;
             // get the operation
             let op = &text[j..j + 1];
@@ -1154,7 +1154,7 @@ impl TryFrom<&str> for CigarString {
                         Cigar::HardClip(n)
                     } else {
                         return Err(Error::BamParseCigar {
-                            msg: "Hard clipping is only valid at the start or end of a cigar."
+                            msg: "Hard clipping ('H') is only valid at the start or end of a cigar."
                                 .to_owned(),
                         });
                     }
@@ -1163,7 +1163,7 @@ impl TryFrom<&str> for CigarString {
                     if i == 0
                         || j+1 == text_len
                         || &text[i-1..i] == "H"
-                        || &text[j+1..].chars().all(|c| c.is_ascii_digit() || c == "H") {
+                        || text[j+1..].chars().all(|c| c.is_ascii_digit() || c == 'H') {
                         Cigar::SoftClip(n)
                     } else {
                         return Err(Error::BamParseCigar {
@@ -1691,8 +1691,6 @@ mod alignment_cigar_tests {
     use crate::bam::{Read, Reader};
     use bio_types::alignment::AlignmentOperation::{Del, Ins, Match, Subst, Xclip, Yclip};
     use bio_types::alignment::{Alignment, AlignmentMode};
-    use lazy_static::lazy_static;
-    use regex::Regex;
 
     #[test]
     fn test_cigar() {
@@ -1802,64 +1800,59 @@ mod alignment_cigar_tests {
         }
     }
 
-    fn regex_cigar_from_str(text: &str) -> Result<CigarString> {
-        lazy_static! {
-            // regex for a cigar string operation
-            static ref OP_RE: Regex = Regex::new("^(?P<n>[0-9]+)(?P<op>[MIDNSHP=X])").unwrap();
-        }
-        let mut inner = Vec::new();
-        let mut i = 0;
-        while i < text.len() {
-            if let Some(caps) = OP_RE.captures(&text[i..]) {
-                let n = &caps["n"];
-                let op = &caps["op"];
-                i += n.len() + op.len();
-                let n = u32::from_str(n).map_err(|_| Error::BamParseCigar {
-                    msg: "expected integer".to_owned(),
-                })?;
-                inner.push(match op {
-                    "M" => Cigar::Match(n),
-                    "I" => Cigar::Ins(n),
-                    "D" => Cigar::Del(n),
-                    "N" => Cigar::RefSkip(n),
-                    "H" => Cigar::HardClip(n),
-                    "S" => Cigar::SoftClip(n),
-                    "P" => Cigar::Pad(n),
-                    "=" => Cigar::Equal(n),
-                    "X" => Cigar::Diff(n),
-                    op => {
-                        return Err(Error::BamParseCigar {
-                            msg: format!("operation {} not expected", op),
-                        });
-                    }
-                });
-            } else {
-                return Err(Error::BamParseCigar {
-                    msg: "expected cigar operation [0-9]+[MIDNSHP=X]".to_owned(),
-                });
-            }
-        }
-        Ok(CigarString(inner))
-    }
-
     #[test]
     pub fn test_cigar_parsing_vs_regex() {
-        let cigars = vec![
-            "10M4D100I1102=",
-            "100000M20=5P10X4M",
-            "10D5I7X100=",
-            "1000M",
-            "1H1=1H",
-            "1S1=1S",
-            "100000000S100000000=1000000000H",
-            "1000P",
+        // parsing test cases
+        let cigar_strs = vec![
+            "1H10M4D100I300N1102=10P25X11S", // test every cigar opt
+            "100M",                          // test a single op
+            "",                              // test empty input
+            "1H1=1H",                        // test simple hardclip
+            "1S1=1S",                        // test simple softclip
+            "11H11S11=11S11H",               // test complex softclip
+            "10H",
+            "10S",
         ];
-        for cigar_str in cigars {
-            let while_parse = CigarString::try_from(cigar_str)
+        // expected results
+        let cigars = vec![
+            CigarString(vec![
+                Cigar::HardClip(1),
+                Cigar::Match(10),
+                Cigar::Del(4),
+                Cigar::Ins(100),
+                Cigar::RefSkip(300),
+                Cigar::Equal(1102),
+                Cigar::Pad(10),
+                Cigar::Diff(25),
+                Cigar::SoftClip(11),
+            ]),
+            CigarString(vec![Cigar::Match(100)]),
+            CigarString(vec![]),
+            CigarString(vec![
+                Cigar::HardClip(1),
+                Cigar::Equal(1),
+                Cigar::HardClip(1),
+            ]),
+            CigarString(vec![
+                Cigar::SoftClip(1),
+                Cigar::Equal(1),
+                Cigar::SoftClip(1),
+            ]),
+            CigarString(vec![
+                Cigar::HardClip(11),
+                Cigar::SoftClip(11),
+                Cigar::Equal(11),
+                Cigar::SoftClip(11),
+                Cigar::HardClip(11),
+            ]),
+            CigarString(vec![Cigar::HardClip(10)]),
+            CigarString(vec![Cigar::SoftClip(10)]),
+        ];
+        // compare
+        for (&cigar_str, truth) in cigar_strs.iter().zip(cigars.iter()) {
+            let cigar_parse = CigarString::try_from(cigar_str)
                 .expect(&format!("Unable to parse cigar: {}", cigar_str));
-            let regex_parse = regex_cigar_from_str(cigar_str)
-                .expect(&format!("Unable to parse cigar: {}", cigar_str));
-            assert_eq!(regex_parse, while_parse);
+            assert_eq!(&cigar_parse, truth);
         }
     }
 }
