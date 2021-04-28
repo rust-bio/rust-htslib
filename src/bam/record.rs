@@ -1140,7 +1140,7 @@ impl TryFrom<&str> for CigarString {
             }
             // get the length of the operation
             let n = u32::from_str(&text[i..j]).map_err(|_| Error::BamParseCigar {
-                msg: format!("Unable to parse &str '{}' to u32.", &text[i..j]).to_owned(),
+                msg: format!("Unable to parse &str '{}' to u32.", &text[i..j]),
             })?;
             // get the operation
             let op = &text[j..j + 1];
