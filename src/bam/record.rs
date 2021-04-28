@@ -1159,7 +1159,19 @@ impl TryFrom<&str> for CigarString {
                         });
                     }
                 }
-                "S" => Cigar::SoftClip(n),
+                "S" => {
+                    if i == 0
+                        || j+1 == text_len
+                        || &text[i-1..i] == "H"
+                        || &text[j+1..].chars().all(|c| c.is_ascii_digit() || c == "H") {
+                        Cigar::SoftClip(n)
+                    } else {
+                        return Err(Error::BamParseCigar {
+                        msg: "Soft clips ('S') can only have hard clips ('H') between them and the end of the CIGAR string."
+                            .to_owned(),
+                        });
+                    }
+                },
                 "P" => Cigar::Pad(n),
                 "=" => Cigar::Equal(n),
                 "X" => Cigar::Diff(n),
