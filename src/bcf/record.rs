@@ -409,7 +409,7 @@ impl Record {
     /// assert_eq!(record.allele_count(), 0);
     ///
     /// let alleles: &[&[u8]] = &[b"A", b"TG"];
-    /// record.set_alleles(alleles).unwrap();
+    /// record.set_alleles(alleles).expect("Failed to set alleles");
     /// assert_eq!(record.allele_count(), 2)
     /// ```
     pub fn set_alleles(&mut self, alleles: &[&[u8]]) -> Result<()> {
@@ -812,6 +812,55 @@ impl Record {
             -1 => Err(Error::BcfRemoveAlleles),
             _ => Ok(()),
         }
+    }
+
+    /// Get the length of the reference allele. If the record has no reference allele, then the
+    /// result will be `0`.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use rust_htslib::bcf::{Format, Writer};
+    /// # use rust_htslib::bcf::header::Header;
+    /// #
+    /// # // Create minimal VCF header with a single sample
+    /// # let mut header = Header::new();
+    /// # header.push_sample("sample".as_bytes());
+    /// #
+    /// # // Write uncompressed VCF to stdout with above header and get an empty record
+    /// # let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+    /// # let mut record = vcf.empty_record();
+    /// # assert_eq!(record.rlen(), 0);
+    /// let alleles: &[&[u8]] = &[b"AGG", b"TG"];
+    /// record.set_alleles(alleles).expect("Failed to set alleles");
+    /// assert_eq!(record.rlen(), 3)
+    /// ```
+    pub fn rlen(&self) -> i64 {
+        self.inner().rlen
+    }
+
+    ///
+    ///
+    /// # Example
+    /// ```rust
+    /// # use rust_htslib::bcf::{Format, Writer};
+    /// # use rust_htslib::bcf::header::Header;
+    /// #
+    /// # // Create minimal VCF header with a single sample
+    /// # let mut header = Header::new();
+    /// # header.push_sample("sample".as_bytes());
+    /// #
+    /// # // Write uncompressed VCF to stdout with above header and get an empty record
+    /// # let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+    /// # let mut record = vcf.empty_record();
+    /// let alleles: &[&[u8]] = &[b"AGG", b"TG"];
+    /// record.set_alleles(alleles).expect("Failed to set alleles");
+    /// record.set_pos(6);
+    /// record.clear();
+    /// assert_eq!(record.rlen(), 0);
+    /// assert_eq!(record.pos(), 0)
+    /// ```
+    pub fn clear(&self) {
+        unsafe { htslib::bcf_clear(self.inner) }
     }
 
     /// Provide short description of record for locating it in the BCF/VCF file.
