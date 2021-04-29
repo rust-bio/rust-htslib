@@ -1859,7 +1859,8 @@ mod alignment_cigar_tests {
                 msg: "CIGAR string contained non-ASCII characters, which are not valid. Valid are [0-9MIDNSHP=X].".to_owned(),
             });
 
-        result = CigarString::try_from(cigar_str).expect_err("This should return a BamParseCigar error, but somehow didn't.");
+        result = CigarString::try_from(cigar_str)
+            .expect_err("This should return a BamParseCigar error, but somehow didn't.");
         assert_eq!(expected_error, result);
     }
 
