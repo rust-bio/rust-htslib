@@ -1230,7 +1230,7 @@ impl TryFrom<&str> for CigarString {
     /// ```
     fn try_from(text: &str) -> Result<Self> {
         let bytes = text.as_bytes();
-        if ( text.chars().count() == bytes.len() ) {
+        if text.chars().count() != bytes.len() {
             return Err(Error::BamParseCigar {
                 msg: "CIGAR string contained non-ASCII characters, which are not valid. Valid are [0-9MIDNSHP=X].".to_owned(),
             });
