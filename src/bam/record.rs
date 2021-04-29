@@ -11,7 +11,6 @@ use std::ops;
 use std::rc::Rc;
 use std::slice;
 use std::str;
-use std::str::FromStr;
 use std::u32;
 
 use crate::bam::Error;
@@ -1146,17 +1145,20 @@ impl TryFrom<&[u8]> for CigarString {
                 });
             }
             // get the length of the operation
-            let n = u32::from_str(&bytes[i..j]).map_err(|_| Error::BamParseCigar {
-                msg: format!("Unable to parse &str '{}' to u32.", &bytes[i..j]),
+            let s = str::from_utf8(&bytes[i..j]).map_err(|_| Error::BamParseCigar {
+                msg: format!("Invalid utf-8 bytes '{:?}'.", &bytes[i..j]),
+            })?;
+            let n = s.parse().map_err(|_| Error::BamParseCigar {
+                msg: format!("Unable to parse &str '{:?}' to u32.", s),
             })?;
             // get the operation
-            let op = &bytes[j..j + 1];
+            let op = &bytes[j];
             inner.push(match op {
-                "M" => Cigar::Match(n),
-                "I" => Cigar::Ins(n),
-                "D" => Cigar::Del(n),
-                "N" => Cigar::RefSkip(n),
-                "H" => {
+                b'M' => Cigar::Match(n),
+                b'I' => Cigar::Ins(n),
+                b'D' => Cigar::Del(n),
+                b'N' => Cigar::RefSkip(n),
+                b'H' => {
                     if i == 0 || j + 1 == text_len {
                         Cigar::HardClip(n)
                     } else {
@@ -1166,11 +1168,11 @@ impl TryFrom<&[u8]> for CigarString {
                         });
                     }
                 }
-                "S" => {
+                b'S' => {
                     if i == 0
                         || j+1 == text_len
-                        || &bytes[i-1..i] == "H"
-                        || bytes[j+1..].chars().all(|c| c.is_ascii_digit() || c == 'H') {
+                        || bytes[i-1] == b'H'
+                        || bytes[j+1..].iter().all(|c| c.is_ascii_digit() || *c == b'H') {
                         Cigar::SoftClip(n)
                     } else {
                         return Err(Error::BamParseCigar {
@@ -1179,9 +1181,9 @@ impl TryFrom<&[u8]> for CigarString {
                         });
                     }
                 },
-                "P" => Cigar::Pad(n),
-                "=" => Cigar::Equal(n),
-                "X" => Cigar::Diff(n),
+                b'P' => Cigar::Pad(n),
+                b'=' => Cigar::Equal(n),
+                b'X' => Cigar::Diff(n),
                 op => {
                     return Err(Error::BamParseCigar {
                         msg: format!("Expected cigar operation [MIDNSHP=X] but got [{}]", op),
@@ -1844,12 +1846,11 @@ mod alignment_cigar_tests {
     #[test]
     pub fn test_cigar_parsing_non_ascii_error() {
         let cigar_str = "43ጷ";
-        expected_error = Err(Error::BamParseCigar {
+        let expected_error = Err(Error::BamParseCigar {
                 msg: "CIGAR string contained non-ASCII characters, which are not valid. Valid are [0-9MIDNSHP=X].".to_owned(),
             });
 
-        result = CigarString::try_from(cigar_str)
-            .expect_err("This should return a BamParseCigar error, but somehow didn't.");
+        let result = CigarString::try_from(cigar_str);
         assert_eq!(expected_error, result);
     }
 
