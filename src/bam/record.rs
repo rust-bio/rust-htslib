@@ -1121,7 +1121,7 @@ impl TryFrom<&[u8]> for CigarString {
 impl TryFrom<&str> for CigarString {
     type Error = Error;
 
-    /// Create a CigarString from given &str.
+    /// Create a CigarString from given &[u8].
     /// # Example
     /// ```
     /// use rust_htslib::bam::record::*;
@@ -1129,8 +1129,8 @@ impl TryFrom<&str> for CigarString {
     /// use rust_htslib::bam::record::Cigar::*;
     /// use std::convert::TryFrom;
     ///
-    /// let cigar_str = "2H10M5X3=2H";
-    /// let cigar = CigarString::try_from("2H10M5X3=2H")
+    /// let cigar_str = "2H10M5X3=2H".as_bytes();
+    /// let cigar = CigarString::try_from(cigar_str)
     ///     .expect("Unable to parse cigar string.");
     /// let expected_cigar = CigarString(vec![
     ///     HardClip(2),
@@ -1141,7 +1141,7 @@ impl TryFrom<&str> for CigarString {
     /// ]);
     /// assert_eq!(cigar, expected_cigar);
     /// ```
-    fn try_from(text: &str) -> Result<Self> {
+    fn try_from(bytes: &[u8]) -> Result<Self> {
         let bytes = text.as_bytes();
         let mut inner = Vec::new();
         let mut i = 0;
@@ -1203,6 +1203,40 @@ impl TryFrom<&str> for CigarString {
             i = j + 1;
         }
         Ok(CigarString(inner))
+    }
+}
+
+impl TryFrom<&str> for CigarString {
+    type Error = Error;
+
+    /// Create a CigarString from given &str.
+    /// # Example
+    /// ```
+    /// use rust_htslib::bam::record::*;
+    /// use rust_htslib::bam::record::CigarString;
+    /// use rust_htslib::bam::record::Cigar::*;
+    /// use std::convert::TryFrom;
+    ///
+    /// let cigar_str = "2H10M5X3=2H";
+    /// let cigar = CigarString::try_from(cigar_str)
+    ///     .expect("Unable to parse cigar string.");
+    /// let expected_cigar = CigarString(vec![
+    ///     HardClip(2),
+    ///     Match(10),
+    ///     Diff(5),
+    ///     Equal(3),
+    ///     HardClip(2),
+    /// ]);
+    /// assert_eq!(cigar, expected_cigar);
+    /// ```
+    fn try_from(text: &str) -> Result<Self> {
+        let bytes = text.as_bytes();
+        if ( text.chars().count() == bytes.len() ) {
+            return Err(Error::BamParseCigar {
+                msg: "CIGAR string contained non-ASCII characters, which are not valid. Valid are [0-9MIDNSHP=X].".to_owned(),
+            });
+        }
+        CigarString::try_from(bytes)
     }
 }
 
@@ -1820,7 +1854,18 @@ mod alignment_cigar_tests {
     }
 
     #[test]
-    pub fn test_cigar_parsing_vs_regex() {
+    pub fn test_cigar_parsing_non_ascii_error() {
+        let cigar_str = "43ጷ";
+        expected_error = Err(Error::BamParseCigar {
+                msg: "CIGAR string contained non-ASCII characters, which are not valid. Valid are [0-9MIDNSHP=X].".to_owned(),
+            });
+
+        result = CigarString::try_from(cigar_str).expect_err("This should return a BamParseCigar error, but somehow didn't.";
+        assert_eq!(expected_error, result);
+    }
+
+    #[test]
+    pub fn test_cigar_parsing() {
         // parsing test cases
         let cigar_strs = vec![
             "1H10M4D100I300N1102=10P25X11S", // test every cigar opt
