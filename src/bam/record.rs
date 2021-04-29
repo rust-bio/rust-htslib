@@ -1110,17 +1110,6 @@ impl CigarString {
 impl TryFrom<&[u8]> for CigarString {
     type Error = Error;
 
-    /// Create a CigarString from given bytes.
-    fn try_from(text: &[u8]) -> Result<Self> {
-        Self::try_from(str::from_utf8(text).map_err(|_| Error::BamParseCigar {
-            msg: "unable to parse as UTF8".to_owned(),
-        })?)
-    }
-}
-
-impl TryFrom<&[u8]> for CigarString {
-    type Error = Error;
-
     /// Create a CigarString from given &[u8].
     /// # Example
     /// ```
