@@ -1118,7 +1118,7 @@ impl TryFrom<&[u8]> for CigarString {
     }
 }
 
-impl TryFrom<&str> for CigarString {
+impl TryFrom<&[u8]> for CigarString {
     type Error = Error;
 
     /// Create a CigarString from given &[u8].
@@ -1144,7 +1144,7 @@ impl TryFrom<&str> for CigarString {
     fn try_from(bytes: &[u8]) -> Result<Self> {
         let mut inner = Vec::new();
         let mut i = 0;
-        let text_len = text.len();
+        let text_len = bytes.len();
         while i < text_len {
             let mut j = i;
             while j < text_len && bytes[j].is_ascii_digit() {
@@ -1157,11 +1157,11 @@ impl TryFrom<&str> for CigarString {
                 });
             }
             // get the length of the operation
-            let n = u32::from_str(&text[i..j]).map_err(|_| Error::BamParseCigar {
-                msg: format!("Unable to parse &str '{}' to u32.", &text[i..j]),
+            let n = u32::from_str(&bytes[i..j]).map_err(|_| Error::BamParseCigar {
+                msg: format!("Unable to parse &str '{}' to u32.", &bytes[i..j]),
             })?;
             // get the operation
-            let op = &text[j..j + 1];
+            let op = &bytes[j..j + 1];
             inner.push(match op {
                 "M" => Cigar::Match(n),
                 "I" => Cigar::Ins(n),
@@ -1180,8 +1180,8 @@ impl TryFrom<&str> for CigarString {
                 "S" => {
                     if i == 0
                         || j+1 == text_len
-                        || &text[i-1..i] == "H"
-                        || text[j+1..].chars().all(|c| c.is_ascii_digit() || c == 'H') {
+                        || &bytes[i-1..i] == "H"
+                        || bytes[j+1..].chars().all(|c| c.is_ascii_digit() || c == 'H') {
                         Cigar::SoftClip(n)
                     } else {
                         return Err(Error::BamParseCigar {
