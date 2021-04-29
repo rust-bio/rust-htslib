@@ -1170,7 +1170,7 @@ impl TryFrom<&[u8]> for CigarString {
                 }
                 b'S' => {
                     if i == 0
-                        || j+1 == text_len
+                        || j + 1 == text_len
                         || bytes[i-1] == b'H'
                         || bytes[j+1..].iter().all(|c| c.is_ascii_digit() || *c == b'H') {
                         Cigar::SoftClip(n)
