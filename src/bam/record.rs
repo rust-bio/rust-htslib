@@ -1142,7 +1142,6 @@ impl TryFrom<&str> for CigarString {
     /// assert_eq!(cigar, expected_cigar);
     /// ```
     fn try_from(bytes: &[u8]) -> Result<Self> {
-        let bytes = text.as_bytes();
         let mut inner = Vec::new();
         let mut i = 0;
         let text_len = text.len();
