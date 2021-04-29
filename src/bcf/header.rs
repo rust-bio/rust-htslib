@@ -313,6 +313,25 @@ impl HeaderView {
         }
     }
 
+    /// Retrieve the (internal) chromosome identifier
+    /// # Examples
+    /// ```rust
+    /// use rust_htslib::bcf::header::Header;
+    /// use rust_htslib::bcf::{Format, Writer};
+    ///
+    /// let mut header = Header::new();
+    /// let contig_field = br#"##contig=<ID=foo,length=10>"#;
+    /// header.push_record(contig_field);
+    /// let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+    /// let header_view = vcf.header();
+    /// let rid = header_view.name2rid(b"foo").unwrap();
+    /// assert_eq!(rid, 0);
+    /// // try and retrieve a contig not in the header
+    /// let result = header_view.name2rid(b"bar");
+    /// assert!(result.is_err())
+    /// ```
+    /// # Errors
+    /// If `name` does not match a chromosome currently in the VCF header, returns [`Error::BcfUnknownContig`]
     pub fn name2rid(&self, name: &[u8]) -> Result<u32> {
         let c_str = ffi::CString::new(name).unwrap();
         unsafe {
