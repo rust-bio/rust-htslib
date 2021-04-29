@@ -838,7 +838,7 @@ impl Record {
         self.inner().rlen
     }
 
-    ///
+    /// Clear all parts of the record. Useful if you plan to reuse a record object multiple times.
     ///
     /// # Example
     /// ```rust
