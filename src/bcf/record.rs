@@ -127,8 +127,22 @@ impl<'a, T: 'a + fmt::Debug + fmt::Display, B: Borrow<Buffer> + 'a> fmt::Display
     }
 }
 
-/// A BCF record.
-/// New records can be created by the `empty_record` methods of `bcf::Reader` and `bcf::Writer`.
+/// A VCF/BCF record.
+/// New records can be created by the `empty_record` methods of [`bcf::Reader`](crate::bcf::Reader)
+/// and [`bcf::Writer`](crate::bcf::Writer).
+/// # Example
+/// ```rust
+/// use rust_htslib::bcf::{Format, Writer};
+/// use rust_htslib::bcf::header::Header;
+///
+/// // Create minimal VCF header with a single sample
+/// let mut header = Header::new();
+/// header.push_sample("sample".as_bytes());
+///
+/// // Write uncompressed VCF to stdout with above header and get an empty record
+/// let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+/// let mut record = vcf.empty_record();
+/// ```
 #[derive(Debug)]
 pub struct Record {
     pub inner: *mut htslib::bcf1_t,
@@ -378,7 +392,26 @@ impl Record {
             .collect()
     }
 
-    /// Set alleles.
+    /// Set alleles. The first allele is the reference allele.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use rust_htslib::bcf::{Format, Writer};
+    /// # use rust_htslib::bcf::header::Header;
+    /// #
+    /// # // Create minimal VCF header with a single sample
+    /// # let mut header = Header::new();
+    /// # header.push_sample("sample".as_bytes());
+    /// #
+    /// # // Write uncompressed VCF to stdout with above header and get an empty record
+    /// # let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+    /// # let mut record = vcf.empty_record();
+    /// assert_eq!(record.allele_count(), 0);
+    ///
+    /// let alleles: &[&[u8]] = &[b"A", b"TG"];
+    /// record.set_alleles(alleles).expect("Failed to set alleles");
+    /// assert_eq!(record.allele_count(), 2)
+    /// ```
     pub fn set_alleles(&mut self, alleles: &[&[u8]]) -> Result<()> {
         let cstrings: Vec<ffi::CString> = alleles
             .iter()
@@ -781,6 +814,55 @@ impl Record {
         }
     }
 
+    /// Get the length of the reference allele. If the record has no reference allele, then the
+    /// result will be `0`.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use rust_htslib::bcf::{Format, Writer};
+    /// # use rust_htslib::bcf::header::Header;
+    /// #
+    /// # // Create minimal VCF header with a single sample
+    /// # let mut header = Header::new();
+    /// # header.push_sample("sample".as_bytes());
+    /// #
+    /// # // Write uncompressed VCF to stdout with above header and get an empty record
+    /// # let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+    /// # let mut record = vcf.empty_record();
+    /// # assert_eq!(record.rlen(), 0);
+    /// let alleles: &[&[u8]] = &[b"AGG", b"TG"];
+    /// record.set_alleles(alleles).expect("Failed to set alleles");
+    /// assert_eq!(record.rlen(), 3)
+    /// ```
+    pub fn rlen(&self) -> i64 {
+        self.inner().rlen
+    }
+
+    /// Clear all parts of the record. Useful if you plan to reuse a record object multiple times.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use rust_htslib::bcf::{Format, Writer};
+    /// # use rust_htslib::bcf::header::Header;
+    /// #
+    /// # // Create minimal VCF header with a single sample
+    /// # let mut header = Header::new();
+    /// # header.push_sample("sample".as_bytes());
+    /// #
+    /// # // Write uncompressed VCF to stdout with above header and get an empty record
+    /// # let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+    /// # let mut record = vcf.empty_record();
+    /// let alleles: &[&[u8]] = &[b"AGG", b"TG"];
+    /// record.set_alleles(alleles).expect("Failed to set alleles");
+    /// record.set_pos(6);
+    /// record.clear();
+    /// assert_eq!(record.rlen(), 0);
+    /// assert_eq!(record.pos(), 0)
+    /// ```
+    pub fn clear(&self) {
+        unsafe { htslib::bcf_clear(self.inner) }
+    }
+
     /// Provide short description of record for locating it in the BCF/VCF file.
     pub fn desc(&self) -> String {
         if let Some(rid) = self.rid() {
@@ -923,6 +1005,7 @@ impl Drop for Record {
 }
 
 unsafe impl Send for Record {}
+
 unsafe impl Sync for Record {}
 
 /// Info tag representation.
@@ -1035,6 +1118,7 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, B> {
 }
 
 unsafe impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Send for Info<'a, B> {}
+
 unsafe impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Sync for Info<'a, B> {}
 
 fn trim_slice<T: PartialEq + NumericUtils>(s: &[T]) -> &[T] {
@@ -1175,6 +1259,7 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Format<'a, B> {
 }
 
 unsafe impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Send for Format<'a, B> {}
+
 unsafe impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Sync for Format<'a, B> {}
 
 #[derive(Debug)]
@@ -1208,6 +1293,8 @@ impl<'a> Iterator for Filters<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bcf::{Format, Header, Writer};
+    use tempfile::NamedTempFile;
 
     #[test]
     fn test_missing_float() {
@@ -1219,5 +1306,36 @@ mod tests {
     fn test_vector_end_float() {
         let expected: u32 = 0x7F80_0002;
         assert_eq!(VECTOR_END_FLOAT.bits(), expected);
+    }
+
+    #[test]
+    fn test_record_rlen() {
+        let tmp = NamedTempFile::new().unwrap();
+        let path = tmp.path();
+        let header = Header::new();
+        let vcf = Writer::from_path(path, &header, true, Format::VCF).unwrap();
+        let mut record = vcf.empty_record();
+        assert_eq!(record.rlen(), 0);
+        let alleles: &[&[u8]] = &[b"AGG", b"TG"];
+        record.set_alleles(alleles).expect("Failed to set alleles");
+        assert_eq!(record.rlen(), 3)
+    }
+
+    #[test]
+    fn test_record_clear() {
+        let tmp = NamedTempFile::new().unwrap();
+        let path = tmp.path();
+        let mut header = Header::new();
+        header.push_sample("sample".as_bytes());
+        let vcf = Writer::from_path(path, &header, true, Format::VCF).unwrap();
+        let mut record = vcf.empty_record();
+        let alleles: &[&[u8]] = &[b"AGG", b"TG"];
+        record.set_alleles(alleles).expect("Failed to set alleles");
+        record.set_pos(6);
+        record.clear();
+
+        assert_eq!(record.rlen(), 0);
+        assert_eq!(record.sample_count(), 0);
+        assert_eq!(record.pos(), 0)
     }
 }

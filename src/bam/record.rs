@@ -12,7 +12,6 @@ use std::ops;
 use std::rc::Rc;
 use std::slice;
 use std::str;
-use std::str::FromStr;
 use std::u32;
 
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -1781,57 +1780,124 @@ impl CigarString {
 impl TryFrom<&[u8]> for CigarString {
     type Error = Error;
 
-    /// Create a CigarString from given bytes.
-    fn try_from(text: &[u8]) -> Result<Self> {
-        Self::try_from(str::from_utf8(text).map_err(|_| Error::BamParseCigar {
-            msg: "unable to parse as UTF8".to_owned(),
-        })?)
+    /// Create a CigarString from given &[u8].
+    /// # Example
+    /// ```
+    /// use rust_htslib::bam::record::*;
+    /// use rust_htslib::bam::record::CigarString;
+    /// use rust_htslib::bam::record::Cigar::*;
+    /// use std::convert::TryFrom;
+    ///
+    /// let cigar_str = "2H10M5X3=2H".as_bytes();
+    /// let cigar = CigarString::try_from(cigar_str)
+    ///     .expect("Unable to parse cigar string.");
+    /// let expected_cigar = CigarString(vec![
+    ///     HardClip(2),
+    ///     Match(10),
+    ///     Diff(5),
+    ///     Equal(3),
+    ///     HardClip(2),
+    /// ]);
+    /// assert_eq!(cigar, expected_cigar);
+    /// ```
+    fn try_from(bytes: &[u8]) -> Result<Self> {
+        let mut inner = Vec::new();
+        let mut i = 0;
+        let text_len = bytes.len();
+        while i < text_len {
+            let mut j = i;
+            while j < text_len && bytes[j].is_ascii_digit() {
+                j += 1;
+            }
+            // check that length is provided
+            if i == j {
+                return Err(Error::BamParseCigar {
+                    msg: "Expected length before cigar operation [0-9]+[MIDNSHP=X]".to_owned(),
+                });
+            }
+            // get the length of the operation
+            let s = str::from_utf8(&bytes[i..j]).map_err(|_| Error::BamParseCigar {
+                msg: format!("Invalid utf-8 bytes '{:?}'.", &bytes[i..j]),
+            })?;
+            let n = s.parse().map_err(|_| Error::BamParseCigar {
+                msg: format!("Unable to parse &str '{:?}' to u32.", s),
+            })?;
+            // get the operation
+            let op = &bytes[j];
+            inner.push(match op {
+                b'M' => Cigar::Match(n),
+                b'I' => Cigar::Ins(n),
+                b'D' => Cigar::Del(n),
+                b'N' => Cigar::RefSkip(n),
+                b'H' => {
+                    if i == 0 || j + 1 == text_len {
+                        Cigar::HardClip(n)
+                    } else {
+                        return Err(Error::BamParseCigar {
+                            msg: "Hard clipping ('H') is only valid at the start or end of a cigar."
+                                .to_owned(),
+                        });
+                    }
+                }
+                b'S' => {
+                    if i == 0
+                        || j + 1 == text_len
+                        || bytes[i-1] == b'H'
+                        || bytes[j+1..].iter().all(|c| c.is_ascii_digit() || *c == b'H') {
+                        Cigar::SoftClip(n)
+                    } else {
+                        return Err(Error::BamParseCigar {
+                        msg: "Soft clips ('S') can only have hard clips ('H') between them and the end of the CIGAR string."
+                            .to_owned(),
+                        });
+                    }
+                },
+                b'P' => Cigar::Pad(n),
+                b'=' => Cigar::Equal(n),
+                b'X' => Cigar::Diff(n),
+                op => {
+                    return Err(Error::BamParseCigar {
+                        msg: format!("Expected cigar operation [MIDNSHP=X] but got [{}]", op),
+                    })
+                }
+            });
+            i = j + 1;
+        }
+        Ok(CigarString(inner))
     }
 }
 
 impl TryFrom<&str> for CigarString {
     type Error = Error;
 
-    /// Create a CigarString from given str.
+    /// Create a CigarString from given &str.
+    /// # Example
+    /// ```
+    /// use rust_htslib::bam::record::*;
+    /// use rust_htslib::bam::record::CigarString;
+    /// use rust_htslib::bam::record::Cigar::*;
+    /// use std::convert::TryFrom;
+    ///
+    /// let cigar_str = "2H10M5X3=2H";
+    /// let cigar = CigarString::try_from(cigar_str)
+    ///     .expect("Unable to parse cigar string.");
+    /// let expected_cigar = CigarString(vec![
+    ///     HardClip(2),
+    ///     Match(10),
+    ///     Diff(5),
+    ///     Equal(3),
+    ///     HardClip(2),
+    /// ]);
+    /// assert_eq!(cigar, expected_cigar);
+    /// ```
     fn try_from(text: &str) -> Result<Self> {
-        lazy_static! {
-            // regex for a cigar string operation
-            static ref OP_RE: Regex = Regex::new("^(?P<n>[0-9]+)(?P<op>[MIDNSHP=X])").unwrap();
+        let bytes = text.as_bytes();
+        if text.chars().count() != bytes.len() {
+            return Err(Error::BamParseCigar {
+                msg: "CIGAR string contained non-ASCII characters, which are not valid. Valid are [0-9MIDNSHP=X].".to_owned(),
+            });
         }
-        let mut inner = Vec::new();
-        let mut i = 0;
-        while i < text.len() {
-            if let Some(caps) = OP_RE.captures(&text[i..]) {
-                let n = &caps["n"];
-                let op = &caps["op"];
-                i += n.len() + op.len();
-                let n = u32::from_str(n).map_err(|_| Error::BamParseCigar {
-                    msg: "expected integer".to_owned(),
-                })?;
-                inner.push(match op {
-                    "M" => Cigar::Match(n),
-                    "I" => Cigar::Ins(n),
-                    "D" => Cigar::Del(n),
-                    "N" => Cigar::RefSkip(n),
-                    "H" => Cigar::HardClip(n),
-                    "S" => Cigar::SoftClip(n),
-                    "P" => Cigar::Pad(n),
-                    "=" => Cigar::Equal(n),
-                    "X" => Cigar::Diff(n),
-                    op => {
-                        return Err(Error::BamParseCigar {
-                            msg: format!("operation {} not expected", op),
-                        });
-                    }
-                });
-            } else {
-                return Err(Error::BamParseCigar {
-                    msg: "expected cigar operation [0-9]+[MIDNSHP=X]".to_owned(),
-                });
-            }
-        }
-
-        Ok(CigarString(inner))
+        CigarString::try_from(bytes)
     }
 }
 
@@ -2445,6 +2511,73 @@ mod alignment_cigar_tests {
                 record.read_pair_orientation(),
                 SequenceReadPairOrientation::F1R2
             );
+        }
+    }
+
+    #[test]
+    pub fn test_cigar_parsing_non_ascii_error() {
+        let cigar_str = "43ጷ";
+        let expected_error = Err(Error::BamParseCigar {
+                msg: "CIGAR string contained non-ASCII characters, which are not valid. Valid are [0-9MIDNSHP=X].".to_owned(),
+            });
+
+        let result = CigarString::try_from(cigar_str);
+        assert_eq!(expected_error, result);
+    }
+
+    #[test]
+    pub fn test_cigar_parsing() {
+        // parsing test cases
+        let cigar_strs = vec![
+            "1H10M4D100I300N1102=10P25X11S", // test every cigar opt
+            "100M",                          // test a single op
+            "",                              // test empty input
+            "1H1=1H",                        // test simple hardclip
+            "1S1=1S",                        // test simple softclip
+            "11H11S11=11S11H",               // test complex softclip
+            "10H",
+            "10S",
+        ];
+        // expected results
+        let cigars = vec![
+            CigarString(vec![
+                Cigar::HardClip(1),
+                Cigar::Match(10),
+                Cigar::Del(4),
+                Cigar::Ins(100),
+                Cigar::RefSkip(300),
+                Cigar::Equal(1102),
+                Cigar::Pad(10),
+                Cigar::Diff(25),
+                Cigar::SoftClip(11),
+            ]),
+            CigarString(vec![Cigar::Match(100)]),
+            CigarString(vec![]),
+            CigarString(vec![
+                Cigar::HardClip(1),
+                Cigar::Equal(1),
+                Cigar::HardClip(1),
+            ]),
+            CigarString(vec![
+                Cigar::SoftClip(1),
+                Cigar::Equal(1),
+                Cigar::SoftClip(1),
+            ]),
+            CigarString(vec![
+                Cigar::HardClip(11),
+                Cigar::SoftClip(11),
+                Cigar::Equal(11),
+                Cigar::SoftClip(11),
+                Cigar::HardClip(11),
+            ]),
+            CigarString(vec![Cigar::HardClip(10)]),
+            CigarString(vec![Cigar::SoftClip(10)]),
+        ];
+        // compare
+        for (&cigar_str, truth) in cigar_strs.iter().zip(cigars.iter()) {
+            let cigar_parse = CigarString::try_from(cigar_str)
+                .expect(&format!("Unable to parse cigar: {}", cigar_str));
+            assert_eq!(&cigar_parse, truth);
         }
     }
 }

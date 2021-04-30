@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+### Added
+- `bcf::Record` methods `clear` and `rlen` (@mbhall88)
+
+[Unreleased]: https://github.com/rust-bio/rust-htslib/compare/v0.36.0...HEAD
+
 ## [0.36.0] - 2020-11-23
 ### Changes
 - Improved genotype API in VCF/BCF records (@MaltheSR).

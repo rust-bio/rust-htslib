@@ -53,7 +53,7 @@ pub enum Error {
     BamInvalidCompressionLevel { level: u32 },
     #[error("unable to open SAM/BAM/CRAM file at {target}")]
     BamOpen { target: String },
-    #[error("unable to open SAM/BAM/CRAM index for {target}")]
+    #[error("unable to open SAM/BAM/CRAM index for {target}; please create an index")]
     BamInvalidIndex { target: String },
     #[error("invalid record in SAM/BAM/CRAM file")]
     BamInvalidRecord,
