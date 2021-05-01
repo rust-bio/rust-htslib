@@ -1501,7 +1501,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             // fix qual offset
             let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
             assert_eq!(rec.qual(), &qual[..]);
-            assert_eq!(rec.aux(b"NotAvailableAux"), None);
+            assert_eq!(rec.aux(b"NotAvailableAux"), Err(Error::BamAuxTagNotFound));
         }
 
         // fetch to empty position
@@ -1551,7 +1551,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             // fix qual offset
             let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
             assert_eq!(rec.qual(), &qual[..]);
-            assert_eq!(rec.aux(b"NotAvailableAux"), None);
+            assert_eq!(rec.aux(b"NotAvailableAux"), Err(Error::BamAuxTagNotFound));
         }
 
         // fetch to empty position
@@ -1616,14 +1616,14 @@ CCCCCCCCCCCCCCCCCCC"[..],
         rec.set(names[0], Some(&cigars[0]), seqs[0], quals[0]);
         // note: this segfaults if you push_aux() before set()
         //       because set() obliterates aux
-        rec.push_aux(b"NM", &Aux::Integer(15));
+        rec.push_aux(b"NM", Aux::I32(15)).unwrap();
 
         assert_eq!(rec.qname(), names[0]);
         assert_eq!(*rec.cigar(), cigars[0]);
         assert_eq!(rec.seq().as_bytes(), seqs[0]);
         assert_eq!(rec.qual(), quals[0]);
         assert!(rec.is_reverse());
-        assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+        assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
     }
 
     #[test]
@@ -1635,11 +1635,11 @@ CCCCCCCCCCCCCCCCCCC"[..],
             b"AAA",
             b"III",
         );
-        rec.push_aux(b"AS", &Aux::Integer(12345));
+        rec.push_aux(b"AS", Aux::I32(12345)).unwrap();
         assert_eq!(rec.qname(), b"123");
         assert_eq!(rec.seq().as_bytes(), b"AAA");
         assert_eq!(rec.qual(), b"III");
-        assert_eq!(rec.aux(b"AS").unwrap(), Aux::Integer(12345));
+        assert_eq!(rec.aux(b"AS").unwrap(), Aux::I32(12345));
 
         rec.set(
             b"1234",
@@ -1650,7 +1650,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         assert_eq!(rec.qname(), b"1234");
         assert_eq!(rec.seq().as_bytes(), b"AAAA");
         assert_eq!(rec.qual(), b"IIII");
-        assert_eq!(rec.aux(b"AS").unwrap(), Aux::Integer(12345));
+        assert_eq!(rec.aux(b"AS").unwrap(), Aux::I32(12345));
 
         rec.set(
             b"12",
@@ -1661,7 +1661,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         assert_eq!(rec.qname(), b"12");
         assert_eq!(rec.seq().as_bytes(), b"AA");
         assert_eq!(rec.qual(), b"II");
-        assert_eq!(rec.aux(b"AS").unwrap(), Aux::Integer(12345));
+        assert_eq!(rec.aux(b"AS").unwrap(), Aux::I32(12345));
     }
 
     #[test]
@@ -1673,13 +1673,13 @@ CCCCCCCCCCCCCCCCCCC"[..],
         for i in 0..names.len() {
             let mut rec = record::Record::new();
             rec.set(names[i], Some(&cigars[i]), seqs[i], quals[i]);
-            rec.push_aux(b"NM", &Aux::Integer(15));
+            rec.push_aux(b"NM", Aux::I32(15)).unwrap();
 
             assert_eq!(rec.qname(), names[i]);
             assert_eq!(*rec.cigar(), cigars[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
             assert_eq!(rec.qual(), quals[i]);
-            assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+            assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
 
             // Equal length qname
             assert!(rec.qname()[0] != b'X');
@@ -1696,7 +1696,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             assert_eq!(*rec.cigar(), cigars[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
             assert_eq!(rec.qual(), quals[i]);
-            assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+            assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
 
             // Shorter qname
             let shorter_name = b"42";
@@ -1706,7 +1706,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             assert_eq!(*rec.cigar(), cigars[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
             assert_eq!(rec.qual(), quals[i]);
-            assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+            assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
 
             // Zero-length qname
             rec.set_qname(b"");
@@ -1715,7 +1715,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             assert_eq!(*rec.cigar(), cigars[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
             assert_eq!(rec.qual(), quals[i]);
-            assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+            assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
         }
     }
 
@@ -1745,18 +1745,18 @@ CCCCCCCCCCCCCCCCCCC"[..],
         for record in bam.records() {
             let mut rec = record.expect("Expected valid record");
 
-            if rec.aux(b"XS").is_some() {
-                rec.remove_aux(b"XS");
+            if rec.aux(b"XS").is_ok() {
+                rec.remove_aux(b"XS").unwrap();
             }
 
-            if rec.aux(b"YT").is_some() {
-                rec.remove_aux(b"YT");
+            if rec.aux(b"YT").is_ok() {
+                rec.remove_aux(b"YT").unwrap();
             }
 
-            rec.remove_aux(b"ab");
+            assert!(rec.remove_aux(b"ab").is_err());
 
-            assert_eq!(rec.aux(b"XS"), None);
-            assert_eq!(rec.aux(b"YT"), None);
+            assert_eq!(rec.aux(b"XS"), Err(Error::BamAuxTagNotFound));
+            assert_eq!(rec.aux(b"YT"), Err(Error::BamAuxTagNotFound));
         }
     }
 
@@ -1785,7 +1785,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             for i in 0..names.len() {
                 let mut rec = record::Record::new();
                 rec.set(names[i], Some(&cigars[i]), seqs[i], quals[i]);
-                rec.push_aux(b"NM", &Aux::Integer(15));
+                rec.push_aux(b"NM", Aux::I32(15)).unwrap();
 
                 bam.write(&rec).expect("Failed to write record.");
             }
@@ -1805,7 +1805,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 assert_eq!(*rec.cigar(), cigars[i]);
                 assert_eq!(rec.seq().as_bytes(), seqs[i]);
                 assert_eq!(rec.qual(), quals[i]);
-                assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+                assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
             }
         }
 
@@ -1839,7 +1839,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 let mut rec = record::Record::new();
                 let idx = i % names.len();
                 rec.set(names[idx], Some(&cigars[idx]), seqs[idx], quals[idx]);
-                rec.push_aux(b"NM", &Aux::Integer(15));
+                rec.push_aux(b"NM", Aux::I32(15)).unwrap();
                 rec.set_pos(i as i64);
 
                 bam.write(&rec).expect("Failed to write record.");
@@ -1859,7 +1859,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 assert_eq!(*rec.cigar(), cigars[idx]);
                 assert_eq!(rec.seq().as_bytes(), seqs[idx]);
                 assert_eq!(rec.qual(), quals[idx]);
-                assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+                assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
             }
         }
 
@@ -1912,7 +1912,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 let mut rec = record::Record::new();
                 let idx = i % names.len();
                 rec.set(names[idx], Some(&cigars[idx]), seqs[idx], quals[idx]);
-                rec.push_aux(b"NM", &Aux::Integer(15));
+                rec.push_aux(b"NM", Aux::I32(15)).unwrap();
                 rec.set_pos(i as i64);
 
                 bam1.write(&rec).expect("Failed to write record.");
@@ -1937,7 +1937,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                     assert_eq!(*rec.cigar(), cigars[idx]);
                     assert_eq!(rec.seq().as_bytes(), seqs[idx]);
                     assert_eq!(rec.qual(), quals[idx]);
-                    assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+                    assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
                 }
             }
         }
@@ -2342,5 +2342,452 @@ CCCCCCCCCCCCCCCCCCC"[..],
             let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
             assert_eq!(rec.qual(), &qual[..]);
         }
+    }
+
+    #[test]
+    fn test_aux_arrays() {
+        let bam_header = Header::new();
+        let mut test_record = Record::from_sam(
+            &mut HeaderView::from_header(&bam_header),
+            "ali1\t4\t*\t0\t0\t*\t*\t0\t0\tACGT\tFFFF".as_bytes(),
+        )
+        .unwrap();
+
+        let array_i8: Vec<i8> = vec![std::i8::MIN, -1, 0, 1, std::i8::MAX];
+        let array_u8: Vec<u8> = vec![std::u8::MIN, 0, 1, std::u8::MAX];
+        let array_i16: Vec<i16> = vec![std::i16::MIN, -1, 0, 1, std::i16::MAX];
+        let array_u16: Vec<u16> = vec![std::u16::MIN, 0, 1, std::u16::MAX];
+        let array_i32: Vec<i32> = vec![std::i32::MIN, -1, 0, 1, std::i32::MAX];
+        let array_u32: Vec<u32> = vec![std::u32::MIN, 0, 1, std::u32::MAX];
+        let array_f32: Vec<f32> = vec![std::f32::MIN, 0.0, -0.0, 0.1, 0.99, std::f32::MAX];
+
+        test_record
+            .push_aux(b"XA", Aux::ArrayI8((&array_i8).into()))
+            .unwrap();
+        test_record
+            .push_aux(b"XB", Aux::ArrayU8((&array_u8).into()))
+            .unwrap();
+        test_record
+            .push_aux(b"XC", Aux::ArrayI16((&array_i16).into()))
+            .unwrap();
+        test_record
+            .push_aux(b"XD", Aux::ArrayU16((&array_u16).into()))
+            .unwrap();
+        test_record
+            .push_aux(b"XE", Aux::ArrayI32((&array_i32).into()))
+            .unwrap();
+        test_record
+            .push_aux(b"XF", Aux::ArrayU32((&array_u32).into()))
+            .unwrap();
+        test_record
+            .push_aux(b"XG", Aux::ArrayFloat((&array_f32).into()))
+            .unwrap();
+
+        {
+            let tag = b"XA";
+            if let Ok(Aux::ArrayI8(array)) = test_record.aux(tag) {
+                // Retrieve aux array
+                let aux_array_content = array.iter().collect::<Vec<_>>();
+                assert_eq!(aux_array_content, array_i8);
+
+                // Copy the stored aux array to another record
+                {
+                    let mut copy_test_record = test_record.clone();
+
+                    // Pushing a field with an existing tag should fail
+                    assert!(copy_test_record.push_aux(tag, Aux::I8(3)).is_err());
+
+                    // Remove aux array from target record
+                    copy_test_record.remove_aux(tag).unwrap();
+                    assert!(copy_test_record.aux(tag).is_err());
+
+                    // Copy array to target record
+                    let src_aux = test_record.aux(tag).unwrap();
+                    assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
+                    if let Ok(Aux::ArrayI8(array)) = copy_test_record.aux(tag) {
+                        let aux_array_content_copied = array.iter().collect::<Vec<_>>();
+                        assert_eq!(aux_array_content_copied, array_i8);
+                    } else {
+                        panic!("Aux tag not found");
+                    }
+                }
+            } else {
+                panic!("Aux tag not found");
+            }
+        }
+
+        {
+            let tag = b"XB";
+            if let Ok(Aux::ArrayU8(array)) = test_record.aux(tag) {
+                // Retrieve aux array
+                let aux_array_content = array.iter().collect::<Vec<_>>();
+                assert_eq!(aux_array_content, array_u8);
+
+                // Copy the stored aux array to another record
+                {
+                    let mut copy_test_record = test_record.clone();
+
+                    // Pushing a field with an existing tag should fail
+                    assert!(copy_test_record.push_aux(tag, Aux::U8(3)).is_err());
+
+                    // Remove aux array from target record
+                    copy_test_record.remove_aux(tag).unwrap();
+                    assert!(copy_test_record.aux(tag).is_err());
+
+                    // Copy array to target record
+                    let src_aux = test_record.aux(tag).unwrap();
+                    assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
+                    if let Ok(Aux::ArrayU8(array)) = copy_test_record.aux(tag) {
+                        let aux_array_content_copied = array.iter().collect::<Vec<_>>();
+                        assert_eq!(aux_array_content_copied, array_u8);
+                    } else {
+                        panic!("Aux tag not found");
+                    }
+                }
+            } else {
+                panic!("Aux tag not found");
+            }
+        }
+
+        {
+            let tag = b"XC";
+            if let Ok(Aux::ArrayI16(array)) = test_record.aux(tag) {
+                // Retrieve aux array
+                let aux_array_content = array.iter().collect::<Vec<_>>();
+                assert_eq!(aux_array_content, array_i16);
+
+                // Copy the stored aux array to another record
+                {
+                    let mut copy_test_record = test_record.clone();
+
+                    // Pushing a field with an existing tag should fail
+                    assert!(copy_test_record.push_aux(tag, Aux::I16(3)).is_err());
+
+                    // Remove aux array from target record
+                    copy_test_record.remove_aux(tag).unwrap();
+                    assert!(copy_test_record.aux(tag).is_err());
+
+                    // Copy array to target record
+                    let src_aux = test_record.aux(tag).unwrap();
+                    assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
+                    if let Ok(Aux::ArrayI16(array)) = copy_test_record.aux(tag) {
+                        let aux_array_content_copied = array.iter().collect::<Vec<_>>();
+                        assert_eq!(aux_array_content_copied, array_i16);
+                    } else {
+                        panic!("Aux tag not found");
+                    }
+                }
+            } else {
+                panic!("Aux tag not found");
+            }
+        }
+
+        {
+            let tag = b"XD";
+            if let Ok(Aux::ArrayU16(array)) = test_record.aux(tag) {
+                // Retrieve aux array
+                let aux_array_content = array.iter().collect::<Vec<_>>();
+                assert_eq!(aux_array_content, array_u16);
+
+                // Copy the stored aux array to another record
+                {
+                    let mut copy_test_record = test_record.clone();
+
+                    // Pushing a field with an existing tag should fail
+                    assert!(copy_test_record.push_aux(tag, Aux::U16(3)).is_err());
+
+                    // Remove aux array from target record
+                    copy_test_record.remove_aux(tag).unwrap();
+                    assert!(copy_test_record.aux(tag).is_err());
+
+                    // Copy array to target record
+                    let src_aux = test_record.aux(tag).unwrap();
+                    assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
+                    if let Ok(Aux::ArrayU16(array)) = copy_test_record.aux(tag) {
+                        let aux_array_content_copied = array.iter().collect::<Vec<_>>();
+                        assert_eq!(aux_array_content_copied, array_u16);
+                    } else {
+                        panic!("Aux tag not found");
+                    }
+                }
+            } else {
+                panic!("Aux tag not found");
+            }
+        }
+
+        {
+            let tag = b"XE";
+            if let Ok(Aux::ArrayI32(array)) = test_record.aux(tag) {
+                // Retrieve aux array
+                let aux_array_content = array.iter().collect::<Vec<_>>();
+                assert_eq!(aux_array_content, array_i32);
+
+                // Copy the stored aux array to another record
+                {
+                    let mut copy_test_record = test_record.clone();
+
+                    // Pushing a field with an existing tag should fail
+                    assert!(copy_test_record.push_aux(tag, Aux::I32(3)).is_err());
+
+                    // Remove aux array from target record
+                    copy_test_record.remove_aux(tag).unwrap();
+                    assert!(copy_test_record.aux(tag).is_err());
+
+                    // Copy array to target record
+                    let src_aux = test_record.aux(tag).unwrap();
+                    assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
+                    if let Ok(Aux::ArrayI32(array)) = copy_test_record.aux(tag) {
+                        let aux_array_content_copied = array.iter().collect::<Vec<_>>();
+                        assert_eq!(aux_array_content_copied, array_i32);
+                    } else {
+                        panic!("Aux tag not found");
+                    }
+                }
+            } else {
+                panic!("Aux tag not found");
+            }
+        }
+
+        {
+            let tag = b"XF";
+            if let Ok(Aux::ArrayU32(array)) = test_record.aux(tag) {
+                // Retrieve aux array
+                let aux_array_content = array.iter().collect::<Vec<_>>();
+                assert_eq!(aux_array_content, array_u32);
+
+                // Copy the stored aux array to another record
+                {
+                    let mut copy_test_record = test_record.clone();
+
+                    // Pushing a field with an existing tag should fail
+                    assert!(copy_test_record.push_aux(tag, Aux::U32(3)).is_err());
+
+                    // Remove aux array from target record
+                    copy_test_record.remove_aux(tag).unwrap();
+                    assert!(copy_test_record.aux(tag).is_err());
+
+                    // Copy array to target record
+                    let src_aux = test_record.aux(tag).unwrap();
+                    assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
+                    if let Ok(Aux::ArrayU32(array)) = copy_test_record.aux(tag) {
+                        let aux_array_content_copied = array.iter().collect::<Vec<_>>();
+                        assert_eq!(aux_array_content_copied, array_u32);
+                    } else {
+                        panic!("Aux tag not found");
+                    }
+                }
+            } else {
+                panic!("Aux tag not found");
+            }
+        }
+
+        {
+            let tag = b"XG";
+            if let Ok(Aux::ArrayFloat(array)) = test_record.aux(tag) {
+                // Retrieve aux array
+                let aux_array_content = array.iter().collect::<Vec<_>>();
+                assert_eq!(aux_array_content, array_f32);
+
+                // Copy the stored aux array to another record
+                {
+                    let mut copy_test_record = test_record.clone();
+
+                    // Pushing a field with an existing tag should fail
+                    assert!(copy_test_record.push_aux(tag, Aux::Float(3.0)).is_err());
+
+                    // Remove aux array from target record
+                    copy_test_record.remove_aux(tag).unwrap();
+                    assert!(copy_test_record.aux(tag).is_err());
+
+                    // Copy array to target record
+                    let src_aux = test_record.aux(tag).unwrap();
+                    assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
+                    if let Ok(Aux::ArrayFloat(array)) = copy_test_record.aux(tag) {
+                        let aux_array_content_copied = array.iter().collect::<Vec<_>>();
+                        assert_eq!(aux_array_content_copied, array_f32);
+                    } else {
+                        panic!("Aux tag not found");
+                    }
+                }
+            } else {
+                panic!("Aux tag not found");
+            }
+        }
+
+        // Test via `Iterator` impl
+        for item in test_record.aux_iter() {
+            match item.unwrap() {
+                (b"XA", Aux::ArrayI8(array)) => {
+                    assert_eq!(&array.iter().collect::<Vec<_>>(), &array_i8);
+                }
+                (b"XB", Aux::ArrayU8(array)) => {
+                    assert_eq!(&array.iter().collect::<Vec<_>>(), &array_u8);
+                }
+                (b"XC", Aux::ArrayI16(array)) => {
+                    assert_eq!(&array.iter().collect::<Vec<_>>(), &array_i16);
+                }
+                (b"XD", Aux::ArrayU16(array)) => {
+                    assert_eq!(&array.iter().collect::<Vec<_>>(), &array_u16);
+                }
+                (b"XE", Aux::ArrayI32(array)) => {
+                    assert_eq!(&array.iter().collect::<Vec<_>>(), &array_i32);
+                }
+                (b"XF", Aux::ArrayU32(array)) => {
+                    assert_eq!(&array.iter().collect::<Vec<_>>(), &array_u32);
+                }
+                (b"XG", Aux::ArrayFloat(array)) => {
+                    assert_eq!(&array.iter().collect::<Vec<_>>(), &array_f32);
+                }
+                _ => {
+                    panic!();
+                }
+            }
+        }
+
+        // Test via `PartialEq` impl
+        assert_eq!(
+            test_record.aux(b"XA").unwrap(),
+            Aux::ArrayI8((&array_i8).into())
+        );
+        assert_eq!(
+            test_record.aux(b"XB").unwrap(),
+            Aux::ArrayU8((&array_u8).into())
+        );
+        assert_eq!(
+            test_record.aux(b"XC").unwrap(),
+            Aux::ArrayI16((&array_i16).into())
+        );
+        assert_eq!(
+            test_record.aux(b"XD").unwrap(),
+            Aux::ArrayU16((&array_u16).into())
+        );
+        assert_eq!(
+            test_record.aux(b"XE").unwrap(),
+            Aux::ArrayI32((&array_i32).into())
+        );
+        assert_eq!(
+            test_record.aux(b"XF").unwrap(),
+            Aux::ArrayU32((&array_u32).into())
+        );
+        assert_eq!(
+            test_record.aux(b"XG").unwrap(),
+            Aux::ArrayFloat((&array_f32).into())
+        );
+    }
+
+    #[test]
+    fn test_aux_scalars() {
+        let bam_header = Header::new();
+        let mut test_record = Record::from_sam(
+            &mut HeaderView::from_header(&bam_header),
+            "ali1\t4\t*\t0\t0\t*\t*\t0\t0\tACGT\tFFFF".as_bytes(),
+        )
+        .unwrap();
+
+        test_record.push_aux(b"XA", Aux::I8(i8::MIN)).unwrap();
+        test_record.push_aux(b"XB", Aux::I8(i8::MAX)).unwrap();
+        test_record.push_aux(b"XC", Aux::U8(u8::MIN)).unwrap();
+        test_record.push_aux(b"XD", Aux::U8(u8::MAX)).unwrap();
+        test_record.push_aux(b"XE", Aux::I16(i16::MIN)).unwrap();
+        test_record.push_aux(b"XF", Aux::I16(i16::MAX)).unwrap();
+        test_record.push_aux(b"XG", Aux::U16(u16::MIN)).unwrap();
+        test_record.push_aux(b"XH", Aux::U16(u16::MAX)).unwrap();
+        test_record.push_aux(b"XI", Aux::I32(i32::MIN)).unwrap();
+        test_record.push_aux(b"XJ", Aux::I32(i32::MAX)).unwrap();
+        test_record.push_aux(b"XK", Aux::U32(u32::MIN)).unwrap();
+        test_record.push_aux(b"XL", Aux::U32(u32::MAX)).unwrap();
+        test_record
+            .push_aux(b"XM", Aux::Float(std::f32::consts::PI))
+            .unwrap();
+        test_record
+            .push_aux(b"XN", Aux::Double(std::f64::consts::PI))
+            .unwrap();
+        test_record
+            .push_aux(b"XO", Aux::String("Test str"))
+            .unwrap();
+        test_record.push_aux(b"XP", Aux::I8(0)).unwrap();
+
+        let collected_aux_fields = test_record.aux_iter().collect::<Result<Vec<_>>>().unwrap();
+        assert_eq!(
+            collected_aux_fields,
+            vec![
+                (&b"XA"[..], Aux::I8(i8::MIN)),
+                (&b"XB"[..], Aux::I8(i8::MAX)),
+                (&b"XC"[..], Aux::U8(u8::MIN)),
+                (&b"XD"[..], Aux::U8(u8::MAX)),
+                (&b"XE"[..], Aux::I16(i16::MIN)),
+                (&b"XF"[..], Aux::I16(i16::MAX)),
+                (&b"XG"[..], Aux::U16(u16::MIN)),
+                (&b"XH"[..], Aux::U16(u16::MAX)),
+                (&b"XI"[..], Aux::I32(i32::MIN)),
+                (&b"XJ"[..], Aux::I32(i32::MAX)),
+                (&b"XK"[..], Aux::U32(u32::MIN)),
+                (&b"XL"[..], Aux::U32(u32::MAX)),
+                (&b"XM"[..], Aux::Float(std::f32::consts::PI)),
+                (&b"XN"[..], Aux::Double(std::f64::consts::PI)),
+                (&b"XO"[..], Aux::String("Test str")),
+                (&b"XP"[..], Aux::I8(0)),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_aux_array_partial_eq() {
+        use record::AuxArray;
+
+        // Target types
+        let one_data: Vec<i8> = vec![0, 1, 2, 3, 4, 5, 6];
+        let one_aux_array = AuxArray::from(&one_data);
+
+        let two_data: Vec<i8> = vec![0, 1, 2, 3, 4, 5];
+        let two_aux_array = AuxArray::from(&two_data);
+
+        assert_ne!(&one_data, &two_data);
+        assert_ne!(&one_aux_array, &two_aux_array);
+
+        let one_aux = Aux::ArrayI8(one_aux_array);
+        let two_aux = Aux::ArrayI8(two_aux_array);
+        assert_ne!(&one_aux, &two_aux);
+
+        // Raw bytes
+        let bam_header = Header::new();
+        let mut test_record = Record::from_sam(
+            &mut HeaderView::from_header(&bam_header),
+            "ali1\t4\t*\t0\t0\t*\t*\t0\t0\tACGT\tFFFF".as_bytes(),
+        )
+        .unwrap();
+
+        test_record.push_aux(b"XA", one_aux).unwrap();
+        test_record.push_aux(b"XB", two_aux).unwrap();
+
+        // RawLeBytes == RawLeBytes
+        assert_eq!(
+            test_record.aux(b"XA").unwrap(),
+            test_record.aux(b"XA").unwrap()
+        );
+        // RawLeBytes != RawLeBytes
+        assert_ne!(
+            test_record.aux(b"XA").unwrap(),
+            test_record.aux(b"XB").unwrap()
+        );
+
+        // RawLeBytes == TargetType
+        assert_eq!(
+            test_record.aux(b"XA").unwrap(),
+            Aux::ArrayI8((&one_data).into())
+        );
+        assert_eq!(
+            test_record.aux(b"XB").unwrap(),
+            Aux::ArrayI8((&two_data).into())
+        );
+        // RawLeBytes != TargetType
+        assert_ne!(
+            test_record.aux(b"XA").unwrap(),
+            Aux::ArrayI8((&two_data).into())
+        );
+        assert_ne!(
+            test_record.aux(b"XB").unwrap(),
+            Aux::ArrayI8((&one_data).into())
+        );
     }
 }

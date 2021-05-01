@@ -30,6 +30,7 @@ thiserror = "1"
 hts-sys = { version = "1.11.1-fix1", path = "hts-sys", default-features = false }
 derive-new = "0.5"
 ieee754 = "0.2"
+byteorder = "1.3"
 
 [features]
 default = ["bzip2", "lzma", "curl"]
