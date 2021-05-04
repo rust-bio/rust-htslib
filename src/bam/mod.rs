@@ -1275,7 +1275,7 @@ impl HeaderView {
 
     /// Retrieve the textual SAM header as bytes
     pub fn as_bytes(&self) -> &[u8] {
-        unsafe { ffi::CStr::from_ptr((*self.inner).text).to_bytes() }
+        unsafe { ffi::CStr::from_ptr(htslib::sam_hdr_str(self.inner)).to_bytes() }
     }
 }
 
