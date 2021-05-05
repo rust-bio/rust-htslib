@@ -263,6 +263,11 @@ impl Reader {
             });
         }
 
+        // Invalidate the `text` representation of the header
+        unsafe {
+            let _ = htslib::sam_hdr_line_name(header, b"SQ".as_ptr().cast::<i8>(), 0);
+        }
+
         Ok(Reader {
             htsfile,
             header: Rc::new(HeaderView::new(header)),
