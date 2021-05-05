@@ -257,6 +257,12 @@ impl Reader {
         let htsfile = hts_open(path, b"r")?;
 
         let header = unsafe { htslib::sam_hdr_read(htsfile) };
+        if header.is_null() {
+            return Err(Error::BamOpen {
+                target: String::from_utf8_lossy(path).to_string(),
+            });
+        }
+
         Ok(Reader {
             htsfile,
             header: Rc::new(HeaderView::new(header)),
@@ -1275,7 +1281,13 @@ impl HeaderView {
 
     /// Retrieve the textual SAM header as bytes
     pub fn as_bytes(&self) -> &[u8] {
-        unsafe { ffi::CStr::from_ptr(htslib::sam_hdr_str(self.inner)).to_bytes() }
+        unsafe {
+            let rebuilt_hdr = htslib::sam_hdr_str(self.inner);
+            if rebuilt_hdr.is_null() {
+                return b"";
+            }
+            ffi::CStr::from_ptr(rebuilt_hdr).to_bytes()
+        }
     }
 }
 
