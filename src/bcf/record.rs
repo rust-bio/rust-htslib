@@ -245,14 +245,35 @@ impl Record {
         }
     }
 
-    // Return 0-based position.
+    /// Return **0-based** position
     pub fn pos(&self) -> i64 {
         self.inner().pos
     }
 
-    /// Set 0-based position.
+    /// Set **0-based** position
     pub fn set_pos(&mut self, pos: i64) {
         self.inner_mut().pos = pos;
+    }
+
+    /// Return the **0-based, exclusive** end position
+    ///
+    /// # Example
+    /// ```rust
+    /// # use rust_htslib::bcf::{Format, Header, Writer};
+    /// # use tempfile::NamedTempFile;
+    /// # let tmp = NamedTempFile::new().unwrap();
+    /// # let path = tmp.path();
+    /// # let header = Header::new();
+    /// # let vcf = Writer::from_path(path, &header, true, Format::VCF).unwrap();
+    /// # let mut record = vcf.empty_record();
+    /// let alleles: &[&[u8]] = &[b"AGG", b"TG"];
+    /// record.set_alleles(alleles).expect("Failed to set alleles");
+    /// record.set_pos(5);
+    ///
+    /// assert_eq!(record.end(), 8)
+    /// ```
+    pub fn end(&self) -> i64 {
+        self.pos() + self.rlen()
     }
 
     /// Return the value of the ID column.
@@ -1319,6 +1340,20 @@ mod tests {
         let alleles: &[&[u8]] = &[b"AGG", b"TG"];
         record.set_alleles(alleles).expect("Failed to set alleles");
         assert_eq!(record.rlen(), 3)
+    }
+
+    #[test]
+    fn test_record_end() {
+        let tmp = NamedTempFile::new().unwrap();
+        let path = tmp.path();
+        let header = Header::new();
+        let vcf = Writer::from_path(path, &header, true, Format::VCF).unwrap();
+        let mut record = vcf.empty_record();
+        let alleles: &[&[u8]] = &[b"AGG", b"TG"];
+        record.set_alleles(alleles).expect("Failed to set alleles");
+        record.set_pos(5);
+
+        assert_eq!(record.end(), 8)
     }
 
     #[test]

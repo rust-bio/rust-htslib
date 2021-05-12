@@ -4,7 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 ### Added
-- `bcf::Record` methods `clear` and `rlen` (@mbhall88)
+- `bcf::Record` methods `end`, `clear`, and `rlen` (@mbhall88)
 
 [Unreleased]: https://github.com/rust-bio/rust-htslib/compare/v0.36.0...HEAD
 
