@@ -120,7 +120,7 @@ impl<'a, T: 'a + fmt::Debug, B: Borrow<Buffer> + 'a> Deref for BufferBacked<'a, 
 }
 
 impl<'a, T: 'a + fmt::Debug + fmt::Display, B: Borrow<Buffer> + 'a> fmt::Display
-for BufferBacked<'a, T, B>
+    for BufferBacked<'a, T, B>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.value, f)
@@ -356,9 +356,15 @@ impl Record {
     /// ```
     pub fn has_filter(&self, flt_id: &[u8]) -> bool {
         let filter_c_str = ffi::CString::new(flt_id).unwrap();
-        match unsafe { htslib::bcf_has_filter(self.header().inner, self.inner, filter_c_str.as_ptr() as *mut i8) } {
+        match unsafe {
+            htslib::bcf_has_filter(
+                self.header().inner,
+                self.inner,
+                filter_c_str.as_ptr() as *mut i8,
+            )
+        } {
             1 => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -394,7 +400,10 @@ impl Record {
     ///
     pub fn set_filters(&mut self, flt_ids: &[&[u8]]) -> Result<()> {
         // let id = self.header().name_to_id(flt_id)?;
-        let mut ids: Vec<i32> = flt_ids.iter().map(|id| self.header().name_to_id(id).and_then(|id| Ok(*id as i32))).collect::<Result<Vec<i32>>>()?;
+        let mut ids: Vec<i32> = flt_ids
+            .iter()
+            .map(|id| self.header().name_to_id(id).and_then(|id| Ok(*id as i32)))
+            .collect::<Result<Vec<i32>>>()?;
         unsafe {
             htslib::bcf_update_filter(
                 self.header().inner,
@@ -640,8 +649,8 @@ impl Record {
     }
 
     pub fn genotypes_shared_buffer<'a, B>(&self, buffer: B) -> Result<Genotypes<'a, B>>
-        where
-            B: BorrowMut<Buffer> + Borrow<Buffer> + 'a,
+    where
+        B: BorrowMut<Buffer> + Borrow<Buffer> + 'a,
     {
         Ok(Genotypes {
             encoded: self.format_shared_buffer(b"GT", buffer).integer()?,
@@ -1023,7 +1032,7 @@ impl genome::AbstractLocus for Record {
                 .rid2name(self.rid().expect("rid not set"))
                 .expect("unable to find rid in header"),
         )
-            .expect("unable to interpret contig name as UTF-8")
+        .expect("unable to interpret contig name as UTF-8")
     }
 
     fn pos(&self) -> u64 {
@@ -1043,8 +1052,8 @@ pub enum GenotypeAllele {
 impl GenotypeAllele {
     /// Decode given integer according to BCF standard.
     #[deprecated(
-    since = "0.36.0",
-    note = "Please use the conversion trait From<i32> for GenotypeAllele instead."
+        since = "0.36.0",
+        note = "Please use the conversion trait From<i32> for GenotypeAllele instead."
     )]
     pub fn from_encoded(encoded: i32) -> Self {
         match (encoded, encoded & 1) {
@@ -1122,8 +1131,8 @@ impl fmt::Display for Genotype {
 /// Lazy representation of genotypes, that does no computation until a particular genotype is queried.
 #[derive(Debug)]
 pub struct Genotypes<'a, B>
-    where
-        B: Borrow<Buffer> + 'a,
+where
+    B: Borrow<Buffer> + 'a,
 {
     encoded: BufferBacked<'a, Vec<&'a [i32]>, B>,
 }
@@ -1244,14 +1253,14 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, B> {
                     unsafe {
                         slice::from_raw_parts(self.buffer.borrow().inner as *const u8, ret as usize)
                     }
-                        .split(|c| *c == b',')
-                        .map(|s| {
-                            // stop at zero character
-                            s.split(|c| *c == 0u8)
-                                .next()
-                                .expect("Bug: returned string should not be empty.")
-                        })
-                        .collect(),
+                    .split(|c| *c == b',')
+                    .map(|s| {
+                        // stop at zero character
+                        s.split(|c| *c == 0u8)
+                            .next()
+                            .expect("Bug: returned string should not be empty.")
+                    })
+                    .collect(),
                     self.buffer,
                 )
             })
