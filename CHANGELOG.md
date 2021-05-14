@@ -6,6 +6,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - `bcf::Record` methods `end`, `clear`, and `rlen` (@mbhall88)
 
+### Changes
+- `bcf::Record` methods `has_filter`, `remove_filter`, `push_filter`, and `set_filter`
+  all now take a byte slice (`&[u8]`) instead of an `Id`. 
+
 [Unreleased]: https://github.com/rust-bio/rust-htslib/compare/v0.36.0...HEAD
 
 ## [0.36.0] - 2020-11-23
