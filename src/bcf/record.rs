@@ -404,6 +404,7 @@ impl Record {
     /// # Example
     /// ```rust
     /// # use rust_htslib::bcf::{Format, Header, Writer};
+    /// # use rust_htslib::bcf::header::Id;
     /// # use tempfile::NamedTempFile;
     /// # let tmp = tempfile::NamedTempFile::new().unwrap();
     /// # let path = tmp.path();
@@ -412,26 +413,32 @@ impl Record {
     /// header.push_record(br#"##FILTER=<ID=bar,Description="a horse walks into...">"#);
     /// # let vcf = Writer::from_path(path, &header, true, Format::VCF).unwrap();
     /// # let mut record = vcf.empty_record();
+    /// let foo = record.header().name_to_id(b"foo").unwrap();
+    /// let bar = record.header().name_to_id(b"bar").unwrap();
     /// assert!(record.has_filter("PASS".as_bytes()));
-    /// record.set_filters(&[b"foo", b"bar"]).unwrap();
-    /// assert!(record.has_filter("foo".as_bytes()));
-    /// assert!(record.has_filter("bar".as_bytes()));
+    /// let mut filters = vec![&foo, &bar];
+    /// record.set_filters(&filters).unwrap();
+    /// assert!(record.has_filter(&foo));
+    /// assert!(record.has_filter(&bar));
     /// assert!(!record.has_filter("PASS".as_bytes()));
-    /// record.set_filters(&[]).unwrap();
+    /// filters.clear();
+    /// record.set_filters(&filters).unwrap();
     /// assert!(record.has_filter("PASS".as_bytes()));
     /// assert!(!record.has_filter("foo".as_bytes()));
     /// // 'baz' isn't in the header
-    /// assert!(record.set_filters(&[b"foo", b"baz"]).is_err())
+    /// assert!(record.set_filters(&["baz".as_bytes()]).is_err())
     /// ```
     ///
     /// # Errors
     /// If any of the filter IDs do not exist in the header, an [`Error::BcfUnknownID`] is returned.
     ///
-    pub fn set_filters(&mut self, flt_ids: &[&[u8]]) -> Result<()> {
-        // let id = self.header().name_to_id(flt_id)?;
+    pub fn set_filters<T: FilterId + ?Sized>(&mut self, flt_ids: &[&T]) -> Result<()> {
         let mut ids: Vec<i32> = flt_ids
             .iter()
-            .map(|id| self.header().name_to_id(id).and_then(|id| Ok(*id as i32)))
+            .map(|id| {
+                id.id_from_header(self.header())
+                    .and_then(|id| Ok(*id as i32))
+            })
             .collect::<Result<Vec<i32>>>()?;
         unsafe {
             htslib::bcf_update_filter(
@@ -440,7 +447,7 @@ impl Record {
                 ids.as_mut_ptr(),
                 ids.len() as i32,
             );
-        }
+        };
         Ok(())
     }
 
@@ -511,7 +518,7 @@ impl Record {
     /// assert!(!record.has_filter(foo));
     /// assert!(record.has_filter(bar));
     /// // 'baz' is not in the header
-    /// assert!(record.remove_filter(b"baz", true).is_err());
+    /// assert!(record.remove_filter("baz".as_bytes(), true).is_err());
     ///
     /// record.remove_filter(bar, true).unwrap();
     /// assert!(!record.has_filter(bar));
@@ -521,8 +528,12 @@ impl Record {
     /// # Errors
     /// If the `flt_id` does not exist in the header, an [`Error::BcfUnknownID`] is returned.
     ///
-    pub fn remove_filter(&mut self, flt_id: &[u8], pass_on_empty: bool) -> Result<()> {
-        let id = self.header().name_to_id(flt_id)?;
+    pub fn remove_filter<T: FilterId + ?Sized>(
+        &mut self,
+        flt_id: &T,
+        pass_on_empty: bool,
+    ) -> Result<()> {
+        let id = flt_id.id_from_header(self.header())?;
         unsafe {
             htslib::bcf_remove_filter(
                 self.header().inner,
@@ -1603,7 +1614,8 @@ mod tests {
         assert!(record.has_filter("foo".as_bytes()));
         assert!(record.has_filter("bar".as_bytes()));
         assert!(!record.has_filter("PASS".as_bytes()));
-        record.set_filters(&[]).unwrap();
+        let filters: &[&Id] = &[];
+        record.set_filters(filters).unwrap();
         assert!(record.has_filter("PASS".as_bytes()));
         assert!(!record.has_filter("foo".as_bytes()));
         assert!(record
@@ -1620,15 +1632,17 @@ mod tests {
         header.push_record(br#"##FILTER=<ID=bar,Description="a horse walks into...">"#);
         let vcf = Writer::from_path(path, &header, true, Format::VCF).unwrap();
         let mut record = vcf.empty_record();
-        record.set_filters(&[b"foo", b"bar"]).unwrap();
-        assert!(record.has_filter("foo".as_bytes()));
-        assert!(record.has_filter("bar".as_bytes()));
-        record.remove_filter(b"foo", true).unwrap();
-        assert!(!record.has_filter("foo".as_bytes()));
-        assert!(record.has_filter("bar".as_bytes()));
-        assert!(record.remove_filter(b"baz", true).is_err());
-        record.remove_filter(b"bar", true).unwrap();
-        assert!(!record.has_filter("bar".as_bytes()));
+        let foo = record.header().name_to_id(b"foo").unwrap();
+        let bar = record.header().name_to_id(b"bar").unwrap();
+        record.set_filters(&[&foo, &bar]).unwrap();
+        assert!(record.has_filter(&foo));
+        assert!(record.has_filter(&bar));
+        record.remove_filter(&foo, true).unwrap();
+        assert!(!record.has_filter(&foo));
+        assert!(record.has_filter(&bar));
+        assert!(record.remove_filter("baz".as_bytes(), true).is_err());
+        record.remove_filter(&bar, true).unwrap();
+        assert!(!record.has_filter(&bar));
         assert!(record.has_filter("PASS".as_bytes()));
     }
 }
