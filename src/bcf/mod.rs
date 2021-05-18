@@ -1254,9 +1254,9 @@ mod tests {
 
             assert!(record.filters().next().is_none());
             record.set_filters(&[b"q10"]).unwrap();
-            record.push_filter(b"s50").unwrap();
+            record.push_filter("s50".as_bytes()).unwrap();
             record.remove_filter(b"q10", true).unwrap();
-            record.push_filter(b"q10").unwrap();
+            record.push_filter("q10".as_bytes()).unwrap();
 
             record.set_alleles(&[b"C", b"T", b"G"]).unwrap();
 

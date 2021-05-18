@@ -377,7 +377,7 @@ impl Record {
     /// assert!(record.has_filter(".".as_bytes()));
     /// assert!(record.has_filter(&Id(0)));
     ///
-    /// record.push_filter(b"foo").unwrap();
+    /// record.push_filter("foo".as_bytes()).unwrap();
     /// assert!(record.has_filter("foo".as_bytes()));
     /// assert!(!record.has_filter("PASS".as_bytes()))
     /// ```
@@ -457,21 +457,26 @@ impl Record {
     /// # let path = tmp.path();
     /// let mut header = Header::new();
     /// header.push_record(br#"##FILTER=<ID=foo,Description="sample is a foo fighter">"#);
+    /// header.push_record(br#"##FILTER=<ID=bar,Description="dranks">"#);
     /// # let vcf = Writer::from_path(path, &header, true, Format::VCF).unwrap();
     /// # let mut record = vcf.empty_record();
+    /// let foo = "foo".as_bytes();
+    /// let bar = record.header().name_to_id(b"bar").unwrap();
     /// assert!(record.has_filter("PASS".as_bytes()));
     ///
-    /// record.push_filter(b"foo").unwrap();
-    /// assert!(record.has_filter("foo".as_bytes()));
+    /// record.push_filter(foo).unwrap();
+    /// record.push_filter(&bar).unwrap();
+    /// assert!(record.has_filter(foo));
+    /// assert!(record.has_filter(&bar));
     /// // filter must exist in the header
-    /// assert!(record.push_filter(b"bar").is_err())
+    /// assert!(record.push_filter("baz".as_bytes()).is_err())
     /// ```
     ///
     /// # Errors
     /// If the `flt_id` does not exist in the header, an [`Error::BcfUnknownID`] is returned.
     ///
-    pub fn push_filter(&mut self, flt_id: &[u8]) -> Result<()> {
-        let id = self.header().name_to_id(flt_id)?;
+    pub fn push_filter<T: FilterId + ?Sized>(&mut self, flt_id: &T) -> Result<()> {
+        let id = flt_id.id_from_header(self.header())?;
         unsafe {
             htslib::bcf_add_filter(self.header().inner, self.inner, *id as i32);
         };
@@ -1557,7 +1562,7 @@ mod tests {
         header.push_record(br#"##FILTER=<ID=foo,Description="sample is a foo fighter">"#);
         let vcf = Writer::from_path(path, &header, true, Format::VCF).unwrap();
         let mut record = vcf.empty_record();
-        record.push_filter(b"foo").unwrap();
+        record.push_filter("foo".as_bytes()).unwrap();
 
         assert!(record.has_filter("foo".as_bytes()));
         assert!(!record.has_filter("PASS".as_bytes()))
@@ -1569,13 +1574,17 @@ mod tests {
         let path = tmp.path();
         let mut header = Header::new();
         header.push_record(br#"##FILTER=<ID=foo,Description="sample is a foo fighter">"#);
+        header.push_record(br#"##FILTER=<ID=bar,Description="dranks">"#);
         let vcf = Writer::from_path(path, &header, true, Format::VCF).unwrap();
         let mut record = vcf.empty_record();
         assert!(record.has_filter("PASS".as_bytes()));
         record.push_filter("foo".as_bytes()).unwrap();
+        let bar = record.header().name_to_id(b"bar").unwrap();
+        record.push_filter(&bar).unwrap();
         assert!(record.has_filter("foo".as_bytes()));
+        assert!(record.has_filter(&bar));
         assert!(!record.has_filter("PASS".as_bytes()));
-        assert!(record.push_filter("bar".as_bytes()).is_err())
+        assert!(record.push_filter("baz".as_bytes()).is_err())
     }
 
     #[test]
