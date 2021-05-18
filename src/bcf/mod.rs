@@ -663,6 +663,50 @@ impl Writer {
             Err(Error::NonUnicodePath)
         }
     }
+    
+    /// Create a new writer that writes to the given path.
+    ///
+    /// The compression and format will be determined from the file extension:
+    ///
+    /// * `.vcf`      -> uncompressed VCF
+    /// * `.vcf.gz`.  -> compressed VCF
+    /// * `.vcf.gzip` -> compressed VCF
+    /// * `.vcf.bgzf` -> compressed VCF
+    /// * `.bcf`      -> compressed BCF
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - the path
+    /// * `header` - header definition to use
+    pub fn from_path2<P: AsRef<Path>>(
+        path: P,
+        header: &Header
+    ) -> Result<Self> {
+        if let Some(p) = path.as_ref().to_str() {
+            let fields: Vec<&str> = p.split(".").collect();
+            let length = fields.len();
+            // FIXME: check that we have enough fields
+            let uncompressed: bool = {
+                if (fields[length-1] == "gz" || fields[length-1] == "gzip" || fields[length-1] == "bgzf") { false }
+                else if (fields[length-1] == "bcf") { false }
+                else if (fields[length-1] == "vcf") { true }
+                else { true } // FIXME
+            };
+            let format: Format = {
+                if (uncompressed) {
+                    if (fields[length-1] == "vcf") { Format::VCF }
+                    else { Format::VCF } // FIXME: should we default this or return an error?
+                }
+                else if (fields[length-1] == "bcf") { Format::BCF } // always compressed
+                else if (fields[length-2] == "vcf") { Format::VCF }
+                else { Format::VCF } // FIXME: should we default this or return an error?
+            };
+            Ok(Self::new(p.as_bytes(), header, uncompressed, format)?)
+        } else {
+            Err(Error::NonUnicodePath)
+        }
+    }
+
 
     /// Create a new writer from a URL.
     ///
