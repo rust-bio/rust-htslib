@@ -19,7 +19,9 @@ pub fn copy_memory(src: &[u8], dst: &mut [u8]) {
     let len_src = src.len();
     assert!(
         dst.len() >= len_src,
-        "dst len {} < src len {}", dst.len(), src.len()
+        "dst len {} < src len {}",
+        dst.len(),
+        src.len()
     );
     // `dst` is unaliasable, so we know statically it doesn't overlap
     // with `src`.
