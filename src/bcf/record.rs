@@ -140,7 +140,7 @@ impl<'a, T: 'a + fmt::Debug + fmt::Display, B: Borrow<Buffer> + 'a> fmt::Display
 /// header.push_sample("sample".as_bytes());
 ///
 /// // Write uncompressed VCF to stdout with above header and get an empty record
-/// let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+/// let mut vcf = Writer::from_stdout(&header, true, Format::Vcf).unwrap();
 /// let mut record = vcf.empty_record();
 /// ```
 #[derive(Debug)]
@@ -230,7 +230,7 @@ impl Record {
     /// # let header_contig_line = r#"##contig=<ID=1,length=10>"#;
     /// # header.push_record(header_contig_line.as_bytes());
     /// # header.push_sample("test_sample".as_bytes());
-    /// # let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+    /// # let mut vcf = Writer::from_stdout(&header, true, Format::Vcf).unwrap();
     /// # let mut record = vcf.empty_record();
     /// let rid = record.header().name2rid(b"1").ok();
     /// record.set_rid(rid);
@@ -264,7 +264,7 @@ impl Record {
     /// # let tmp = NamedTempFile::new().unwrap();
     /// # let path = tmp.path();
     /// # let header = Header::new();
-    /// # let vcf = Writer::from_path(path, &header, true, Format::VCF).unwrap();
+    /// # let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
     /// # let mut record = vcf.empty_record();
     /// let alleles: &[&[u8]] = &[b"AGG", b"TG"];
     /// record.set_alleles(alleles).expect("Failed to set alleles");
@@ -425,7 +425,7 @@ impl Record {
     /// # header.push_sample("sample".as_bytes());
     /// #
     /// # // Write uncompressed VCF to stdout with above header and get an empty record
-    /// # let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+    /// # let mut vcf = Writer::from_stdout(&header, true, Format::Vcf).unwrap();
     /// # let mut record = vcf.empty_record();
     /// assert_eq!(record.allele_count(), 0);
     ///
@@ -521,7 +521,7 @@ impl Record {
     /// # let header_gt_line = r#"##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">"#;
     /// # header.push_record(header_gt_line.as_bytes());
     /// # header.push_sample("test_sample".as_bytes());
-    /// # let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+    /// # let mut vcf = Writer::from_stdout(&header, true, Format::Vcf).unwrap();
     /// # let mut record = vcf.empty_record();
     /// let alleles = &[GenotypeAllele::Unphased(1), GenotypeAllele::Unphased(1)];
     /// record.push_genotypes(alleles);
@@ -614,7 +614,7 @@ impl Record {
     /// # let header_af_line = r#"##FORMAT=<ID=AF,Number=1,Type=Float,Description="Frequency">"#;
     /// # header.push_record(header_af_line.as_bytes());
     /// # header.push_sample("test_sample".as_bytes());
-    /// # let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+    /// # let mut vcf = Writer::from_stdout(&header, true, Format::Vcf).unwrap();
     /// # let mut record = vcf.empty_record();
     /// record.push_format_float(b"AF", &[0.5]);
     /// assert_eq!(0.5, record.format(b"AF").float().unwrap()[0][0]);
@@ -848,7 +848,7 @@ impl Record {
     /// # header.push_sample("sample".as_bytes());
     /// #
     /// # // Write uncompressed VCF to stdout with above header and get an empty record
-    /// # let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+    /// # let mut vcf = Writer::from_stdout(&header, true, Format::Vcf).unwrap();
     /// # let mut record = vcf.empty_record();
     /// # assert_eq!(record.rlen(), 0);
     /// let alleles: &[&[u8]] = &[b"AGG", b"TG"];
@@ -871,7 +871,7 @@ impl Record {
     /// # header.push_sample("sample".as_bytes());
     /// #
     /// # // Write uncompressed VCF to stdout with above header and get an empty record
-    /// # let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+    /// # let mut vcf = Writer::from_stdout(&header, true, Format::Vcf).unwrap();
     /// # let mut record = vcf.empty_record();
     /// let alleles: &[&[u8]] = &[b"AGG", b"TG"];
     /// record.set_alleles(alleles).expect("Failed to set alleles");
@@ -1334,7 +1334,7 @@ mod tests {
         let tmp = NamedTempFile::new().unwrap();
         let path = tmp.path();
         let header = Header::new();
-        let vcf = Writer::from_path(path, &header, true, Format::VCF).unwrap();
+        let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
         let mut record = vcf.empty_record();
         assert_eq!(record.rlen(), 0);
         let alleles: &[&[u8]] = &[b"AGG", b"TG"];
@@ -1347,7 +1347,7 @@ mod tests {
         let tmp = NamedTempFile::new().unwrap();
         let path = tmp.path();
         let header = Header::new();
-        let vcf = Writer::from_path(path, &header, true, Format::VCF).unwrap();
+        let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
         let mut record = vcf.empty_record();
         let alleles: &[&[u8]] = &[b"AGG", b"TG"];
         record.set_alleles(alleles).expect("Failed to set alleles");
@@ -1362,7 +1362,7 @@ mod tests {
         let path = tmp.path();
         let mut header = Header::new();
         header.push_sample("sample".as_bytes());
-        let vcf = Writer::from_path(path, &header, true, Format::VCF).unwrap();
+        let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
         let mut record = vcf.empty_record();
         let alleles: &[&[u8]] = &[b"AGG", b"TG"];
         record.set_alleles(alleles).expect("Failed to set alleles");

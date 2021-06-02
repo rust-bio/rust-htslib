@@ -54,7 +54,7 @@
 //!
 //! let mut bam = bam::Reader::from_path(&"test/test.bam").unwrap();
 //! let header = bam::Header::from_template(bam.header());
-//! let mut out = bam::Writer::from_path(&"test/out.bam", &header, bam::Format::BAM).unwrap();
+//! let mut out = bam::Writer::from_path(&"test/out.bam", &header, bam::Format::Bam).unwrap();
 //!
 //! // copy reverse reads to new BAM file
 //! for r in bam.records() {
