@@ -558,6 +558,37 @@ impl Record {
         })
     }
 
+    /// Retrieve data for a `FORMAT` field
+    ///
+    /// # Example
+    /// *Note: some boilerplate for the example is hidden for clarity. See [module documentation](../index.html#example-writing)
+    /// for an example of the setup used here.*
+    ///
+    /// ```rust
+    /// # use rust_htslib::bcf::{Format, Writer};
+    /// # use rust_htslib::bcf::header::Header;
+    /// #
+    /// # // Create minimal VCF header with a single sample
+    /// # let mut header = Header::new();
+    /// header.push_sample(b"sample1").push_sample(b"sample2").push_record(br#"##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">"#);
+    /// #
+    /// # // Write uncompressed VCF to stdout with above header and get an empty record
+    /// # let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+    /// # let mut record = vcf.empty_record();
+    /// record.push_format_integer(b"DP", &[20, 12]).expect("Failed to set DP format field");
+    ///
+    /// let read_depths = record.format(b"DP").integer().expect("Couldn't retrieve DP field");
+    /// let sample1_depth = read_depths[0];
+    /// assert_eq!(sample1_depth, &[20]);
+    /// let sample2_depth = read_depths[1];
+    /// assert_eq!(sample2_depth, &[12])
+    /// ```
+    ///
+    /// # Errors
+    /// **Attention:** the returned [`BufferBacked`] from [`integer()`](Format::integer)
+    /// (`read_depths`), which holds the data, has to be kept in scope as long as the data is
+    /// accessed. If parts of the data are accessed after the `BufferBacked` object is been
+    /// dropped, you will access unallocated memory.
     pub fn format<'a>(&'a self, tag: &'a [u8]) -> Format<'a, Buffer> {
         self.format_shared_buffer(tag, Buffer::new())
     }
@@ -1222,7 +1253,7 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Format<'a, B> {
     /// Get format data as integers.
     ///
     /// **Attention:** the returned BufferBacked which holds the data has to be kept in scope
-    /// as along as the data is accessed. If parts of the data are accessed while
+    /// as long as the data is accessed. If parts of the data are accessed while
     /// the BufferBacked object is already dropped, you will access unallocated
     /// memory.
     pub fn integer(mut self) -> Result<BufferBacked<'b, Vec<&'b [i32]>, B>> {
