@@ -185,7 +185,7 @@ jobs:
         with:
           use-cross: false  # cross is not supported on GHA OSX runner, see: https://github.community/t/why-is-docker-not-installed-on-macos/17017
           command: test
-          args: --release --all-features --verbose
+          args: --release --all-features --verbose ${{ matrix.aux_args }}
 
 #  Testing-OSX-MUSL-BigSur:
 #   needs: Formatting
