@@ -106,12 +106,7 @@ jobs:
             args: --target x86_64-unknown-linux-musl --all-features --verbose
             toolchain_target: x86_64-unknown-linux-musl
             use_cross: true
-        args:
-          - --no-default-features
-          - --all-features
-          - --release --target x86_64-unknown-linux-musl --no-default-features
-          - --release --target x86_64-unknown-linux-musl --all-features --verbose
-          - --target x86_64-unknown-linux-musl --all-features --verbose
+            
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -120,15 +115,6 @@ jobs:
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1.0.6
-        if: ${{ matrix.toolchain_target }}
-        with:
-          toolchain: stable
-          override: true
-          target: ${{ matrix.toolchain_target }}
-      
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1.0.6
-        if: ${{ !matrix.toolchain_target }}
         with:
           toolchain: stable
           override: true
