@@ -76,7 +76,7 @@
 //! header.push_sample("test_sample".as_bytes());
 //!
 //! // Write uncompressed VCF to stdout with above header and get an empty record
-//! let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+//! let mut vcf = Writer::from_stdout(&header, true, Format::Vcf).unwrap();
 //! let mut record = vcf.empty_record();
 //!
 //! // Set chrom and pos to 1 and 7, respectively - note the 0-based positions
@@ -257,7 +257,7 @@ pub struct IndexedReader {
     header: Rc<HeaderView>,
 
     /// The position of the previous fetch, if any.
-    current_region: Option<(u32, u64, u64)>,
+    current_region: Option<(u32, u64, Option<u64>)>,
 }
 
 unsafe impl Send for IndexedReader {}
@@ -318,10 +318,14 @@ impl IndexedReader {
     ///
     /// * `rid` - numeric ID of the reference to jump to; use `HeaderView::name2rid` for resolving
     ///           contig name to ID.
-    /// * `start` - `0`-based start coordinate of region on reference.
-    /// * `end` - `0`-based end coordinate of region on reference.
-    pub fn fetch(&mut self, rid: u32, start: u64, end: u64) -> Result<()> {
-        let contig = self.header.rid2name(rid).unwrap();
+    /// * `start` - `0`-based **inclusive** start coordinate of region on reference.
+    /// * `end` - Optional `0`-based **inclusive** end coordinate of region on reference. If `None`
+    /// is given, records are fetched from `start` until the end of the contig.
+    ///
+    /// # Note
+    /// The entire contig can be fetched by setting `start` to `0` and `end` to `None`.
+    pub fn fetch(&mut self, rid: u32, start: u64, end: Option<u64>) -> Result<()> {
+        let contig = self.header.rid2name(rid)?;
         let contig = ffi::CString::new(contig).unwrap();
         if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i64) } != 0 {
             Err(Error::GenomicSeek {
@@ -367,10 +371,11 @@ impl Read for IndexedReader {
 
                 match self.current_region {
                     Some((rid, _start, end)) => {
-                        if record.rid().is_some()
-                            && rid == record.rid().unwrap()
-                            && record.pos() as u64 <= end
-                        {
+                        let endpos = match end {
+                            Some(e) => e,
+                            None => u64::MAX,
+                        };
+                        if Some(rid) == record.rid() && record.pos() as u64 <= endpos {
                             Some(Ok(()))
                         } else {
                             None
@@ -628,8 +633,8 @@ pub mod synced {
 
 #[derive(Clone, Copy, Debug)]
 pub enum Format {
-    VCF,
-    BCF,
+    Vcf,
+    Bcf,
 }
 
 /// A VCF/BCF writer.
@@ -694,10 +699,10 @@ impl Writer {
 
     fn new(path: &[u8], header: &Header, uncompressed: bool, format: Format) -> Result<Self> {
         let mode: &[u8] = match (uncompressed, format) {
-            (true, Format::VCF) => b"w",
-            (false, Format::VCF) => b"wz",
-            (true, Format::BCF) => b"wbu",
-            (false, Format::BCF) => b"wb",
+            (true, Format::Vcf) => b"w",
+            (false, Format::Vcf) => b"wz",
+            (true, Format::Bcf) => b"wbu",
+            (false, Format::Bcf) => b"wb",
         };
 
         let htsfile = bcf_open(path, mode)?;
@@ -913,7 +918,7 @@ mod tests {
         let header = Header::from_template_subset(&bcf.header, &[b"NA12878.subsample-0.25-0"])
             .expect("Error subsetting samples.");
         let mut writer =
-            Writer::from_path(&bcfpath, &header, false, Format::BCF).expect("Error opening file.");
+            Writer::from_path(&bcfpath, &header, false, Format::Bcf).expect("Error opening file.");
         writer.set_threads(2).unwrap();
     }
 
@@ -925,8 +930,45 @@ mod tests {
             .header()
             .name2rid(b"1")
             .expect("Translating from contig '1' to ID failed.");
-        bcf.fetch(rid, 10_033, 10_060).expect("Fetching failed");
+        bcf.fetch(rid, 10_033, Some(10_060))
+            .expect("Fetching failed");
         assert_eq!(bcf.records().count(), 28);
+    }
+
+    #[test]
+    fn test_fetch_all() {
+        let mut bcf = IndexedReader::from_path(&"test/test.bcf").expect("Error opening file.");
+        bcf.set_threads(2).unwrap();
+        let rid = bcf
+            .header()
+            .name2rid(b"1")
+            .expect("Translating from contig '1' to ID failed.");
+        bcf.fetch(rid, 0, None).expect("Fetching failed");
+        assert_eq!(bcf.records().count(), 62);
+    }
+
+    #[test]
+    fn test_fetch_open_ended() {
+        let mut bcf = IndexedReader::from_path(&"test/test.bcf").expect("Error opening file.");
+        bcf.set_threads(2).unwrap();
+        let rid = bcf
+            .header()
+            .name2rid(b"1")
+            .expect("Translating from contig '1' to ID failed.");
+        bcf.fetch(rid, 10077, None).expect("Fetching failed");
+        assert_eq!(bcf.records().count(), 6);
+    }
+
+    #[test]
+    fn test_fetch_start_greater_than_last_vcf_pos() {
+        let mut bcf = IndexedReader::from_path(&"test/test.bcf").expect("Error opening file.");
+        bcf.set_threads(2).unwrap();
+        let rid = bcf
+            .header()
+            .name2rid(b"1")
+            .expect("Translating from contig '1' to ID failed.");
+        bcf.fetch(rid, 20077, None).expect("Fetching failed");
+        assert_eq!(bcf.records().count(), 0);
     }
 
     #[test]
@@ -941,7 +983,7 @@ mod tests {
         {
             let header = Header::from_template_subset(&bcf.header, &[b"NA12878.subsample-0.25-0"])
                 .expect("Error subsetting samples.");
-            let mut writer = Writer::from_path(&bcfpath, &header, false, Format::BCF)
+            let mut writer = Writer::from_path(&bcfpath, &header, false, Format::Bcf)
                 .expect("Error opening file.");
             for rec in bcf.records() {
                 let mut record = rec.expect("Error reading record.");
@@ -1227,7 +1269,7 @@ mod tests {
                 &out_path,
                 &Header::from_template(&vcf.header()),
                 true,
-                Format::VCF,
+                Format::Vcf,
             )
             .expect("Error opening file.");
 
@@ -1312,7 +1354,7 @@ mod tests {
             .remove_structured(b"Foo2")
             .remove_generic(b"Bar2");
         {
-            let mut _writer = Writer::from_path(&vcfpath, &header, true, Format::VCF)
+            let mut _writer = Writer::from_path(&vcfpath, &header, true, Format::Vcf)
                 .expect("Error opening output file.");
             // Note that we don't need to write anything, we are just looking at the header.
         }

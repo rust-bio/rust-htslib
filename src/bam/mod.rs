@@ -257,6 +257,17 @@ impl Reader {
         let htsfile = hts_open(path, b"r")?;
 
         let header = unsafe { htslib::sam_hdr_read(htsfile) };
+        if header.is_null() {
+            return Err(Error::BamOpen {
+                target: String::from_utf8_lossy(path).to_string(),
+            });
+        }
+
+        // Invalidate the `text` representation of the header
+        unsafe {
+            let _ = htslib::sam_hdr_line_name(header, b"SQ".as_ptr().cast::<i8>(), 0);
+        }
+
         Ok(Reader {
             htsfile,
             header: Rc::new(HeaderView::new(header)),
@@ -669,7 +680,7 @@ impl IndexedReader {
         self._inner_fetch(fetch_definition.into())
     }
 
-    fn _inner_fetch<'a>(&mut self, fetch_definition: FetchDefinition<'a>) -> Result<()> {
+    fn _inner_fetch(&mut self, fetch_definition: FetchDefinition) -> Result<()> {
         match fetch_definition {
             FetchDefinition::Region(tid, start, stop) => {
                 self._fetch_by_coord_tuple(tid, start, stop)
@@ -847,17 +858,17 @@ impl Drop for IndexedReader {
 
 #[derive(Debug, Clone, Copy)]
 pub enum Format {
-    SAM,
-    BAM,
-    CRAM,
+    Sam,
+    Bam,
+    Cram,
 }
 
 impl Format {
     fn write_mode(self) -> &'static [u8] {
         match self {
-            Format::SAM => b"w",
-            Format::BAM => b"wb",
-            Format::CRAM => b"wc",
+            Format::Sam => b"w",
+            Format::Bam => b"wb",
+            Format::Cram => b"wc",
         }
     }
 }
@@ -1275,7 +1286,13 @@ impl HeaderView {
 
     /// Retrieve the textual SAM header as bytes
     pub fn as_bytes(&self) -> &[u8] {
-        unsafe { ffi::CStr::from_ptr((*self.inner).text).to_bytes() }
+        unsafe {
+            let rebuilt_hdr = htslib::sam_hdr_str(self.inner);
+            if rebuilt_hdr.is_null() {
+                return b"";
+            }
+            ffi::CStr::from_ptr(rebuilt_hdr).to_bytes()
+        }
     }
 }
 
@@ -1778,7 +1795,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                         .push_tag(b"SN", &"chr1")
                         .push_tag(b"LN", &15072423),
                 ),
-                Format::BAM,
+                Format::Bam,
             )
             .expect("Error opening file.");
 
@@ -1830,7 +1847,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                         .push_tag(b"SN", &"chr1")
                         .push_tag(b"LN", &15072423),
                 ),
-                Format::BAM,
+                Format::Bam,
             )
             .expect("Error opening file.");
             bam.set_threads(4).unwrap();
@@ -1888,7 +1905,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                             .push_tag(b"SN", &"chr1")
                             .push_tag(b"LN", &15072423),
                     ),
-                    Format::BAM,
+                    Format::Bam,
                 )
                 .expect("Error opening file.");
 
@@ -1899,7 +1916,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                             .push_tag(b"SN", &"chr1")
                             .push_tag(b"LN", &15072423),
                     ),
-                    Format::BAM,
+                    Format::Bam,
                 )
                 .expect("Error opening file.");
 
@@ -1963,7 +1980,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             let mut bam = Writer::from_path(
                 &bampath,
                 &Header::from_template(&input_bam.header()),
-                Format::BAM,
+                Format::Bam,
             )
             .expect("Error opening file.");
 
@@ -2133,7 +2150,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                     .push_tag(b"UR", &"test/test_cram.fa"),
             );
 
-            let mut cram_writer = Writer::from_path(&cram_path, &header, Format::CRAM)
+            let mut cram_writer = Writer::from_path(&cram_path, &header, Format::Cram)
                 .expect("Error opening CRAM file.");
             cram_writer.set_reference(ref_path).unwrap();
 
@@ -2197,7 +2214,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                     let mut reader = Reader::from_path(&input_bam_path).unwrap();
                     let header = Header::from_template(reader.header());
                     let mut writer =
-                        Writer::from_path(&output_bam_path, &header, Format::BAM).unwrap();
+                        Writer::from_path(&output_bam_path, &header, Format::Bam).unwrap();
                     writer.set_compression_level(*level).unwrap();
                     for record in reader.records() {
                         let r = record.unwrap();
@@ -2252,7 +2269,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         {
             let mut bam_reader = Reader::from_path(bamfile).unwrap(); // internal functions, just unwarp
             let header = header::Header::from_template(bam_reader.header());
-            let mut sam_writer = Writer::from_path(samfile, &header, Format::SAM).unwrap();
+            let mut sam_writer = Writer::from_path(samfile, &header, Format::Sam).unwrap();
             for record in bam_reader.records() {
                 if record.is_err() {
                     return false;
@@ -2789,5 +2806,15 @@ CCCCCCCCCCCCCCCCCCC"[..],
             test_record.aux(b"XB").unwrap(),
             Aux::ArrayI8((&one_data).into())
         );
+    }
+
+    /// Test if both text and binary representations of a BAM header are in sync (#156)
+    #[test]
+    fn test_bam_header_sync() {
+        let reader = Reader::from_path("test/test_issue_156_no_text.bam").unwrap();
+        let header_hashmap = Header::from_template(reader.header()).to_hashmap();
+        let header_refseqs = header_hashmap.get("SQ".into()).unwrap();
+        assert_eq!(header_refseqs[0].get("SN").unwrap(), "ref_1",);
+        assert_eq!(header_refseqs[0].get("LN").unwrap(), "10000000",);
     }
 }
