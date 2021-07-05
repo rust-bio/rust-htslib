@@ -371,7 +371,7 @@ impl Record {
     /// # let path = tmp.path();
     /// let mut header = Header::new();
     /// header.push_record(br#"##FILTER=<ID=foo,Description="sample is a foo fighter">"#);
-    /// # let vcf = Writer::from_path(path, &header, true, Format::VCF).unwrap();
+    /// # let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
     /// # let mut record = vcf.empty_record();
     /// assert!(record.has_filter("PASS".as_bytes()));
     /// assert!(record.has_filter(".".as_bytes()));
@@ -411,7 +411,7 @@ impl Record {
     /// let mut header = Header::new();
     /// header.push_record(br#"##FILTER=<ID=foo,Description="sample is a foo fighter">"#);
     /// header.push_record(br#"##FILTER=<ID=bar,Description="a horse walks into...">"#);
-    /// # let vcf = Writer::from_path(path, &header, true, Format::VCF).unwrap();
+    /// # let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
     /// # let mut record = vcf.empty_record();
     /// let foo = record.header().name_to_id(b"foo").unwrap();
     /// let bar = record.header().name_to_id(b"bar").unwrap();
@@ -435,10 +435,7 @@ impl Record {
     pub fn set_filters<T: FilterId + ?Sized>(&mut self, flt_ids: &[&T]) -> Result<()> {
         let mut ids: Vec<i32> = flt_ids
             .iter()
-            .map(|id| {
-                id.id_from_header(self.header())
-                    .and_then(|id| Ok(*id as i32))
-            })
+            .map(|id| id.id_from_header(self.header()).map(|id| *id as i32))
             .collect::<Result<Vec<i32>>>()?;
         unsafe {
             htslib::bcf_update_filter(
@@ -465,7 +462,7 @@ impl Record {
     /// let mut header = Header::new();
     /// header.push_record(br#"##FILTER=<ID=foo,Description="sample is a foo fighter">"#);
     /// header.push_record(br#"##FILTER=<ID=bar,Description="dranks">"#);
-    /// # let vcf = Writer::from_path(path, &header, true, Format::VCF).unwrap();
+    /// # let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
     /// # let mut record = vcf.empty_record();
     /// let foo = "foo".as_bytes();
     /// let bar = record.header().name_to_id(b"bar").unwrap();
@@ -506,7 +503,7 @@ impl Record {
     /// let mut header = Header::new();
     /// header.push_record(br#"##FILTER=<ID=foo,Description="sample is a foo fighter">"#);
     /// header.push_record(br#"##FILTER=<ID=bar,Description="a horse walks into...">"#);
-    /// # let vcf = Writer::from_path(path, &header, true, Format::VCF).unwrap();
+    /// # let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
     /// # let mut record = vcf.empty_record();
     /// let foo = "foo".as_bytes();
     /// let bar = "bar".as_bytes();
@@ -1555,7 +1552,7 @@ mod tests {
         let tmp = NamedTempFile::new().unwrap();
         let path = tmp.path();
         let header = Header::new();
-        let vcf = Writer::from_path(path, &header, true, Format::VCF).unwrap();
+        let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
         let record = vcf.empty_record();
 
         assert!(record.has_filter("PASS".as_bytes()));
@@ -1571,7 +1568,7 @@ mod tests {
         let path = tmp.path();
         let mut header = Header::new();
         header.push_record(br#"##FILTER=<ID=foo,Description="sample is a foo fighter">"#);
-        let vcf = Writer::from_path(path, &header, true, Format::VCF).unwrap();
+        let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
         let mut record = vcf.empty_record();
         record.push_filter("foo".as_bytes()).unwrap();
 
@@ -1586,7 +1583,7 @@ mod tests {
         let mut header = Header::new();
         header.push_record(br#"##FILTER=<ID=foo,Description="sample is a foo fighter">"#);
         header.push_record(br#"##FILTER=<ID=bar,Description="dranks">"#);
-        let vcf = Writer::from_path(path, &header, true, Format::VCF).unwrap();
+        let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
         let mut record = vcf.empty_record();
         assert!(record.has_filter("PASS".as_bytes()));
         record.push_filter("foo".as_bytes()).unwrap();
@@ -1605,7 +1602,7 @@ mod tests {
         let mut header = Header::new();
         header.push_record(br#"##FILTER=<ID=foo,Description="sample is a foo fighter">"#);
         header.push_record(br#"##FILTER=<ID=bar,Description="a horse walks into...">"#);
-        let vcf = Writer::from_path(path, &header, true, Format::VCF).unwrap();
+        let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
         let mut record = vcf.empty_record();
         assert!(record.has_filter("PASS".as_bytes()));
         record
@@ -1630,7 +1627,7 @@ mod tests {
         let mut header = Header::new();
         header.push_record(br#"##FILTER=<ID=foo,Description="sample is a foo fighter">"#);
         header.push_record(br#"##FILTER=<ID=bar,Description="a horse walks into...">"#);
-        let vcf = Writer::from_path(path, &header, true, Format::VCF).unwrap();
+        let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
         let mut record = vcf.empty_record();
         let foo = record.header().name_to_id(b"foo").unwrap();
         let bar = record.header().name_to_id(b"bar").unwrap();
