@@ -2,15 +2,20 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [0.37.0] - 2021-07-05
 ### Added
-- `bcf::Record` methods `end`, `clear`, and `rlen` (@mbhall88)
+- `bcf::Record` methods `end`, `clear`, and `rlen` (@mbhall88).
 
 ### Changes
 - `bcf::IndexReader::fetch` parameter `end` is now an `Option<u64>`. This is inline with
   htslib regions, which do not require an end position (@mbhall88)
+- Removed unused dependencies (@sreenathkrishnan).
+- Improved documentation (@mbhall88).
+- Improved error message when failing to load index files (@johanneskoester).
+- Improved API for accessing AUX fields in BAM records (@jch-13).
+- Fixed compiler warnings (@fxwiegand).
+- BAM header representation is now always kept in sync between textual and binary (@jch-13).
 
-[Unreleased]: https://github.com/rust-bio/rust-htslib/compare/v0.36.0...HEAD
 
 ## [0.36.0] - 2020-11-23
 ### Changes
