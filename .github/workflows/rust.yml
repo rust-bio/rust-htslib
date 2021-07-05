@@ -131,7 +131,7 @@ jobs:
         with:
           command: test
           args: ${{ matrix.args }}
-          use-cross: {{ matrix.use_cross }}
+          use-cross: ${{ matrix.use_cross }}
 
   Testing-MacOS:
     needs: Formatting
