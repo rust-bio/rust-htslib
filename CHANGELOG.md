@@ -6,6 +6,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - `bcf::Record` methods `end`, `clear`, and `rlen` (@mbhall88)
 
+### Changes
+- `bcf::IndexReader::fetch` parameter `end` is now an `Option<u64>`. This is inline with
+  htslib regions, which do not require an end position (@mbhall88)
+
 [Unreleased]: https://github.com/rust-bio/rust-htslib/compare/v0.36.0...HEAD
 
 ## [0.36.0] - 2020-11-23
