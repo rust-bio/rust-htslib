@@ -257,6 +257,17 @@ impl Reader {
         let htsfile = hts_open(path, b"r")?;
 
         let header = unsafe { htslib::sam_hdr_read(htsfile) };
+        if header.is_null() {
+            return Err(Error::BamOpen {
+                target: String::from_utf8_lossy(path).to_string(),
+            });
+        }
+
+        // Invalidate the `text` representation of the header
+        unsafe {
+            let _ = htslib::sam_hdr_line_name(header, b"SQ".as_ptr().cast::<i8>(), 0);
+        }
+
         Ok(Reader {
             htsfile,
             header: Rc::new(HeaderView::new(header)),
@@ -1275,7 +1286,13 @@ impl HeaderView {
 
     /// Retrieve the textual SAM header as bytes
     pub fn as_bytes(&self) -> &[u8] {
-        unsafe { ffi::CStr::from_ptr((*self.inner).text).to_bytes() }
+        unsafe {
+            let rebuilt_hdr = htslib::sam_hdr_str(self.inner);
+            if rebuilt_hdr.is_null() {
+                return b"";
+            }
+            ffi::CStr::from_ptr(rebuilt_hdr).to_bytes()
+        }
     }
 }
 
@@ -2789,5 +2806,15 @@ CCCCCCCCCCCCCCCCCCC"[..],
             test_record.aux(b"XB").unwrap(),
             Aux::ArrayI8((&one_data).into())
         );
+    }
+
+    /// Test if both text and binary representations of a BAM header are in sync (#156)
+    #[test]
+    fn test_bam_header_sync() {
+        let reader = Reader::from_path("test/test_issue_156_no_text.bam").unwrap();
+        let header_hashmap = Header::from_template(reader.header()).to_hashmap();
+        let header_refseqs = header_hashmap.get("SQ".into()).unwrap();
+        assert_eq!(header_refseqs[0].get("SN").unwrap(), "ref_1",);
+        assert_eq!(header_refseqs[0].get("LN").unwrap(), "10000000",);
     }
 }
