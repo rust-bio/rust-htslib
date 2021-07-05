@@ -178,8 +178,6 @@ jobs:
           override: true
           default: ${{ matrix.default }}
 
-      - uses: Swatinem/rust-cache@v1.3.0
-
       - name: Test
         uses: actions-rs/cargo@v1.0.1
         with:
