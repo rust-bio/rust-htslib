@@ -147,16 +147,19 @@ jobs:
             toolchain_target: x86_64-apple-darwin
             toolchain: stable
             aux_args: ""
+            default: false
           - target: intel-bigsur
             os: macOS-11.0
             toolchain_target: x86_64-apple-darwin
             toolchain: stable
             aux_args: ""
+            default: false
           - target: m1-bigsur
             os: macOS-11.0
             toolchain_target: aarch64-apple-darwin
             toolchain: nightly
             aux_args: --target aarch64-apple-darwin
+            default: true
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -173,7 +176,7 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
           target: ${{ matrix.toolchain_target }}
           override: true
-          default: true
+          default: ${{ matrix.default }}
 
       - uses: Swatinem/rust-cache@v1.3.0
 
