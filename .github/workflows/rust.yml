@@ -145,14 +145,17 @@ jobs:
           - target: intel-catalina
             os: macOS-10.15
             toolchain_target: x86_64-apple-darwin
+            toolchain: stable
             aux_args: ""
           - target: intel-bigsur
             os: macOS-11.0
             toolchain_target: x86_64-apple-darwin
+            toolchain: stable
             aux_args: ""
           - target: m1-bigsur
             os: macOS-11.0
             toolchain_target: aarch64-apple-darwin
+            toolchain: nightly
             aux_args: --target aarch64-apple-darwin
 
     runs-on: ${{ matrix.os }}
@@ -167,9 +170,10 @@ jobs:
 
       - uses: actions-rs/toolchain@v1.0.6
         with:
-          toolchain: stable
+          toolchain: ${{ matrix.toolchain }}
           target: ${{ matrix.toolchain_target }}
           override: true
+          default: true
 
       - uses: Swatinem/rust-cache@v1.3.0
 
