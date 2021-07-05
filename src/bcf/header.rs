@@ -322,7 +322,7 @@ impl HeaderView {
     /// let mut header = Header::new();
     /// let contig_field = br#"##contig=<ID=foo,length=10>"#;
     /// header.push_record(contig_field);
-    /// let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+    /// let mut vcf = Writer::from_stdout(&header, true, Format::Vcf).unwrap();
     /// let header_view = vcf.header();
     /// let rid = header_view.name2rid(b"foo").unwrap();
     /// assert_eq!(rid, 0);

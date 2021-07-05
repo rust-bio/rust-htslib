@@ -76,7 +76,7 @@
 //! header.push_sample("test_sample".as_bytes());
 //!
 //! // Write uncompressed VCF to stdout with above header and get an empty record
-//! let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+//! let mut vcf = Writer::from_stdout(&header, true, Format::Vcf).unwrap();
 //! let mut record = vcf.empty_record();
 //!
 //! // Set chrom and pos to 1 and 7, respectively - note the 0-based positions
@@ -628,8 +628,8 @@ pub mod synced {
 
 #[derive(Clone, Copy, Debug)]
 pub enum Format {
-    VCF,
-    BCF,
+    Vcf,
+    Bcf,
 }
 
 /// A VCF/BCF writer.
@@ -694,10 +694,10 @@ impl Writer {
 
     fn new(path: &[u8], header: &Header, uncompressed: bool, format: Format) -> Result<Self> {
         let mode: &[u8] = match (uncompressed, format) {
-            (true, Format::VCF) => b"w",
-            (false, Format::VCF) => b"wz",
-            (true, Format::BCF) => b"wbu",
-            (false, Format::BCF) => b"wb",
+            (true, Format::Vcf) => b"w",
+            (false, Format::Vcf) => b"wz",
+            (true, Format::Bcf) => b"wbu",
+            (false, Format::Bcf) => b"wb",
         };
 
         let htsfile = bcf_open(path, mode)?;
@@ -913,7 +913,7 @@ mod tests {
         let header = Header::from_template_subset(&bcf.header, &[b"NA12878.subsample-0.25-0"])
             .expect("Error subsetting samples.");
         let mut writer =
-            Writer::from_path(&bcfpath, &header, false, Format::BCF).expect("Error opening file.");
+            Writer::from_path(&bcfpath, &header, false, Format::Bcf).expect("Error opening file.");
         writer.set_threads(2).unwrap();
     }
 
@@ -941,7 +941,7 @@ mod tests {
         {
             let header = Header::from_template_subset(&bcf.header, &[b"NA12878.subsample-0.25-0"])
                 .expect("Error subsetting samples.");
-            let mut writer = Writer::from_path(&bcfpath, &header, false, Format::BCF)
+            let mut writer = Writer::from_path(&bcfpath, &header, false, Format::Bcf)
                 .expect("Error opening file.");
             for rec in bcf.records() {
                 let mut record = rec.expect("Error reading record.");
@@ -1227,7 +1227,7 @@ mod tests {
                 &out_path,
                 &Header::from_template(&vcf.header()),
                 true,
-                Format::VCF,
+                Format::Vcf,
             )
             .expect("Error opening file.");
             let header = writer.header().clone();
@@ -1313,7 +1313,7 @@ mod tests {
             .remove_structured(b"Foo2")
             .remove_generic(b"Bar2");
         {
-            let mut _writer = Writer::from_path(&vcfpath, &header, true, Format::VCF)
+            let mut _writer = Writer::from_path(&vcfpath, &header, true, Format::Vcf)
                 .expect("Error opening output file.");
             // Note that we don't need to write anything, we are just looking at the header.
         }

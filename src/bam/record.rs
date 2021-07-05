@@ -15,8 +15,6 @@ use std::str;
 use std::u32;
 
 use byteorder::{LittleEndian, ReadBytesExt};
-use lazy_static::lazy_static;
-use regex::Regex;
 
 use crate::bam::Error;
 use crate::bam::HeaderView;
