@@ -573,7 +573,7 @@ impl Record {
     /// header.push_sample(b"sample1").push_sample(b"sample2").push_record(br#"##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">"#);
     /// #
     /// # // Write uncompressed VCF to stdout with above header and get an empty record
-    /// # let mut vcf = Writer::from_stdout(&header, true, Format::VCF).unwrap();
+    /// # let mut vcf = Writer::from_stdout(&header, true, Format::Vcf).unwrap();
     /// # let mut record = vcf.empty_record();
     /// record.push_format_integer(b"DP", &[20, 12]).expect("Failed to set DP format field");
     ///
