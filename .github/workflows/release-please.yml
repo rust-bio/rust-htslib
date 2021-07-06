@@ -14,7 +14,6 @@ jobs:
         with:
           release-type: rust
           package-name: hts-sys
-          bump-minor-pre-major: Yes
           monorepo-tags: true
           path: hts-sys
 
