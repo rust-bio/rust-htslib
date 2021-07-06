@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+### [0.39.1](https://www.github.com/rust-bio/rust-htslib/compare/rust-htslib-v0.39.0...rust-htslib-v0.39.1) (2021-07-06)
+
+
+### Bug Fixes
+
+* bump hts-sys version to 2.0.1 ([336c8b8](https://www.github.com/rust-bio/rust-htslib/commit/336c8b8a1779422afea1065e37bcc44f54abac42))
+
 ## [0.39.0](https://www.github.com/rust-bio/rust-htslib/compare/rust-htslib-vrust-htslib-0.38.3...rust-htslib-v0.39.0) (2021-07-06)
 
 
