@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+### [0.38.2](https://www.github.com/rust-bio/rust-htslib/compare/v0.38.1...v0.38.2) (2021-07-06)
+
+
+### Bug Fixes
+
+* add ID to automatic release handling ([1244393](https://www.github.com/rust-bio/rust-htslib/commit/124439300e1e3e01e1d847f7549747d560c01989))
+
 ### [0.38.1](https://www.github.com/rust-bio/rust-htslib/compare/v0.38.0...v0.38.1) (2021-07-06)
 
 
