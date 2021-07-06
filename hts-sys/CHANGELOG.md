@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://www.github.com/rust-bio/rust-htslib/compare/hts-sys-v1.0.0...hts-sys-v2.0.0) (2021-07-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* dummy major version bump to move away from previous versions that were following htslib versions.
+
+### Bug Fixes
+
+* dummy major version bump to move away from previous versions that were following htslib versions. ([aaa70a8](https://www.github.com/rust-bio/rust-htslib/commit/aaa70a85ef9a908d3b101f23879189e84a15d23f))
+
 ## [1.0.0](https://www.github.com/rust-bio/rust-htslib/compare/hts-sys-v0.1.0...hts-sys-v1.0.0) (2021-07-06)
 
 
