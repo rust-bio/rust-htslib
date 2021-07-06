@@ -3,9 +3,10 @@
 #![allow(non_snake_case)]
 #![allow(clippy::all)]
 #![allow(improper_ctypes)]
-//! This module exposes the raw [HTSlib](https://github.com/samtools/htslib) bindings.
-//! Instead of using this crate directly, it is recommended to use [rust-htslib](https://docs.rs/rust-htslib) instead,
-//! which has a more idiomatic and high-level API and builds on top of this crate.
+//! This module exposes the raw [HTSlib](https://github.com/samtools/htslib) bindings for reading and writing 
+//! genomics file formats like SAM, BAM, CRAM, VCF, BCF.
+//! Instead of using this crate directly, it is recommended to use [rust-htslib](https://docs.rs/rust-htslib) 
+//! instead, which has a more idiomatic and high-level API and builds on top of this crate.
 
 #[cfg(feature = "bzip2")]
 extern crate bzip2_sys;
