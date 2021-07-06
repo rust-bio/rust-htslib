@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+### [0.37.1](https://www.github.com/rust-bio/rust-htslib/compare/v0.37.0...v0.37.1) (2021-07-06)
+
+
+### Bug Fixes
+
+* enum name usage in doc example ([#311](https://www.github.com/rust-bio/rust-htslib/issues/311)) ([6e9ba49](https://www.github.com/rust-bio/rust-htslib/commit/6e9ba4928b60c3105490a8179d074c705ea06fd7))
+
 ## [0.37.0] - 2021-07-05
 ### Added
 - `bcf::Record` methods `end`, `clear`, and `rlen` (@mbhall88).
