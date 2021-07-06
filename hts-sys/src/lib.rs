@@ -5,7 +5,7 @@
 #![allow(improper_ctypes)]
 //! This module exposes the raw [HTSlib](https://github.com/samtools/htslib) bindings.
 //! Instead of using this crate directly, it is recommended to use [rust-htslib](https://docs.rs/rust-htslib) instead,
-//! which has a more idiomatic and high-level API and builds on top of hts-sys.
+//! which has a more idiomatic and high-level API and builds on top of this crate.
 
 #[cfg(feature = "bzip2")]
 extern crate bzip2_sys;
