@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+### Changes
+- `bcf::Record` methods `has_filter`, `remove_filter`, `push_filter`, and `set_filter`
+  all now take a byte slice (`&[u8]`) or an `Id`. 
+
+[Unreleased]: https://github.com/rust-bio/rust-htslib/compare/v0.37.0...HEAD
+
 ## [0.37.0] - 2021-07-05
 ### Added
 - `bcf::Record` methods `end`, `clear`, and `rlen` (@mbhall88).
@@ -15,7 +22,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Improved API for accessing AUX fields in BAM records (@jch-13).
 - Fixed compiler warnings (@fxwiegand).
 - BAM header representation is now always kept in sync between textual and binary (@jch-13).
-
 
 ## [0.36.0] - 2020-11-23
 ### Changes

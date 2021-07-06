@@ -79,6 +79,30 @@ impl NumericUtils for i32 {
     }
 }
 
+/// A trait to allow for seamless use of bytes or integer identifiers for filters
+pub trait FilterId {
+    fn id_from_header(&self, header: &HeaderView) -> Result<Id>;
+    fn is_pass(&self) -> bool;
+}
+
+impl FilterId for [u8] {
+    fn id_from_header(&self, header: &HeaderView) -> Result<Id> {
+        header.name_to_id(self)
+    }
+    fn is_pass(&self) -> bool {
+        matches!(self, b"PASS" | b".")
+    }
+}
+
+impl FilterId for Id {
+    fn id_from_header(&self, _header: &HeaderView) -> Result<Id> {
+        Ok(*self)
+    }
+    fn is_pass(&self) -> bool {
+        *self == Id(0)
+    }
+}
+
 /// A buffer for info or format data.
 #[derive(Debug)]
 pub struct Buffer {
@@ -335,69 +359,187 @@ impl Record {
 
     /// Query whether the filter with the given ID has been set.
     ///
-    /// # Arguments
+    /// This method can be used to check if a record passes filtering by using either `Id(0)`,
+    /// `PASS` or `.`
     ///
-    /// - `flt_id` - The filter ID to query for.
-    pub fn has_filter(&self, flt_id: Id) -> bool {
-        if *flt_id == 0 && self.inner().d.n_flt == 0 {
+    /// # Example
+    /// ```rust
+    /// # use rust_htslib::bcf::{Format, Header, Writer};
+    /// # use rust_htslib::bcf::header::Id;
+    /// # use tempfile::NamedTempFile;
+    /// # let tmp = tempfile::NamedTempFile::new().unwrap();
+    /// # let path = tmp.path();
+    /// let mut header = Header::new();
+    /// header.push_record(br#"##FILTER=<ID=foo,Description="sample is a foo fighter">"#);
+    /// # let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
+    /// # let mut record = vcf.empty_record();
+    /// assert!(record.has_filter("PASS".as_bytes()));
+    /// assert!(record.has_filter(".".as_bytes()));
+    /// assert!(record.has_filter(&Id(0)));
+    ///
+    /// record.push_filter("foo".as_bytes()).unwrap();
+    /// assert!(record.has_filter("foo".as_bytes()));
+    /// assert!(!record.has_filter("PASS".as_bytes()))
+    /// ```
+    pub fn has_filter<T: FilterId + ?Sized>(&self, flt_id: &T) -> bool {
+        if flt_id.is_pass() && self.inner().d.n_flt == 0 {
             return true;
         }
+        let id = match flt_id.id_from_header(&self.header()) {
+            Ok(i) => *i,
+            Err(_) => return false,
+        };
         for i in 0..(self.inner().d.n_flt as isize) {
-            if unsafe { *self.inner().d.flt.offset(i) } == *flt_id as i32 {
+            if unsafe { *self.inner().d.flt.offset(i) } == id as i32 {
                 return true;
             }
         }
         false
     }
 
-    /// Set the given filters IDs to the FILTER column.
+    /// Set the given filter IDs to the FILTER column.
     ///
-    /// Setting an empty slice removes all filters.
+    /// Setting an empty slice removes all filters and sets `PASS`.
     ///
-    /// # Arguments
+    /// # Example
+    /// ```rust
+    /// # use rust_htslib::bcf::{Format, Header, Writer};
+    /// # use rust_htslib::bcf::header::Id;
+    /// # use tempfile::NamedTempFile;
+    /// # let tmp = tempfile::NamedTempFile::new().unwrap();
+    /// # let path = tmp.path();
+    /// let mut header = Header::new();
+    /// header.push_record(br#"##FILTER=<ID=foo,Description="sample is a foo fighter">"#);
+    /// header.push_record(br#"##FILTER=<ID=bar,Description="a horse walks into...">"#);
+    /// # let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
+    /// # let mut record = vcf.empty_record();
+    /// let foo = record.header().name_to_id(b"foo").unwrap();
+    /// let bar = record.header().name_to_id(b"bar").unwrap();
+    /// assert!(record.has_filter("PASS".as_bytes()));
+    /// let mut filters = vec![&foo, &bar];
+    /// record.set_filters(&filters).unwrap();
+    /// assert!(record.has_filter(&foo));
+    /// assert!(record.has_filter(&bar));
+    /// assert!(!record.has_filter("PASS".as_bytes()));
+    /// filters.clear();
+    /// record.set_filters(&filters).unwrap();
+    /// assert!(record.has_filter("PASS".as_bytes()));
+    /// assert!(!record.has_filter("foo".as_bytes()));
+    /// // 'baz' isn't in the header
+    /// assert!(record.set_filters(&["baz".as_bytes()]).is_err())
+    /// ```
     ///
-    /// - `flt_ids` - The identifiers of the filter values to set.
-    pub fn set_filters(&mut self, flt_ids: &[Id]) {
-        let mut flt_ids: Vec<i32> = flt_ids.iter().map(|x| **x as i32).collect();
+    /// # Errors
+    /// If any of the filter IDs do not exist in the header, an [`Error::BcfUnknownID`] is returned.
+    ///
+    pub fn set_filters<T: FilterId + ?Sized>(&mut self, flt_ids: &[&T]) -> Result<()> {
+        let mut ids: Vec<i32> = flt_ids
+            .iter()
+            .map(|id| id.id_from_header(self.header()).map(|id| *id as i32))
+            .collect::<Result<Vec<i32>>>()?;
         unsafe {
             htslib::bcf_update_filter(
                 self.header().inner,
                 self.inner,
-                flt_ids.as_mut_ptr(),
-                flt_ids.len() as i32,
+                ids.as_mut_ptr(),
+                ids.len() as i32,
             );
-        }
+        };
+        Ok(())
     }
 
     /// Add the given filter to the FILTER column.
     ///
-    /// If `val` corresponds to `"PASS"` then all existing filters are removed first. If other than
-    /// `"PASS"`, then existing `"PASS"` is removed.
+    /// If `flt_id` is `PASS` or `.` then all existing filters are removed first. Otherwise,
+    /// any existing `PASS` filter is removed.
     ///
-    /// # Arguments
+    /// # Example
+    /// ```rust
+    /// # use rust_htslib::bcf::{Format, Header, Writer};
+    /// # use tempfile::NamedTempFile;
+    /// # let tmp = tempfile::NamedTempFile::new().unwrap();
+    /// # let path = tmp.path();
+    /// let mut header = Header::new();
+    /// header.push_record(br#"##FILTER=<ID=foo,Description="sample is a foo fighter">"#);
+    /// header.push_record(br#"##FILTER=<ID=bar,Description="dranks">"#);
+    /// # let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
+    /// # let mut record = vcf.empty_record();
+    /// let foo = "foo".as_bytes();
+    /// let bar = record.header().name_to_id(b"bar").unwrap();
+    /// assert!(record.has_filter("PASS".as_bytes()));
     ///
-    /// - `flt_id` - The corresponding filter ID value to add.
-    pub fn push_filter(&mut self, flt_id: Id) {
+    /// record.push_filter(foo).unwrap();
+    /// record.push_filter(&bar).unwrap();
+    /// assert!(record.has_filter(foo));
+    /// assert!(record.has_filter(&bar));
+    /// // filter must exist in the header
+    /// assert!(record.push_filter("baz".as_bytes()).is_err())
+    /// ```
+    ///
+    /// # Errors
+    /// If the `flt_id` does not exist in the header, an [`Error::BcfUnknownID`] is returned.
+    ///
+    pub fn push_filter<T: FilterId + ?Sized>(&mut self, flt_id: &T) -> Result<()> {
+        let id = flt_id.id_from_header(self.header())?;
         unsafe {
-            htslib::bcf_add_filter(self.header().inner, self.inner, *flt_id as i32);
-        }
+            htslib::bcf_add_filter(self.header().inner, self.inner, *id as i32);
+        };
+        Ok(())
     }
 
     /// Remove the given filter from the FILTER column.
     ///
     /// # Arguments
     ///
-    /// - `val` - The corresponding filter ID to remove.
-    /// - `pass_on_empty` - Set to "PASS" when removing the last value.
-    pub fn remove_filter(&mut self, flt_id: Id, pass_on_empty: bool) {
+    /// - `flt_id` - The corresponding filter ID to remove.
+    /// - `pass_on_empty` - Set to `PASS` when removing the last filter.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use rust_htslib::bcf::{Format, Header, Writer};
+    /// # use tempfile::NamedTempFile;
+    /// # let tmp = tempfile::NamedTempFile::new().unwrap();
+    /// # let path = tmp.path();
+    /// let mut header = Header::new();
+    /// header.push_record(br#"##FILTER=<ID=foo,Description="sample is a foo fighter">"#);
+    /// header.push_record(br#"##FILTER=<ID=bar,Description="a horse walks into...">"#);
+    /// # let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
+    /// # let mut record = vcf.empty_record();
+    /// let foo = "foo".as_bytes();
+    /// let bar = "bar".as_bytes();
+    /// record.set_filters(&[foo, bar]).unwrap();
+    /// assert!(record.has_filter(foo));
+    /// assert!(record.has_filter(bar));
+    ///
+    /// record.remove_filter(foo, true).unwrap();
+    /// assert!(!record.has_filter(foo));
+    /// assert!(record.has_filter(bar));
+    /// // 'baz' is not in the header
+    /// assert!(record.remove_filter("baz".as_bytes(), true).is_err());
+    ///
+    /// record.remove_filter(bar, true).unwrap();
+    /// assert!(!record.has_filter(bar));
+    /// assert!(record.has_filter("PASS".as_bytes()));
+    /// ```
+    ///
+    /// # Errors
+    /// If the `flt_id` does not exist in the header, an [`Error::BcfUnknownID`] is returned.
+    ///
+    pub fn remove_filter<T: FilterId + ?Sized>(
+        &mut self,
+        flt_id: &T,
+        pass_on_empty: bool,
+    ) -> Result<()> {
+        let id = flt_id.id_from_header(self.header())?;
         unsafe {
             htslib::bcf_remove_filter(
                 self.header().inner,
                 self.inner,
-                *flt_id as i32,
+                *id as i32,
                 pass_on_empty as i32,
-            );
-        }
+            )
+        };
+        Ok(())
     }
 
     /// Get alleles strings.
@@ -1403,5 +1545,101 @@ mod tests {
         assert_eq!(record.rlen(), 0);
         assert_eq!(record.sample_count(), 0);
         assert_eq!(record.pos(), 0)
+    }
+
+    #[test]
+    fn test_record_has_filter_pass_is_default() {
+        let tmp = NamedTempFile::new().unwrap();
+        let path = tmp.path();
+        let header = Header::new();
+        let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
+        let record = vcf.empty_record();
+
+        assert!(record.has_filter("PASS".as_bytes()));
+        assert!(record.has_filter(".".as_bytes()));
+        assert!(record.has_filter(&Id(0)));
+        assert!(!record.has_filter("foo".as_bytes()));
+        assert!(!record.has_filter(&Id(2)));
+    }
+
+    #[test]
+    fn test_record_has_filter_custom() {
+        let tmp = NamedTempFile::new().unwrap();
+        let path = tmp.path();
+        let mut header = Header::new();
+        header.push_record(br#"##FILTER=<ID=foo,Description="sample is a foo fighter">"#);
+        let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
+        let mut record = vcf.empty_record();
+        record.push_filter("foo".as_bytes()).unwrap();
+
+        assert!(record.has_filter("foo".as_bytes()));
+        assert!(!record.has_filter("PASS".as_bytes()))
+    }
+
+    #[test]
+    fn test_record_push_filter() {
+        let tmp = NamedTempFile::new().unwrap();
+        let path = tmp.path();
+        let mut header = Header::new();
+        header.push_record(br#"##FILTER=<ID=foo,Description="sample is a foo fighter">"#);
+        header.push_record(br#"##FILTER=<ID=bar,Description="dranks">"#);
+        let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
+        let mut record = vcf.empty_record();
+        assert!(record.has_filter("PASS".as_bytes()));
+        record.push_filter("foo".as_bytes()).unwrap();
+        let bar = record.header().name_to_id(b"bar").unwrap();
+        record.push_filter(&bar).unwrap();
+        assert!(record.has_filter("foo".as_bytes()));
+        assert!(record.has_filter(&bar));
+        assert!(!record.has_filter("PASS".as_bytes()));
+        assert!(record.push_filter("baz".as_bytes()).is_err())
+    }
+
+    #[test]
+    fn test_record_set_filters() {
+        let tmp = NamedTempFile::new().unwrap();
+        let path = tmp.path();
+        let mut header = Header::new();
+        header.push_record(br#"##FILTER=<ID=foo,Description="sample is a foo fighter">"#);
+        header.push_record(br#"##FILTER=<ID=bar,Description="a horse walks into...">"#);
+        let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
+        let mut record = vcf.empty_record();
+        assert!(record.has_filter("PASS".as_bytes()));
+        record
+            .set_filters(&["foo".as_bytes(), "bar".as_bytes()])
+            .unwrap();
+        assert!(record.has_filter("foo".as_bytes()));
+        assert!(record.has_filter("bar".as_bytes()));
+        assert!(!record.has_filter("PASS".as_bytes()));
+        let filters: &[&Id] = &[];
+        record.set_filters(filters).unwrap();
+        assert!(record.has_filter("PASS".as_bytes()));
+        assert!(!record.has_filter("foo".as_bytes()));
+        assert!(record
+            .set_filters(&["foo".as_bytes(), "baz".as_bytes()])
+            .is_err())
+    }
+
+    #[test]
+    fn test_record_remove_filter() {
+        let tmp = NamedTempFile::new().unwrap();
+        let path = tmp.path();
+        let mut header = Header::new();
+        header.push_record(br#"##FILTER=<ID=foo,Description="sample is a foo fighter">"#);
+        header.push_record(br#"##FILTER=<ID=bar,Description="a horse walks into...">"#);
+        let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
+        let mut record = vcf.empty_record();
+        let foo = record.header().name_to_id(b"foo").unwrap();
+        let bar = record.header().name_to_id(b"bar").unwrap();
+        record.set_filters(&[&foo, &bar]).unwrap();
+        assert!(record.has_filter(&foo));
+        assert!(record.has_filter(&bar));
+        record.remove_filter(&foo, true).unwrap();
+        assert!(!record.has_filter(&foo));
+        assert!(record.has_filter(&bar));
+        assert!(record.remove_filter("baz".as_bytes(), true).is_err());
+        record.remove_filter(&bar, true).unwrap();
+        assert!(!record.has_filter(&bar));
+        assert!(record.has_filter("PASS".as_bytes()));
     }
 }

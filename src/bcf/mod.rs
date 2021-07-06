@@ -1272,7 +1272,6 @@ mod tests {
                 Format::Vcf,
             )
             .expect("Error opening file.");
-            let header = writer.header().clone();
 
             // Setup empty record, filled below.
             let mut record = writer.empty_record();
@@ -1296,10 +1295,10 @@ mod tests {
             record.push_id(b"first_id").unwrap();
 
             assert!(record.filters().next().is_none());
-            record.set_filters(&[header.name_to_id(b"q10").unwrap()]);
-            record.push_filter(header.name_to_id(b"s50").unwrap());
-            record.remove_filter(header.name_to_id(b"q10").unwrap(), true);
-            record.push_filter(header.name_to_id(b"q10").unwrap());
+            record.set_filters(&["q10".as_bytes()]).unwrap();
+            record.push_filter("s50".as_bytes()).unwrap();
+            record.remove_filter("q10".as_bytes(), true).unwrap();
+            record.push_filter("q10".as_bytes()).unwrap();
 
             record.set_alleles(&[b"C", b"T", b"G"]).unwrap();
 
