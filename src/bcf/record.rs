@@ -626,7 +626,7 @@ impl Record {
         }
     }
 
-    /// Get the number of samples.
+    /// Get the number of samples in the record.
     pub fn sample_count(&self) -> u32 {
         self.inner().n_sample()
     }
@@ -675,6 +675,7 @@ impl Record {
     }
 
     /// Get genotypes as vector of one `Genotype` per sample.
+    /// 
     /// # Example
     /// Parsing genotype field (`GT` tag) from a VCF record:
     /// ```
@@ -691,6 +692,8 @@ impl Record {
         self.genotypes_shared_buffer(Buffer::new())
     }
 
+    /// Get genotypes as vector of one `Genotype` per sample, using a given shared buffer 
+    /// to avoid unnecessary allocations.
     pub fn genotypes_shared_buffer<'a, B>(&self, buffer: B) -> Result<Genotypes<'a, B>>
     where
         B: BorrowMut<Buffer> + Borrow<Buffer> + 'a,
