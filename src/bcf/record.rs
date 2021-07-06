@@ -904,6 +904,11 @@ impl Record {
     }
 
     /// Add/replace an INFO tag.
+    /// 
+    /// # Arguments
+    /// * `tag` - the tag to add/replace
+    /// * `data` - the data to set
+    /// * `ht` - the HTSLib type to use
     fn push_info<T>(&mut self, tag: &[u8], data: &[T], ht: u32) -> Result<()> {
         let tag_c_str = ffi::CString::new(tag).unwrap();
         unsafe {
