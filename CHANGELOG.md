@@ -7,7 +7,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### ⚠ BREAKING CHANGES
 
-* Improve bcf Record filter interface and improve docs (#306)
+* Improve bcf Record filter interface and improve docs. `bcf::Record` methods `has_filter`, `remove_filter`, `push_filter`, and `set_filter`
+  all now take a byte slice (`&[u8]`) or an `Id`.  (#306)
 
 ### Features
 
@@ -17,13 +18,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Bug Fixes
 
 * enum name usage in doc example ([#311](https://www.github.com/rust-bio/rust-htslib/issues/311)) ([6e9ba49](https://www.github.com/rust-bio/rust-htslib/commit/6e9ba4928b60c3105490a8179d074c705ea06fd7))
-
-## [Unreleased]
-### Changes
-- `bcf::Record` methods `has_filter`, `remove_filter`, `push_filter`, and `set_filter`
-  all now take a byte slice (`&[u8]`) or an `Id`. 
-
-[Unreleased]: https://github.com/rust-bio/rust-htslib/compare/v0.37.0...HEAD
 
 ## [0.37.0] - 2021-07-05
 ### Added
