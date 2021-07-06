@@ -28,9 +28,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-
-      - name: Checkout submodules
-        uses: textbook/git-checkout-submodule-action@2.0.0
+        with:
+          submodules: true
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1.0.6
@@ -44,16 +43,14 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-
   Testing:
     needs: Formatting
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-
-      - name: Checkout submodules
-        uses: textbook/git-checkout-submodule-action@2.0.0
+        with:
+          submodules: true
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1.0.6
@@ -65,6 +62,8 @@ jobs:
         run: |
             sudo apt-get install --yes zlib1g-dev libbz2-dev musl musl-dev musl-tools clang libc6-dev
 
+      - uses: Swatinem/rust-cache@v1.3.0
+
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
@@ -75,119 +74,117 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path-to-lcov: ./lcov.info
-
-      - name: Test standard build without default features
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --no-default-features
-
-      - name: Test standard build with all features
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all-features
-
-      - name: Test musl build without default features
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: true
-          command: test
-          args: --release --target x86_64-unknown-linux-musl --no-default-features
-
-      - name: Test musl build with all features
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: true 
-          command: test
-          args: --release --target x86_64-unknown-linux-musl --all-features --verbose
-      
-      - name: Test musl build with all features and debug symbols (non --release)
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: true 
-          command: test
-          args: --target x86_64-unknown-linux-musl --all-features --verbose
-
-  Testing-OSX-Intel-Catalina:
+  
+  Testing-Features:
     needs: Formatting
-    runs-on: macOS-10.15
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - no-default-features
+          - all-features
+          - musl-release-no-default-features
+          - musl-release-all-features
+          - musl-all-features
+        include:
+          - target: no-default-features
+            args: --no-default-features
+            use_cross: false
+          - target: all-features
+            args: --all-features
+            toolchain_target: x86_64-unknown-linux-musl
+            use_cross: false
+          - target: musl-release-no-default-features
+            args: --release --target x86_64-unknown-linux-musl --no-default-features
+            toolchain_target: x86_64-unknown-linux-musl
+            use_cross: true
+          - target: musl-release-all-features
+            args: --release --target x86_64-unknown-linux-musl --all-features --verbose
+            toolchain_target: x86_64-unknown-linux-musl
+            use_cross: true
+          - target: musl-all-features
+            args: --target x86_64-unknown-linux-musl --all-features --verbose
+            toolchain_target: x86_64-unknown-linux-musl
+            use_cross: true
+            
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2.3.4
+        uses: actions/checkout@v2
         with:
           submodules: true
 
-      - name: Install htslib dependencies
-        run: brew install bzip2 zlib xz curl-openssl
-
-      # Test for Intel OSX
-      - uses: actions-rs/toolchain@v1.0.6
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1.0.6
         with:
           toolchain: stable
-          target: x86_64-apple-darwin
           override: true
 
-      - name: Test build without default features for the default x86_64 OSX target
-        uses: actions-rs/cargo@v1.0.1
-        with:
-          use-cross: false  # cross is not supported on GHA OSX runner, see: https://github.community/t/why-is-docker-not-installed-on-macos/17017
-          command: test
-          args: --release --all-features --verbose
+      - name: Install system dependencies
+        run: |
+            sudo apt-get install --yes zlib1g-dev libbz2-dev musl musl-dev musl-tools clang libc6-dev
 
-  Testing-OSX-Intel-BigSur:
+      - uses: Swatinem/rust-cache@v1.3.0
+
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: ${{ matrix.args }}
+          use-cross: ${{ matrix.use_cross }}
+
+  Testing-MacOS:
     needs: Formatting
-    runs-on: macOS-11.0
+
+    strategy:
+      matrix:
+        target:
+          - intel-catalina
+          - intel-bigsur
+          - m1-bigsur
+        include:
+          - target: intel-catalina
+            os: macOS-10.15
+            toolchain_target: x86_64-apple-darwin
+            toolchain: stable
+            aux_args: ""
+            default: false
+          - target: intel-bigsur
+            os: macOS-11.0
+            toolchain_target: x86_64-apple-darwin
+            toolchain: stable
+            aux_args: ""
+            default: false
+          # TODO enable again and try to find out why this fails
+          # - target: m1-bigsur
+          #   os: macOS-11.0
+          #   toolchain_target: aarch64-apple-darwin
+          #   toolchain: nightly
+          #   aux_args: --target aarch64-apple-darwin
+          #   default: true
+
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2.3.4
+        uses: actions/checkout@v2
         with:
           submodules: true
 
       - name: Install htslib dependencies
         run: brew install bzip2 zlib xz curl-openssl
 
-      # Test for Intel OSX
       - uses: actions-rs/toolchain@v1.0.6
         with:
-          toolchain: stable
-          target: x86_64-apple-darwin
+          toolchain: ${{ matrix.toolchain }}
+          target: ${{ matrix.toolchain_target }}
           override: true
+          default: ${{ matrix.default }}
 
-      - name: Test build without default features for the default x86_64 OSX target
+      - name: Test
         uses: actions-rs/cargo@v1.0.1
         with:
           use-cross: false  # cross is not supported on GHA OSX runner, see: https://github.community/t/why-is-docker-not-installed-on-macos/17017
           command: test
-          args: --release --all-features --verbose
-
-
-  Testing-OSX-M1-BigSur:
-    needs: Formatting
-    runs-on: macOS-11.0
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2.3.4
-        with:
-          submodules: true
-
-      - name: Install htslib dependencies
-        run: brew install bzip2 zlib xz curl-openssl
-
-      # Test for M1 macs
-      - uses: actions-rs/toolchain@v1.0.6
-        with:
-          toolchain: nightly
-          target: aarch64-apple-darwin
-          override: true # Set installed toolchain as an override for the current directory
-          default: true # Set installed toolchain as a default toolchain
-
-      - name: Test build without default features for the default x86_64 OSX target
-        uses: actions-rs/cargo@v1.0.1
-        with:
-          use-cross: false  # cross is not supported on GHA OSX runner, see: https://github.community/t/why-is-docker-not-installed-on-macos/17017
-          command: build
-          args: --release --all-features --verbose --target aarch64-apple-darwin
+          args: --release --all-features --verbose ${{ matrix.aux_args }}
 
 #  Testing-OSX-MUSL-BigSur:
 #   needs: Formatting
