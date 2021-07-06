@@ -13,3 +13,4 @@ jobs:
         with:
           release-type: rust
           package-name: rust-htslib
+          bump-minor-pre-major: Yes
