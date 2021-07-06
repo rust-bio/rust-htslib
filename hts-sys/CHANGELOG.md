@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.11.1-fix2 (2021-07-06)
+## [1.11.1-fix2](https://www.github.com/rust-bio/rust-htslib/compare/hts-sys-v1.11.1-fix1...hts-sys-1.11.1-fix2) -  (2021-07-06)
 
 
 ### Bug Fixes
