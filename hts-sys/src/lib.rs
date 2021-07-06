@@ -3,7 +3,7 @@
 #![allow(non_snake_case)]
 #![allow(clippy::all)]
 #![allow(improper_ctypes)]
-//! This module exposes the raw HTSlib bindings.
+//! This module exposes the raw [HTSlib](https://github.com/samtools/htslib) bindings.
 
 #[cfg(feature = "bzip2")]
 extern crate bzip2_sys;
