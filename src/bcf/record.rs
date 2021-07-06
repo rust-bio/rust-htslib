@@ -675,7 +675,7 @@ impl Record {
     }
 
     /// Get genotypes as vector of one `Genotype` per sample.
-    /// 
+    ///
     /// # Example
     /// Parsing genotype field (`GT` tag) from a VCF record:
     /// ```
@@ -692,7 +692,7 @@ impl Record {
         self.genotypes_shared_buffer(Buffer::new())
     }
 
-    /// Get genotypes as vector of one `Genotype` per sample, using a given shared buffer 
+    /// Get genotypes as vector of one `Genotype` per sample, using a given shared buffer
     /// to avoid unnecessary allocations.
     pub fn genotypes_shared_buffer<'a, B>(&self, buffer: B) -> Result<Genotypes<'a, B>>
     where
@@ -904,7 +904,7 @@ impl Record {
     }
 
     /// Add/replace an INFO tag.
-    /// 
+    ///
     /// # Arguments
     /// * `tag` - the tag to add/replace
     /// * `data` - the data to set
