@@ -14,3 +14,26 @@ jobs:
           release-type: rust
           package-name: rust-htslib
           bump-minor-pre-major: Yes
+
+      - uses: actions/checkout@v2
+        if: ${{ steps.release.outputs.release_created }}
+
+      - name: Install stable toolchain
+        if: ${{ steps.release.outputs.release_created }}
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install system dependencies
+        if: ${{ steps.release.outputs.release_created }}
+        run: |
+            sudo apt-get install --yes zlib1g-dev libbz2-dev musl musl-dev musl-tools clang libc6-dev
+
+      - uses: Swatinem/rust-cache@v1.3.0
+        if: ${{ steps.release.outputs.release_created }}
+
+      - uses: katyo/publish-crates@v1
+        if: ${{ steps.release.outputs.release_created }}
+        with:
+          registry-token: ${{ secrets.CRATES_IO_TOKEN }}
