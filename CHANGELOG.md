@@ -2,6 +2,22 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.38.0](https://www.github.com/rust-bio/rust-htslib/compare/v0.37.0...v0.38.0) (2021-07-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* Improve bcf Record filter interface and improve docs (#306)
+
+### Features
+
+* Improve bcf Record filter interface and improve docs ([#306](https://www.github.com/rust-bio/rust-htslib/issues/306)) ([f45e91d](https://www.github.com/rust-bio/rust-htslib/commit/f45e91dfdc64ecb662d676f2996ed4f14c079995))
+
+
+### Bug Fixes
+
+* enum name usage in doc example ([#311](https://www.github.com/rust-bio/rust-htslib/issues/311)) ([6e9ba49](https://www.github.com/rust-bio/rust-htslib/commit/6e9ba4928b60c3105490a8179d074c705ea06fd7))
+
 ## [Unreleased]
 ### Changes
 - `bcf::Record` methods `has_filter`, `remove_filter`, `push_filter`, and `set_filter`
