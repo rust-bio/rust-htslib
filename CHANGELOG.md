@@ -2,6 +2,29 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.27.0](https://www.github.com/rust-bio/rust-htslib/compare/rust-htslib-vrust-htslib-0.26.0...rust-htslib-v0.27.0) (2021-07-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* Improve bcf Record filter interface and improve docs (#306)
+
+### Features
+
+* Improve bcf Record filter interface and improve docs ([#306](https://www.github.com/rust-bio/rust-htslib/issues/306)) ([f45e91d](https://www.github.com/rust-bio/rust-htslib/commit/f45e91dfdc64ecb662d676f2996ed4f14c079995))
+
+
+### Bug Fixes
+
+* add ID to automatic release handling ([1244393](https://www.github.com/rust-bio/rust-htslib/commit/124439300e1e3e01e1d847f7549747d560c01989))
+* do not use ret for limiting integer and float arrays coming from yinfo tag ([47126ab](https://www.github.com/rust-bio/rust-htslib/commit/47126ab69e26616df1d401ee11423e150e118e0c))
+* dummy fix for triggering release ([e92e6b1](https://www.github.com/rust-bio/rust-htslib/commit/e92e6b10b0a7e5db50b12e2fbe2c42b467eb369e))
+* dummy release ([b97915f](https://www.github.com/rust-bio/rust-htslib/commit/b97915f2c70da4c914f2e69861bf78eec5979baf))
+* enum name usage in doc example ([#311](https://www.github.com/rust-bio/rust-htslib/issues/311)) ([6e9ba49](https://www.github.com/rust-bio/rust-htslib/commit/6e9ba4928b60c3105490a8179d074c705ea06fd7))
+* handle subcrate with release-please ([0a4605f](https://www.github.com/rust-bio/rust-htslib/commit/0a4605f165cb2edf4428d8fb39f7e4787585f4e1))
+* improved documentation ([cb0b66c](https://www.github.com/rust-bio/rust-htslib/commit/cb0b66c4a92d4f03debe38dfb2a014b154c7dd96))
+* trigger dummy release ([7c5a7de](https://www.github.com/rust-bio/rust-htslib/commit/7c5a7de33e2a92052126e5f44389d421974d1e02))
+
 ### [0.38.3](https://www.github.com/rust-bio/rust-htslib/compare/v0.38.2...v0.38.3) (2021-07-06)
 
 
