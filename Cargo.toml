@@ -10,6 +10,9 @@ repository = "https://github.com/rust-bio/rust-htslib.git"
 documentation = "https://docs.rs/rust-htslib"
 edition = "2018"
 
+[workspace]
+members = ["hts-sys"]
+
 [package.metadata.release]
 pre-release-commit-message = "release version {{version}}"
 tag-message = "Version {{version}} of Rust-HTSlib."
