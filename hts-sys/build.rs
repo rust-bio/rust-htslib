@@ -66,6 +66,10 @@ fn main() {
     }
     copy_directory("htslib", &out).unwrap();
 
+    // In build.rs cfg(target_os) does not give the target when cross-compiling;
+    // instead use the environment variable supplied by cargo, which does.
+    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
+
     let mut cfg = cc::Build::new();
 
     // default files
@@ -137,14 +141,10 @@ fn main() {
             cfg.file("htslib/hfile_libcurl.c");
             println!("cargo:rerun-if-changed=htslib/hfile_libcurl.c");
 
-            #[cfg(target_os = "macos")]
-            {
+            if target_os == "macos" {
                 // Use builtin MacOS CommonCrypto HMAC
                 config_lines.push("#define HAVE_COMMONCRYPTO 1");
-            }
-
-            #[cfg(not(target_os = "macos"))]
-            {
+            } else {
                 if let Ok(inc) = env::var("DEP_OPENSSL_INCLUDE").map(PathBuf::from) {
                     // Must use hmac from libcrypto in openssl
                     cfg.include(inc);
@@ -209,15 +209,12 @@ fn main() {
     }
 
     // If no bindgen, use pre-built bindings
-    #[cfg(all(not(feature = "bindgen"), target_os = "macos"))]
-    {
+    #[cfg(not(feature = "bindgen"))]
+    if target_os == "macos" {
         fs::copy("osx_prebuilt_bindings.rs", out.join("bindings.rs"))
             .expect("couldn't copy prebuilt bindings");
         println!("cargo:rerun-if-changed=osx_prebuilt_bindings.rs");
-    }
-
-    #[cfg(all(not(feature = "bindgen"), target_os = "linux"))]
-    {
+    } else {
         fs::copy("linux_prebuilt_bindings.rs", out.join("bindings.rs"))
             .expect("couldn't copy prebuilt bindings");
         println!("cargo:rerun-if-changed=linux_prebuilt_bindings.rs");
