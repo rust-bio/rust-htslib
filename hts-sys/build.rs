@@ -57,15 +57,20 @@ const FILES: &[&str] = &[
 ];
 
 fn main() {
-
     let out = PathBuf::from(env::var("OUT_DIR").unwrap());
-    if !out.join("htslib").exists() {
-        println!("copying...");
-        copy_directory("htslib", &out).unwrap();
+    let htslib_copy = out.join("htslib");
+
+    if htslib_copy.exists() {
+        std::fs::remove_dir_all(htslib_copy).unwrap();
     }
-    
+    copy_directory("htslib", &out).unwrap();
+
+    // In build.rs cfg(target_os) does not give the target when cross-compiling;
+    // instead use the environment variable supplied by cargo, which does.
+    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
+
     let mut cfg = cc::Build::new();
-    
+
     // default files
     let out_htslib = out.join("htslib");
     let htslib = PathBuf::from("htslib");
@@ -80,15 +85,14 @@ fn main() {
     let want_static = cfg!(feature = "static") || env::var("HTS_STATIC").is_ok();
 
     if want_static {
-        cfg.warnings(true).static_flag(true).pic(true);
+        cfg.warnings(false).static_flag(true).pic(true);
     } else {
-        cfg.warnings(true).static_flag(false).pic(true); 
+        cfg.warnings(false).static_flag(false).pic(true);
     }
 
     if let Ok(z_inc) = env::var("DEP_Z_INCLUDE") {
         cfg.include(z_inc);
     }
-
 
     // We build a config.h ourselves, rather than rely on Makefile or ./configure
     let mut config_lines = vec![
@@ -98,9 +102,9 @@ fn main() {
 
     let use_bzip2 = env::var("CARGO_FEATURE_BZIP2").is_ok();
     if use_bzip2 {
-         if let Ok(inc) = env::var("DEP_BZIP2_ROOT")
-        .map(PathBuf::from)
-        .map(|path| path.join("include"))
+        if let Ok(inc) = env::var("DEP_BZIP2_ROOT")
+            .map(PathBuf::from)
+            .map(|path| path.join("include"))
         {
             cfg.include(inc);
             config_lines.push("#define HAVE_LIBBZ2 1");
@@ -136,14 +140,10 @@ fn main() {
             cfg.file("htslib/hfile_libcurl.c");
             println!("cargo:rerun-if-changed=htslib/hfile_libcurl.c");
 
-            #[cfg(target_os="macos")]
-            {
+            if target_os == "macos" {
                 // Use builtin MacOS CommonCrypto HMAC
                 config_lines.push("#define HAVE_COMMONCRYPTO 1");
-            }
-
-            #[cfg(not(target_os="macos"))]
-            {
+            } else {
                 if let Ok(inc) = env::var("DEP_OPENSSL_INCLUDE").map(PathBuf::from) {
                     // Must use hmac from libcrypto in openssl
                     cfg.include(inc);
@@ -171,20 +171,19 @@ fn main() {
         println!("cargo:rerun-if-changed=htslib/hfile_s3_write.c");
     }
 
-
     // write out config.h which controls the options htslib will use
     {
         let mut f = std::fs::File::create(out.join("htslib").join("config.h")).unwrap();
         for l in config_lines {
             writeln!(&mut f, "{}", l).unwrap();
-        };
+        }
     }
-    
+
     // write out version.h
     {
         let version = std::process::Command::new(out.join("htslib").join("version.sh"))
-                             .output()
-                             .expect("failed to execute process");
+            .output()
+            .expect("failed to execute process");
         let version_str = std::str::from_utf8(&version.stdout).unwrap().trim();
 
         let mut f = std::fs::File::create(out.join("htslib").join("version.h")).unwrap();
@@ -209,15 +208,12 @@ fn main() {
     }
 
     // If no bindgen, use pre-built bindings
-    #[cfg(all(not(feature = "bindgen"), target_os="macos"))]
-    {
+    #[cfg(not(feature = "bindgen"))]
+    if target_os == "macos" {
         fs::copy("osx_prebuilt_bindings.rs", out.join("bindings.rs"))
             .expect("couldn't copy prebuilt bindings");
         println!("cargo:rerun-if-changed=osx_prebuilt_bindings.rs");
-    }
-
-    #[cfg(all(not(feature = "bindgen"), target_os="linux"))]
-    {
+    } else {
         fs::copy("linux_prebuilt_bindings.rs", out.join("bindings.rs"))
             .expect("couldn't copy prebuilt bindings");
         println!("cargo:rerun-if-changed=linux_prebuilt_bindings.rs");
@@ -246,7 +242,7 @@ fn main() {
         println!("cargo:rerun-if-changed={}", htsfile.display());
     }
 
-    // Note: config.h is a function of the cargo features. Any feature change will 
+    // Note: config.h is a function of the cargo features. Any feature change will
     // cause build.rs to re-run, so don't re-run on that change.
     //println!("cargo:rerun-if-changed=htslib/config.h");
 }

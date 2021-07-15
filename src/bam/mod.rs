@@ -6,14 +6,13 @@
 //! Module for working with SAM, BAM, and CRAM files.
 
 pub mod buffer;
-pub mod errors;
 pub mod ext;
 pub mod header;
 pub mod index;
 pub mod pileup;
 pub mod record;
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "serde_feature")]
 pub mod record_serde;
 
 use std::ffi;
@@ -24,11 +23,12 @@ use std::str;
 
 use url::Url;
 
+use crate::errors::{Error, Result};
 use crate::htslib;
 use crate::tpool::ThreadPool;
+use crate::utils::path_as_bytes;
 
 pub use crate::bam::buffer::RecordBuffer;
-pub use crate::bam::errors::{Error, Result};
 pub use crate::bam::header::Header;
 pub use crate::bam::record::Record;
 use std::convert::TryInto;
@@ -36,7 +36,7 @@ use std::convert::TryInto;
 /// # Safety
 ///
 /// Implementation for `Read::set_threads` and `Writer::set_threads`.
-pub unsafe fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
+unsafe fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
     assert!(n_threads != 0, "n_threads must be > 0");
 
     if htslib::hts_set_threads(htsfile, n_threads as i32) != 0 {
@@ -46,7 +46,7 @@ pub unsafe fn set_threads(htsfile: *mut htslib::htsFile, n_threads: usize) -> Re
     }
 }
 
-pub unsafe fn set_thread_pool(htsfile: *mut htslib::htsFile, tpool: &ThreadPool) -> Result<()> {
+unsafe fn set_thread_pool(htsfile: *mut htslib::htsFile, tpool: &ThreadPool) -> Result<()> {
     let mut b = tpool.handle.borrow_mut();
 
     if htslib::hts_set_thread_pool(htsfile, &mut b.inner as *mut _) != 0 {
@@ -75,7 +75,7 @@ pub unsafe fn set_fai_filename<P: AsRef<Path>>(
     if htslib::hts_set_fai_filename(htsfile, c_str.as_ptr()) == 0 {
         Ok(())
     } else {
-        Err(Error::InvalidReferencePath { path: p.to_owned() })
+        Err(Error::BamInvalidReferencePath { path: p.to_owned() })
     }
 }
 
@@ -91,14 +91,71 @@ pub trait Read: Sized {
     ///
     /// # Returns
     ///
-    /// `Ok(true)` if record was read without error, Ok(false) if there is no more record in the file.
-    fn read(&mut self, record: &mut record::Record) -> Result<bool>;
+    /// Some(Ok(())) if the record was read and None if no more records to read
+    ///
+    /// Example:
+    /// ```
+    /// use rust_htslib::errors::Error;
+    /// use rust_htslib::bam::{Read, IndexedReader, Record};
+    ///
+    /// let mut bam = IndexedReader::from_path(&"test/test.bam").unwrap();
+    /// bam.fetch((0, 1000, 2000)); // reads on tid 0, from 1000bp to 2000bp
+    /// let mut record = Record::new();
+    /// while let Some(result) = bam.read(&mut record) {
+    ///     match result {
+    ///         Ok(_) => {
+    ///             println!("Read sequence: {:?}", record.seq().as_bytes());
+    ///         },
+    ///         Err(_) => panic!("BAM parsing failed...")
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Consider using [`rc_records`](#tymethod.rc_records) instead.
+    fn read(&mut self, record: &mut record::Record) -> Option<Result<()>>;
 
     /// Iterator over the records of the seeked region.
     /// Note that, while being convenient, this is less efficient than pre-allocating a
     /// `Record` and reading into it with the `read` method, since every iteration involves
     /// the allocation of a new `Record`.
+    ///
+    /// This is about 10% slower than record in micro benchmarks.
+    ///
+    /// Consider using [`rc_records`](#tymethod.rc_records) instead.
     fn records(&mut self) -> Records<'_, Self>;
+
+    /// Records iterator using an Rc to avoid allocating a Record each turn.
+    /// This is about 1% slower than the [`read`](#tymethod.read) based API in micro benchmarks,
+    /// but has nicer ergonomics (and might not actually be slower in your applications).
+    ///
+    /// Example:
+    /// ```
+    /// use rust_htslib::errors::Error;
+    /// use rust_htslib::bam::{Read, Reader, Record};
+    /// use rust_htslib::htslib; // for BAM_F*
+    /// let mut bam = Reader::from_path(&"test/test.bam").unwrap();
+    ///
+    /// for read in
+    ///     bam.rc_records()
+    ///     .map(|x| x.expect("Failure parsing Bam file"))
+    ///     .filter(|read|
+    ///         read.flags()
+    ///          & (htslib::BAM_FUNMAP
+    ///              | htslib::BAM_FSECONDARY
+    ///              | htslib::BAM_FQCFAIL
+    ///              | htslib::BAM_FDUP) as u16
+    ///          == 0
+    ///     )
+    ///     .filter(|read| !read.is_reverse()) {
+    ///     println!("Found a forward read: {:?}", read.qname());
+    /// }
+    ///
+    /// //or to add the read qnames into a Vec
+    /// let collected: Vec<_> = bam.rc_records().map(|read| read.unwrap().qname().to_vec()).collect();
+    ///
+    ///
+    /// ```
+    fn rc_records(&mut self) -> RcRecords<'_, Self>;
 
     /// Iterator over pileups.
     fn pileup(&mut self) -> pileup::Pileups<'_, Self>;
@@ -126,7 +183,7 @@ pub trait Read: Sized {
         if ret == 0 {
             Ok(())
         } else {
-            Err(Error::Seek)
+            Err(Error::FileSeek)
         }
     }
 
@@ -159,21 +216,6 @@ pub trait Read: Sized {
     ///
     /// * `tpool` - thread pool to use for compression work.
     fn set_thread_pool(&mut self, tpool: &ThreadPool) -> Result<()>;
-}
-
-fn path_as_bytes<'a, P: 'a + AsRef<Path>>(path: P, must_exist: bool) -> Result<Vec<u8>> {
-    if path.as_ref().exists() || !must_exist {
-        Ok(path
-            .as_ref()
-            .to_str()
-            .ok_or(Error::NonUnicodePath)?
-            .as_bytes()
-            .to_owned())
-    } else {
-        Err(Error::FileNotFound {
-            path: path.as_ref().to_owned(),
-        })
-    }
 }
 
 /// A BAM reader.
@@ -215,6 +257,17 @@ impl Reader {
         let htsfile = hts_open(path, b"r")?;
 
         let header = unsafe { htslib::sam_hdr_read(htsfile) };
+        if header.is_null() {
+            return Err(Error::BamOpen {
+                target: String::from_utf8_lossy(path).to_string(),
+            });
+        }
+
+        // Invalidate the `text` representation of the header
+        unsafe {
+            let _ = htslib::sam_hdr_line_name(header, b"SQ".as_ptr().cast::<i8>(), 0);
+        }
+
         Ok(Reader {
             htsfile,
             header: Rc::new(HeaderView::new(header)),
@@ -265,7 +318,7 @@ impl Reader {
 
 impl Read for Reader {
     /// Read the next BAM record into the given `Record`.
-    /// Returns a true result if a record was read, or false if there are no more records.
+    /// Returns `None` if there are no more records.
     ///
     /// This method is useful if you want to read records as fast as possible as the
     /// `Record` can be reused. A more ergonomic approach is to use the [records](Reader::records)
@@ -277,18 +330,20 @@ impl Read for Reader {
     /// # Examples
     ///
     /// ```
-    /// use rust_htslib::bam::{Error, Read, Reader, Record};
+    /// use rust_htslib::errors::Error;
+    /// use rust_htslib::bam::{Read, Reader, Record};
     ///
     /// let mut bam = Reader::from_path(&"test/test.bam")?;
     /// let mut record = Record::new();
     ///
     /// // Print the TID of each record
-    /// while bam.read(&mut record)? {
+    /// while let Some(r) = bam.read(&mut record) {
+    ///    r.expect("Failed to parse record");
     ///    println!("TID: {}", record.tid())
     /// }
     /// # Ok::<(), Error>(())
     /// ```
-    fn read(&mut self, record: &mut record::Record) -> Result<bool> {
+    fn read(&mut self, record: &mut record::Record) -> Option<Result<()>> {
         match unsafe {
             htslib::sam_read1(
                 self.htsfile,
@@ -296,13 +351,13 @@ impl Read for Reader {
                 record.inner_ptr_mut(),
             )
         } {
-            -1 => Ok(false),
-            -2 => Err(Error::TruncatedRecord),
-            -4 => Err(Error::InvalidRecord),
+            -1 => None,
+            -2 => Some(Err(Error::BamTruncatedRecord)),
+            -4 => Some(Err(Error::BamInvalidRecord)),
             _ => {
                 record.set_header(Rc::clone(&self.header));
 
-                Ok(true)
+                Some(Ok(()))
             }
         }
     }
@@ -313,6 +368,13 @@ impl Read for Reader {
     /// the allocation of a new `Record`.
     fn records(&mut self) -> Records<'_, Self> {
         Records { reader: self }
+    }
+
+    fn rc_records(&mut self) -> RcRecords<'_, Self> {
+        RcRecords {
+            reader: self,
+            record: Rc::new(record::Record::new()),
+        }
     }
 
     fn pileup(&mut self) -> pileup::Pileups<'_, Self> {
@@ -346,6 +408,153 @@ impl Drop for Reader {
         unsafe {
             htslib::hts_close(self.htsfile);
         }
+    }
+}
+
+/// Conversion type for start/stop coordinates
+/// only public because it's leaked by the conversions
+#[doc(hidden)]
+pub struct FetchCoordinate(i64);
+
+//the old sam spec
+impl From<i32> for FetchCoordinate {
+    fn from(coord: i32) -> FetchCoordinate {
+        FetchCoordinate(coord as i64)
+    }
+}
+
+// to support un-annotated literals (type interference fails on those)
+impl From<u32> for FetchCoordinate {
+    fn from(coord: u32) -> FetchCoordinate {
+        FetchCoordinate(coord as i64)
+    }
+}
+
+//the new sam spec
+impl From<i64> for FetchCoordinate {
+    fn from(coord: i64) -> FetchCoordinate {
+        FetchCoordinate(coord)
+    }
+}
+
+//what some of our header methods return
+impl From<u64> for FetchCoordinate {
+    fn from(coord: u64) -> FetchCoordinate {
+        FetchCoordinate(coord.try_into().expect("Coordinate exceeded 2^^63-1"))
+    }
+}
+
+/// Enum for [IndexdReader.fetch()](struct.IndexedReader.html#method.fetch) arguments.
+///
+/// tids may be converted From<>:
+/// * i32 (correct as per spec)
+/// * u32 (because of header.tid. Will panic if above 2^31-1).
+///
+///Coordinates may be (via FetchCoordinate)
+/// * i32 (as of the sam v1 spec)
+/// * i64 (as of the htslib 'large coordinate' extension (even though they are not supported in BAM)
+/// * u32 (because that's what rust literals will default to)
+/// * u64 (because of header.target_len(). Will panic if above 2^^63-1).
+#[derive(Debug)]
+pub enum FetchDefinition<'a> {
+    /// tid, start, stop,
+    Region(i32, i64, i64),
+    /// 'named-reference', start, stop tuple.
+    RegionString(&'a [u8], i64, i64),
+    ///complete reference. May be i32 or u32 (which panics if above 2^31-')
+    CompleteTid(i32),
+    ///complete reference by name (&[u8] or &str)
+    String(&'a [u8]),
+    /// Every read
+    All,
+    /// Only reads with the BAM flag BAM_FUNMAP (which might not be all reads with reference = -1)
+    Unmapped,
+}
+impl<'a, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(i32, X, Y)>
+    for FetchDefinition<'a>
+{
+    fn from(tup: (i32, X, Y)) -> FetchDefinition<'a> {
+        let start: FetchCoordinate = tup.1.into();
+        let stop: FetchCoordinate = tup.2.into();
+        FetchDefinition::Region(tup.0, start.0, stop.0)
+    }
+}
+impl<'a, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(u32, X, Y)>
+    for FetchDefinition<'a>
+{
+    fn from(tup: (u32, X, Y)) -> FetchDefinition<'a> {
+        let start: FetchCoordinate = tup.1.into();
+        let stop: FetchCoordinate = tup.2.into();
+        FetchDefinition::Region(
+            tup.0.try_into().expect("Tid exceeded 2^31-1"),
+            start.0,
+            stop.0,
+        )
+    }
+}
+
+//non tuple impls
+impl<'a> From<i32> for FetchDefinition<'a> {
+    fn from(tid: i32) -> FetchDefinition<'a> {
+        FetchDefinition::CompleteTid(tid)
+    }
+}
+
+impl<'a> From<u32> for FetchDefinition<'a> {
+    fn from(tid: u32) -> FetchDefinition<'a> {
+        let tid: i32 = tid.try_into().expect("tid exceeded 2^31-1");
+        FetchDefinition::CompleteTid(tid)
+    }
+}
+
+impl<'a> From<&'a str> for FetchDefinition<'a> {
+    fn from(s: &'a str) -> FetchDefinition<'a> {
+        FetchDefinition::String(s.as_bytes())
+    }
+}
+
+//also accept &[u8;n] literals
+impl<'a> From<&'a [u8]> for FetchDefinition<'a> {
+    fn from(s: &'a [u8]) -> FetchDefinition<'a> {
+        FetchDefinition::String(s)
+    }
+}
+
+//also accept &[u8;n] literals
+impl<'a, T: AsRef<[u8]>> From<&'a T> for FetchDefinition<'a> {
+    fn from(s: &'a T) -> FetchDefinition<'a> {
+        FetchDefinition::String(s.as_ref())
+    }
+}
+
+impl<'a, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(&'a str, X, Y)>
+    for FetchDefinition<'a>
+{
+    fn from(tup: (&'a str, X, Y)) -> FetchDefinition<'a> {
+        let start: FetchCoordinate = tup.1.into();
+        let stop: FetchCoordinate = tup.2.into();
+        FetchDefinition::RegionString(tup.0.as_bytes(), start.0, stop.0)
+    }
+}
+
+impl<'a, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(&'a [u8], X, Y)>
+    for FetchDefinition<'a>
+{
+    fn from(tup: (&'a [u8], X, Y)) -> FetchDefinition<'a> {
+        let start: FetchCoordinate = tup.1.into();
+        let stop: FetchCoordinate = tup.2.into();
+        FetchDefinition::RegionString(tup.0, start.0, stop.0)
+    }
+}
+
+//also accept &[u8;n] literals
+impl<'a, T: AsRef<[u8]>, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(&'a T, X, Y)>
+    for FetchDefinition<'a>
+{
+    fn from(tup: (&'a T, X, Y)) -> FetchDefinition<'a> {
+        let start: FetchCoordinate = tup.1.into();
+        let stop: FetchCoordinate = tup.2.into();
+        FetchDefinition::RegionString(tup.0.as_ref(), start.0, stop.0)
     }
 }
 
@@ -392,7 +601,7 @@ impl IndexedReader {
         let c_str = ffi::CString::new(path).unwrap();
         let idx = unsafe { htslib::sam_index_load(htsfile, c_str.as_ptr()) };
         if idx.is_null() {
-            Err(Error::InvalidIndex {
+            Err(Error::BamInvalidIndex {
                 target: str::from_utf8(path).unwrap().to_owned(),
             })
         } else {
@@ -420,7 +629,7 @@ impl IndexedReader {
             htslib::sam_index_load2(htsfile, c_str_path.as_ptr(), c_str_index_path.as_ptr())
         };
         if idx.is_null() {
-            Err(Error::InvalidIndex {
+            Err(Error::BamInvalidIndex {
                 target: str::from_utf8(path).unwrap().to_owned(),
             })
         } else {
@@ -434,7 +643,85 @@ impl IndexedReader {
         }
     }
 
-    pub fn fetch(&mut self, tid: u32, beg: u64, end: u64) -> Result<()> {
+    /// Define the region from which .read() or .records will retrieve reads.
+    ///
+    /// Both iterating (with [.records()](trait.Read.html#tymethod.records)) and looping without allocation (with [.read()](trait.Read.html#tymethod.read) are a two stage process:
+    /// 1. 'fetch' the region of interest
+    /// 2. iter/loop trough the reads.
+    ///
+    /// Example:
+    /// ```
+    /// use rust_htslib::bam::{IndexedReader, Read};
+    /// let mut bam = IndexedReader::from_path(&"test/test.bam").unwrap();
+    /// bam.fetch(("chrX", 10000, 20000)); // coordinates 10000..20000 on reference named "chrX"
+    /// for read in bam.records() {
+    ///     println!("read name: {:?}", read.unwrap().qname());
+    /// }
+    /// ```
+    ///
+    /// The arguments may be anything that can be converted into a FetchDefinition
+    /// such as
+    ///
+    /// * fetch(tid: u32) -> fetch everything on this reference
+    /// * fetch(reference_name: &[u8] | &str) -> fetch everything on this reference
+    /// * fetch((tid: i32, start: i64, stop: i64)): -> fetch in this region on this tid
+    /// * fetch((reference_name: &[u8] | &str, start: i64, stop: i64) -> fetch in this region on this tid
+    /// * fetch(FetchDefinition::All) or fetch(".") -> Fetch overything
+    /// * fetch(FetchDefinition::Unmapped) or fetch("*") -> Fetch unmapped (as signified by the 'unmapped' flag in the BAM - might be unreliable with some aligners.
+    ///
+    /// The start / stop coordinates will take i64 (the correct type as of htslib's 'large
+    /// coordinates' expansion), i32, u32, and u64 (with a possible panic! if the coordinate
+    /// won't fit an i64).
+    ///
+    /// This replaces the old fetch and fetch_str implementations.
+    pub fn fetch<'a, T: Into<FetchDefinition<'a>>>(&mut self, fetch_definition: T) -> Result<()> {
+        //this 'compile time redirect' safes us
+        //from monomorphing the 'meat' of the fetch function
+        self._inner_fetch(fetch_definition.into())
+    }
+
+    fn _inner_fetch(&mut self, fetch_definition: FetchDefinition) -> Result<()> {
+        match fetch_definition {
+            FetchDefinition::Region(tid, start, stop) => {
+                self._fetch_by_coord_tuple(tid, start, stop)
+            }
+            FetchDefinition::RegionString(s, start, stop) => {
+                let tid = self.header().tid(s);
+                match tid {
+                    Some(tid) => self._fetch_by_coord_tuple(tid as i32, start, stop),
+                    None => Err(Error::Fetch),
+                }
+            }
+            FetchDefinition::CompleteTid(tid) => {
+                let len = self.header().target_len(tid as u32);
+                match len {
+                    Some(len) => self._fetch_by_coord_tuple(tid, 0, len as i64),
+                    None => Err(Error::Fetch),
+                }
+            }
+            FetchDefinition::String(s) => {
+                // either a target-name or a samtools style definition
+                let tid = self.header().tid(s);
+                match tid {
+                    Some(tid) => {
+                        //'large position' spec says target len must will fit into an i64.
+                        let len: i64 = self
+                            .header
+                            .target_len(tid as u32)
+                            .unwrap()
+                            .try_into()
+                            .unwrap();
+                        self._fetch_by_coord_tuple(tid as i32, 0, len)
+                    }
+                    None => self._fetch_by_str(&s),
+                }
+            }
+            FetchDefinition::All => self._fetch_by_str(b"."),
+            FetchDefinition::Unmapped => self._fetch_by_str(b"*"),
+        }
+    }
+
+    fn _fetch_by_coord_tuple(&mut self, tid: i32, beg: i64, end: i64) -> Result<()> {
         if let Some(itr) = self.itr {
             unsafe { htslib::hts_itr_destroy(itr) }
         }
@@ -447,13 +734,8 @@ impl IndexedReader {
             Ok(())
         }
     }
-    /// Fetch reads from a region using a samtools region string.
-    /// Region strings are of the format b"chr1:1-1000".
-    ///
-    /// # Arguments
-    ///
-    /// * `region` - A binary string
-    pub fn fetch_str(&mut self, region: &[u8]) -> Result<()> {
+
+    fn _fetch_by_str(&mut self, region: &[u8]) -> Result<()> {
         if let Some(itr) = self.itr {
             unsafe { htslib::hts_itr_destroy(itr) }
         }
@@ -503,21 +785,21 @@ impl IndexedReader {
 }
 
 impl Read for IndexedReader {
-    fn read(&mut self, record: &mut record::Record) -> Result<bool> {
+    fn read(&mut self, record: &mut record::Record) -> Option<Result<()>> {
         match self.itr {
             Some(itr) => {
                 match itr_next(self.htsfile, itr, &mut record.inner as *mut htslib::bam1_t) {
-                    -1 => Ok(false),
-                    -2 => Err(Error::TruncatedRecord),
-                    -4 => Err(Error::InvalidRecord),
+                    -1 => None,
+                    -2 => Some(Err(Error::BamTruncatedRecord)),
+                    -4 => Some(Err(Error::BamInvalidRecord)),
                     _ => {
                         record.set_header(Rc::clone(&self.header));
 
-                        Ok(true)
+                        Some(Ok(()))
                     }
                 }
             }
-            None => Ok(false),
+            None => None,
         }
     }
 
@@ -527,6 +809,13 @@ impl Read for IndexedReader {
     /// the allocation of a new `Record`.
     fn records(&mut self) -> Records<'_, Self> {
         Records { reader: self }
+    }
+
+    fn rc_records(&mut self) -> RcRecords<'_, Self> {
+        RcRecords {
+            reader: self,
+            record: Rc::new(record::Record::new()),
+        }
     }
 
     fn pileup(&mut self) -> pileup::Pileups<'_, Self> {
@@ -569,17 +858,17 @@ impl Drop for IndexedReader {
 
 #[derive(Debug, Clone, Copy)]
 pub enum Format {
-    SAM,
-    BAM,
-    CRAM,
+    Sam,
+    Bam,
+    Cram,
 }
 
 impl Format {
     fn write_mode(self) -> &'static [u8] {
         match self {
-            Format::SAM => b"w",
-            Format::BAM => b"wb",
-            Format::CRAM => b"wc",
+            Format::Sam => b"w",
+            Format::Bam => b"wb",
+            Format::Cram => b"wc",
         }
     }
 }
@@ -632,7 +921,7 @@ impl Writer {
 
         // sam_hdr_parse does not populate the text and l_text fields of the header_record.
         // This causes non-SQ headers to be dropped in the output BAM file.
-        // To avoid this, we copy the full header to a new C-string that is allocated with malloc,
+        // To avoid this, we copy the All header to a new C-string that is allocated with malloc,
         // and set this into header_record manually.
         let header_record = unsafe {
             let mut header_string = header.to_bytes();
@@ -700,7 +989,7 @@ impl Writer {
     /// * `record` - the record to write
     pub fn write(&mut self, record: &record::Record) -> Result<()> {
         if unsafe { htslib::sam_write1(self.f, self.header.inner(), record.inner_ptr()) } == -1 {
-            Err(Error::Write)
+            Err(Error::WriteRecord)
         } else {
             Ok(())
         }
@@ -735,7 +1024,7 @@ impl Writer {
             )
         } {
             0 => Ok(()),
-            _ => Err(Error::InvalidCompressionLevel { level }),
+            _ => Err(Error::BamInvalidCompressionLevel { level }),
         }
     }
 }
@@ -762,7 +1051,7 @@ impl CompressionLevel {
             CompressionLevel::Fastest => Ok(1),
             CompressionLevel::Maximum => Ok(9),
             CompressionLevel::Level(i @ 0..=9) => Ok(i),
-            CompressionLevel::Level(i) => Err(Error::InvalidCompressionLevel { level: i }),
+            CompressionLevel::Level(i) => Err(Error::BamInvalidCompressionLevel { level: i }),
         }
     }
 }
@@ -787,9 +1076,39 @@ impl<'a, R: Read> Iterator for Records<'a, R> {
     fn next(&mut self) -> Option<Result<record::Record>> {
         let mut record = record::Record::new();
         match self.reader.read(&mut record) {
-            Ok(false) => None,
-            Ok(true) => Some(Ok(record)),
-            Err(err) => Some(Err(err)),
+            None => None,
+            Some(Ok(_)) => Some(Ok(record)),
+            Some(Err(err)) => Some(Err(err)),
+        }
+    }
+}
+
+/// Iterator over the records of a BAM, using an Rc.
+///
+/// See [rc_records](trait.Read.html#tymethod.rc_records).
+#[derive(Debug)]
+pub struct RcRecords<'a, R: Read> {
+    reader: &'a mut R,
+    record: Rc<record::Record>,
+}
+
+impl<'a, R: Read> Iterator for RcRecords<'a, R> {
+    type Item = Result<Rc<record::Record>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut record = match Rc::get_mut(&mut self.record) {
+            //not make_mut, we don't need a clone
+            Some(x) => x,
+            None => {
+                self.record = Rc::new(record::Record::new());
+                Rc::get_mut(&mut self.record).unwrap()
+            }
+        };
+
+        match self.reader.read(&mut record) {
+            None => None,
+            Some(Ok(_)) => Some(Ok(Rc::clone(&self.record))),
+            Some(Err(err)) => Some(Err(err)),
         }
     }
 }
@@ -810,9 +1129,9 @@ impl<'a, R: Read> Iterator for ChunkIterator<'a, R> {
         }
         let mut record = record::Record::new();
         match self.reader.read(&mut record) {
-            Ok(false) => None,
-            Ok(true) => Some(Ok(record)),
-            Err(err) => Some(Err(err)),
+            None => None,
+            Some(Ok(_)) => Some(Ok(record)),
+            Some(Err(err)) => Some(Err(err)),
         }
     }
 }
@@ -824,7 +1143,7 @@ fn hts_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
     let c_str = ffi::CString::new(mode).unwrap();
     let ret = unsafe { htslib::hts_open(cpath.as_ptr(), c_str.as_ptr()) };
     if ret.is_null() {
-        Err(Error::Open {
+        Err(Error::BamOpen {
             target: path.to_owned(),
         })
     } else {
@@ -832,10 +1151,11 @@ fn hts_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
             unsafe {
                 // Comparison against 'htsFormatCategory_sequence_data' doesn't handle text files correctly
                 // hence the explicit checks against all supported exact formats
-                if (*ret).format.format != htslib::htsExactFormat_bam
+                if (*ret).format.format != htslib::htsExactFormat_sam
+                    && (*ret).format.format != htslib::htsExactFormat_bam
                     && (*ret).format.format != htslib::htsExactFormat_cram
                 {
-                    return Err(Error::Open {
+                    return Err(Error::BamOpen {
                         target: path.to_owned(),
                     });
                 }
@@ -966,7 +1286,13 @@ impl HeaderView {
 
     /// Retrieve the textual SAM header as bytes
     pub fn as_bytes(&self) -> &[u8] {
-        unsafe { ffi::CStr::from_ptr((*self.inner).text).to_bytes() }
+        unsafe {
+            let rebuilt_hdr = htslib::sam_hdr_str(self.inner);
+            if rebuilt_hdr.is_null() {
+                return b"";
+            }
+            ffi::CStr::from_ptr(rebuilt_hdr).to_bytes()
+        }
     }
 }
 
@@ -1084,7 +1410,6 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
         for (i, record) in bam.records().enumerate() {
             let rec = record.expect("Expected valid record");
-            println!("{}", str::from_utf8(rec.qname()).unwrap());
             assert_eq!(rec.qname(), names[i]);
             assert_eq!(rec.flags(), flags[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
@@ -1124,9 +1449,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let mut offset = bam.tell();
         let mut rec = Record::new();
         loop {
-            if !bam.read(&mut rec).expect("error reading bam") {
-                break;
-            }
+            match bam.read(&mut rec) {
+                Some(r) => r.expect("error reading bam"),
+                None => break,
+            };
             let qname = str::from_utf8(rec.qname()).unwrap().to_string();
             println!("{} {}", offset, qname);
             names_by_voffset.insert(offset, qname);
@@ -1136,7 +1462,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
         for (offset, qname) in names_by_voffset.iter() {
             println!("{} {}", offset, qname);
             bam.seek(*offset).unwrap();
-            bam.read(&mut rec).unwrap();
+            match bam.read(&mut rec) {
+                Some(r) => r.unwrap(),
+                None => {}
+            };
             let rec_qname = str::from_utf8(rec.qname()).unwrap().to_string();
             assert_eq!(qname, &rec_qname);
         }
@@ -1154,6 +1483,14 @@ CCCCCCCCCCCCCCCCCCC"[..],
         assert_eq!(header_text, true_header);
     }
 
+    #[test]
+    fn test_read_against_sam() {
+        let mut bam = Reader::from_path("./test/bam2sam_out.sam").unwrap();
+        for read in bam.records() {
+            let _read = read.unwrap();
+        }
+    }
+
     fn _test_read_indexed_common(mut bam: IndexedReader) {
         let (names, flags, seqs, quals, cigars) = gold();
         let sq_1 = b"CHROMOSOME_I";
@@ -1163,11 +1500,13 @@ CCCCCCCCCCCCCCCCCCC"[..],
         assert!(bam.header.target_len(tid_1).expect("Expected target len.") == 15072423);
 
         // fetch to position containing reads
-        bam.fetch(tid_1, 0, 2).expect("Expected successful fetch.");
+        bam.fetch((tid_1, 0, 2))
+            .expect("Expected successful fetch.");
         assert!(bam.records().count() == 6);
 
         // compare reads
-        bam.fetch(tid_1, 0, 2).expect("Expected successful fetch.");
+        bam.fetch((tid_1, 0, 2))
+            .expect("Expected successful fetch.");
         for (i, record) in bam.records().enumerate() {
             let rec = record.expect("Expected valid record");
 
@@ -1179,22 +1518,44 @@ CCCCCCCCCCCCCCCCCCC"[..],
             // fix qual offset
             let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
             assert_eq!(rec.qual(), &qual[..]);
-            assert_eq!(rec.aux(b"NotAvailableAux"), None);
+            assert_eq!(rec.aux(b"NotAvailableAux"), Err(Error::BamAuxTagNotFound));
         }
 
         // fetch to empty position
-        bam.fetch(tid_2, 1, 1).expect("Expected successful fetch.");
+        bam.fetch((tid_2, 1, 1))
+            .expect("Expected successful fetch.");
         assert!(bam.records().count() == 0);
 
         // repeat with byte-string based fetch
 
         // fetch to position containing reads
-        bam.fetch_str(format!("{}:{}-{}", str::from_utf8(sq_1).unwrap(), 0, 2).as_bytes())
+        // using coordinate-string chr:start-stop
+        bam.fetch(format!("{}:{}-{}", str::from_utf8(sq_1).unwrap(), 0, 2).as_bytes())
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        // using &str and exercising some of the coordinate conversion funcs
+        bam.fetch((str::from_utf8(sq_1).unwrap(), 0 as u32, 2 as u64))
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        // using a slice
+        bam.fetch((&sq_1[..], 0, 2))
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        // using a literal
+        bam.fetch((sq_1, 0, 2)).expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+
+        // using a tid
+        bam.fetch((0i32, 0u32, 2i64))
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        // using a tid:u32
+        bam.fetch((0u32, 0u32, 2i64))
             .expect("Expected successful fetch.");
         assert!(bam.records().count() == 6);
 
         // compare reads
-        bam.fetch_str(format!("{}:{}-{}", str::from_utf8(sq_1).unwrap(), 0, 2).as_bytes())
+        bam.fetch(format!("{}:{}-{}", str::from_utf8(sq_1).unwrap(), 0, 2).as_bytes())
             .expect("Expected successful fetch.");
         for (i, record) in bam.records().enumerate() {
             let rec = record.expect("Expected valid record");
@@ -1207,13 +1568,45 @@ CCCCCCCCCCCCCCCCCCC"[..],
             // fix qual offset
             let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
             assert_eq!(rec.qual(), &qual[..]);
-            assert_eq!(rec.aux(b"NotAvailableAux"), None);
+            assert_eq!(rec.aux(b"NotAvailableAux"), Err(Error::BamAuxTagNotFound));
         }
 
         // fetch to empty position
-        bam.fetch_str(format!("{}:{}-{}", str::from_utf8(sq_2).unwrap(), 1, 1).as_bytes())
+        bam.fetch(format!("{}:{}-{}", str::from_utf8(sq_2).unwrap(), 1, 1).as_bytes())
             .expect("Expected successful fetch.");
         assert!(bam.records().count() == 0);
+
+        //all on a tid
+        bam.fetch(0).expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        //all on a tid:u32
+        bam.fetch(0u32).expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+
+        //all on a tid - by &[u8]
+        bam.fetch(sq_1).expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+        //all on a tid - by str
+        bam.fetch(str::from_utf8(sq_1).unwrap())
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+
+        //all reads
+        bam.fetch(FetchDefinition::All)
+            .expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+
+        //all reads
+        bam.fetch(".").expect("Expected successful fetch.");
+        assert!(bam.records().count() == 6);
+
+        //all unmapped
+        bam.fetch(FetchDefinition::Unmapped)
+            .expect("Expected successful fetch.");
+        assert_eq!(bam.records().count(), 1); // expect one 'truncade record' Record.
+
+        bam.fetch("*").expect("Expected successful fetch.");
+        assert_eq!(bam.records().count(), 1); // expect one 'truncade record' Record.
     }
 
     #[test]
@@ -1240,14 +1633,14 @@ CCCCCCCCCCCCCCCCCCC"[..],
         rec.set(names[0], Some(&cigars[0]), seqs[0], quals[0]);
         // note: this segfaults if you push_aux() before set()
         //       because set() obliterates aux
-        rec.push_aux(b"NM", &Aux::Integer(15));
+        rec.push_aux(b"NM", Aux::I32(15)).unwrap();
 
         assert_eq!(rec.qname(), names[0]);
         assert_eq!(*rec.cigar(), cigars[0]);
         assert_eq!(rec.seq().as_bytes(), seqs[0]);
         assert_eq!(rec.qual(), quals[0]);
         assert!(rec.is_reverse());
-        assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+        assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
     }
 
     #[test]
@@ -1259,11 +1652,11 @@ CCCCCCCCCCCCCCCCCCC"[..],
             b"AAA",
             b"III",
         );
-        rec.push_aux(b"AS", &Aux::Integer(12345));
+        rec.push_aux(b"AS", Aux::I32(12345)).unwrap();
         assert_eq!(rec.qname(), b"123");
         assert_eq!(rec.seq().as_bytes(), b"AAA");
         assert_eq!(rec.qual(), b"III");
-        assert_eq!(rec.aux(b"AS").unwrap(), Aux::Integer(12345));
+        assert_eq!(rec.aux(b"AS").unwrap(), Aux::I32(12345));
 
         rec.set(
             b"1234",
@@ -1274,7 +1667,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         assert_eq!(rec.qname(), b"1234");
         assert_eq!(rec.seq().as_bytes(), b"AAAA");
         assert_eq!(rec.qual(), b"IIII");
-        assert_eq!(rec.aux(b"AS").unwrap(), Aux::Integer(12345));
+        assert_eq!(rec.aux(b"AS").unwrap(), Aux::I32(12345));
 
         rec.set(
             b"12",
@@ -1285,7 +1678,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         assert_eq!(rec.qname(), b"12");
         assert_eq!(rec.seq().as_bytes(), b"AA");
         assert_eq!(rec.qual(), b"II");
-        assert_eq!(rec.aux(b"AS").unwrap(), Aux::Integer(12345));
+        assert_eq!(rec.aux(b"AS").unwrap(), Aux::I32(12345));
     }
 
     #[test]
@@ -1297,13 +1690,13 @@ CCCCCCCCCCCCCCCCCCC"[..],
         for i in 0..names.len() {
             let mut rec = record::Record::new();
             rec.set(names[i], Some(&cigars[i]), seqs[i], quals[i]);
-            rec.push_aux(b"NM", &Aux::Integer(15));
+            rec.push_aux(b"NM", Aux::I32(15)).unwrap();
 
             assert_eq!(rec.qname(), names[i]);
             assert_eq!(*rec.cigar(), cigars[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
             assert_eq!(rec.qual(), quals[i]);
-            assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+            assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
 
             // Equal length qname
             assert!(rec.qname()[0] != b'X');
@@ -1320,7 +1713,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             assert_eq!(*rec.cigar(), cigars[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
             assert_eq!(rec.qual(), quals[i]);
-            assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+            assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
 
             // Shorter qname
             let shorter_name = b"42";
@@ -1330,7 +1723,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             assert_eq!(*rec.cigar(), cigars[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
             assert_eq!(rec.qual(), quals[i]);
-            assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+            assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
 
             // Zero-length qname
             rec.set_qname(b"");
@@ -1339,7 +1732,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             assert_eq!(*rec.cigar(), cigars[i]);
             assert_eq!(rec.seq().as_bytes(), seqs[i]);
             assert_eq!(rec.qual(), quals[i]);
-            assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+            assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
         }
     }
 
@@ -1369,18 +1762,18 @@ CCCCCCCCCCCCCCCCCCC"[..],
         for record in bam.records() {
             let mut rec = record.expect("Expected valid record");
 
-            if rec.aux(b"XS").is_some() {
-                rec.remove_aux(b"XS");
+            if rec.aux(b"XS").is_ok() {
+                rec.remove_aux(b"XS").unwrap();
             }
 
-            if rec.aux(b"YT").is_some() {
-                rec.remove_aux(b"YT");
+            if rec.aux(b"YT").is_ok() {
+                rec.remove_aux(b"YT").unwrap();
             }
 
-            rec.remove_aux(b"ab");
+            assert!(rec.remove_aux(b"ab").is_err());
 
-            assert_eq!(rec.aux(b"XS"), None);
-            assert_eq!(rec.aux(b"YT"), None);
+            assert_eq!(rec.aux(b"XS"), Err(Error::BamAuxTagNotFound));
+            assert_eq!(rec.aux(b"YT"), Err(Error::BamAuxTagNotFound));
         }
     }
 
@@ -1388,7 +1781,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
     fn test_write() {
         let (names, _, seqs, quals, cigars) = gold();
 
-        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let bampath = tmp.path().join("test.bam");
         println!("{:?}", bampath);
         {
@@ -1399,14 +1795,14 @@ CCCCCCCCCCCCCCCCCCC"[..],
                         .push_tag(b"SN", &"chr1")
                         .push_tag(b"LN", &15072423),
                 ),
-                Format::BAM,
+                Format::Bam,
             )
             .expect("Error opening file.");
 
             for i in 0..names.len() {
                 let mut rec = record::Record::new();
                 rec.set(names[i], Some(&cigars[i]), seqs[i], quals[i]);
-                rec.push_aux(b"NM", &Aux::Integer(15));
+                rec.push_aux(b"NM", Aux::I32(15)).unwrap();
 
                 bam.write(&rec).expect("Failed to write record.");
             }
@@ -1417,13 +1813,16 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
             for i in 0..names.len() {
                 let mut rec = record::Record::new();
-                bam.read(&mut rec).expect("Failed to read record.");
+                match bam.read(&mut rec) {
+                    Some(r) => r.expect("Failed to read record."),
+                    None => {}
+                };
 
                 assert_eq!(rec.qname(), names[i]);
                 assert_eq!(*rec.cigar(), cigars[i]);
                 assert_eq!(rec.seq().as_bytes(), seqs[i]);
                 assert_eq!(rec.qual(), quals[i]);
-                assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+                assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
             }
         }
 
@@ -1434,7 +1833,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
     fn test_write_threaded() {
         let (names, _, seqs, quals, cigars) = gold();
 
-        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let bampath = tmp.path().join("test.bam");
         println!("{:?}", bampath);
         {
@@ -1445,7 +1847,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                         .push_tag(b"SN", &"chr1")
                         .push_tag(b"LN", &15072423),
                 ),
-                Format::BAM,
+                Format::Bam,
             )
             .expect("Error opening file.");
             bam.set_threads(4).unwrap();
@@ -1454,7 +1856,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 let mut rec = record::Record::new();
                 let idx = i % names.len();
                 rec.set(names[idx], Some(&cigars[idx]), seqs[idx], quals[idx]);
-                rec.push_aux(b"NM", &Aux::Integer(15));
+                rec.push_aux(b"NM", Aux::I32(15)).unwrap();
                 rec.set_pos(i as i64);
 
                 bam.write(&rec).expect("Failed to write record.");
@@ -1474,7 +1876,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 assert_eq!(*rec.cigar(), cigars[idx]);
                 assert_eq!(rec.seq().as_bytes(), seqs[idx]);
                 assert_eq!(rec.qual(), quals[idx]);
-                assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+                assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
             }
         }
 
@@ -1485,7 +1887,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
     fn test_write_shared_tpool() {
         let (names, _, seqs, quals, cigars) = gold();
 
-        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let bampath1 = tmp.path().join("test1.bam");
         let bampath2 = tmp.path().join("test2.bam");
 
@@ -1500,7 +1905,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                             .push_tag(b"SN", &"chr1")
                             .push_tag(b"LN", &15072423),
                     ),
-                    Format::BAM,
+                    Format::Bam,
                 )
                 .expect("Error opening file.");
 
@@ -1511,7 +1916,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                             .push_tag(b"SN", &"chr1")
                             .push_tag(b"LN", &15072423),
                     ),
-                    Format::BAM,
+                    Format::Bam,
                 )
                 .expect("Error opening file.");
 
@@ -1524,7 +1929,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 let mut rec = record::Record::new();
                 let idx = i % names.len();
                 rec.set(names[idx], Some(&cigars[idx]), seqs[idx], quals[idx]);
-                rec.push_aux(b"NM", &Aux::Integer(15));
+                rec.push_aux(b"NM", Aux::I32(15)).unwrap();
                 rec.set_pos(i as i64);
 
                 bam1.write(&rec).expect("Failed to write record.");
@@ -1549,7 +1954,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                     assert_eq!(*rec.cigar(), cigars[idx]);
                     assert_eq!(rec.seq().as_bytes(), seqs[idx]);
                     assert_eq!(rec.qual(), quals[idx]);
-                    assert_eq!(rec.aux(b"NM").unwrap(), Aux::Integer(15));
+                    assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
                 }
             }
         }
@@ -1562,7 +1967,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
         // Verify that BAM headers are transmitted correctly when using an existing BAM as a
         // template for headers.
 
-        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let bampath = tmp.path().join("test.bam");
         println!("{:?}", bampath);
 
@@ -1572,7 +1980,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             let mut bam = Writer::from_path(
                 &bampath,
                 &Header::from_template(&input_bam.header()),
-                Format::BAM,
+                Format::Bam,
             )
             .expect("Error opening file.");
 
@@ -1621,7 +2029,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         }
         // go back again
         let tid = bam.header().tid(b"CHROMOSOME_I").unwrap();
-        bam.fetch(tid, 0, 5).unwrap();
+        bam.fetch((tid, 0, 5)).unwrap();
         for p in bam.pileup() {
             println!("{}", p.unwrap().pos())
         }
@@ -1706,7 +2114,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let bam_records: Vec<Record> = bam_reader.records().map(|v| v.unwrap()).collect();
 
         // New CRAM file
-        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let cram_path = tmp.path().join("test.cram");
 
         // Write BAM records to new CRAM file
@@ -1739,7 +2150,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                     .push_tag(b"UR", &"test/test_cram.fa"),
             );
 
-            let mut cram_writer = Writer::from_path(&cram_path, &header, Format::CRAM)
+            let mut cram_writer = Writer::from_path(&cram_path, &header, Format::Cram)
                 .expect("Error opening CRAM file.");
             cram_writer.set_reference(ref_path).unwrap();
 
@@ -1782,7 +2193,10 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
     #[test]
     fn test_write_compression() {
-        let tmp = tempdir::TempDir::new("rust-htslib").expect("Cannot create temp dir");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
         let input_bam_path = "test/test.bam";
 
         // test levels with decreasing compression factor
@@ -1800,7 +2214,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
                     let mut reader = Reader::from_path(&input_bam_path).unwrap();
                     let header = Header::from_template(reader.header());
                     let mut writer =
-                        Writer::from_path(&output_bam_path, &header, Format::BAM).unwrap();
+                        Writer::from_path(&output_bam_path, &header, Format::Bam).unwrap();
                     writer.set_compression_level(*level).unwrap();
                     for record in reader.records() {
                         let r = record.unwrap();
@@ -1855,7 +2269,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         {
             let mut bam_reader = Reader::from_path(bamfile).unwrap(); // internal functions, just unwarp
             let header = header::Header::from_template(bam_reader.header());
-            let mut sam_writer = Writer::from_path(samfile, &header, Format::SAM).unwrap();
+            let mut sam_writer = Writer::from_path(samfile, &header, Format::Sam).unwrap();
             for record in bam_reader.records() {
                 if record.is_err() {
                     return false;
@@ -1893,15 +2307,514 @@ CCCCCCCCCCCCCCCCCCC"[..],
         assert_eq!(expected, written);
     }
 
-    #[cfg(feature = "curl")]
-    #[test]
-    fn test_http_connect() {
-        // currently failing -- need credentials
-        let url: Url = Url::parse("http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/HG00096/exome_alignment/HG00096.chrom11.ILLUMINA.bwa.GBR.exome.20120522.bam").unwrap();
-        let r = Reader::from_url(&url);
-        println!("{:#?}", r);
-        let r = r.unwrap();
+    // #[cfg(feature = "curl")]
+    // #[test]
+    // fn test_http_connect() {
+    //     let url: Url = Url::parse(
+    //         "https://raw.githubusercontent.com/brainstorm/tiny-test-data/master/wgs/mt.bam",
+    //     )
+    //     .unwrap();
+    //     let r = Reader::from_url(&url);
+    //     println!("{:#?}", r);
+    //     let r = r.unwrap();
 
-        assert_eq!(r.header().target_names()[0], b"1");
+    //     assert_eq!(r.header().target_names()[0], b"chr1");
+    // }
+
+    #[test]
+    fn test_rc_records() {
+        let (names, flags, seqs, quals, cigars) = gold();
+        let mut bam = Reader::from_path(&Path::new("test/test.bam")).expect("Error opening file.");
+        let del_len = [1, 1, 1, 1, 1, 100000];
+
+        for (i, record) in bam.rc_records().enumerate() {
+            //let rec = record.expect("Expected valid record");
+            let rec = record.unwrap();
+            println!("{}", str::from_utf8(rec.qname()).ok().unwrap());
+            assert_eq!(rec.qname(), names[i]);
+            assert_eq!(rec.flags(), flags[i]);
+            assert_eq!(rec.seq().as_bytes(), seqs[i]);
+
+            let cigar = rec.cigar();
+            assert_eq!(*cigar, cigars[i]);
+
+            let end_pos = cigar.end_pos();
+            assert_eq!(end_pos, rec.pos() + 100 + del_len[i]);
+            assert_eq!(
+                cigar
+                    .read_pos(end_pos as u32 - 10, false, false)
+                    .unwrap()
+                    .unwrap(),
+                90
+            );
+            assert_eq!(
+                cigar
+                    .read_pos(rec.pos() as u32 + 20, false, false)
+                    .unwrap()
+                    .unwrap(),
+                20
+            );
+            assert_eq!(cigar.read_pos(4000000, false, false).unwrap(), None);
+            // fix qual offset
+            let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
+            assert_eq!(rec.qual(), &qual[..]);
+        }
+    }
+
+    #[test]
+    fn test_aux_arrays() {
+        let bam_header = Header::new();
+        let mut test_record = Record::from_sam(
+            &mut HeaderView::from_header(&bam_header),
+            "ali1\t4\t*\t0\t0\t*\t*\t0\t0\tACGT\tFFFF".as_bytes(),
+        )
+        .unwrap();
+
+        let array_i8: Vec<i8> = vec![std::i8::MIN, -1, 0, 1, std::i8::MAX];
+        let array_u8: Vec<u8> = vec![std::u8::MIN, 0, 1, std::u8::MAX];
+        let array_i16: Vec<i16> = vec![std::i16::MIN, -1, 0, 1, std::i16::MAX];
+        let array_u16: Vec<u16> = vec![std::u16::MIN, 0, 1, std::u16::MAX];
+        let array_i32: Vec<i32> = vec![std::i32::MIN, -1, 0, 1, std::i32::MAX];
+        let array_u32: Vec<u32> = vec![std::u32::MIN, 0, 1, std::u32::MAX];
+        let array_f32: Vec<f32> = vec![std::f32::MIN, 0.0, -0.0, 0.1, 0.99, std::f32::MAX];
+
+        test_record
+            .push_aux(b"XA", Aux::ArrayI8((&array_i8).into()))
+            .unwrap();
+        test_record
+            .push_aux(b"XB", Aux::ArrayU8((&array_u8).into()))
+            .unwrap();
+        test_record
+            .push_aux(b"XC", Aux::ArrayI16((&array_i16).into()))
+            .unwrap();
+        test_record
+            .push_aux(b"XD", Aux::ArrayU16((&array_u16).into()))
+            .unwrap();
+        test_record
+            .push_aux(b"XE", Aux::ArrayI32((&array_i32).into()))
+            .unwrap();
+        test_record
+            .push_aux(b"XF", Aux::ArrayU32((&array_u32).into()))
+            .unwrap();
+        test_record
+            .push_aux(b"XG", Aux::ArrayFloat((&array_f32).into()))
+            .unwrap();
+
+        {
+            let tag = b"XA";
+            if let Ok(Aux::ArrayI8(array)) = test_record.aux(tag) {
+                // Retrieve aux array
+                let aux_array_content = array.iter().collect::<Vec<_>>();
+                assert_eq!(aux_array_content, array_i8);
+
+                // Copy the stored aux array to another record
+                {
+                    let mut copy_test_record = test_record.clone();
+
+                    // Pushing a field with an existing tag should fail
+                    assert!(copy_test_record.push_aux(tag, Aux::I8(3)).is_err());
+
+                    // Remove aux array from target record
+                    copy_test_record.remove_aux(tag).unwrap();
+                    assert!(copy_test_record.aux(tag).is_err());
+
+                    // Copy array to target record
+                    let src_aux = test_record.aux(tag).unwrap();
+                    assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
+                    if let Ok(Aux::ArrayI8(array)) = copy_test_record.aux(tag) {
+                        let aux_array_content_copied = array.iter().collect::<Vec<_>>();
+                        assert_eq!(aux_array_content_copied, array_i8);
+                    } else {
+                        panic!("Aux tag not found");
+                    }
+                }
+            } else {
+                panic!("Aux tag not found");
+            }
+        }
+
+        {
+            let tag = b"XB";
+            if let Ok(Aux::ArrayU8(array)) = test_record.aux(tag) {
+                // Retrieve aux array
+                let aux_array_content = array.iter().collect::<Vec<_>>();
+                assert_eq!(aux_array_content, array_u8);
+
+                // Copy the stored aux array to another record
+                {
+                    let mut copy_test_record = test_record.clone();
+
+                    // Pushing a field with an existing tag should fail
+                    assert!(copy_test_record.push_aux(tag, Aux::U8(3)).is_err());
+
+                    // Remove aux array from target record
+                    copy_test_record.remove_aux(tag).unwrap();
+                    assert!(copy_test_record.aux(tag).is_err());
+
+                    // Copy array to target record
+                    let src_aux = test_record.aux(tag).unwrap();
+                    assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
+                    if let Ok(Aux::ArrayU8(array)) = copy_test_record.aux(tag) {
+                        let aux_array_content_copied = array.iter().collect::<Vec<_>>();
+                        assert_eq!(aux_array_content_copied, array_u8);
+                    } else {
+                        panic!("Aux tag not found");
+                    }
+                }
+            } else {
+                panic!("Aux tag not found");
+            }
+        }
+
+        {
+            let tag = b"XC";
+            if let Ok(Aux::ArrayI16(array)) = test_record.aux(tag) {
+                // Retrieve aux array
+                let aux_array_content = array.iter().collect::<Vec<_>>();
+                assert_eq!(aux_array_content, array_i16);
+
+                // Copy the stored aux array to another record
+                {
+                    let mut copy_test_record = test_record.clone();
+
+                    // Pushing a field with an existing tag should fail
+                    assert!(copy_test_record.push_aux(tag, Aux::I16(3)).is_err());
+
+                    // Remove aux array from target record
+                    copy_test_record.remove_aux(tag).unwrap();
+                    assert!(copy_test_record.aux(tag).is_err());
+
+                    // Copy array to target record
+                    let src_aux = test_record.aux(tag).unwrap();
+                    assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
+                    if let Ok(Aux::ArrayI16(array)) = copy_test_record.aux(tag) {
+                        let aux_array_content_copied = array.iter().collect::<Vec<_>>();
+                        assert_eq!(aux_array_content_copied, array_i16);
+                    } else {
+                        panic!("Aux tag not found");
+                    }
+                }
+            } else {
+                panic!("Aux tag not found");
+            }
+        }
+
+        {
+            let tag = b"XD";
+            if let Ok(Aux::ArrayU16(array)) = test_record.aux(tag) {
+                // Retrieve aux array
+                let aux_array_content = array.iter().collect::<Vec<_>>();
+                assert_eq!(aux_array_content, array_u16);
+
+                // Copy the stored aux array to another record
+                {
+                    let mut copy_test_record = test_record.clone();
+
+                    // Pushing a field with an existing tag should fail
+                    assert!(copy_test_record.push_aux(tag, Aux::U16(3)).is_err());
+
+                    // Remove aux array from target record
+                    copy_test_record.remove_aux(tag).unwrap();
+                    assert!(copy_test_record.aux(tag).is_err());
+
+                    // Copy array to target record
+                    let src_aux = test_record.aux(tag).unwrap();
+                    assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
+                    if let Ok(Aux::ArrayU16(array)) = copy_test_record.aux(tag) {
+                        let aux_array_content_copied = array.iter().collect::<Vec<_>>();
+                        assert_eq!(aux_array_content_copied, array_u16);
+                    } else {
+                        panic!("Aux tag not found");
+                    }
+                }
+            } else {
+                panic!("Aux tag not found");
+            }
+        }
+
+        {
+            let tag = b"XE";
+            if let Ok(Aux::ArrayI32(array)) = test_record.aux(tag) {
+                // Retrieve aux array
+                let aux_array_content = array.iter().collect::<Vec<_>>();
+                assert_eq!(aux_array_content, array_i32);
+
+                // Copy the stored aux array to another record
+                {
+                    let mut copy_test_record = test_record.clone();
+
+                    // Pushing a field with an existing tag should fail
+                    assert!(copy_test_record.push_aux(tag, Aux::I32(3)).is_err());
+
+                    // Remove aux array from target record
+                    copy_test_record.remove_aux(tag).unwrap();
+                    assert!(copy_test_record.aux(tag).is_err());
+
+                    // Copy array to target record
+                    let src_aux = test_record.aux(tag).unwrap();
+                    assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
+                    if let Ok(Aux::ArrayI32(array)) = copy_test_record.aux(tag) {
+                        let aux_array_content_copied = array.iter().collect::<Vec<_>>();
+                        assert_eq!(aux_array_content_copied, array_i32);
+                    } else {
+                        panic!("Aux tag not found");
+                    }
+                }
+            } else {
+                panic!("Aux tag not found");
+            }
+        }
+
+        {
+            let tag = b"XF";
+            if let Ok(Aux::ArrayU32(array)) = test_record.aux(tag) {
+                // Retrieve aux array
+                let aux_array_content = array.iter().collect::<Vec<_>>();
+                assert_eq!(aux_array_content, array_u32);
+
+                // Copy the stored aux array to another record
+                {
+                    let mut copy_test_record = test_record.clone();
+
+                    // Pushing a field with an existing tag should fail
+                    assert!(copy_test_record.push_aux(tag, Aux::U32(3)).is_err());
+
+                    // Remove aux array from target record
+                    copy_test_record.remove_aux(tag).unwrap();
+                    assert!(copy_test_record.aux(tag).is_err());
+
+                    // Copy array to target record
+                    let src_aux = test_record.aux(tag).unwrap();
+                    assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
+                    if let Ok(Aux::ArrayU32(array)) = copy_test_record.aux(tag) {
+                        let aux_array_content_copied = array.iter().collect::<Vec<_>>();
+                        assert_eq!(aux_array_content_copied, array_u32);
+                    } else {
+                        panic!("Aux tag not found");
+                    }
+                }
+            } else {
+                panic!("Aux tag not found");
+            }
+        }
+
+        {
+            let tag = b"XG";
+            if let Ok(Aux::ArrayFloat(array)) = test_record.aux(tag) {
+                // Retrieve aux array
+                let aux_array_content = array.iter().collect::<Vec<_>>();
+                assert_eq!(aux_array_content, array_f32);
+
+                // Copy the stored aux array to another record
+                {
+                    let mut copy_test_record = test_record.clone();
+
+                    // Pushing a field with an existing tag should fail
+                    assert!(copy_test_record.push_aux(tag, Aux::Float(3.0)).is_err());
+
+                    // Remove aux array from target record
+                    copy_test_record.remove_aux(tag).unwrap();
+                    assert!(copy_test_record.aux(tag).is_err());
+
+                    // Copy array to target record
+                    let src_aux = test_record.aux(tag).unwrap();
+                    assert!(copy_test_record.push_aux(tag, src_aux).is_ok());
+                    if let Ok(Aux::ArrayFloat(array)) = copy_test_record.aux(tag) {
+                        let aux_array_content_copied = array.iter().collect::<Vec<_>>();
+                        assert_eq!(aux_array_content_copied, array_f32);
+                    } else {
+                        panic!("Aux tag not found");
+                    }
+                }
+            } else {
+                panic!("Aux tag not found");
+            }
+        }
+
+        // Test via `Iterator` impl
+        for item in test_record.aux_iter() {
+            match item.unwrap() {
+                (b"XA", Aux::ArrayI8(array)) => {
+                    assert_eq!(&array.iter().collect::<Vec<_>>(), &array_i8);
+                }
+                (b"XB", Aux::ArrayU8(array)) => {
+                    assert_eq!(&array.iter().collect::<Vec<_>>(), &array_u8);
+                }
+                (b"XC", Aux::ArrayI16(array)) => {
+                    assert_eq!(&array.iter().collect::<Vec<_>>(), &array_i16);
+                }
+                (b"XD", Aux::ArrayU16(array)) => {
+                    assert_eq!(&array.iter().collect::<Vec<_>>(), &array_u16);
+                }
+                (b"XE", Aux::ArrayI32(array)) => {
+                    assert_eq!(&array.iter().collect::<Vec<_>>(), &array_i32);
+                }
+                (b"XF", Aux::ArrayU32(array)) => {
+                    assert_eq!(&array.iter().collect::<Vec<_>>(), &array_u32);
+                }
+                (b"XG", Aux::ArrayFloat(array)) => {
+                    assert_eq!(&array.iter().collect::<Vec<_>>(), &array_f32);
+                }
+                _ => {
+                    panic!();
+                }
+            }
+        }
+
+        // Test via `PartialEq` impl
+        assert_eq!(
+            test_record.aux(b"XA").unwrap(),
+            Aux::ArrayI8((&array_i8).into())
+        );
+        assert_eq!(
+            test_record.aux(b"XB").unwrap(),
+            Aux::ArrayU8((&array_u8).into())
+        );
+        assert_eq!(
+            test_record.aux(b"XC").unwrap(),
+            Aux::ArrayI16((&array_i16).into())
+        );
+        assert_eq!(
+            test_record.aux(b"XD").unwrap(),
+            Aux::ArrayU16((&array_u16).into())
+        );
+        assert_eq!(
+            test_record.aux(b"XE").unwrap(),
+            Aux::ArrayI32((&array_i32).into())
+        );
+        assert_eq!(
+            test_record.aux(b"XF").unwrap(),
+            Aux::ArrayU32((&array_u32).into())
+        );
+        assert_eq!(
+            test_record.aux(b"XG").unwrap(),
+            Aux::ArrayFloat((&array_f32).into())
+        );
+    }
+
+    #[test]
+    fn test_aux_scalars() {
+        let bam_header = Header::new();
+        let mut test_record = Record::from_sam(
+            &mut HeaderView::from_header(&bam_header),
+            "ali1\t4\t*\t0\t0\t*\t*\t0\t0\tACGT\tFFFF".as_bytes(),
+        )
+        .unwrap();
+
+        test_record.push_aux(b"XA", Aux::I8(i8::MIN)).unwrap();
+        test_record.push_aux(b"XB", Aux::I8(i8::MAX)).unwrap();
+        test_record.push_aux(b"XC", Aux::U8(u8::MIN)).unwrap();
+        test_record.push_aux(b"XD", Aux::U8(u8::MAX)).unwrap();
+        test_record.push_aux(b"XE", Aux::I16(i16::MIN)).unwrap();
+        test_record.push_aux(b"XF", Aux::I16(i16::MAX)).unwrap();
+        test_record.push_aux(b"XG", Aux::U16(u16::MIN)).unwrap();
+        test_record.push_aux(b"XH", Aux::U16(u16::MAX)).unwrap();
+        test_record.push_aux(b"XI", Aux::I32(i32::MIN)).unwrap();
+        test_record.push_aux(b"XJ", Aux::I32(i32::MAX)).unwrap();
+        test_record.push_aux(b"XK", Aux::U32(u32::MIN)).unwrap();
+        test_record.push_aux(b"XL", Aux::U32(u32::MAX)).unwrap();
+        test_record
+            .push_aux(b"XM", Aux::Float(std::f32::consts::PI))
+            .unwrap();
+        test_record
+            .push_aux(b"XN", Aux::Double(std::f64::consts::PI))
+            .unwrap();
+        test_record
+            .push_aux(b"XO", Aux::String("Test str"))
+            .unwrap();
+        test_record.push_aux(b"XP", Aux::I8(0)).unwrap();
+
+        let collected_aux_fields = test_record.aux_iter().collect::<Result<Vec<_>>>().unwrap();
+        assert_eq!(
+            collected_aux_fields,
+            vec![
+                (&b"XA"[..], Aux::I8(i8::MIN)),
+                (&b"XB"[..], Aux::I8(i8::MAX)),
+                (&b"XC"[..], Aux::U8(u8::MIN)),
+                (&b"XD"[..], Aux::U8(u8::MAX)),
+                (&b"XE"[..], Aux::I16(i16::MIN)),
+                (&b"XF"[..], Aux::I16(i16::MAX)),
+                (&b"XG"[..], Aux::U16(u16::MIN)),
+                (&b"XH"[..], Aux::U16(u16::MAX)),
+                (&b"XI"[..], Aux::I32(i32::MIN)),
+                (&b"XJ"[..], Aux::I32(i32::MAX)),
+                (&b"XK"[..], Aux::U32(u32::MIN)),
+                (&b"XL"[..], Aux::U32(u32::MAX)),
+                (&b"XM"[..], Aux::Float(std::f32::consts::PI)),
+                (&b"XN"[..], Aux::Double(std::f64::consts::PI)),
+                (&b"XO"[..], Aux::String("Test str")),
+                (&b"XP"[..], Aux::I8(0)),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_aux_array_partial_eq() {
+        use record::AuxArray;
+
+        // Target types
+        let one_data: Vec<i8> = vec![0, 1, 2, 3, 4, 5, 6];
+        let one_aux_array = AuxArray::from(&one_data);
+
+        let two_data: Vec<i8> = vec![0, 1, 2, 3, 4, 5];
+        let two_aux_array = AuxArray::from(&two_data);
+
+        assert_ne!(&one_data, &two_data);
+        assert_ne!(&one_aux_array, &two_aux_array);
+
+        let one_aux = Aux::ArrayI8(one_aux_array);
+        let two_aux = Aux::ArrayI8(two_aux_array);
+        assert_ne!(&one_aux, &two_aux);
+
+        // Raw bytes
+        let bam_header = Header::new();
+        let mut test_record = Record::from_sam(
+            &mut HeaderView::from_header(&bam_header),
+            "ali1\t4\t*\t0\t0\t*\t*\t0\t0\tACGT\tFFFF".as_bytes(),
+        )
+        .unwrap();
+
+        test_record.push_aux(b"XA", one_aux).unwrap();
+        test_record.push_aux(b"XB", two_aux).unwrap();
+
+        // RawLeBytes == RawLeBytes
+        assert_eq!(
+            test_record.aux(b"XA").unwrap(),
+            test_record.aux(b"XA").unwrap()
+        );
+        // RawLeBytes != RawLeBytes
+        assert_ne!(
+            test_record.aux(b"XA").unwrap(),
+            test_record.aux(b"XB").unwrap()
+        );
+
+        // RawLeBytes == TargetType
+        assert_eq!(
+            test_record.aux(b"XA").unwrap(),
+            Aux::ArrayI8((&one_data).into())
+        );
+        assert_eq!(
+            test_record.aux(b"XB").unwrap(),
+            Aux::ArrayI8((&two_data).into())
+        );
+        // RawLeBytes != TargetType
+        assert_ne!(
+            test_record.aux(b"XA").unwrap(),
+            Aux::ArrayI8((&two_data).into())
+        );
+        assert_ne!(
+            test_record.aux(b"XB").unwrap(),
+            Aux::ArrayI8((&one_data).into())
+        );
+    }
+
+    /// Test if both text and binary representations of a BAM header are in sync (#156)
+    #[test]
+    fn test_bam_header_sync() {
+        let reader = Reader::from_path("test/test_issue_156_no_text.bam").unwrap();
+        let header_hashmap = Header::from_template(reader.header()).to_hashmap();
+        let header_refseqs = header_hashmap.get("SQ".into()).unwrap();
+        assert_eq!(header_refseqs[0].get("SN").unwrap(), "ref_1",);
+        assert_eq!(header_refseqs[0].get("LN").unwrap(), "10000000",);
     }
 }

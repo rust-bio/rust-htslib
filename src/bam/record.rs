@@ -6,26 +6,28 @@
 use std::convert::TryFrom;
 use std::ffi;
 use std::fmt;
+use std::marker::PhantomData;
 use std::mem::{size_of, MaybeUninit};
 use std::ops;
 use std::rc::Rc;
 use std::slice;
 use std::str;
-use std::str::FromStr;
 use std::u32;
 
-use lazy_static::lazy_static;
-use regex::Regex;
+use byteorder::{LittleEndian, ReadBytesExt};
 
-use crate::bam::errors::Result;
 use crate::bam::Error;
 use crate::bam::HeaderView;
+use crate::errors::Result;
 use crate::htslib;
 use crate::utils;
+#[cfg(feature = "serde_feature")]
+use serde::{self, Deserialize, Serialize};
 
 use bio_types::alignment::{Alignment, AlignmentMode, AlignmentOperation};
 use bio_types::genome;
 use bio_types::sequence::SequenceRead;
+use bio_types::sequence::SequenceReadPairOrientation;
 use bio_types::strand::ReqStrand;
 
 /// A macro creating methods for flag access.
@@ -163,7 +165,7 @@ impl Record {
         if succ == 0 {
             Ok(record)
         } else {
-            Err(Error::ParseSAM {
+            Err(Error::BamParseSAM {
                 rec: str::from_utf8(&sam_copy).unwrap().to_owned(),
             })
         }
@@ -569,64 +571,294 @@ impl Record {
             [..self.seq_len()]
     }
 
-    /// Get auxiliary data (tags).
-    pub fn aux(&self, tag: &[u8]) -> Option<Aux<'_>> {
-        let c_str = ffi::CString::new(tag).unwrap();
+    /// Look up an auxiliary field by its tag.
+    ///
+    /// Only the first two bytes of a given tag are used for the look-up of a field.
+    /// See [`Aux`] for more details.
+    pub fn aux(&self, tag: &[u8]) -> Result<Aux<'_>> {
+        let c_str = ffi::CString::new(tag).map_err(|_| Error::BamAuxStringError)?;
         let aux = unsafe {
             htslib::bam_aux_get(
                 &self.inner as *const htslib::bam1_t,
                 c_str.as_ptr() as *mut i8,
             )
         };
+        unsafe { Self::read_aux_field(aux).map(|(aux_field, _length)| aux_field) }
+    }
 
-        unsafe {
-            if aux.is_null() {
-                return None;
+    unsafe fn read_aux_field<'a>(aux: *const u8) -> Result<(Aux<'a>, usize)> {
+        const TAG_LEN: isize = 2;
+        // Used for skipping type identifier
+        const TYPE_ID_LEN: isize = 1;
+
+        if aux.is_null() {
+            return Err(Error::BamAuxTagNotFound);
+        }
+
+        let (data, type_size) = match *aux {
+            b'A' => {
+                let type_size = size_of::<u8>();
+                (Aux::Char(*aux.offset(TYPE_ID_LEN)), type_size)
             }
-            match *aux {
-                b'c' | b'C' | b's' | b'S' | b'i' | b'I' => {
-                    Some(Aux::Integer(htslib::bam_aux2i(aux) as i64))
-                }
-                b'f' | b'd' => Some(Aux::Float(htslib::bam_aux2f(aux))),
-                b'A' => Some(Aux::Char(htslib::bam_aux2A(aux) as u8)),
-                b'Z' | b'H' => {
-                    let f = aux.offset(1) as *const i8;
-                    let x = ffi::CStr::from_ptr(f).to_bytes();
-                    Some(Aux::String(x))
-                }
-                _ => None,
+            b'c' => {
+                let type_size = size_of::<i8>();
+                (Aux::I8(*aux.offset(TYPE_ID_LEN).cast::<i8>()), type_size)
             }
+            b'C' => {
+                let type_size = size_of::<u8>();
+                (Aux::U8(*aux.offset(TYPE_ID_LEN)), type_size)
+            }
+            b's' => {
+                let type_size = size_of::<i16>();
+                (
+                    Aux::I16(
+                        slice::from_raw_parts(aux.offset(TYPE_ID_LEN), type_size)
+                            .read_i16::<LittleEndian>()
+                            .map_err(|_| Error::BamAuxParsingError)?,
+                    ),
+                    type_size,
+                )
+            }
+            b'S' => {
+                let type_size = size_of::<u16>();
+                (
+                    Aux::U16(
+                        slice::from_raw_parts(aux.offset(TYPE_ID_LEN), type_size)
+                            .read_u16::<LittleEndian>()
+                            .map_err(|_| Error::BamAuxParsingError)?,
+                    ),
+                    type_size,
+                )
+            }
+            b'i' => {
+                let type_size = size_of::<i32>();
+                (
+                    Aux::I32(
+                        slice::from_raw_parts(aux.offset(TYPE_ID_LEN), type_size)
+                            .read_i32::<LittleEndian>()
+                            .map_err(|_| Error::BamAuxParsingError)?,
+                    ),
+                    type_size,
+                )
+            }
+            b'I' => {
+                let type_size = size_of::<u32>();
+                (
+                    Aux::U32(
+                        slice::from_raw_parts(aux.offset(TYPE_ID_LEN), type_size)
+                            .read_u32::<LittleEndian>()
+                            .map_err(|_| Error::BamAuxParsingError)?,
+                    ),
+                    type_size,
+                )
+            }
+            b'f' => {
+                let type_size = size_of::<f32>();
+                (
+                    Aux::Float(
+                        slice::from_raw_parts(aux.offset(TYPE_ID_LEN), type_size)
+                            .read_f32::<LittleEndian>()
+                            .map_err(|_| Error::BamAuxParsingError)?,
+                    ),
+                    type_size,
+                )
+            }
+            b'd' => {
+                let type_size = size_of::<f64>();
+                (
+                    Aux::Double(
+                        slice::from_raw_parts(aux.offset(TYPE_ID_LEN), type_size)
+                            .read_f64::<LittleEndian>()
+                            .map_err(|_| Error::BamAuxParsingError)?,
+                    ),
+                    type_size,
+                )
+            }
+            b'Z' | b'H' => {
+                let c_str = ffi::CStr::from_ptr(aux.offset(TYPE_ID_LEN).cast::<i8>());
+                let rust_str = c_str.to_str().map_err(|_| Error::BamAuxParsingError)?;
+                (Aux::String(rust_str), c_str.to_bytes_with_nul().len())
+            }
+            b'B' => {
+                const ARRAY_INNER_TYPE_LEN: isize = 1;
+                const ARRAY_COUNT_LEN: isize = 4;
+
+                // Used for skipping metadata
+                let array_data_offset = TYPE_ID_LEN + ARRAY_INNER_TYPE_LEN + ARRAY_COUNT_LEN;
+
+                let length =
+                    slice::from_raw_parts(aux.offset(TYPE_ID_LEN + ARRAY_INNER_TYPE_LEN), 4)
+                        .read_u32::<LittleEndian>()
+                        .map_err(|_| Error::BamAuxParsingError)? as usize;
+
+                // Return tuples of an `Aux` enum and the length of data + metadata in bytes
+                let (array_data, array_size) = match *aux.offset(TYPE_ID_LEN) {
+                    b'c' => (
+                        Aux::ArrayI8(AuxArray::<'a, i8>::from_bytes(slice::from_raw_parts(
+                            aux.offset(array_data_offset),
+                            length,
+                        ))),
+                        length,
+                    ),
+                    b'C' => (
+                        Aux::ArrayU8(AuxArray::<'a, u8>::from_bytes(slice::from_raw_parts(
+                            aux.offset(array_data_offset),
+                            length,
+                        ))),
+                        length,
+                    ),
+                    b's' => (
+                        Aux::ArrayI16(AuxArray::<'a, i16>::from_bytes(slice::from_raw_parts(
+                            aux.offset(array_data_offset),
+                            length * size_of::<i16>(),
+                        ))),
+                        length * std::mem::size_of::<i16>(),
+                    ),
+                    b'S' => (
+                        Aux::ArrayU16(AuxArray::<'a, u16>::from_bytes(slice::from_raw_parts(
+                            aux.offset(array_data_offset),
+                            length * size_of::<u16>(),
+                        ))),
+                        length * std::mem::size_of::<u16>(),
+                    ),
+                    b'i' => (
+                        Aux::ArrayI32(AuxArray::<'a, i32>::from_bytes(slice::from_raw_parts(
+                            aux.offset(array_data_offset),
+                            length * size_of::<i32>(),
+                        ))),
+                        length * std::mem::size_of::<i32>(),
+                    ),
+                    b'I' => (
+                        Aux::ArrayU32(AuxArray::<'a, u32>::from_bytes(slice::from_raw_parts(
+                            aux.offset(array_data_offset),
+                            length * size_of::<u32>(),
+                        ))),
+                        length * std::mem::size_of::<u32>(),
+                    ),
+                    b'f' => (
+                        Aux::ArrayFloat(AuxArray::<f32>::from_bytes(slice::from_raw_parts(
+                            aux.offset(array_data_offset),
+                            length * size_of::<f32>(),
+                        ))),
+                        length * std::mem::size_of::<f32>(),
+                    ),
+                    _ => {
+                        return Err(Error::BamAuxUnknownType);
+                    }
+                };
+                (
+                    array_data,
+                    // Offset: array-specific metadata + array size
+                    ARRAY_INNER_TYPE_LEN as usize + ARRAY_COUNT_LEN as usize + array_size,
+                )
+            }
+            _ => {
+                return Err(Error::BamAuxUnknownType);
+            }
+        };
+
+        // Offset: metadata + type size
+        Ok((data, TAG_LEN as usize + TYPE_ID_LEN as usize + type_size))
+    }
+
+    /// Returns an iterator over the auxiliary fields of the record.
+    ///
+    /// When an error occurs, the `Err` variant will be returned
+    /// and the iterator will not be able to advance anymore.
+    pub fn aux_iter(&self) -> AuxIter {
+        AuxIter {
+            // In order to get to the aux data section of a `bam::Record`
+            // we need to skip fields in front of it
+            aux: &self.data()[
+                // NUL terminated read name:
+                self.qname_capacity()
+                // CIGAR (uint32_t):
+                + self.cigar_len() * std::mem::size_of::<u32>()
+                // Read sequence (4-bit encoded):
+                + (self.seq_len() + 1) / 2
+                // Base qualities (char):
+                + self.seq_len()..],
         }
     }
 
     /// Add auxiliary data.
-    pub fn push_aux(&mut self, tag: &[u8], value: &Aux<'_>) {
+    pub fn push_aux(&mut self, tag: &[u8], value: Aux<'_>) -> Result<()> {
+        // Don't allow pushing aux data when the given tag is already present in the record.
+        // `htslib` seems to allow this (for non-array values), which can lead to problems
+        // since retrieving aux fields consumes &[u8; 2] and yields one field only.
+        if self.aux(tag).is_ok() {
+            return Err(Error::BamAuxTagAlreadyPresent);
+        }
+
         let ctag = tag.as_ptr() as *mut i8;
         let ret = unsafe {
-            match *value {
-                Aux::Integer(v) => htslib::bam_aux_append(
+            match value {
+                Aux::Char(v) => htslib::bam_aux_append(
+                    self.inner_ptr_mut(),
+                    ctag,
+                    b'A' as i8,
+                    size_of::<u8>() as i32,
+                    [v].as_mut_ptr() as *mut u8,
+                ),
+                Aux::I8(v) => htslib::bam_aux_append(
+                    self.inner_ptr_mut(),
+                    ctag,
+                    b'c' as i8,
+                    size_of::<i8>() as i32,
+                    [v].as_mut_ptr() as *mut u8,
+                ),
+                Aux::U8(v) => htslib::bam_aux_append(
+                    self.inner_ptr_mut(),
+                    ctag,
+                    b'C' as i8,
+                    size_of::<u8>() as i32,
+                    [v].as_mut_ptr() as *mut u8,
+                ),
+                Aux::I16(v) => htslib::bam_aux_append(
+                    self.inner_ptr_mut(),
+                    ctag,
+                    b's' as i8,
+                    size_of::<i16>() as i32,
+                    [v].as_mut_ptr() as *mut u8,
+                ),
+                Aux::U16(v) => htslib::bam_aux_append(
+                    self.inner_ptr_mut(),
+                    ctag,
+                    b'S' as i8,
+                    size_of::<u16>() as i32,
+                    [v].as_mut_ptr() as *mut u8,
+                ),
+                Aux::I32(v) => htslib::bam_aux_append(
                     self.inner_ptr_mut(),
                     ctag,
                     b'i' as i8,
-                    4,
+                    size_of::<i32>() as i32,
+                    [v].as_mut_ptr() as *mut u8,
+                ),
+                Aux::U32(v) => htslib::bam_aux_append(
+                    self.inner_ptr_mut(),
+                    ctag,
+                    b'I' as i8,
+                    size_of::<u32>() as i32,
                     [v].as_mut_ptr() as *mut u8,
                 ),
                 Aux::Float(v) => htslib::bam_aux_append(
                     self.inner_ptr_mut(),
                     ctag,
                     b'f' as i8,
-                    4,
+                    size_of::<f32>() as i32,
                     [v].as_mut_ptr() as *mut u8,
                 ),
-                Aux::Char(v) => htslib::bam_aux_append(
+                // Not part of specs but implemented in `htslib`:
+                Aux::Double(v) => htslib::bam_aux_append(
                     self.inner_ptr_mut(),
                     ctag,
-                    b'A' as i8,
-                    1,
+                    b'd' as i8,
+                    size_of::<f64>() as i32,
                     [v].as_mut_ptr() as *mut u8,
                 ),
                 Aux::String(v) => {
-                    let c_str = ffi::CString::new(v).unwrap();
+                    let c_str = ffi::CString::new(v).map_err(|_| Error::BamAuxStringError)?;
                     htslib::bam_aux_append(
                         self.inner_ptr_mut(),
                         ctag,
@@ -635,17 +867,142 @@ impl Record {
                         c_str.as_ptr() as *mut u8,
                     )
                 }
+                Aux::HexByteArray(v) => {
+                    let c_str = ffi::CString::new(v).map_err(|_| Error::BamAuxStringError)?;
+                    htslib::bam_aux_append(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'H' as i8,
+                        (v.len() + 1) as i32,
+                        c_str.as_ptr() as *mut u8,
+                    )
+                }
+                // Not sure it's safe to cast an immutable slice to a mutable pointer in the following branches
+                Aux::ArrayI8(aux_array) => match aux_array {
+                    AuxArray::TargetType(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'c',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                    AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'c',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                },
+                Aux::ArrayU8(aux_array) => match aux_array {
+                    AuxArray::TargetType(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'C',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                    AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'C',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                },
+                Aux::ArrayI16(aux_array) => match aux_array {
+                    AuxArray::TargetType(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b's',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                    AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b's',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                },
+                Aux::ArrayU16(aux_array) => match aux_array {
+                    AuxArray::TargetType(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'S',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                    AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'S',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                },
+                Aux::ArrayI32(aux_array) => match aux_array {
+                    AuxArray::TargetType(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'i',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                    AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'i',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                },
+                Aux::ArrayU32(aux_array) => match aux_array {
+                    AuxArray::TargetType(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'I',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                    AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'I',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                },
+                Aux::ArrayFloat(aux_array) => match aux_array {
+                    AuxArray::TargetType(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'f',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                    AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'f',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                },
             }
         };
 
         if ret < 0 {
-            panic!("htslib ran out of memory in push_aux");
+            Err(Error::BamAux)
+        } else {
+            Ok(())
         }
     }
 
     // Delete auxiliary tag.
-    pub fn remove_aux(&mut self, tag: &[u8]) -> bool {
-        let c_str = ffi::CString::new(tag).unwrap();
+    pub fn remove_aux(&mut self, tag: &[u8]) -> Result<()> {
+        let c_str = ffi::CString::new(tag).map_err(|_| Error::BamAuxStringError)?;
         let aux = unsafe {
             htslib::bam_aux_get(
                 &self.inner as *const htslib::bam1_t,
@@ -654,11 +1011,55 @@ impl Record {
         };
         unsafe {
             if aux.is_null() {
-                false
+                Err(Error::BamAuxTagNotFound)
             } else {
                 htslib::bam_aux_del(self.inner_ptr_mut(), aux);
-                true
+                Ok(())
             }
+        }
+    }
+
+    /// Infer read pair orientation from record. Returns `SequenceReadPairOrientation::None` if record
+    /// is not paired, mates are not mapping to the same contig, or mates start at the
+    /// same position.
+    pub fn read_pair_orientation(&self) -> SequenceReadPairOrientation {
+        if self.is_paired()
+            && !self.is_unmapped()
+            && !self.is_mate_unmapped()
+            && self.tid() == self.mtid()
+        {
+            if self.pos() == self.mpos() {
+                // both reads start at the same position, we cannot decide on the orientation.
+                return SequenceReadPairOrientation::None;
+            }
+
+            let (is_reverse, is_first_in_template, is_mate_reverse) = if self.pos() < self.mpos() {
+                // given record is the left one
+                (
+                    self.is_reverse(),
+                    self.is_first_in_template(),
+                    self.is_mate_reverse(),
+                )
+            } else {
+                // given record is the right one
+                (
+                    self.is_mate_reverse(),
+                    self.is_last_in_template(),
+                    self.is_reverse(),
+                )
+            };
+            match (is_reverse, is_first_in_template, is_mate_reverse) {
+                (false, false, false) => SequenceReadPairOrientation::F2F1,
+                (false, false, true) => SequenceReadPairOrientation::F2R1,
+                (false, true, false) => SequenceReadPairOrientation::F1F2,
+                (true, false, false) => SequenceReadPairOrientation::R2F1,
+                (false, true, true) => SequenceReadPairOrientation::F1R2,
+                (true, false, true) => SequenceReadPairOrientation::R2R1,
+                (true, true, false) => SequenceReadPairOrientation::R1F2,
+                (true, true, true) => SequenceReadPairOrientation::R1R2,
+            }
+        } else {
+            SequenceReadPairOrientation::None
         }
     }
 
@@ -715,7 +1116,7 @@ impl SequenceRead for Record {
     }
 
     fn base(&self, i: usize) -> u8 {
-        decode_base(encoded_base(self.seq_data(), i))
+        *decode_base_unchecked(encoded_base(self.seq_data(), i))
     }
 
     fn base_qual(&self, i: usize) -> u8 {
@@ -724,6 +1125,10 @@ impl SequenceRead for Record {
 
     fn len(&self) -> usize {
         self.seq_len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 
@@ -760,48 +1165,359 @@ impl genome::AbstractInterval for Record {
     }
 }
 
-/// Auxiliary record data.
-#[derive(Debug, Clone, Copy, PartialEq)]
+/// Auxiliary record data
+///
+/// The specification allows a wide range of types to be stored as an auxiliary data field of a BAM record.
+///
+/// Please note that the [`Aux::Double`] variant is _not_ part of the specification, but it is supported by `htslib`.
+///
+/// # Examples
+///
+/// ```
+/// use rust_htslib::{
+///     bam,
+///     bam::record::{Aux, AuxArray},
+///     errors::Error,
+/// };
+///
+/// //Set up BAM record
+/// let bam_header = bam::Header::new();
+/// let mut record = bam::Record::from_sam(
+///     &mut bam::HeaderView::from_header(&bam_header),
+///     "ali1\t4\t*\t0\t0\t*\t*\t0\t0\tACGT\tFFFF".as_bytes(),
+/// )
+/// .unwrap();
+///
+/// // Add an integer field
+/// let aux_integer_field = Aux::I32(1234);
+/// record.push_aux(b"XI", aux_integer_field).unwrap();
+///
+/// match record.aux(b"XI") {
+///     Ok(value) => {
+///         // Typically, callers expect an aux field to be of a certain type.
+///         // If that's not the case, the value can be `match`ed exhaustively.
+///         if let Aux::I32(v) = value {
+///             assert_eq!(v, 1234);
+///         }
+///     }
+///     Err(e) => {
+///         panic!("Error reading aux field: {}", e);
+///     }
+/// }
+///
+/// // Add an array field
+/// let array_like_data = vec![0.4, 0.3, 0.2, 0.1];
+/// let slice_of_data = &array_like_data;
+/// let aux_array: AuxArray<f32> = slice_of_data.into();
+/// let aux_array_field = Aux::ArrayFloat(aux_array);
+/// record.push_aux(b"XA", aux_array_field).unwrap();
+///
+/// if let Ok(Aux::ArrayFloat(array)) = record.aux(b"XA") {
+///     let read_array = array.iter().collect::<Vec<_>>();
+///     assert_eq!(read_array, array_like_data);
+/// } else {
+///     panic!("Could not read array data");
+/// }
+/// ```
+#[derive(Debug, PartialEq)]
 pub enum Aux<'a> {
-    Integer(i64),
-    String(&'a [u8]),
-    Float(f64),
     Char(u8),
-}
-
-impl<'a> Aux<'a> {
-    /// Get string from aux data (panics if not a string).
-    pub fn string(&self) -> &'a [u8] {
-        match *self {
-            Aux::String(x) => x,
-            _ => panic!("not a string"),
-        }
-    }
-
-    pub fn float(&self) -> f64 {
-        match *self {
-            Aux::Float(x) => x,
-            _ => panic!("not a float"),
-        }
-    }
-
-    pub fn integer(&self) -> i64 {
-        match *self {
-            Aux::Integer(x) => x,
-            _ => panic!("not an integer"),
-        }
-    }
-
-    pub fn char(&self) -> u8 {
-        match *self {
-            Aux::Char(x) => x,
-            _ => panic!("not a character"),
-        }
-    }
+    I8(i8),
+    U8(u8),
+    I16(i16),
+    U16(u16),
+    I32(i32),
+    U32(u32),
+    Float(f32),
+    Double(f64), // Not part of specs but implemented in `htslib`
+    String(&'a str),
+    HexByteArray(&'a str),
+    ArrayI8(AuxArray<'a, i8>),
+    ArrayU8(AuxArray<'a, u8>),
+    ArrayI16(AuxArray<'a, i16>),
+    ArrayU16(AuxArray<'a, u16>),
+    ArrayI32(AuxArray<'a, i32>),
+    ArrayU32(AuxArray<'a, u32>),
+    ArrayFloat(AuxArray<'a, f32>),
 }
 
 unsafe impl<'a> Send for Aux<'a> {}
 unsafe impl<'a> Sync for Aux<'a> {}
+
+/// Types that can be used in aux arrays.
+pub trait AuxArrayElement: Copy {
+    fn from_le_bytes(bytes: &[u8]) -> Option<Self>;
+}
+
+impl AuxArrayElement for i8 {
+    fn from_le_bytes(bytes: &[u8]) -> Option<Self> {
+        std::io::Cursor::new(bytes).read_i8().ok()
+    }
+}
+impl AuxArrayElement for u8 {
+    fn from_le_bytes(bytes: &[u8]) -> Option<Self> {
+        std::io::Cursor::new(bytes).read_u8().ok()
+    }
+}
+impl AuxArrayElement for i16 {
+    fn from_le_bytes(bytes: &[u8]) -> Option<Self> {
+        std::io::Cursor::new(bytes).read_i16::<LittleEndian>().ok()
+    }
+}
+impl AuxArrayElement for u16 {
+    fn from_le_bytes(bytes: &[u8]) -> Option<Self> {
+        std::io::Cursor::new(bytes).read_u16::<LittleEndian>().ok()
+    }
+}
+impl AuxArrayElement for i32 {
+    fn from_le_bytes(bytes: &[u8]) -> Option<Self> {
+        std::io::Cursor::new(bytes).read_i32::<LittleEndian>().ok()
+    }
+}
+impl AuxArrayElement for u32 {
+    fn from_le_bytes(bytes: &[u8]) -> Option<Self> {
+        std::io::Cursor::new(bytes).read_u32::<LittleEndian>().ok()
+    }
+}
+impl AuxArrayElement for f32 {
+    fn from_le_bytes(bytes: &[u8]) -> Option<Self> {
+        std::io::Cursor::new(bytes).read_f32::<LittleEndian>().ok()
+    }
+}
+
+/// Provides access to aux arrays.
+///
+/// Provides methods to either retrieve single elements or an iterator over the
+/// array.
+///
+/// This type is used for wrapping both, array data that was read from a
+/// BAM record and slices of data that are going to be stored in one.
+///
+/// In order to be able to add an `AuxArray` field to a BAM record, `AuxArray`s
+/// can be constructed via the `From` trait which is implemented for all
+/// supported types (see [`AuxArrayElement`] for a list).
+///
+/// # Examples
+///
+/// ```
+/// use rust_htslib::{
+///     bam,
+///     bam::record::{Aux, AuxArray},
+/// };
+///
+/// //Set up BAM record
+/// let bam_header = bam::Header::new();
+/// let mut record = bam::Record::from_sam(
+///     &mut bam::HeaderView::from_header(&bam_header),
+///     "ali1\t4\t*\t0\t0\t*\t*\t0\t0\tACGT\tFFFF".as_bytes(),
+/// ).unwrap();
+///
+/// let data = vec![0.4, 0.3, 0.2, 0.1];
+/// let slice_of_data = &data;
+/// let aux_array: AuxArray<f32> = slice_of_data.into();
+/// let aux_field = Aux::ArrayFloat(aux_array);
+/// record.push_aux(b"XA", aux_field);
+///
+/// if let Ok(Aux::ArrayFloat(array)) = record.aux(b"XA") {
+///     // Retrieve the second element from the array
+///     assert_eq!(array.get(1).unwrap(), 0.3);
+///     // Iterate over the array and collect it into a `Vec`
+///     let read_array = array.iter().collect::<Vec<_>>();
+///     assert_eq!(read_array, data);
+/// } else {
+///     panic!("Could not read array data");
+/// }
+/// ```
+#[derive(Debug)]
+pub enum AuxArray<'a, T> {
+    TargetType(AuxArrayTargetType<'a, T>),
+    RawLeBytes(AuxArrayRawLeBytes<'a, T>),
+}
+
+impl<T> PartialEq<AuxArray<'_, T>> for AuxArray<'_, T>
+where
+    T: AuxArrayElement + PartialEq,
+{
+    fn eq(&self, other: &AuxArray<'_, T>) -> bool {
+        use AuxArray::*;
+        match (self, other) {
+            (TargetType(v), TargetType(v_other)) => v == v_other,
+            (RawLeBytes(v), RawLeBytes(v_other)) => v == v_other,
+            (TargetType(_), RawLeBytes(_)) => self.iter().eq(other.iter()),
+            (RawLeBytes(_), TargetType(_)) => self.iter().eq(other.iter()),
+        }
+    }
+}
+
+/// Create AuxArrays from slices of allowed target types.
+impl<'a, I, T> From<&'a T> for AuxArray<'a, I>
+where
+    I: AuxArrayElement,
+    T: AsRef<[I]> + ?Sized,
+{
+    fn from(src: &'a T) -> Self {
+        AuxArray::TargetType(AuxArrayTargetType {
+            slice: src.as_ref(),
+        })
+    }
+}
+
+impl<'a, T> AuxArray<'a, T>
+where
+    T: AuxArrayElement,
+{
+    /// Returns the element at a position or None if out of bounds.
+    pub fn get(&self, index: usize) -> Option<T> {
+        match self {
+            AuxArray::TargetType(v) => v.get(index),
+            AuxArray::RawLeBytes(v) => v.get(index),
+        }
+    }
+
+    /// Returns the number of elements in the array.
+    pub fn len(&self) -> usize {
+        match self {
+            AuxArray::TargetType(a) => a.len(),
+            AuxArray::RawLeBytes(a) => a.len(),
+        }
+    }
+
+    /// Returns true if the array contains no elements.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Returns an iterator over the array.
+    pub fn iter(&self) -> AuxArrayIter<T> {
+        AuxArrayIter {
+            index: 0,
+            array: self,
+        }
+    }
+
+    /// Create AuxArrays from raw byte slices borrowed from `bam::Record`.
+    fn from_bytes(bytes: &'a [u8]) -> Self {
+        Self::RawLeBytes(AuxArrayRawLeBytes {
+            slice: bytes,
+            phantom_data: PhantomData,
+        })
+    }
+}
+
+/// Encapsulates slice of target type.
+#[doc(hidden)]
+#[derive(Debug, PartialEq)]
+pub struct AuxArrayTargetType<'a, T> {
+    slice: &'a [T],
+}
+
+impl<'a, T> AuxArrayTargetType<'a, T>
+where
+    T: AuxArrayElement,
+{
+    fn get(&self, index: usize) -> Option<T> {
+        self.slice.get(index).copied()
+    }
+
+    fn len(&self) -> usize {
+        self.slice.len()
+    }
+}
+
+/// Encapsulates slice of raw bytes to prevent it from being accidentally accessed.
+#[doc(hidden)]
+#[derive(Debug, PartialEq)]
+pub struct AuxArrayRawLeBytes<'a, T> {
+    slice: &'a [u8],
+    phantom_data: PhantomData<T>,
+}
+
+impl<'a, T> AuxArrayRawLeBytes<'a, T>
+where
+    T: AuxArrayElement,
+{
+    fn get(&self, index: usize) -> Option<T> {
+        let type_size = std::mem::size_of::<T>();
+        if index * type_size + type_size > self.slice.len() {
+            return None;
+        }
+        T::from_le_bytes(&self.slice[index * type_size..][..type_size])
+    }
+
+    fn len(&self) -> usize {
+        self.slice.len() / std::mem::size_of::<T>()
+    }
+}
+
+/// Aux array iterator
+///
+/// This struct is created by the [`AuxArray::iter`] method.
+pub struct AuxArrayIter<'a, T> {
+    index: usize,
+    array: &'a AuxArray<'a, T>,
+}
+
+impl<T> Iterator for AuxArrayIter<'_, T>
+where
+    T: AuxArrayElement,
+{
+    type Item = T;
+    fn next(&mut self) -> Option<Self::Item> {
+        let value = self.array.get(self.index);
+        self.index += 1;
+        value
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let array_length = self.array.len() - self.index;
+        (array_length, Some(array_length))
+    }
+}
+
+/// Auxiliary data iterator
+///
+/// This struct is created by the [`Record::aux_iter`] method.
+///
+/// This iterator returns `Result`s that wrap tuples containing
+/// a slice which represents the two-byte tag (`&[u8; 2]`) as
+/// well as an `Aux` enum that wraps the associated value.
+///
+/// When an error occurs, the `Err` variant will be returned
+/// and the iterator will not be able to advance anymore.
+pub struct AuxIter<'a> {
+    aux: &'a [u8],
+}
+
+impl<'a> Iterator for AuxIter<'a> {
+    type Item = Result<(&'a [u8], Aux<'a>)>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // We're finished
+        if self.aux.is_empty() {
+            return None;
+        }
+        // Incomplete aux data
+        if (1..=3).contains(&self.aux.len()) {
+            // In the case of an error, we can not safely advance in the aux data, so we terminate the Iteration
+            self.aux = &[];
+            return Some(Err(Error::BamAuxParsingError));
+        }
+        let tag = &self.aux[..2];
+        Some(unsafe {
+            let data_ptr = self.aux[2..].as_ptr();
+            Record::read_aux_field(data_ptr)
+                .map(|(aux, offset)| {
+                    self.aux = &self.aux[offset..];
+                    (tag, aux)
+                })
+                .map_err(|e| {
+                    // In the case of an error, we can not safely advance in the aux data, so we terminate the Iteration
+                    self.aux = &[];
+                    e
+                })
+        })
+    }
+}
 
 static DECODE_BASE: &[u8] = b"=ACMGRSVTWYHKDBN";
 static ENCODE_BASE: [u8; 256] = [
@@ -818,12 +1534,19 @@ static ENCODE_BASE: [u8; 256] = [
     15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
 ];
 
+#[inline]
 fn encoded_base(encoded_seq: &[u8], i: usize) -> u8 {
     (encoded_seq[i / 2] >> ((!i & 1) << 2)) & 0b1111
 }
 
-fn decode_base(base: u8) -> u8 {
-    DECODE_BASE[base as usize]
+#[inline]
+unsafe fn encoded_base_unchecked(encoded_seq: &[u8], i: usize) -> u8 {
+    (encoded_seq.get_unchecked(i / 2) >> ((!i & 1) << 2)) & 0b1111
+}
+
+#[inline]
+fn decode_base_unchecked(base: u8) -> &'static u8 {
+    unsafe { DECODE_BASE.get_unchecked(base as usize) }
 }
 
 /// The sequence of a record.
@@ -838,6 +1561,20 @@ impl<'a> Seq<'a> {
     #[inline]
     pub fn encoded_base(&self, i: usize) -> u8 {
         encoded_base(self.encoded, i)
+    }
+
+    /// Return encoded base. Complexity: O(1).
+    #[inline]
+    pub unsafe fn encoded_base_unchecked(&self, i: usize) -> u8 {
+        encoded_base_unchecked(self.encoded, i)
+    }
+
+    /// Obtain decoded base without performing bounds checking.
+    /// Use index based access seq()[i], for checked, safe access.
+    /// Complexity: O(1).
+    #[inline]
+    pub unsafe fn decoded_base_unchecked(&self, i: usize) -> u8 {
+        *decode_base_unchecked(self.encoded_base_unchecked(i))
     }
 
     /// Return decoded sequence. Complexity: O(m) with m being the read length.
@@ -860,14 +1597,15 @@ impl<'a> ops::Index<usize> for Seq<'a> {
 
     /// Return decoded base at given position within read. Complexity: O(1).
     fn index(&self, index: usize) -> &u8 {
-        &DECODE_BASE[self.encoded_base(index) as usize]
+        decode_base_unchecked(self.encoded_base(index))
     }
 }
 
 unsafe impl<'a> Send for Seq<'a> {}
 unsafe impl<'a> Sync for Seq<'a> {}
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy, Hash)]
+#[cfg_attr(feature = "serde_feature", derive(Serialize, Deserialize))]
+#[derive(PartialEq, PartialOrd, Eq, Debug, Clone, Copy, Hash)]
 pub enum Cigar {
     Match(u32),    // M
     Ins(u32),      // I
@@ -958,11 +1696,13 @@ custom_derive! {
     ///    println!("{}", op);
     /// }
     /// ```
+    #[cfg_attr(feature = "serde_feature", derive(Serialize, Deserialize))]
     #[derive(NewtypeDeref,
              NewtypeIndex(usize),
              NewtypeIndexMut(usize),
              NewtypeFrom,
              PartialEq,
+             PartialOrd,
              Eq,
              NewtypeDebug,
              Clone,
@@ -1038,57 +1778,124 @@ impl CigarString {
 impl TryFrom<&[u8]> for CigarString {
     type Error = Error;
 
-    /// Create a CigarString from given bytes.
-    fn try_from(text: &[u8]) -> Result<Self> {
-        Self::try_from(str::from_utf8(text).map_err(|_| Error::ParseCigar {
-            msg: "unable to parse as UTF8".to_owned(),
-        })?)
+    /// Create a CigarString from given &[u8].
+    /// # Example
+    /// ```
+    /// use rust_htslib::bam::record::*;
+    /// use rust_htslib::bam::record::CigarString;
+    /// use rust_htslib::bam::record::Cigar::*;
+    /// use std::convert::TryFrom;
+    ///
+    /// let cigar_str = "2H10M5X3=2H".as_bytes();
+    /// let cigar = CigarString::try_from(cigar_str)
+    ///     .expect("Unable to parse cigar string.");
+    /// let expected_cigar = CigarString(vec![
+    ///     HardClip(2),
+    ///     Match(10),
+    ///     Diff(5),
+    ///     Equal(3),
+    ///     HardClip(2),
+    /// ]);
+    /// assert_eq!(cigar, expected_cigar);
+    /// ```
+    fn try_from(bytes: &[u8]) -> Result<Self> {
+        let mut inner = Vec::new();
+        let mut i = 0;
+        let text_len = bytes.len();
+        while i < text_len {
+            let mut j = i;
+            while j < text_len && bytes[j].is_ascii_digit() {
+                j += 1;
+            }
+            // check that length is provided
+            if i == j {
+                return Err(Error::BamParseCigar {
+                    msg: "Expected length before cigar operation [0-9]+[MIDNSHP=X]".to_owned(),
+                });
+            }
+            // get the length of the operation
+            let s = str::from_utf8(&bytes[i..j]).map_err(|_| Error::BamParseCigar {
+                msg: format!("Invalid utf-8 bytes '{:?}'.", &bytes[i..j]),
+            })?;
+            let n = s.parse().map_err(|_| Error::BamParseCigar {
+                msg: format!("Unable to parse &str '{:?}' to u32.", s),
+            })?;
+            // get the operation
+            let op = &bytes[j];
+            inner.push(match op {
+                b'M' => Cigar::Match(n),
+                b'I' => Cigar::Ins(n),
+                b'D' => Cigar::Del(n),
+                b'N' => Cigar::RefSkip(n),
+                b'H' => {
+                    if i == 0 || j + 1 == text_len {
+                        Cigar::HardClip(n)
+                    } else {
+                        return Err(Error::BamParseCigar {
+                            msg: "Hard clipping ('H') is only valid at the start or end of a cigar."
+                                .to_owned(),
+                        });
+                    }
+                }
+                b'S' => {
+                    if i == 0
+                        || j + 1 == text_len
+                        || bytes[i-1] == b'H'
+                        || bytes[j+1..].iter().all(|c| c.is_ascii_digit() || *c == b'H') {
+                        Cigar::SoftClip(n)
+                    } else {
+                        return Err(Error::BamParseCigar {
+                        msg: "Soft clips ('S') can only have hard clips ('H') between them and the end of the CIGAR string."
+                            .to_owned(),
+                        });
+                    }
+                },
+                b'P' => Cigar::Pad(n),
+                b'=' => Cigar::Equal(n),
+                b'X' => Cigar::Diff(n),
+                op => {
+                    return Err(Error::BamParseCigar {
+                        msg: format!("Expected cigar operation [MIDNSHP=X] but got [{}]", op),
+                    })
+                }
+            });
+            i = j + 1;
+        }
+        Ok(CigarString(inner))
     }
 }
 
 impl TryFrom<&str> for CigarString {
     type Error = Error;
 
-    /// Create a CigarString from given str.
+    /// Create a CigarString from given &str.
+    /// # Example
+    /// ```
+    /// use rust_htslib::bam::record::*;
+    /// use rust_htslib::bam::record::CigarString;
+    /// use rust_htslib::bam::record::Cigar::*;
+    /// use std::convert::TryFrom;
+    ///
+    /// let cigar_str = "2H10M5X3=2H";
+    /// let cigar = CigarString::try_from(cigar_str)
+    ///     .expect("Unable to parse cigar string.");
+    /// let expected_cigar = CigarString(vec![
+    ///     HardClip(2),
+    ///     Match(10),
+    ///     Diff(5),
+    ///     Equal(3),
+    ///     HardClip(2),
+    /// ]);
+    /// assert_eq!(cigar, expected_cigar);
+    /// ```
     fn try_from(text: &str) -> Result<Self> {
-        lazy_static! {
-            // regex for a cigar string operation
-            static ref OP_RE: Regex = Regex::new("^(?P<n>[0-9]+)(?P<op>[MIDNSHP=X])").unwrap();
+        let bytes = text.as_bytes();
+        if text.chars().count() != bytes.len() {
+            return Err(Error::BamParseCigar {
+                msg: "CIGAR string contained non-ASCII characters, which are not valid. Valid are [0-9MIDNSHP=X].".to_owned(),
+            });
         }
-        let mut inner = Vec::new();
-        let mut i = 0;
-        while i < text.len() {
-            if let Some(caps) = OP_RE.captures(&text[i..]) {
-                let n = &caps["n"];
-                let op = &caps["op"];
-                i += n.len() + op.len();
-                let n = u32::from_str(n).map_err(|_| Error::ParseCigar {
-                    msg: "expected integer".to_owned(),
-                })?;
-                inner.push(match op {
-                    "M" => Cigar::Match(n),
-                    "I" => Cigar::Ins(n),
-                    "D" => Cigar::Del(n),
-                    "N" => Cigar::RefSkip(n),
-                    "H" => Cigar::HardClip(n),
-                    "S" => Cigar::SoftClip(n),
-                    "P" => Cigar::Pad(n),
-                    "=" => Cigar::Equal(n),
-                    "X" => Cigar::Diff(n),
-                    op => {
-                        return Err(Error::ParseCigar {
-                            msg: format!("operation {} not expected", op),
-                        });
-                    }
-                });
-            } else {
-                return Err(Error::ParseCigar {
-                    msg: "expected cigar operation [0-9]+[MIDNSHP=X]".to_owned(),
-                });
-            }
-        }
-
-        Ok(CigarString(inner))
+        CigarString::try_from(bytes)
     }
 }
 
@@ -1232,17 +2039,17 @@ impl CigarStringView {
                     break;
                 },
                 Cigar::Del(_) => {
-                    return Err(Error::UnexpectedCigarOperation {
+                    return Err(Error::BamUnexpectedCigarOperation {
                         msg: "'deletion' (D) found before any operation describing read sequence".to_owned()
                     });
                 },
                 Cigar::RefSkip(_) => {
-                    return Err(Error::UnexpectedCigarOperation {
+                    return Err(Error::BamUnexpectedCigarOperation {
                         msg: "'reference skip' (N) found before any operation describing read sequence".to_owned()
                     });
                 },
                 Cigar::HardClip(_) if i > 0 && i < self.len()-1 => {
-                    return Err(Error::UnexpectedCigarOperation{
+                    return Err(Error::BamUnexpectedCigarOperation{
                         msg: "'hard clip' (H) found in between operations, contradicting SAMv1 spec that hard clips can only be at the ends of reads".to_owned()
                     });
                 },
@@ -1299,7 +2106,7 @@ impl CigarStringView {
                     j += 1;
                 }
                 Cigar::HardClip(_) if j < self.len() - 1 => {
-                    return Err(Error::UnexpectedCigarOperation{
+                    return Err(Error::BamUnexpectedCigarOperation{
                         msg: "'hard clip' (H) found in between operations, contradicting SAMv1 spec that hard clips can only be at the ends of reads".to_owned()
                     });
                 }
@@ -1308,6 +2115,11 @@ impl CigarStringView {
         }
 
         Ok(None)
+    }
+
+    /// transfer ownership of the Cigar out of the CigarView
+    pub fn take(self) -> CigarString {
+        self.inner
     }
 }
 
@@ -1588,6 +2400,7 @@ mod tests {
 #[cfg(test)]
 mod alignment_cigar_tests {
     use super::*;
+    use crate::bam::{Read, Reader};
     use bio_types::alignment::AlignmentOperation::{Del, Ins, Match, Subst, Xclip, Yclip};
     use bio_types::alignment::{Alignment, AlignmentMode};
 
@@ -1684,5 +2497,85 @@ mod alignment_cigar_tests {
             CigarString::from_alignment(&alignment, false).0,
             vec![Cigar::Diff(1), Cigar::Equal(1), Cigar::Diff(1)]
         );
+    }
+
+    #[test]
+    fn test_read_orientation_f1r2() {
+        let mut bam = Reader::from_path(&"test/test_paired.sam").unwrap();
+
+        for res in bam.records() {
+            let record = res.unwrap();
+            assert_eq!(
+                record.read_pair_orientation(),
+                SequenceReadPairOrientation::F1R2
+            );
+        }
+    }
+
+    #[test]
+    pub fn test_cigar_parsing_non_ascii_error() {
+        let cigar_str = "43ጷ";
+        let expected_error = Err(Error::BamParseCigar {
+                msg: "CIGAR string contained non-ASCII characters, which are not valid. Valid are [0-9MIDNSHP=X].".to_owned(),
+            });
+
+        let result = CigarString::try_from(cigar_str);
+        assert_eq!(expected_error, result);
+    }
+
+    #[test]
+    pub fn test_cigar_parsing() {
+        // parsing test cases
+        let cigar_strs = vec![
+            "1H10M4D100I300N1102=10P25X11S", // test every cigar opt
+            "100M",                          // test a single op
+            "",                              // test empty input
+            "1H1=1H",                        // test simple hardclip
+            "1S1=1S",                        // test simple softclip
+            "11H11S11=11S11H",               // test complex softclip
+            "10H",
+            "10S",
+        ];
+        // expected results
+        let cigars = vec![
+            CigarString(vec![
+                Cigar::HardClip(1),
+                Cigar::Match(10),
+                Cigar::Del(4),
+                Cigar::Ins(100),
+                Cigar::RefSkip(300),
+                Cigar::Equal(1102),
+                Cigar::Pad(10),
+                Cigar::Diff(25),
+                Cigar::SoftClip(11),
+            ]),
+            CigarString(vec![Cigar::Match(100)]),
+            CigarString(vec![]),
+            CigarString(vec![
+                Cigar::HardClip(1),
+                Cigar::Equal(1),
+                Cigar::HardClip(1),
+            ]),
+            CigarString(vec![
+                Cigar::SoftClip(1),
+                Cigar::Equal(1),
+                Cigar::SoftClip(1),
+            ]),
+            CigarString(vec![
+                Cigar::HardClip(11),
+                Cigar::SoftClip(11),
+                Cigar::Equal(11),
+                Cigar::SoftClip(11),
+                Cigar::HardClip(11),
+            ]),
+            CigarString(vec![Cigar::HardClip(10)]),
+            CigarString(vec![Cigar::SoftClip(10)]),
+        ];
+        // compare
+        for (&cigar_str, truth) in cigar_strs.iter().zip(cigars.iter()) {
+            let cigar_parse = CigarString::try_from(cigar_str)
+                .expect(&format!("Unable to parse cigar: {}", cigar_str));
+            assert_eq!(&cigar_parse, truth);
+        }
     }
 }

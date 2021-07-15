@@ -2,6 +2,35 @@
 // Licensed under the MIT license (http://opensource.org/licenses/MIT)
 // This file may not be copied, modified, or distributed
 // except according to those terms.
+//! Module for working with VCF or BCF headers.
+//!
+//! # Examples
+//! From the header of a VCF file we can
+//!   - Output sample count of a VCF file
+//!   - Output sample names of a VCF file
+//!   - Output sample index given a sample name of a VCF file.
+//! ```
+//! use crate::rust_htslib::bcf::{Reader, Read};
+//! use std::io::Read as IoRead;
+//!
+//! let path = &"test/test_string.vcf";
+//! let mut bcf = Reader::from_path(path).expect("Error opening file.");
+//! let header = bcf.header();
+//! assert_eq!(header.sample_count(), 2);  // Sample count
+//! let mut s = String::new();
+//! for (i, mut x) in header.samples().into_iter().enumerate() {
+//!     x.read_to_string(&mut s);  // Read sample name in to `s`
+//!     println!("{}", s);  // output sample name
+//! }
+//! assert_eq!(header.sample_id(b"one").unwrap(), 0);  // Sample index wrapped in Option<usize>
+//! assert_eq!(header.sample_id(b"two").unwrap(), 1);  // Sample index wrapped in Option<usize>
+//! assert!(header.sample_id(b"non existent sample").is_none());  // Return none if not found
+//!
+//! assert_eq!(header.contig_count(), 1); // Number of contig in header.
+//! // obtain the data type of an INFO field
+//! let (tag_type, tag_length) = header.info_type(b"S1").unwrap();
+//! let (fmt_type, fmt_length) = header.format_type(b"GT").unwrap();
+//! ```
 
 use std::ffi;
 use std::slice;
@@ -11,7 +40,7 @@ use crate::htslib;
 
 use linear_map::LinearMap;
 
-use crate::bcf::{errors::Error, Result};
+use crate::errors::{Error, Result};
 
 pub type SampleSubset = Vec<i32>;
 
@@ -91,7 +120,7 @@ impl Header {
             )
         };
         if inner.is_null() {
-            Err(Error::DuplicateSampleNames)
+            Err(Error::BcfDuplicateSampleNames)
         } else {
             Ok(Header {
                 inner,
@@ -280,10 +309,29 @@ impl HeaderView {
                 Ok(ffi::CStr::from_ptr(ptr).to_bytes())
             }
         } else {
-            Err(Error::UnknownRID { rid })
+            Err(Error::BcfUnknownRID { rid })
         }
     }
 
+    /// Retrieve the (internal) chromosome identifier
+    /// # Examples
+    /// ```rust
+    /// use rust_htslib::bcf::header::Header;
+    /// use rust_htslib::bcf::{Format, Writer};
+    ///
+    /// let mut header = Header::new();
+    /// let contig_field = br#"##contig=<ID=foo,length=10>"#;
+    /// header.push_record(contig_field);
+    /// let mut vcf = Writer::from_stdout(&header, true, Format::Vcf).unwrap();
+    /// let header_view = vcf.header();
+    /// let rid = header_view.name2rid(b"foo").unwrap();
+    /// assert_eq!(rid, 0);
+    /// // try and retrieve a contig not in the header
+    /// let result = header_view.name2rid(b"bar");
+    /// assert!(result.is_err())
+    /// ```
+    /// # Errors
+    /// If `name` does not match a chromosome currently in the VCF header, returns [`Error::BcfUnknownContig`]
     pub fn name2rid(&self, name: &[u8]) -> Result<u32> {
         let c_str = ffi::CString::new(name).unwrap();
         unsafe {
@@ -292,7 +340,7 @@ impl HeaderView {
                 htslib::BCF_DT_CTG as i32,
                 c_str.as_ptr() as *mut i8,
             ) {
-                -1 => Err(Error::UnknownContig {
+                -1 => Err(Error::BcfUnknownContig {
                     contig: str::from_utf8(name).unwrap().to_owned(),
                 }),
                 i => Ok(i as u32),
@@ -318,7 +366,7 @@ impl HeaderView {
                 c_str_tag.as_ptr() as *mut i8,
             );
             if id < 0 {
-                return Err(Error::UndefinedTag { tag: tag_desc() });
+                return Err(Error::BcfUndefinedTag { tag: tag_desc() });
             }
             let n = (*self.inner).n[htslib::BCF_DT_ID as usize] as usize;
             let entry = slice::from_raw_parts((*self.inner).id[htslib::BCF_DT_ID as usize], n);
@@ -330,7 +378,7 @@ impl HeaderView {
             htslib::BCF_HT_INT => TagType::Integer,
             htslib::BCF_HT_REAL => TagType::Float,
             htslib::BCF_HT_STR => TagType::String,
-            _ => return Err(Error::UnexpectedType { tag: tag_desc() }),
+            _ => return Err(Error::BcfUnexpectedType { tag: tag_desc() }),
         };
         let length = match length as ::libc::c_uint {
             // XXX: Hacky "as u32" cast. Trace back through unsafe{} towards BCF struct and rollback to proper type
@@ -339,7 +387,7 @@ impl HeaderView {
             htslib::BCF_VL_A => TagLength::AltAlleles,
             htslib::BCF_VL_R => TagLength::Alleles,
             htslib::BCF_VL_G => TagLength::Genotypes,
-            _ => return Err(Error::UnexpectedType { tag: tag_desc() }),
+            _ => return Err(Error::BcfUnexpectedType { tag: tag_desc() }),
         };
 
         Ok((_type, length))
@@ -354,7 +402,7 @@ impl HeaderView {
                 htslib::BCF_DT_ID as i32,
                 c_str.as_ptr() as *const i8,
             ) {
-                -1 => Err(Error::UnknownID {
+                -1 => Err(Error::BcfUnknownID {
                     id: str::from_utf8(id).unwrap().to_owned(),
                 }),
                 i => Ok(Id(i as u32)),
@@ -382,7 +430,7 @@ impl HeaderView {
                 htslib::BCF_DT_SAMPLE as i32,
                 c_str.as_ptr() as *const i8,
             ) {
-                -1 => Err(Error::UnknownSample {
+                -1 => Err(Error::BcfUnknownSample {
                     name: str::from_utf8(id).unwrap().to_owned(),
                 }),
                 i => Ok(Id(i as u32)),

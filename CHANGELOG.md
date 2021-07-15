@@ -2,6 +2,143 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+### [0.39.1](https://www.github.com/rust-bio/rust-htslib/compare/rust-htslib-v0.39.0...rust-htslib-v0.39.1) (2021-07-06)
+
+
+### Bug Fixes
+
+* bump hts-sys version to 2.0.1 ([336c8b8](https://www.github.com/rust-bio/rust-htslib/commit/336c8b8a1779422afea1065e37bcc44f54abac42))
+
+## [0.39.0](https://www.github.com/rust-bio/rust-htslib/compare/rust-htslib-vrust-htslib-0.38.3...rust-htslib-v0.39.0) (2021-07-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* dummy major version bump to move away from previous versions that were following htslib versions.
+* bump to new major version (for technical reasons).
+* dummy breaking change to increase hts-sys major version.
+
+### Bug Fixes
+
+* bump to new major version (for technical reasons). ([9c6db30](https://www.github.com/rust-bio/rust-htslib/commit/9c6db3060818692070db1411d63e113dc7effd64))
+* dummy breaking change to increase hts-sys major version. ([93415cb](https://www.github.com/rust-bio/rust-htslib/commit/93415cbb82e4f11d257a2b2cedba2664f86a034d))
+* dummy changes ([3af5ede](https://www.github.com/rust-bio/rust-htslib/commit/3af5ede13a6b44ce5d1e7f0eb90836a692e711ec))
+* dummy major version bump to move away from previous versions that were following htslib versions. ([aaa70a8](https://www.github.com/rust-bio/rust-htslib/commit/aaa70a85ef9a908d3b101f23879189e84a15d23f))
+* dummy release ([74d1565](https://www.github.com/rust-bio/rust-htslib/commit/74d1565329fc862f1172c0925c7b66ceb8bcf988))
+* dummy release ([af2f84e](https://www.github.com/rust-bio/rust-htslib/commit/af2f84eb0411507f8866b3cc05e9a6ba9d81d172))
+* dummy release ([b97915f](https://www.github.com/rust-bio/rust-htslib/commit/b97915f2c70da4c914f2e69861bf78eec5979baf))
+* handle subcrate with release-please ([0a4605f](https://www.github.com/rust-bio/rust-htslib/commit/0a4605f165cb2edf4428d8fb39f7e4787585f4e1))
+* trigger dummy release ([7c5a7de](https://www.github.com/rust-bio/rust-htslib/commit/7c5a7de33e2a92052126e5f44389d421974d1e02))
+* update changelog ([deef08f](https://www.github.com/rust-bio/rust-htslib/commit/deef08feb0b5ba2d8abf98f2cc6d327236da8aef))
+
+### [0.38.3](https://www.github.com/rust-bio/rust-htslib/compare/v0.38.2...v0.38.3) (2021-07-06)
+
+
+### Bug Fixes
+
+* dummy fix for triggering release ([e92e6b1](https://www.github.com/rust-bio/rust-htslib/commit/e92e6b10b0a7e5db50b12e2fbe2c42b467eb369e))
+
+### [0.38.2](https://www.github.com/rust-bio/rust-htslib/compare/v0.38.1...v0.38.2) (2021-07-06)
+
+
+### Bug Fixes
+
+* add ID to automatic release handling ([1244393](https://www.github.com/rust-bio/rust-htslib/commit/124439300e1e3e01e1d847f7549747d560c01989))
+
+### [0.38.1](https://www.github.com/rust-bio/rust-htslib/compare/v0.38.0...v0.38.1) (2021-07-06)
+
+
+### Bug Fixes
+
+* improved documentation ([cb0b66c](https://www.github.com/rust-bio/rust-htslib/commit/cb0b66c4a92d4f03debe38dfb2a014b154c7dd96))
+
+## [0.38.0](https://www.github.com/rust-bio/rust-htslib/compare/v0.37.0...v0.38.0) (2021-07-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* Improve bcf Record filter interface and improve docs (#306)
+
+### Features
+
+* Improve bcf Record filter interface and improve docs ([#306](https://www.github.com/rust-bio/rust-htslib/issues/306)) ([f45e91d](https://www.github.com/rust-bio/rust-htslib/commit/f45e91dfdc64ecb662d676f2996ed4f14c079995))
+
+
+### Bug Fixes
+
+* enum name usage in doc example ([#311](https://www.github.com/rust-bio/rust-htslib/issues/311)) ([6e9ba49](https://www.github.com/rust-bio/rust-htslib/commit/6e9ba4928b60c3105490a8179d074c705ea06fd7))
+
+## [Unreleased]
+### Changes
+- `bcf::Record` methods `has_filter`, `remove_filter`, `push_filter`, and `set_filter`
+  all now take a byte slice (`&[u8]`) or an `Id`. 
+
+[Unreleased]: https://github.com/rust-bio/rust-htslib/compare/v0.37.0...HEAD
+
+## [0.37.0] - 2021-07-05
+### Added
+- `bcf::Record` methods `end`, `clear`, and `rlen` (@mbhall88).
+
+### Changes
+- `bcf::IndexReader::fetch` parameter `end` is now an `Option<u64>`. This is inline with
+  htslib regions, which do not require an end position (@mbhall88)
+- Removed unused dependencies (@sreenathkrishnan).
+- Improved documentation (@mbhall88).
+- Improved error message when failing to load index files (@johanneskoester).
+- Improved API for accessing AUX fields in BAM records (@jch-13).
+- Fixed compiler warnings (@fxwiegand).
+- BAM header representation is now always kept in sync between textual and binary (@jch-13).
+
+## [0.36.0] - 2020-11-23
+### Changes
+- Improved genotype API in VCF/BCF records (@MaltheSR).
+- Read pair orientation inference for BAM records (@johanneskoester).
+
+## [0.35.2] - 2020-11-23
+### Changes
+- let hts-sys dependency comply to semver.
+
+## [0.35.1] - 2020-11-23
+### Changes
+- Fixed wrongly define missing value constants in bcf::record (@johanneskoester).
+- Bump hts-sys depedency to the latest version, containing build fixes for macOS (@johanneskoester).
+
+
+## [0.35.0] - 2020-11-19
+### Changes
+- BREAKING: info and format field access in BCF records now allocates a separate buffer each time. In addition, it is also possible to pass a buffer that has been created manually before (@johanneskoester)
+- Fixes for building on macOS (@brainstorm)
+
+### Added
+- ability to push genotypes into BCF record (@MaltheSR, @tedil).
+
+## [0.34.0] - 2020-11-13
+### Added
+- Ability to set minimum refetch distance in `bam::RecordBuffer`.
+
+## [0.33.0] - 2020-11-04
+### Changes
+- BREAKING: Rename feature 'serde' as 'serde_feature' (for technical reasons)
+- BREAKING: Consolidate module-wide errors into a crate-wide error module
+- Making `bcf::IndexedReader` always unpack records to reflect the behaviour of `bcf::Reader`.
+- Adding `bcf::errors::Error::FileNotFound` and using it.
+- Fixes for musl compilation (@brainstorm).
+- Improved BCF constants handling (@juliangehring)
+- Fixes for tabix reader (@felix-clark, @brainstorm).
+- Fixes for BCF handling (@holtgrewe, @tedil).
+- Documentation improvements (@vsoch, @brainstorm, @edmundlth).
+- BREAKING: Improved, more ergonomic BAM fetch API (@TiberiusPrime, @brainstorm, @tedil).
+- BREAKING: Let BamRecordExtensions return iterators instead of vectors (@TiberiusPrime).
+- Handle all errors via a unified single thiserror based enum (@landesfeind).
+- BREAKING: BAM read API now returns Option<Result> (@slazicoicr).
+### Added
+- Support for reading indexed FASTA files (@landesfeind, @pmarks, @brainstorm).
+- Support for shared threadpools when reading and writing BAM (@pmarks, @nlhepler).
+- Serde support for Cigar strings (@FelixMoelder, @pmarks, @johanneskoester).
+- Expose bgzf functionality (@landesfeind).
+- Iterator over BAM records using Rc-pointers (@TiberiusPrime, @tedil).
+- Ability to obtain pairs of read and genome intervals from BAM (aligned_block_pairs) (@TiberiusPrime, @brainstorm).
+
 ## [0.32.0] - 2020-07-09
 ### Changes
 - Method `seq_len()` of `bam::Record` is now public.
