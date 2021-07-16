@@ -116,7 +116,6 @@ fn main() {
             cfg.include(inc);
             lib_list += " -lbz2";
             config_lines.push("#define HAVE_LIBBZ2 1");
-
         }
     }
 
@@ -200,21 +199,20 @@ fn main() {
 
         let mut f = std::fs::File::create(out.join("htslib").join("version.h")).unwrap();
         writeln!(&mut f, "#define HTS_VERSION_TEXT \"{}\"", version_str).unwrap();
-        
-        
     }
 
     // write out htscodecs/htscodecs/version.h
     {
-        let mut f = std::fs::File::create(out
-            .join("htslib")
-            .join("htscodecs")
-            .join("htscodecs")
-            .join("version.h")).unwrap();
+        let mut f = std::fs::File::create(
+            out.join("htslib")
+                .join("htscodecs")
+                .join("htscodecs")
+                .join("version.h"),
+        )
+        .unwrap();
         // FIXME, using a dummy. Not sure why this should be a separate version from htslib itself.
         writeln!(&mut f, "#define HTSCODECS_VERSION_TEXT \"rust-htslib\"").unwrap();
     }
-
 
     // write out config_vars.h which is used to expose compiler parameters via
     // hts_test_feature() in hts.c. We partially fill in these values.

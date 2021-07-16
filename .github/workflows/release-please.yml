@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v2
         if: ${{ steps.release_main.outputs.release_created || steps.release_sys.outputs.release_created }}
         with:
-          submodules: true
+          submodules: recursive
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
