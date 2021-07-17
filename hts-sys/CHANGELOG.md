@@ -1,5 +1,12 @@
 # Changelog
 
+### [2.0.2](https://www.github.com/rust-bio/rust-htslib/compare/hts-sys-v2.0.1...hts-sys-v2.0.2) (2021-07-17)
+
+
+### Bug Fixes
+
+* Configuration when cross-compiling. Even when cross-compiling, build.rs runs on the build host. Hence within build.rs `#[cfg(target_os)]` always reflects the host, not the target. Use $CARGO_CFG_TARGET_OS instead to query target properties. ([#329](https://www.github.com/rust-bio/rust-htslib/issues/329)) ([d5198e6](https://www.github.com/rust-bio/rust-htslib/commit/d5198e6c777fdbbfdd9c73a820f1be983a458ce2))
+
 ### [2.0.1](https://www.github.com/rust-bio/rust-htslib/compare/hts-sys-v2.0.0...hts-sys-v2.0.1) (2021-07-06)
 
 
