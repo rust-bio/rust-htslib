@@ -29,7 +29,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
-          submodules: true
+          submodules: recursive
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1.0.6
@@ -50,7 +50,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
-          submodules: true
+          submodules: recursive
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1.0.6
@@ -111,7 +111,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
-          submodules: true
+          submodules: recursive
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1.0.6
@@ -167,7 +167,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
-          submodules: true
+          submodules: recursive
 
       - name: Install htslib dependencies
         run: brew install bzip2 zlib xz curl-openssl

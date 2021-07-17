@@ -5,7 +5,6 @@
 
 #[cfg(feature = "serde")]
 use bindgen;
-use cc;
 use fs_utils::copy::copy_directory;
 use glob::glob;
 
@@ -17,7 +16,6 @@ use std::path::PathBuf;
 // these need to be kept in sync with the htslib Makefile
 const FILES: &[&str] = &[
     "kfunc.c",
-    "knetfile.c",
     "kstring.c",
     "bcf_sr_sort.c",
     "bgzf.c",
@@ -25,8 +23,8 @@ const FILES: &[&str] = &[
     "faidx.c",
     "header.c",
     "hfile.c",
-    "hfile_net.c",
     "hts.c",
+    "hts_expr.c",
     "hts_os.c",
     "md5.c",
     "multipart.c",
@@ -48,13 +46,19 @@ const FILES: &[&str] = &[
     "cram/cram_external.c",
     "cram/cram_index.c",
     "cram/cram_io.c",
-    "cram/cram_samtools.c",
     "cram/cram_stats.c",
     "cram/mFILE.c",
     "cram/open_trace_file.c",
     "cram/pooled_alloc.c",
-    "cram/rANS_static.c",
     "cram/string_alloc.c",
+    "htscodecs/htscodecs/arith_dynamic.c",
+    "htscodecs/htscodecs/fqzcomp_qual.c",
+    "htscodecs/htscodecs/htscodecs.c",
+    "htscodecs/htscodecs/pack.c",
+    "htscodecs/htscodecs/rANS_static4x16pr.c",
+    "htscodecs/htscodecs/rANS_static.c",
+    "htscodecs/htscodecs/rle.c",
+    "htscodecs/htscodecs/tokenise_name3.c",
 ];
 
 fn main() {
@@ -71,6 +75,7 @@ fn main() {
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
 
     let mut cfg = cc::Build::new();
+    let mut lib_list = "".to_string();
 
     // default files
     let out_htslib = out.join("htslib");
@@ -93,6 +98,7 @@ fn main() {
 
     if let Ok(z_inc) = env::var("DEP_Z_INCLUDE") {
         cfg.include(z_inc);
+        lib_list += " -lz";
     }
 
     // We build a config.h ourselves, rather than rely on Makefile or ./configure
@@ -108,6 +114,7 @@ fn main() {
             .map(|path| path.join("include"))
         {
             cfg.include(inc);
+            lib_list += " -lbz2";
             config_lines.push("#define HAVE_LIBBZ2 1");
         }
     }
@@ -116,6 +123,7 @@ fn main() {
     if use_libdeflate {
         if let Ok(inc) = env::var("DEP_LIBDEFLATE_INCLUDE").map(PathBuf::from) {
             cfg.include(inc);
+            lib_list += " -ldeflate";
             config_lines.push("#define HAVE_LIBDEFLATE 1");
         } else {
             panic!("no DEP_LIBDEFLATE_INCLUDE");
@@ -126,6 +134,7 @@ fn main() {
     if use_lzma {
         if let Ok(inc) = env::var("DEP_LZMA_INCLUDE").map(PathBuf::from) {
             cfg.include(inc);
+            lib_list += " -llzma";
             config_lines.push("#define HAVE_LIBBZ2 1");
             config_lines.push("#ifndef __APPLE__");
             config_lines.push("#define HAVE_LZMA_H 1");
@@ -137,6 +146,7 @@ fn main() {
     if use_curl {
         if let Ok(inc) = env::var("DEP_CURL_INCLUDE").map(PathBuf::from) {
             cfg.include(inc);
+            lib_list += " -lcurl";
             config_lines.push("#define HAVE_LIBCURL 1");
             cfg.file("htslib/hfile_libcurl.c");
             println!("cargo:rerun-if-changed=htslib/hfile_libcurl.c");
@@ -189,6 +199,31 @@ fn main() {
 
         let mut f = std::fs::File::create(out.join("htslib").join("version.h")).unwrap();
         writeln!(&mut f, "#define HTS_VERSION_TEXT \"{}\"", version_str).unwrap();
+    }
+
+    // write out htscodecs/htscodecs/version.h
+    {
+        let mut f = std::fs::File::create(
+            out.join("htslib")
+                .join("htscodecs")
+                .join("htscodecs")
+                .join("version.h"),
+        )
+        .unwrap();
+        // FIXME, using a dummy. Not sure why this should be a separate version from htslib itself.
+        writeln!(&mut f, "#define HTSCODECS_VERSION_TEXT \"rust-htslib\"").unwrap();
+    }
+
+    // write out config_vars.h which is used to expose compiler parameters via
+    // hts_test_feature() in hts.c. We partially fill in these values.
+    {
+        let tool = cfg.get_compiler();
+        let mut f = std::fs::File::create(out.join("htslib").join("config_vars.h")).unwrap();
+        writeln!(&mut f, "#define HTS_CC {:?}", tool.cc_env()).unwrap();
+        writeln!(&mut f, "#define HTS_CPPFLAGS \"\"").unwrap();
+        writeln!(&mut f, "#define HTS_CFLAGS {:?}", tool.cflags_env()).unwrap();
+        writeln!(&mut f, "#define HTS_LDFLAGS \"\"").unwrap();
+        writeln!(&mut f, "#define HTS_LIBS \"{}\"", lib_list).unwrap();
     }
 
     cfg.file("wrapper.c");
