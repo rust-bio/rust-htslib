@@ -298,7 +298,7 @@ impl<'de> Deserialize<'de> for Record {
             }
         }
 
-        const FIELDS: &'static [&'static str] = &[
+        const FIELDS: &[&str] = &[
             "tid", "pos", "bin", "qual", "l_qname", "flag", "n_cigar", "seq_len", "mtid", "mpos",
             "isize", "data",
         ];

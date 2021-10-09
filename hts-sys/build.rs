@@ -154,14 +154,12 @@ fn main() {
             if target_os == "macos" {
                 // Use builtin MacOS CommonCrypto HMAC
                 config_lines.push("#define HAVE_COMMONCRYPTO 1");
+            } else if let Ok(inc) = env::var("DEP_OPENSSL_INCLUDE").map(PathBuf::from) {
+                // Must use hmac from libcrypto in openssl
+                cfg.include(inc);
+                config_lines.push("#define HAVE_HMAC 1");
             } else {
-                if let Ok(inc) = env::var("DEP_OPENSSL_INCLUDE").map(PathBuf::from) {
-                    // Must use hmac from libcrypto in openssl
-                    cfg.include(inc);
-                    config_lines.push("#define HAVE_HMAC 1");
-                } else {
-                    panic!("No OpenSSL dependency -- need OpenSSL includes");
-                }
+                panic!("No OpenSSL dependency -- need OpenSSL includes");
             }
         }
     }
