@@ -9,6 +9,7 @@ license = "MIT"
 repository = "https://github.com/rust-bio/rust-htslib.git"
 documentation = "https://docs.rs/rust-htslib"
 edition = "2018"
+include = ["src/**/*", "LICENSE.md", "README.md", "CHANGELOG.md"]
 
 [workspace]
 members = ["hts-sys"]
