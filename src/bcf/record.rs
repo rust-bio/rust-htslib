@@ -385,7 +385,7 @@ impl Record {
         if flt_id.is_pass() && self.inner().d.n_flt == 0 {
             return true;
         }
-        let id = match flt_id.id_from_header(&self.header()) {
+        let id = match flt_id.id_from_header(self.header()) {
             Ok(i) => *i,
             Err(_) => return false,
         };

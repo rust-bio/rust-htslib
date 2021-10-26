@@ -713,7 +713,7 @@ impl IndexedReader {
                             .unwrap();
                         self._fetch_by_coord_tuple(tid as i32, 0, len)
                     }
-                    None => self._fetch_by_str(&s),
+                    None => self._fetch_by_str(s),
                 }
             }
             FetchDefinition::All => self._fetch_by_str(b"."),
