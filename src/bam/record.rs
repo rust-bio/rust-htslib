@@ -9,6 +9,7 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::mem::{size_of, MaybeUninit};
 use std::ops;
+use std::os::raw::c_char;
 use std::rc::Rc;
 use std::slice;
 use std::str;
@@ -149,7 +150,7 @@ impl Record {
         sam_copy.push(0);
 
         let mut sam_string = htslib::kstring_t {
-            s: sam_copy.as_ptr() as *mut i8,
+            s: sam_copy.as_ptr() as *mut c_char,
             l: sam_copy.len() as u64,
             m: sam_copy.len() as u64,
         };
@@ -580,7 +581,7 @@ impl Record {
         let aux = unsafe {
             htslib::bam_aux_get(
                 &self.inner as *const htslib::bam1_t,
-                c_str.as_ptr() as *mut i8,
+                c_str.as_ptr() as *mut c_char,
             )
         };
         unsafe { Self::read_aux_field(aux).map(|(aux_field, _length)| aux_field) }
@@ -675,7 +676,7 @@ impl Record {
                 )
             }
             b'Z' | b'H' => {
-                let c_str = ffi::CStr::from_ptr(aux.offset(TYPE_ID_LEN).cast::<i8>());
+                let c_str = ffi::CStr::from_ptr(aux.offset(TYPE_ID_LEN).cast::<c_char>());
                 let rust_str = c_str.to_str().map_err(|_| Error::BamAuxParsingError)?;
                 (Aux::String(rust_str), c_str.to_bytes_with_nul().len())
             }
@@ -790,62 +791,62 @@ impl Record {
             return Err(Error::BamAuxTagAlreadyPresent);
         }
 
-        let ctag = tag.as_ptr() as *mut i8;
+        let ctag = tag.as_ptr() as *mut c_char;
         let ret = unsafe {
             match value {
                 Aux::Char(v) => htslib::bam_aux_append(
                     self.inner_ptr_mut(),
                     ctag,
-                    b'A' as i8,
+                    b'A' as c_char,
                     size_of::<u8>() as i32,
                     [v].as_mut_ptr() as *mut u8,
                 ),
                 Aux::I8(v) => htslib::bam_aux_append(
                     self.inner_ptr_mut(),
                     ctag,
-                    b'c' as i8,
+                    b'c' as c_char,
                     size_of::<i8>() as i32,
                     [v].as_mut_ptr() as *mut u8,
                 ),
                 Aux::U8(v) => htslib::bam_aux_append(
                     self.inner_ptr_mut(),
                     ctag,
-                    b'C' as i8,
+                    b'C' as c_char,
                     size_of::<u8>() as i32,
                     [v].as_mut_ptr() as *mut u8,
                 ),
                 Aux::I16(v) => htslib::bam_aux_append(
                     self.inner_ptr_mut(),
                     ctag,
-                    b's' as i8,
+                    b's' as c_char,
                     size_of::<i16>() as i32,
                     [v].as_mut_ptr() as *mut u8,
                 ),
                 Aux::U16(v) => htslib::bam_aux_append(
                     self.inner_ptr_mut(),
                     ctag,
-                    b'S' as i8,
+                    b'S' as c_char,
                     size_of::<u16>() as i32,
                     [v].as_mut_ptr() as *mut u8,
                 ),
                 Aux::I32(v) => htslib::bam_aux_append(
                     self.inner_ptr_mut(),
                     ctag,
-                    b'i' as i8,
+                    b'i' as c_char,
                     size_of::<i32>() as i32,
                     [v].as_mut_ptr() as *mut u8,
                 ),
                 Aux::U32(v) => htslib::bam_aux_append(
                     self.inner_ptr_mut(),
                     ctag,
-                    b'I' as i8,
+                    b'I' as c_char,
                     size_of::<u32>() as i32,
                     [v].as_mut_ptr() as *mut u8,
                 ),
                 Aux::Float(v) => htslib::bam_aux_append(
                     self.inner_ptr_mut(),
                     ctag,
-                    b'f' as i8,
+                    b'f' as c_char,
                     size_of::<f32>() as i32,
                     [v].as_mut_ptr() as *mut u8,
                 ),
@@ -853,7 +854,7 @@ impl Record {
                 Aux::Double(v) => htslib::bam_aux_append(
                     self.inner_ptr_mut(),
                     ctag,
-                    b'd' as i8,
+                    b'd' as c_char,
                     size_of::<f64>() as i32,
                     [v].as_mut_ptr() as *mut u8,
                 ),
@@ -862,7 +863,7 @@ impl Record {
                     htslib::bam_aux_append(
                         self.inner_ptr_mut(),
                         ctag,
-                        b'Z' as i8,
+                        b'Z' as c_char,
                         (v.len() + 1) as i32,
                         c_str.as_ptr() as *mut u8,
                     )
@@ -872,7 +873,7 @@ impl Record {
                     htslib::bam_aux_append(
                         self.inner_ptr_mut(),
                         ctag,
-                        b'H' as i8,
+                        b'H' as c_char,
                         (v.len() + 1) as i32,
                         c_str.as_ptr() as *mut u8,
                     )
@@ -1006,7 +1007,7 @@ impl Record {
         let aux = unsafe {
             htslib::bam_aux_get(
                 &self.inner as *const htslib::bam1_t,
-                c_str.as_ptr() as *mut i8,
+                c_str.as_ptr() as *mut c_char,
             )
         };
         unsafe {
