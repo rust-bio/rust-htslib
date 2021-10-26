@@ -134,7 +134,7 @@ jobs:
 
   Testing-MacOS:
     needs: Formatting
-
+    runs-on: macOS-latest
     strategy:
       matrix:
         target:
@@ -162,7 +162,6 @@ jobs:
           #   aux_args: --target aarch64-apple-darwin
           #   default: true
 
-    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
