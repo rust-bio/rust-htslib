@@ -168,15 +168,21 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1.0.6
+        with:
+          toolchain: stable
+          override: true
+
       - name: Install htslib dependencies
         run: brew install bzip2 zlib xz curl-openssl
 
-      - uses: actions-rs/toolchain@v1.0.6
-        with:
-          toolchain: ${{ matrix.toolchain }}
-          target: ${{ matrix.toolchain_target }}
-          override: true
-          default: ${{ matrix.default }}
+      #- uses: actions-rs/toolchain@v1.0.6
+      #  with:
+      #    toolchain: ${{ matrix.toolchain }}
+      #    target: ${{ matrix.toolchain_target }}
+      #    #override: true
+      #    default: ${{ matrix.default }}
 
       - name: Test
         uses: actions-rs/cargo@v1.0.1
