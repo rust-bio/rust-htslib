@@ -33,6 +33,7 @@
 //! ```
 
 use std::ffi;
+use std::os::raw::c_char;
 use std::slice;
 use std::str;
 
@@ -115,7 +116,7 @@ impl Header {
             htslib::bcf_hdr_subset(
                 header.inner,
                 samples.len() as i32,
-                name_pointers.as_ptr() as *const *mut i8,
+                name_pointers.as_ptr() as *const *mut c_char,
                 imap.as_mut_ptr() as *mut i32,
             )
         };
@@ -338,7 +339,7 @@ impl HeaderView {
             match htslib::bcf_hdr_id2int(
                 self.inner,
                 htslib::BCF_DT_CTG as i32,
-                c_str.as_ptr() as *mut i8,
+                c_str.as_ptr() as *mut c_char,
             ) {
                 -1 => Err(Error::BcfUnknownContig {
                     contig: str::from_utf8(name).unwrap().to_owned(),
@@ -363,7 +364,7 @@ impl HeaderView {
             let id = htslib::bcf_hdr_id2int(
                 self.inner,
                 htslib::BCF_DT_ID as i32,
-                c_str_tag.as_ptr() as *mut i8,
+                c_str_tag.as_ptr() as *mut c_char,
             );
             if id < 0 {
                 return Err(Error::BcfUndefinedTag { tag: tag_desc() });
@@ -400,7 +401,7 @@ impl HeaderView {
             match htslib::bcf_hdr_id2int(
                 self.inner,
                 htslib::BCF_DT_ID as i32,
-                c_str.as_ptr() as *const i8,
+                c_str.as_ptr() as *const c_char,
             ) {
                 -1 => Err(Error::BcfUnknownID {
                     id: str::from_utf8(id).unwrap().to_owned(),
@@ -428,7 +429,7 @@ impl HeaderView {
             match htslib::bcf_hdr_id2int(
                 self.inner,
                 htslib::BCF_DT_SAMPLE as i32,
-                c_str.as_ptr() as *const i8,
+                c_str.as_ptr() as *const c_char,
             ) {
                 -1 => Err(Error::BcfUnknownSample {
                     name: str::from_utf8(id).unwrap().to_owned(),

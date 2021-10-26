@@ -16,6 +16,7 @@ pub mod record;
 pub mod record_serde;
 
 use std::ffi;
+use std::os::raw::c_char;
 use std::path::Path;
 use std::rc::Rc;
 use std::slice;
@@ -265,7 +266,7 @@ impl Reader {
 
         // Invalidate the `text` representation of the header
         unsafe {
-            let _ = htslib::sam_hdr_line_name(header, b"SQ".as_ptr().cast::<i8>(), 0);
+            let _ = htslib::sam_hdr_line_name(header, b"SQ".as_ptr().cast::<c_char>(), 0);
         }
 
         Ok(Reader {
@@ -940,10 +941,10 @@ impl Writer {
             //println!("{}", str::from_utf8(&header_string).unwrap());
             let rec = htslib::sam_hdr_parse(
                 ((l_text + 1) as usize).try_into().unwrap(),
-                text as *const i8,
+                text as *const c_char,
             );
 
-            (*rec).text = text as *mut i8;
+            (*rec).text = text as *mut c_char;
             (*rec).l_text = l_text as u64;
             rec
         };
@@ -1209,8 +1210,8 @@ impl HeaderView {
                 header_string.len(),
             );
 
-            let rec = htslib::sam_hdr_parse((l_text + 1) as u64, text as *const i8);
-            (*rec).text = text as *mut i8;
+            let rec = htslib::sam_hdr_parse((l_text + 1) as u64, text as *const c_char);
+            (*rec).text = text as *mut c_char;
             (*rec).l_text = l_text as u64;
             rec
         };

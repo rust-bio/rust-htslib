@@ -10,6 +10,7 @@ use std::fmt;
 use std::i32;
 use std::marker::PhantomData;
 use std::ops::Deref;
+use std::os::raw::c_char;
 use std::ptr;
 use std::rc::Rc;
 use std::slice;
@@ -316,7 +317,7 @@ impl Record {
     pub fn set_id(&mut self, id: &[u8]) -> Result<()> {
         let c_str = ffi::CString::new(id).unwrap();
         if unsafe {
-            htslib::bcf_update_id(self.header().inner, self.inner, c_str.as_ptr() as *mut i8)
+            htslib::bcf_update_id(self.header().inner, self.inner, c_str.as_ptr() as *mut c_char)
         } == 0
         {
             Ok(())
@@ -329,7 +330,7 @@ impl Record {
     pub fn clear_id(&mut self) -> Result<()> {
         let c_str = ffi::CString::new(&b"."[..]).unwrap();
         if unsafe {
-            htslib::bcf_update_id(self.header().inner, self.inner, c_str.as_ptr() as *mut i8)
+            htslib::bcf_update_id(self.header().inner, self.inner, c_str.as_ptr() as *mut c_char)
         } == 0
         {
             Ok(())
@@ -341,7 +342,7 @@ impl Record {
     /// Add the ID string (the ID field is semicolon-separated), checking for duplicates.
     pub fn push_id(&mut self, id: &[u8]) -> Result<()> {
         let c_str = ffi::CString::new(id).unwrap();
-        if unsafe { htslib::bcf_add_id(self.header().inner, self.inner, c_str.as_ptr() as *mut i8) }
+        if unsafe { htslib::bcf_add_id(self.header().inner, self.inner, c_str.as_ptr() as *mut c_char) }
             == 0
         {
             Ok(())
@@ -580,9 +581,9 @@ impl Record {
             .iter()
             .map(|vec| ffi::CString::new(*vec).unwrap())
             .collect();
-        let mut ptrs: Vec<*const i8> = cstrings
+        let mut ptrs: Vec<*const c_char> = cstrings
             .iter()
-            .map(|cstr| cstr.as_ptr() as *const i8)
+            .map(|cstr| cstr.as_ptr() as *const c_char)
             .collect();
         if unsafe {
             htslib::bcf_update_alleles(
@@ -822,7 +823,7 @@ impl Record {
             if htslib::bcf_update_format(
                 self.header().inner,
                 self.inner,
-                tag_c_str.as_ptr() as *mut i8,
+                tag_c_str.as_ptr() as *mut c_char,
                 data.as_ptr() as *const ::std::os::raw::c_void,
                 data.len() as i32,
                 ht as i32,
@@ -869,8 +870,8 @@ impl Record {
             if htslib::bcf_update_format_string(
                 self.header().inner,
                 self.inner,
-                tag_c_str.as_ptr() as *mut i8,
-                c_ptrs.as_slice().as_ptr() as *mut *const i8,
+                tag_c_str.as_ptr() as *mut c_char,
+                c_ptrs.as_slice().as_ptr() as *mut *const c_char,
                 data.len() as i32,
             ) == 0
             {
@@ -915,7 +916,7 @@ impl Record {
             if htslib::bcf_update_info(
                 self.header().inner,
                 self.inner,
-                tag_c_str.as_ptr() as *mut i8,
+                tag_c_str.as_ptr() as *mut c_char,
                 data.as_ptr() as *const ::std::os::raw::c_void,
                 data.len() as i32,
                 ht as i32,
@@ -970,7 +971,7 @@ impl Record {
             if htslib::bcf_update_info(
                 self.header().inner,
                 self.inner,
-                tag_c_str.as_ptr() as *mut i8,
+                tag_c_str.as_ptr() as *mut c_char,
                 c_str.as_ptr() as *const ::std::os::raw::c_void,
                 len as i32,
                 ht as i32,
@@ -1231,7 +1232,7 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, B> {
             htslib::bcf_get_info_values(
                 self.record.header().inner,
                 self.record.inner,
-                c_str.as_ptr() as *mut i8,
+                c_str.as_ptr() as *mut c_char,
                 &mut self.buffer.borrow_mut().inner,
                 &mut n,
                 data_type as i32,
@@ -1346,7 +1347,7 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Format<'a, B> {
             htslib::bcf_get_fmt(
                 record.header().inner,
                 record.inner,
-                c_str.as_ptr() as *mut i8,
+                c_str.as_ptr() as *mut c_char,
             )
         };
         Format {
@@ -1382,7 +1383,7 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Format<'a, B> {
             htslib::bcf_get_format_values(
                 self.record.header().inner,
                 self.record.inner,
-                c_str.as_ptr() as *mut i8,
+                c_str.as_ptr() as *mut c_char,
                 &mut self.buffer.borrow_mut().inner,
                 &mut n,
                 data_type as i32,
