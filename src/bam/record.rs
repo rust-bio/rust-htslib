@@ -10,7 +10,6 @@ use std::marker::PhantomData;
 use std::mem::{size_of, MaybeUninit};
 use std::ops;
 use std::os::raw::c_char;
-use std::rc::Rc;
 use std::slice;
 use std::str;
 use std::u32;
@@ -53,7 +52,6 @@ pub struct Record {
     pub inner: htslib::bam1_t,
     own: bool,
     cigar: Option<CigarStringView>,
-    header: Option<Rc<HeaderView>>,
 }
 
 unsafe impl Send for Record {}
@@ -117,7 +115,6 @@ impl Record {
             inner: unsafe { MaybeUninit::zeroed().assume_init() },
             own: true,
             cigar: None,
-            header: None,
         }
     }
 
@@ -137,7 +134,6 @@ impl Record {
             },
             own: false,
             cigar: None,
-            header: None,
         }
     }
 
@@ -172,8 +168,29 @@ impl Record {
         }
     }
 
-    pub fn set_header(&mut self, header: Rc<HeaderView>) {
-        self.header = Some(header);
+    /// # Example
+    ///
+    /// ```
+    /// use std::path::Path;
+    ///
+    /// use bio_types::genome::AbstractInterval;
+    /// use rust_htslib::bam::{self, Read};
+    ///
+    /// let mut bam_reader = bam::Reader::from_path(&Path::new("test/test.bam")).expect("Error opening file.");
+    /// let header = bam_reader.header().clone();
+    /// for record in bam_reader.records() {
+    ///     let mut rec = record.expect("Expected valid record");
+    ///     assert_eq!("CHROMOSOME_I", rec.supply_header(&header).contig());
+    /// }
+    /// ```
+    pub fn supply_header<'record, 'header>(
+        &'record self,
+        header: &'header HeaderView,
+    ) -> HeaderRecord<'record, 'header> {
+        HeaderRecord {
+            record: self,
+            header,
+        }
     }
 
     pub(super) fn data(&self) -> &[u8] {
@@ -1133,36 +1150,38 @@ impl SequenceRead for Record {
     }
 }
 
-impl genome::AbstractInterval for Record {
+/// Struct that holds references to [`Record`] and [`HeaderView`] in order to
+/// be able to impl [`genome::AbstractInterval`] for it.
+/// Can be constructed via [`Record::supply_header()`].
+pub struct HeaderRecord<'record, 'header> {
+    record: &'record Record,
+    header: &'header HeaderView,
+}
+
+impl genome::AbstractInterval for HeaderRecord<'_, '_> {
     /// Return contig name. Panics if record does not know its header (which happens if it has not been read from a file).
     fn contig(&self) -> &str {
-        let tid = self.tid();
+        let tid = self.record.tid();
         if tid < 0 {
             panic!("invalid tid, must be at least zero");
         }
-        str::from_utf8(
-            self.header
-                .as_ref()
-                .expect(
-                    "header must be set (this is the case if the record has been read from a file)",
-                )
-                .tid2name(tid as u32),
-        )
-        .expect("unable to interpret contig name as UTF-8")
+        str::from_utf8(self.header.tid2name(tid as u32))
+            .expect("unable to interpret contig name as UTF-8")
     }
 
     /// Return genomic range covered by alignment. Panics if `Record::cache_cigar()` has not been called first or `Record::pos()` is less than zero.
     fn range(&self) -> ops::Range<genome::Position> {
         let end_pos = self
+            .record
             .cigar_cached()
             .expect("cigar has not been cached yet, call cache_cigar() first")
             .end_pos() as u64;
 
-        if self.pos() < 0 {
+        if self.record.pos() < 0 {
             panic!("invalid position, must be positive")
         }
 
-        self.pos() as u64..end_pos
+        self.record.pos() as u64..end_pos
     }
 }
 

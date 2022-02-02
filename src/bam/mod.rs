@@ -223,7 +223,7 @@ pub trait Read: Sized {
 #[derive(Debug)]
 pub struct Reader {
     htsfile: *mut htslib::htsFile,
-    header: Rc<HeaderView>,
+    header: HeaderView,
     tpool: Option<ThreadPool>,
 }
 
@@ -271,7 +271,7 @@ impl Reader {
 
         Ok(Reader {
             htsfile,
-            header: Rc::new(HeaderView::new(header)),
+            header: HeaderView::new(header),
             tpool: None,
         })
     }
@@ -355,11 +355,7 @@ impl Read for Reader {
             -1 => None,
             -2 => Some(Err(Error::BamTruncatedRecord)),
             -4 => Some(Err(Error::BamInvalidRecord)),
-            _ => {
-                record.set_header(Rc::clone(&self.header));
-
-                Some(Ok(()))
-            }
+            _ => Some(Ok(())),
         }
     }
 
@@ -793,11 +789,7 @@ impl Read for IndexedReader {
                     -1 => None,
                     -2 => Some(Err(Error::BamTruncatedRecord)),
                     -4 => Some(Err(Error::BamInvalidRecord)),
-                    _ => {
-                        record.set_header(Rc::clone(&self.header));
-
-                        Some(Ok(()))
-                    }
+                    _ => Some(Ok(())),
                 }
             }
             None => None,
@@ -1321,6 +1313,7 @@ mod tests {
     use super::header::HeaderRecord;
     use super::record::{Aux, Cigar, CigarString};
     use super::*;
+    use bio_types::genome::AbstractInterval;
     use std::collections::HashMap;
     use std::fs;
     use std::path::Path;
