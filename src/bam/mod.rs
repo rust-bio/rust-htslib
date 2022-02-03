@@ -227,8 +227,6 @@ pub struct Reader {
     tpool: Option<ThreadPool>,
 }
 
-unsafe impl Send for Reader {}
-
 impl Reader {
     /// Create a new Reader from path.
     ///
@@ -558,13 +556,11 @@ impl<'a, T: AsRef<[u8]>, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> Fro
 #[derive(Debug)]
 pub struct IndexedReader {
     htsfile: *mut htslib::htsFile,
-    header: Rc<HeaderView>,
+    header: HeaderView,
     idx: *mut htslib::hts_idx_t,
     itr: Option<*mut htslib::hts_itr_t>,
     tpool: Option<ThreadPool>,
 }
-
-unsafe impl Send for IndexedReader {}
 
 impl IndexedReader {
     /// Create a new Reader from path.
@@ -604,7 +600,7 @@ impl IndexedReader {
         } else {
             Ok(IndexedReader {
                 htsfile,
-                header: Rc::new(HeaderView::new(header)),
+                header: HeaderView::new(header),
                 idx,
                 itr: None,
                 tpool: None,
@@ -632,7 +628,7 @@ impl IndexedReader {
         } else {
             Ok(IndexedReader {
                 htsfile,
-                header: Rc::new(HeaderView::new(header)),
+                header: HeaderView::new(header),
                 idx,
                 itr: None,
                 tpool: None,
@@ -870,11 +866,9 @@ impl Format {
 #[derive(Debug)]
 pub struct Writer {
     f: *mut htslib::htsFile,
-    header: Rc<HeaderView>,
+    header: HeaderView,
     tpool: Option<ThreadPool>,
 }
-
-unsafe impl Send for Writer {}
 
 impl Writer {
     /// Create a new SAM/BAM/CRAM file.
@@ -947,7 +941,7 @@ impl Writer {
 
         Ok(Writer {
             f,
-            header: Rc::new(HeaderView::new(header_record)),
+            header: HeaderView::new(header_record),
             tpool: None,
         })
     }
@@ -1089,7 +1083,7 @@ impl<'a, R: Read> Iterator for RcRecords<'a, R> {
     type Item = Result<Rc<record::Record>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut record = match Rc::get_mut(&mut self.record) {
+        let record = match Rc::get_mut(&mut self.record) {
             //not make_mut, we don't need a clone
             Some(x) => x,
             None => {
@@ -1098,7 +1092,7 @@ impl<'a, R: Read> Iterator for RcRecords<'a, R> {
             }
         };
 
-        match self.reader.read(&mut record) {
+        match self.reader.read(record) {
             None => None,
             Some(Ok(_)) => Some(Ok(Rc::clone(&self.record))),
             Some(Err(err)) => Some(Err(err)),
@@ -1313,7 +1307,6 @@ mod tests {
     use super::header::HeaderRecord;
     use super::record::{Aux, Cigar, CigarString};
     use super::*;
-    use bio_types::genome::AbstractInterval;
     use std::collections::HashMap;
     use std::fs;
     use std::path::Path;
