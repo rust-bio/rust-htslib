@@ -1034,7 +1034,7 @@ impl Writer {
 ///
 /// * Uncompressed: No compression, zlib level 0
 /// * Fastest: Lowest compression level, zlib level 1
-/// * Maxium: Highest compression level, zlib level 9
+/// * Maximum: Highest compression level, zlib level 9
 /// * Level(i): Custom compression level in the range [0, 9]
 #[derive(Debug, Clone, Copy)]
 pub enum CompressionLevel {
