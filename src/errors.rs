@@ -115,5 +115,5 @@ pub enum Error {
     BcfRemoveAlleles,
 
     #[error("invalid compression level {level}")]
-    BgzfInvalidCompressionLevel {level: i8},
+    BgzfInvalidCompressionLevel { level: i8 },
 }
