@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+### [0.39.3](https://www.github.com/rust-bio/rust-htslib/compare/rust-htslib-v0.39.2...rust-htslib-v0.39.3) (2021-11-20)
+
+
+### Bug Fixes
+
+* change the type to c_char so it can be compiled for aarch64 ([#337](https://www.github.com/rust-bio/rust-htslib/issues/337)) ([a21aff2](https://www.github.com/rust-bio/rust-htslib/commit/a21aff289bc03c7549afc7a958084ed57e8c93f2))
+
 ### [0.39.2](https://www.github.com/rust-bio/rust-htslib/compare/rust-htslib-v0.39.1...rust-htslib-v0.39.2) (2021-08-23)
 
 
