@@ -29,9 +29,9 @@ jobs:
         with:
           release-type: rust
           package-name: rust-htslib
-          bump-minor-pre-major: Yes
+          bump-minor-pre-major: true
           monorepo-tags: true
-
+          path: "."
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
