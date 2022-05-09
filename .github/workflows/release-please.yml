@@ -16,7 +16,7 @@ jobs:
           submodules: recursive
 
 
-      - uses: GoogleCloudPlatform/release-please-action@v2
+      - uses: GoogleCloudPlatform/release-please-action@v3
         id: release_sys
         with:
           release-type: rust
@@ -24,7 +24,7 @@ jobs:
           monorepo-tags: true
           path: hts-sys
 
-      - uses: GoogleCloudPlatform/release-please-action@v2
+      - uses: GoogleCloudPlatform/release-please-action@v3
         id: release_main
         with:
           release-type: rust
