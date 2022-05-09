@@ -3,13 +3,13 @@ name = "rust-htslib"
 version = "0.39.5"
 authors = ["Christopher Schröder <christopher.schroeder@tu-dortmund.de>", "Johannes Köster <johannes.koester@tu-dortmund.de>"]
 description = "This library provides HTSlib bindings and a high level Rust API for reading and writing BAM files."
-readme = "README.md"
+readme = "../README.md"
 keywords = ["htslib", "bam", "bioinformatics", "pileup", "sequencing"]
 license = "MIT"
 repository = "https://github.com/rust-bio/rust-htslib.git"
 documentation = "https://docs.rs/rust-htslib"
 edition = "2018"
-include = ["src/**/*", "LICENSE.md", "README.md", "CHANGELOG.md"]
+include = ["src/**/*", "../LICENSE.md", "../README.md", "CHANGELOG.md"]
 
 [workspace]
 members = ["hts-sys"]
