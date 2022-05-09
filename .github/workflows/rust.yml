@@ -44,6 +44,7 @@ jobs:
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          args: --manifest-path rust-htslib/Cargo.toml
 
   Testing:
     needs: Formatting
@@ -69,7 +70,7 @@ jobs:
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
-          args: '--all-features --out Lcov --exclude-files hts-sys/*_prebuilt_bindings.rs -- --test-threads 1'
+          args: '--manifest-path rust-htslib/Cargo.toml --all-features --out Lcov --exclude-files hts-sys/*_prebuilt_bindings.rs -- --test-threads 1'
 
       - name: Upload coverage
         uses: coverallsapp/github-action@v1.1.1
@@ -131,7 +132,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: ${{ matrix.args }}
+          args: ${{ matrix.args }} --manifest-path rust-htslib/Cargo.toml
           use-cross: ${{ matrix.use_cross }}
 
   Testing-MacOS:
@@ -191,7 +192,7 @@ jobs:
         with:
           use-cross: false  # cross is not supported on GHA OSX runner, see: https://github.community/t/why-is-docker-not-installed-on-macos/17017
           command: test
-          args: --release --all-features --verbose ${{ matrix.aux_args }}
+          args: --release --all-features --verbose ${{ matrix.aux_args }} --manifest-path rust-htslib/Cargo.toml
 
 #  Testing-OSX-MUSL-BigSur:
 #   needs: Formatting
