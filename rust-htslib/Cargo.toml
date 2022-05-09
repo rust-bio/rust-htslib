@@ -11,9 +11,6 @@ readme = "../README.md"
 repository = "https://github.com/rust-bio/rust-htslib.git"
 version = "0.39.5"
 
-[workspace]
-members = ["../hts-sys"]
-
 [package.metadata.release]
 pre-release-commit-message = "release version {{version}}"
 tag-message = "Version {{version}} of Rust-HTSlib."
