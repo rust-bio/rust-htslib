@@ -22,8 +22,7 @@ jobs:
       
       - name: Check format
         run: |
-          cd rust-htslib
-          cargo fmt -- --check
+          cargo fmt --manifest-path rust-htslib/Cargo.toml -- --check
      
   Linting:
     runs-on: ubuntu-latest
