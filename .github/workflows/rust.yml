@@ -20,10 +20,10 @@ jobs:
           override: true
           components: rustfmt
       
-      - run: cd rust-htslib
-      
       - name: Check format
-        run: cargo fmt -- --check
+        run: |
+          cd rust-htslib
+          cargo fmt -- --check
      
   Linting:
     runs-on: ubuntu-latest
@@ -32,8 +32,6 @@ jobs:
         uses: actions/checkout@v2
         with:
           submodules: recursive
-      
-      - run: cd rust-htslib
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1.0.6
@@ -67,8 +65,6 @@ jobs:
             sudo apt-get install --yes zlib1g-dev libbz2-dev musl musl-dev musl-tools clang libc6-dev
 
       - uses: Swatinem/rust-cache@v1.3.0
-
-      - run: cd rust-htslib
 
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
@@ -131,8 +127,6 @@ jobs:
 
       - uses: Swatinem/rust-cache@v1.3.0
 
-      - run: cd rust-htslib
-
       - name: Test
         uses: actions-rs/cargo@v1
         with:
@@ -191,8 +185,6 @@ jobs:
       #    target: ${{ matrix.toolchain_target }}
       #    #override: true
       #    default: ${{ matrix.default }}
-    
-      - run: cd rust-htslib
 
       - name: Test
         uses: actions-rs/cargo@v1.0.1
