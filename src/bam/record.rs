@@ -118,7 +118,7 @@ impl Record {
             own: true,
             cigar: None,
             header: None,
-        }
+        };
         // Developer note: these are needed so the returned record is properly
         // initialized as unmapped.
         record.set_tid(-1);
