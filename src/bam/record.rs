@@ -113,7 +113,7 @@ fn extranul_from_qname(qname: &[u8]) -> usize {
 impl Record {
     /// Create an empty BAM record.
     pub fn new() -> Self {
-        let record = Record {
+        let mut record = Record {
             inner: unsafe { MaybeUninit::zeroed().assume_init() },
             own: true,
             cigar: None,
