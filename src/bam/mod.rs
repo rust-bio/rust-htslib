@@ -2818,7 +2818,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         assert_eq!(header_refseqs[0].get("SN").unwrap(), "ref_1",);
         assert_eq!(header_refseqs[0].get("LN").unwrap(), "10000000",);
     }
-    
+
     #[test]
     fn test_bam_new() {
         // Create the path to write the tmp test BAM
@@ -2837,11 +2837,11 @@ CCCCCCCCCCCCCCCCCCC"[..],
             header.push_record(
                 HeaderRecord::new(b"HD")
                     .push_tag(b"VN", &"1.6")
-                    .push_tag(b"SO", &"unsorted")
+                    .push_tag(b"SO", &"unsorted"),
             );
 
             // Build the writer
-            let mut writer =  Writer::from_path(bampath, &header, Format::Bam).unwrap();
+            let mut writer = Writer::from_path(bampath, &header, Format::Bam).unwrap();
 
             // Build an empty record
             let mut record = BamRecord::new();
@@ -2870,7 +2870,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             assert_eq!(rec.tid(), -1);
             assert_eq!(rec.pos(), -1);
             assert_eq!(rec.mtid(), -1);
-            assert_eq!(rec.mpos(), -1);    
+            assert_eq!(rec.mpos(), -1);
         }
     }
 }
