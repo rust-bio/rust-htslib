@@ -2827,7 +2827,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .tempdir()
             .expect("Cannot create temp dir");
         let bampath = tmp.path().join("test.bam");
-        
+
         // write an unmapped BAM record (uBAM)
         {
             // Build the header
@@ -2845,26 +2845,26 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
             // Build an empty record
             let mut record = BamRecord::new();
-            
+
             // By default the read is mapped, so unset it.
             record.set_unmapped();
 
             // Write the record (this previously seg-faulted)
             writer.write(&record);
         }
-        
+
         // Read the record
         {
             // Build th reader
             let mut reader = Reader::from_path(&bampath).expect("Error opening file.");
-            
+
             // Read the record
             let mut rec = record::Record::new();
             match bam.read(&mut rec) {
                 Some(r) => r.expect("Failed to read record."),
                 None => {}
             };
-            
+
             // Check a few things
             assert!(rec.is_unmapped());
             assert_eq!(rec.tid(), -1);
