@@ -2860,7 +2860,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
 
             // Read the record
             let mut rec = Record::new();
-            match bam.read(&mut rec) {
+            match reader.read(&mut rec) {
                 Some(r) => r.expect("Failed to read record."),
                 None => {}
             };
