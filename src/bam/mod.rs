@@ -2844,7 +2844,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             let mut writer = Writer::from_path(bampath, &header, Format::Bam).unwrap();
 
             // Build an empty record
-            let mut record = BamRecord::new();
+            let mut record = Record::new();
 
             // By default the read is mapped, so unset it.
             record.set_unmapped();
@@ -2859,7 +2859,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             let mut reader = Reader::from_path(&bampath).expect("Error opening file.");
 
             // Read the record
-            let mut rec = record::Record::new();
+            let mut rec = Record::new();
             match bam.read(&mut rec) {
                 Some(r) => r.expect("Failed to read record."),
                 None => {}
