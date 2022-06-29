@@ -2841,7 +2841,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             );
 
             // Build the writer
-            let mut writer = Writer::from_path(bampath, &header, Format::Bam).unwrap();
+            let mut writer = Writer::from_path(&bampath, &header, Format::Bam).unwrap();
 
             // Build an empty record
             let mut record = Record::new();
