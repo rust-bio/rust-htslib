@@ -2826,9 +2826,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .prefix("rust-htslib")
             .tempdir()
             .expect("Cannot create temp dir");
-        //let bampath = tmp.path().join("test.bam");
-        //let bampath = "/tmp/test.bam";
-        let bampath = "/tmp/test.sam";
+        let bampath = tmp.path().join("test.bam");
 
         // write an unmapped BAM record (uBAM)
         {
@@ -2843,8 +2841,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             );
 
             // Build the writer
-            //let mut writer = Writer::from_path(&bampath, &header, Format::Bam).unwrap();
-            let mut writer = Writer::from_path(&bampath, &header, Format::Sam).unwrap();
+            let mut writer = Writer::from_path(&bampath, &header, Format::Bam).unwrap();
 
             // Build an empty record
             let mut record = Record::new();
