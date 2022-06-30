@@ -2268,7 +2268,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         where
             F: Fn(&record::Record) -> Option<bool>,
         {
-            let mut bam_reader = Reader::from_path(bamfile).unwrap(); // internal functions, just unwarp
+            let mut bam_reader = Reader::from_path(bamfile).unwrap(); // internal functions, just unwrap
             let header = header::Header::from_template(bam_reader.header());
             let mut sam_writer = Writer::from_path(samfile, &header, Format::Sam).unwrap();
             for record in bam_reader.records() {
@@ -2826,7 +2826,9 @@ CCCCCCCCCCCCCCCCCCC"[..],
             .prefix("rust-htslib")
             .tempdir()
             .expect("Cannot create temp dir");
-        let bampath = tmp.path().join("test.bam");
+        //let bampath = tmp.path().join("test.bam");
+        //let bampath = "/tmp/test.bam";
+        let bampath = "/tmp/test.sam";
 
         // write an unmapped BAM record (uBAM)
         {
@@ -2841,16 +2843,14 @@ CCCCCCCCCCCCCCCCCCC"[..],
             );
 
             // Build the writer
-            let mut writer = Writer::from_path(&bampath, &header, Format::Bam).unwrap();
+            //let mut writer = Writer::from_path(&bampath, &header, Format::Bam).unwrap();
+            let mut writer = Writer::from_path(&bampath, &header, Format::Sam).unwrap();
 
             // Build an empty record
             let mut record = Record::new();
 
-            // By default the read is mapped, so unset it.
-            record.set_unmapped();
-
             // Write the record (this previously seg-faulted)
-            writer.write(&record);
+            assert!(writer.write(&record).is_ok());
         }
 
         // Read the record
@@ -2862,7 +2862,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             let mut rec = Record::new();
             match reader.read(&mut rec) {
                 Some(r) => r.expect("Failed to read record."),
-                None => {}
+                None => panic!("No record read."),
             };
 
             // Check a few things

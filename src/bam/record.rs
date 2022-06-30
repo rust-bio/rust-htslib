@@ -119,8 +119,12 @@ impl Record {
             cigar: None,
             header: None,
         };
+        // The read/query name needs to be set as empty to properly initialize
+        // the record
+        record.set_qname(b"");
         // Developer note: these are needed so the returned record is properly
         // initialized as unmapped.
+        record.set_unmapped();
         record.set_tid(-1);
         record.set_pos(-1);
         record.set_mpos(-1);
