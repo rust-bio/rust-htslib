@@ -2,6 +2,18 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.40.0](https://github.com/rust-bio/rust-htslib/compare/rust-htslib-v0.39.5...rust-htslib-v0.40.0) (2022-07-05)
+
+
+### Features
+
+* Add wrapper of BGZF writer ([#349](https://github.com/rust-bio/rust-htslib/issues/349)) ([965ed88](https://github.com/rust-bio/rust-htslib/commit/965ed886a0c24ee3070e48cc192c0772ac5cbaf4))
+
+
+### Bug Fixes
+
+* update to latest release-please ([b130634](https://github.com/rust-bio/rust-htslib/commit/b130634b3d096e620dcfe59acae2200df3e4d847))
+
 ### [0.39.5](https://www.github.com/rust-bio/rust-htslib/compare/rust-htslib-v0.39.4...rust-htslib-v0.39.5) (2022-05-09)
 
 
