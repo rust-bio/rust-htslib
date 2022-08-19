@@ -83,6 +83,9 @@ impl Header {
                 .unwrap()
                 .as_str()
                 .to_owned();
+            if record_type.eq("CO") {
+                continue;
+            }
             let mut field = LinearMap::default();
             for part in parts.iter().skip(1) {
                 let cap = TAG_RE.captures(part).unwrap();
