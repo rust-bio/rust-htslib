@@ -63,6 +63,9 @@ impl Header {
         self.records.join(&b'\n')
     }
 
+    /// This returns a header as a HashMap.
+    /// Comment lines starting with "@CO" will NOT be included in the HashMap.
+    /// Comment lines can be obtained by the `get_comments` function.
     pub fn to_hashmap(&self) -> HashMap<String, Vec<LinearMap<String, String>>> {
         let mut header_map = HashMap::default();
 
@@ -99,6 +102,26 @@ impl Header {
                 .push(field);
         }
         header_map
+    }
+    
+    /// This returns comments in a header as a vector.
+    /// If a header does not have any comment line, this returns `None`.
+    pub fn get_comments(&self) -> Option<Vec<String>> {
+        let mut vec: Vec<String> = Vec::new();
+        let header_string = String::from_utf8(self.to_bytes()).unwrap();
+        for line in header_string.split('\n').filter(|x| !x.is_empty()) {
+            if line.starts_with("@CO\t") {
+                match line.split_once("\t") {
+                    Some((tag, value)) => vec.push(value.to_string()),
+                    None => (),  // This should never happen.
+                }
+            }
+        }
+        if vec.len() >= 1 {
+            Some(vec)
+        } else {
+            None
+        }
     }
 }
 
