@@ -7,8 +7,8 @@ use crate::bam::HeaderView;
 use lazy_static::lazy_static;
 use linear_map::LinearMap;
 use regex::Regex;
-use std::collections::HashMap;
 use std::borrow::Cow;
+use std::collections::HashMap;
 
 /// A BAM header.
 #[derive(Debug, Clone)]
@@ -104,25 +104,24 @@ impl Header {
         }
         header_map
     }
-    
+
     /// Returns an iterator of comment lines.
     /// # Example
     /// ```
     /// # We can reproduce comment lines as below
-    /// 
+    ///
     /// let bam = bam::Reader::from_path(&"test.bam").unwrap();
     /// let header = bam::Header::from_template(bam.header());
     /// for comment in header.comments() {
     ///     println!("@CO\t{}", comment);
     /// }
     /// ```
-    pub fn comments(&self) -> impl Iterator<Item=Cow<str>> {
-        self.records.iter()
-            .flat_map(|r| r
-                .split(|x| x == &b'\n')
+    pub fn comments(&self) -> impl Iterator<Item = Cow<str>> {
+        self.records.iter().flat_map(|r| {
+            r.split(|x| x == &b'\n')
                 .filter(|x| x.starts_with(b"@CO\t"))
                 .map(|x| String::from_utf8_lossy(&x[4..]))
-            )
+        })
     }
 }
 
