@@ -106,15 +106,6 @@ impl Header {
     }
 
     /// Returns an iterator of comment lines.
-    /// # Example
-    /// We can reproduce comment lines as below.
-    /// ```no_run
-    /// let bam = bam::Reader::from_path(&"test.bam").unwrap();
-    /// let header = bam::Header::from_template(bam.header());
-    /// for comment in header.comments() {
-    ///     println!("@CO\t{}", comment);
-    /// }
-    /// ```
     pub fn comments(&self) -> impl Iterator<Item = Cow<str>> {
         self.records.iter().flat_map(|r| {
             r.split(|x| x == &b'\n')
