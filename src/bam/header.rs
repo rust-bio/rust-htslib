@@ -108,7 +108,7 @@ impl Header {
     /// Returns an iterator of comment lines.
     /// # Example
     /// We can reproduce comment lines as below.
-    /// ```
+    /// ```no_run
     /// let bam = bam::Reader::from_path(&"test.bam").unwrap();
     /// let header = bam::Header::from_template(bam.header());
     /// for comment in header.comments() {
