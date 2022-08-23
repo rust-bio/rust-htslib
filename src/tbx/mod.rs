@@ -330,6 +330,7 @@ pub struct Records<'a, R: Read> {
 impl<'a, R: Read> Iterator for Records<'a, R> {
     type Item = Result<Vec<u8>>;
 
+    #[allow(clippy::read_zero_byte_vec)]
     fn next(&mut self) -> Option<Result<Vec<u8>>> {
         let mut record = Vec::new();
         match self.reader.read(&mut record) {
