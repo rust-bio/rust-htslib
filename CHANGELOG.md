@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.40.1](https://github.com/rust-bio/rust-htslib/compare/rust-htslib-v0.40.0...rust-htslib-v0.40.1) (2022-08-24)
+
+
+### Bug Fixes
+
+* Header::to_hashmap skips `@CO` tags, add `comments()`  method ([#363](https://github.com/rust-bio/rust-htslib/issues/363)) ([c24a7f6](https://github.com/rust-bio/rust-htslib/commit/c24a7f69fbe5d2db4a6f1fbd6eda3922fe7f1c18))
+
 ## [0.40.0](https://github.com/rust-bio/rust-htslib/compare/rust-htslib-v0.39.5...rust-htslib-v0.40.0) (2022-07-05)
 
 
