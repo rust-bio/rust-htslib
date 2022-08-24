@@ -7,6 +7,7 @@ use crate::bam::HeaderView;
 use lazy_static::lazy_static;
 use linear_map::LinearMap;
 use regex::Regex;
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 /// A BAM header.
@@ -63,6 +64,9 @@ impl Header {
         self.records.join(&b'\n')
     }
 
+    /// This returns a header as a HashMap.
+    /// Comment lines starting with "@CO" will NOT be included in the HashMap.
+    /// Comment lines can be obtained by the `comments` function.
     pub fn to_hashmap(&self) -> HashMap<String, Vec<LinearMap<String, String>>> {
         let mut header_map = HashMap::default();
 
@@ -83,6 +87,9 @@ impl Header {
                 .unwrap()
                 .as_str()
                 .to_owned();
+            if record_type.eq("CO") {
+                continue;
+            }
             let mut field = LinearMap::default();
             for part in parts.iter().skip(1) {
                 let cap = TAG_RE.captures(part).unwrap();
@@ -96,6 +103,15 @@ impl Header {
                 .push(field);
         }
         header_map
+    }
+
+    /// Returns an iterator of comment lines.
+    pub fn comments(&self) -> impl Iterator<Item = Cow<str>> {
+        self.records.iter().flat_map(|r| {
+            r.split(|x| x == &b'\n')
+                .filter(|x| x.starts_with(b"@CO\t"))
+                .map(|x| String::from_utf8_lossy(&x[4..]))
+        })
     }
 }
 
