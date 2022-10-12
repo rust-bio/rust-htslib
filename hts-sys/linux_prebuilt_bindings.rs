@@ -80,7 +80,7 @@ where
         }
     }
 }
-pub const __GNUC_VA_LIST: u32 = 1;
+pub const _STDINT_H: u32 = 1;
 pub const _FEATURES_H: u32 = 1;
 pub const _DEFAULT_SOURCE: u32 = 1;
 pub const __GLIBC_USE_ISOC2X: u32 = 0;
@@ -126,40 +126,6 @@ pub const __GLIBC_USE_IEC_60559_EXT: u32 = 0;
 pub const __GLIBC_USE_IEC_60559_FUNCS_EXT: u32 = 0;
 pub const __GLIBC_USE_IEC_60559_FUNCS_EXT_C2X: u32 = 0;
 pub const __GLIBC_USE_IEC_60559_TYPES_EXT: u32 = 0;
-pub const _STDLIB_H: u32 = 1;
-pub const WNOHANG: u32 = 1;
-pub const WUNTRACED: u32 = 2;
-pub const WSTOPPED: u32 = 2;
-pub const WEXITED: u32 = 4;
-pub const WCONTINUED: u32 = 8;
-pub const WNOWAIT: u32 = 16777216;
-pub const __WNOTHREAD: u32 = 536870912;
-pub const __WALL: u32 = 1073741824;
-pub const __WCLONE: u32 = 2147483648;
-pub const __W_CONTINUED: u32 = 65535;
-pub const __WCOREFLAG: u32 = 128;
-pub const __HAVE_FLOAT128: u32 = 0;
-pub const __HAVE_DISTINCT_FLOAT128: u32 = 0;
-pub const __HAVE_FLOAT64X: u32 = 1;
-pub const __HAVE_FLOAT64X_LONG_DOUBLE: u32 = 1;
-pub const __HAVE_FLOAT16: u32 = 0;
-pub const __HAVE_FLOAT32: u32 = 1;
-pub const __HAVE_FLOAT64: u32 = 1;
-pub const __HAVE_FLOAT32X: u32 = 1;
-pub const __HAVE_FLOAT128X: u32 = 0;
-pub const __HAVE_DISTINCT_FLOAT16: u32 = 0;
-pub const __HAVE_DISTINCT_FLOAT32: u32 = 0;
-pub const __HAVE_DISTINCT_FLOAT64: u32 = 0;
-pub const __HAVE_DISTINCT_FLOAT32X: u32 = 0;
-pub const __HAVE_DISTINCT_FLOAT64X: u32 = 0;
-pub const __HAVE_DISTINCT_FLOAT128X: u32 = 0;
-pub const __HAVE_FLOATN_NOT_TYPEDEF: u32 = 0;
-pub const __ldiv_t_defined: u32 = 1;
-pub const __lldiv_t_defined: u32 = 1;
-pub const RAND_MAX: u32 = 2147483647;
-pub const EXIT_FAILURE: u32 = 1;
-pub const EXIT_SUCCESS: u32 = 0;
-pub const _SYS_TYPES_H: u32 = 1;
 pub const _BITS_TYPES_H: u32 = 1;
 pub const _BITS_TYPESIZES_H: u32 = 1;
 pub const __OFF_T_MATCHES_OFF64_T: u32 = 1;
@@ -169,132 +135,8 @@ pub const __STATFS_MATCHES_STATFS64: u32 = 1;
 pub const __KERNEL_OLD_TIMEVAL_MATCHES_TIMEVAL64: u32 = 1;
 pub const __FD_SETSIZE: u32 = 1024;
 pub const _BITS_TIME64_H: u32 = 1;
-pub const __clock_t_defined: u32 = 1;
-pub const __clockid_t_defined: u32 = 1;
-pub const __time_t_defined: u32 = 1;
-pub const __timer_t_defined: u32 = 1;
-pub const _BITS_STDINT_INTN_H: u32 = 1;
-pub const __BIT_TYPES_DEFINED__: u32 = 1;
-pub const _ENDIAN_H: u32 = 1;
-pub const _BITS_ENDIAN_H: u32 = 1;
-pub const __LITTLE_ENDIAN: u32 = 1234;
-pub const __BIG_ENDIAN: u32 = 4321;
-pub const __PDP_ENDIAN: u32 = 3412;
-pub const _BITS_ENDIANNESS_H: u32 = 1;
-pub const __BYTE_ORDER: u32 = 1234;
-pub const __FLOAT_WORD_ORDER: u32 = 1234;
-pub const LITTLE_ENDIAN: u32 = 1234;
-pub const BIG_ENDIAN: u32 = 4321;
-pub const PDP_ENDIAN: u32 = 3412;
-pub const BYTE_ORDER: u32 = 1234;
-pub const _BITS_BYTESWAP_H: u32 = 1;
-pub const _BITS_UINTN_IDENTITY_H: u32 = 1;
-pub const _SYS_SELECT_H: u32 = 1;
-pub const __sigset_t_defined: u32 = 1;
-pub const __timeval_defined: u32 = 1;
-pub const _STRUCT_TIMESPEC: u32 = 1;
-pub const FD_SETSIZE: u32 = 1024;
-pub const _BITS_PTHREADTYPES_COMMON_H: u32 = 1;
-pub const _THREAD_SHARED_TYPES_H: u32 = 1;
-pub const _BITS_PTHREADTYPES_ARCH_H: u32 = 1;
-pub const __SIZEOF_PTHREAD_MUTEX_T: u32 = 40;
-pub const __SIZEOF_PTHREAD_ATTR_T: u32 = 56;
-pub const __SIZEOF_PTHREAD_RWLOCK_T: u32 = 56;
-pub const __SIZEOF_PTHREAD_BARRIER_T: u32 = 32;
-pub const __SIZEOF_PTHREAD_MUTEXATTR_T: u32 = 4;
-pub const __SIZEOF_PTHREAD_COND_T: u32 = 48;
-pub const __SIZEOF_PTHREAD_CONDATTR_T: u32 = 4;
-pub const __SIZEOF_PTHREAD_RWLOCKATTR_T: u32 = 8;
-pub const __SIZEOF_PTHREAD_BARRIERATTR_T: u32 = 4;
-pub const _THREAD_MUTEX_INTERNAL_H: u32 = 1;
-pub const __PTHREAD_MUTEX_HAVE_PREV: u32 = 1;
-pub const __have_pthread_attr_t: u32 = 1;
-pub const _ALLOCA_H: u32 = 1;
-pub const AC_VERSION_KHASH_H: &[u8; 6usize] = b"0.2.8\0";
-pub const _STRING_H: u32 = 1;
-pub const _BITS_TYPES_LOCALE_T_H: u32 = 1;
-pub const _BITS_TYPES___LOCALE_T_H: u32 = 1;
-pub const _STRINGS_H: u32 = 1;
-pub const _LIBC_LIMITS_H_: u32 = 1;
-pub const MB_LEN_MAX: u32 = 16;
-pub const _BITS_POSIX1_LIM_H: u32 = 1;
-pub const _POSIX_AIO_LISTIO_MAX: u32 = 2;
-pub const _POSIX_AIO_MAX: u32 = 1;
-pub const _POSIX_ARG_MAX: u32 = 4096;
-pub const _POSIX_CHILD_MAX: u32 = 25;
-pub const _POSIX_DELAYTIMER_MAX: u32 = 32;
-pub const _POSIX_HOST_NAME_MAX: u32 = 255;
-pub const _POSIX_LINK_MAX: u32 = 8;
-pub const _POSIX_LOGIN_NAME_MAX: u32 = 9;
-pub const _POSIX_MAX_CANON: u32 = 255;
-pub const _POSIX_MAX_INPUT: u32 = 255;
-pub const _POSIX_MQ_OPEN_MAX: u32 = 8;
-pub const _POSIX_MQ_PRIO_MAX: u32 = 32;
-pub const _POSIX_NAME_MAX: u32 = 14;
-pub const _POSIX_NGROUPS_MAX: u32 = 8;
-pub const _POSIX_OPEN_MAX: u32 = 20;
-pub const _POSIX_PATH_MAX: u32 = 256;
-pub const _POSIX_PIPE_BUF: u32 = 512;
-pub const _POSIX_RE_DUP_MAX: u32 = 255;
-pub const _POSIX_RTSIG_MAX: u32 = 8;
-pub const _POSIX_SEM_NSEMS_MAX: u32 = 256;
-pub const _POSIX_SEM_VALUE_MAX: u32 = 32767;
-pub const _POSIX_SIGQUEUE_MAX: u32 = 32;
-pub const _POSIX_SSIZE_MAX: u32 = 32767;
-pub const _POSIX_STREAM_MAX: u32 = 8;
-pub const _POSIX_SYMLINK_MAX: u32 = 255;
-pub const _POSIX_SYMLOOP_MAX: u32 = 8;
-pub const _POSIX_TIMER_MAX: u32 = 32;
-pub const _POSIX_TTY_NAME_MAX: u32 = 9;
-pub const _POSIX_TZNAME_MAX: u32 = 6;
-pub const _POSIX_CLOCKRES_MIN: u32 = 20000000;
-pub const NR_OPEN: u32 = 1024;
-pub const NGROUPS_MAX: u32 = 65536;
-pub const ARG_MAX: u32 = 131072;
-pub const LINK_MAX: u32 = 127;
-pub const MAX_CANON: u32 = 255;
-pub const MAX_INPUT: u32 = 255;
-pub const NAME_MAX: u32 = 255;
-pub const PATH_MAX: u32 = 4096;
-pub const PIPE_BUF: u32 = 4096;
-pub const XATTR_NAME_MAX: u32 = 255;
-pub const XATTR_SIZE_MAX: u32 = 65536;
-pub const XATTR_LIST_MAX: u32 = 65536;
-pub const RTSIG_MAX: u32 = 32;
-pub const _POSIX_THREAD_KEYS_MAX: u32 = 128;
-pub const PTHREAD_KEYS_MAX: u32 = 1024;
-pub const _POSIX_THREAD_DESTRUCTOR_ITERATIONS: u32 = 4;
-pub const PTHREAD_DESTRUCTOR_ITERATIONS: u32 = 4;
-pub const _POSIX_THREAD_THREADS_MAX: u32 = 64;
-pub const AIO_PRIO_DELTA_MAX: u32 = 20;
-pub const PTHREAD_STACK_MIN: u32 = 16384;
-pub const DELAYTIMER_MAX: u32 = 2147483647;
-pub const TTY_NAME_MAX: u32 = 32;
-pub const LOGIN_NAME_MAX: u32 = 256;
-pub const HOST_NAME_MAX: u32 = 64;
-pub const MQ_PRIO_MAX: u32 = 32768;
-pub const SEM_VALUE_MAX: u32 = 2147483647;
-pub const _BITS_POSIX2_LIM_H: u32 = 1;
-pub const _POSIX2_BC_BASE_MAX: u32 = 99;
-pub const _POSIX2_BC_DIM_MAX: u32 = 2048;
-pub const _POSIX2_BC_SCALE_MAX: u32 = 99;
-pub const _POSIX2_BC_STRING_MAX: u32 = 1000;
-pub const _POSIX2_COLL_WEIGHTS_MAX: u32 = 2;
-pub const _POSIX2_EXPR_NEST_MAX: u32 = 32;
-pub const _POSIX2_LINE_MAX: u32 = 2048;
-pub const _POSIX2_RE_DUP_MAX: u32 = 255;
-pub const _POSIX2_CHARCLASS_NAME_MAX: u32 = 14;
-pub const BC_BASE_MAX: u32 = 99;
-pub const BC_DIM_MAX: u32 = 2048;
-pub const BC_SCALE_MAX: u32 = 99;
-pub const BC_STRING_MAX: u32 = 1000;
-pub const COLL_WEIGHTS_MAX: u32 = 255;
-pub const EXPR_NEST_MAX: u32 = 32;
-pub const LINE_MAX: u32 = 2048;
-pub const CHARCLASS_NAME_MAX: u32 = 2048;
-pub const RE_DUP_MAX: u32 = 32767;
-pub const _STDINT_H: u32 = 1;
 pub const _BITS_WCHAR_H: u32 = 1;
+pub const _BITS_STDINT_INTN_H: u32 = 1;
 pub const _BITS_STDINT_UINTN_H: u32 = 1;
 pub const INT8_MIN: i32 = -128;
 pub const INT16_MIN: i32 = -32768;
@@ -333,168 +175,6 @@ pub const SIG_ATOMIC_MAX: u32 = 2147483647;
 pub const SIZE_MAX: i32 = -1;
 pub const WINT_MIN: u32 = 0;
 pub const WINT_MAX: u32 = 4294967295;
-pub const _STDIO_H: u32 = 1;
-pub const _____fpos_t_defined: u32 = 1;
-pub const ____mbstate_t_defined: u32 = 1;
-pub const _____fpos64_t_defined: u32 = 1;
-pub const ____FILE_defined: u32 = 1;
-pub const __FILE_defined: u32 = 1;
-pub const __struct_FILE_defined: u32 = 1;
-pub const _IO_EOF_SEEN: u32 = 16;
-pub const _IO_ERR_SEEN: u32 = 32;
-pub const _IO_USER_LOCK: u32 = 32768;
-pub const _IOFBF: u32 = 0;
-pub const _IOLBF: u32 = 1;
-pub const _IONBF: u32 = 2;
-pub const BUFSIZ: u32 = 8192;
-pub const EOF: i32 = -1;
-pub const SEEK_SET: u32 = 0;
-pub const SEEK_CUR: u32 = 1;
-pub const SEEK_END: u32 = 2;
-pub const P_tmpdir: &[u8; 5usize] = b"/tmp\0";
-pub const _BITS_STDIO_LIM_H: u32 = 1;
-pub const L_tmpnam: u32 = 20;
-pub const TMP_MAX: u32 = 238328;
-pub const FILENAME_MAX: u32 = 4096;
-pub const L_ctermid: u32 = 9;
-pub const FOPEN_MAX: u32 = 16;
-pub const _ERRNO_H: u32 = 1;
-pub const _BITS_ERRNO_H: u32 = 1;
-pub const EPERM: u32 = 1;
-pub const ENOENT: u32 = 2;
-pub const ESRCH: u32 = 3;
-pub const EINTR: u32 = 4;
-pub const EIO: u32 = 5;
-pub const ENXIO: u32 = 6;
-pub const E2BIG: u32 = 7;
-pub const ENOEXEC: u32 = 8;
-pub const EBADF: u32 = 9;
-pub const ECHILD: u32 = 10;
-pub const EAGAIN: u32 = 11;
-pub const ENOMEM: u32 = 12;
-pub const EACCES: u32 = 13;
-pub const EFAULT: u32 = 14;
-pub const ENOTBLK: u32 = 15;
-pub const EBUSY: u32 = 16;
-pub const EEXIST: u32 = 17;
-pub const EXDEV: u32 = 18;
-pub const ENODEV: u32 = 19;
-pub const ENOTDIR: u32 = 20;
-pub const EISDIR: u32 = 21;
-pub const EINVAL: u32 = 22;
-pub const ENFILE: u32 = 23;
-pub const EMFILE: u32 = 24;
-pub const ENOTTY: u32 = 25;
-pub const ETXTBSY: u32 = 26;
-pub const EFBIG: u32 = 27;
-pub const ENOSPC: u32 = 28;
-pub const ESPIPE: u32 = 29;
-pub const EROFS: u32 = 30;
-pub const EMLINK: u32 = 31;
-pub const EPIPE: u32 = 32;
-pub const EDOM: u32 = 33;
-pub const ERANGE: u32 = 34;
-pub const EDEADLK: u32 = 35;
-pub const ENAMETOOLONG: u32 = 36;
-pub const ENOLCK: u32 = 37;
-pub const ENOSYS: u32 = 38;
-pub const ENOTEMPTY: u32 = 39;
-pub const ELOOP: u32 = 40;
-pub const EWOULDBLOCK: u32 = 11;
-pub const ENOMSG: u32 = 42;
-pub const EIDRM: u32 = 43;
-pub const ECHRNG: u32 = 44;
-pub const EL2NSYNC: u32 = 45;
-pub const EL3HLT: u32 = 46;
-pub const EL3RST: u32 = 47;
-pub const ELNRNG: u32 = 48;
-pub const EUNATCH: u32 = 49;
-pub const ENOCSI: u32 = 50;
-pub const EL2HLT: u32 = 51;
-pub const EBADE: u32 = 52;
-pub const EBADR: u32 = 53;
-pub const EXFULL: u32 = 54;
-pub const ENOANO: u32 = 55;
-pub const EBADRQC: u32 = 56;
-pub const EBADSLT: u32 = 57;
-pub const EDEADLOCK: u32 = 35;
-pub const EBFONT: u32 = 59;
-pub const ENOSTR: u32 = 60;
-pub const ENODATA: u32 = 61;
-pub const ETIME: u32 = 62;
-pub const ENOSR: u32 = 63;
-pub const ENONET: u32 = 64;
-pub const ENOPKG: u32 = 65;
-pub const EREMOTE: u32 = 66;
-pub const ENOLINK: u32 = 67;
-pub const EADV: u32 = 68;
-pub const ESRMNT: u32 = 69;
-pub const ECOMM: u32 = 70;
-pub const EPROTO: u32 = 71;
-pub const EMULTIHOP: u32 = 72;
-pub const EDOTDOT: u32 = 73;
-pub const EBADMSG: u32 = 74;
-pub const EOVERFLOW: u32 = 75;
-pub const ENOTUNIQ: u32 = 76;
-pub const EBADFD: u32 = 77;
-pub const EREMCHG: u32 = 78;
-pub const ELIBACC: u32 = 79;
-pub const ELIBBAD: u32 = 80;
-pub const ELIBSCN: u32 = 81;
-pub const ELIBMAX: u32 = 82;
-pub const ELIBEXEC: u32 = 83;
-pub const EILSEQ: u32 = 84;
-pub const ERESTART: u32 = 85;
-pub const ESTRPIPE: u32 = 86;
-pub const EUSERS: u32 = 87;
-pub const ENOTSOCK: u32 = 88;
-pub const EDESTADDRREQ: u32 = 89;
-pub const EMSGSIZE: u32 = 90;
-pub const EPROTOTYPE: u32 = 91;
-pub const ENOPROTOOPT: u32 = 92;
-pub const EPROTONOSUPPORT: u32 = 93;
-pub const ESOCKTNOSUPPORT: u32 = 94;
-pub const EOPNOTSUPP: u32 = 95;
-pub const EPFNOSUPPORT: u32 = 96;
-pub const EAFNOSUPPORT: u32 = 97;
-pub const EADDRINUSE: u32 = 98;
-pub const EADDRNOTAVAIL: u32 = 99;
-pub const ENETDOWN: u32 = 100;
-pub const ENETUNREACH: u32 = 101;
-pub const ENETRESET: u32 = 102;
-pub const ECONNABORTED: u32 = 103;
-pub const ECONNRESET: u32 = 104;
-pub const ENOBUFS: u32 = 105;
-pub const EISCONN: u32 = 106;
-pub const ENOTCONN: u32 = 107;
-pub const ESHUTDOWN: u32 = 108;
-pub const ETOOMANYREFS: u32 = 109;
-pub const ETIMEDOUT: u32 = 110;
-pub const ECONNREFUSED: u32 = 111;
-pub const EHOSTDOWN: u32 = 112;
-pub const EHOSTUNREACH: u32 = 113;
-pub const EALREADY: u32 = 114;
-pub const EINPROGRESS: u32 = 115;
-pub const ESTALE: u32 = 116;
-pub const EUCLEAN: u32 = 117;
-pub const ENOTNAM: u32 = 118;
-pub const ENAVAIL: u32 = 119;
-pub const EISNAM: u32 = 120;
-pub const EREMOTEIO: u32 = 121;
-pub const EDQUOT: u32 = 122;
-pub const ENOMEDIUM: u32 = 123;
-pub const EMEDIUMTYPE: u32 = 124;
-pub const ECANCELED: u32 = 125;
-pub const ENOKEY: u32 = 126;
-pub const EKEYEXPIRED: u32 = 127;
-pub const EKEYREVOKED: u32 = 128;
-pub const EKEYREJECTED: u32 = 129;
-pub const EOWNERDEAD: u32 = 130;
-pub const ENOTRECOVERABLE: u32 = 131;
-pub const ERFKILL: u32 = 132;
-pub const EHWPOISON: u32 = 133;
-pub const ENOTSUP: u32 = 95;
-pub const HAVE___BUILTIN_CLZ: u32 = 1;
 pub const _INTTYPES_H: u32 = 1;
 pub const ____gwchar_t_defined: u32 = 1;
 pub const __PRI64_PREFIX: &[u8; 2usize] = b"l\0";
@@ -653,6 +333,325 @@ pub const SCNiPTR: &[u8; 3usize] = b"li\0";
 pub const SCNoPTR: &[u8; 3usize] = b"lo\0";
 pub const SCNuPTR: &[u8; 3usize] = b"lu\0";
 pub const SCNxPTR: &[u8; 3usize] = b"lx\0";
+pub const _STDLIB_H: u32 = 1;
+pub const WNOHANG: u32 = 1;
+pub const WUNTRACED: u32 = 2;
+pub const WSTOPPED: u32 = 2;
+pub const WEXITED: u32 = 4;
+pub const WCONTINUED: u32 = 8;
+pub const WNOWAIT: u32 = 16777216;
+pub const __WNOTHREAD: u32 = 536870912;
+pub const __WALL: u32 = 1073741824;
+pub const __WCLONE: u32 = 2147483648;
+pub const __W_CONTINUED: u32 = 65535;
+pub const __WCOREFLAG: u32 = 128;
+pub const __HAVE_FLOAT128: u32 = 0;
+pub const __HAVE_DISTINCT_FLOAT128: u32 = 0;
+pub const __HAVE_FLOAT64X: u32 = 1;
+pub const __HAVE_FLOAT64X_LONG_DOUBLE: u32 = 1;
+pub const __HAVE_FLOAT16: u32 = 0;
+pub const __HAVE_FLOAT32: u32 = 1;
+pub const __HAVE_FLOAT64: u32 = 1;
+pub const __HAVE_FLOAT32X: u32 = 1;
+pub const __HAVE_FLOAT128X: u32 = 0;
+pub const __HAVE_DISTINCT_FLOAT16: u32 = 0;
+pub const __HAVE_DISTINCT_FLOAT32: u32 = 0;
+pub const __HAVE_DISTINCT_FLOAT64: u32 = 0;
+pub const __HAVE_DISTINCT_FLOAT32X: u32 = 0;
+pub const __HAVE_DISTINCT_FLOAT64X: u32 = 0;
+pub const __HAVE_DISTINCT_FLOAT128X: u32 = 0;
+pub const __HAVE_FLOATN_NOT_TYPEDEF: u32 = 0;
+pub const __ldiv_t_defined: u32 = 1;
+pub const __lldiv_t_defined: u32 = 1;
+pub const RAND_MAX: u32 = 2147483647;
+pub const EXIT_FAILURE: u32 = 1;
+pub const EXIT_SUCCESS: u32 = 0;
+pub const _SYS_TYPES_H: u32 = 1;
+pub const __clock_t_defined: u32 = 1;
+pub const __clockid_t_defined: u32 = 1;
+pub const __time_t_defined: u32 = 1;
+pub const __timer_t_defined: u32 = 1;
+pub const __BIT_TYPES_DEFINED__: u32 = 1;
+pub const _ENDIAN_H: u32 = 1;
+pub const _BITS_ENDIAN_H: u32 = 1;
+pub const __LITTLE_ENDIAN: u32 = 1234;
+pub const __BIG_ENDIAN: u32 = 4321;
+pub const __PDP_ENDIAN: u32 = 3412;
+pub const _BITS_ENDIANNESS_H: u32 = 1;
+pub const __BYTE_ORDER: u32 = 1234;
+pub const __FLOAT_WORD_ORDER: u32 = 1234;
+pub const LITTLE_ENDIAN: u32 = 1234;
+pub const BIG_ENDIAN: u32 = 4321;
+pub const PDP_ENDIAN: u32 = 3412;
+pub const BYTE_ORDER: u32 = 1234;
+pub const _BITS_BYTESWAP_H: u32 = 1;
+pub const _BITS_UINTN_IDENTITY_H: u32 = 1;
+pub const _SYS_SELECT_H: u32 = 1;
+pub const __sigset_t_defined: u32 = 1;
+pub const __timeval_defined: u32 = 1;
+pub const _STRUCT_TIMESPEC: u32 = 1;
+pub const FD_SETSIZE: u32 = 1024;
+pub const _BITS_PTHREADTYPES_COMMON_H: u32 = 1;
+pub const _THREAD_SHARED_TYPES_H: u32 = 1;
+pub const _BITS_PTHREADTYPES_ARCH_H: u32 = 1;
+pub const __SIZEOF_PTHREAD_MUTEX_T: u32 = 40;
+pub const __SIZEOF_PTHREAD_ATTR_T: u32 = 56;
+pub const __SIZEOF_PTHREAD_RWLOCK_T: u32 = 56;
+pub const __SIZEOF_PTHREAD_BARRIER_T: u32 = 32;
+pub const __SIZEOF_PTHREAD_MUTEXATTR_T: u32 = 4;
+pub const __SIZEOF_PTHREAD_COND_T: u32 = 48;
+pub const __SIZEOF_PTHREAD_CONDATTR_T: u32 = 4;
+pub const __SIZEOF_PTHREAD_RWLOCKATTR_T: u32 = 8;
+pub const __SIZEOF_PTHREAD_BARRIERATTR_T: u32 = 4;
+pub const _THREAD_MUTEX_INTERNAL_H: u32 = 1;
+pub const __PTHREAD_MUTEX_HAVE_PREV: u32 = 1;
+pub const __have_pthread_attr_t: u32 = 1;
+pub const _ALLOCA_H: u32 = 1;
+pub const _STRING_H: u32 = 1;
+pub const _BITS_TYPES_LOCALE_T_H: u32 = 1;
+pub const _BITS_TYPES___LOCALE_T_H: u32 = 1;
+pub const _STRINGS_H: u32 = 1;
+pub const __GNUC_VA_LIST: u32 = 1;
+pub const _STDIO_H: u32 = 1;
+pub const _____fpos_t_defined: u32 = 1;
+pub const ____mbstate_t_defined: u32 = 1;
+pub const _____fpos64_t_defined: u32 = 1;
+pub const ____FILE_defined: u32 = 1;
+pub const __FILE_defined: u32 = 1;
+pub const __struct_FILE_defined: u32 = 1;
+pub const _IO_EOF_SEEN: u32 = 16;
+pub const _IO_ERR_SEEN: u32 = 32;
+pub const _IO_USER_LOCK: u32 = 32768;
+pub const _IOFBF: u32 = 0;
+pub const _IOLBF: u32 = 1;
+pub const _IONBF: u32 = 2;
+pub const BUFSIZ: u32 = 8192;
+pub const EOF: i32 = -1;
+pub const SEEK_SET: u32 = 0;
+pub const SEEK_CUR: u32 = 1;
+pub const SEEK_END: u32 = 2;
+pub const P_tmpdir: &[u8; 5usize] = b"/tmp\0";
+pub const _BITS_STDIO_LIM_H: u32 = 1;
+pub const L_tmpnam: u32 = 20;
+pub const TMP_MAX: u32 = 238328;
+pub const FILENAME_MAX: u32 = 4096;
+pub const L_ctermid: u32 = 9;
+pub const FOPEN_MAX: u32 = 16;
+pub const _LIBC_LIMITS_H_: u32 = 1;
+pub const MB_LEN_MAX: u32 = 16;
+pub const _BITS_POSIX1_LIM_H: u32 = 1;
+pub const _POSIX_AIO_LISTIO_MAX: u32 = 2;
+pub const _POSIX_AIO_MAX: u32 = 1;
+pub const _POSIX_ARG_MAX: u32 = 4096;
+pub const _POSIX_CHILD_MAX: u32 = 25;
+pub const _POSIX_DELAYTIMER_MAX: u32 = 32;
+pub const _POSIX_HOST_NAME_MAX: u32 = 255;
+pub const _POSIX_LINK_MAX: u32 = 8;
+pub const _POSIX_LOGIN_NAME_MAX: u32 = 9;
+pub const _POSIX_MAX_CANON: u32 = 255;
+pub const _POSIX_MAX_INPUT: u32 = 255;
+pub const _POSIX_MQ_OPEN_MAX: u32 = 8;
+pub const _POSIX_MQ_PRIO_MAX: u32 = 32;
+pub const _POSIX_NAME_MAX: u32 = 14;
+pub const _POSIX_NGROUPS_MAX: u32 = 8;
+pub const _POSIX_OPEN_MAX: u32 = 20;
+pub const _POSIX_PATH_MAX: u32 = 256;
+pub const _POSIX_PIPE_BUF: u32 = 512;
+pub const _POSIX_RE_DUP_MAX: u32 = 255;
+pub const _POSIX_RTSIG_MAX: u32 = 8;
+pub const _POSIX_SEM_NSEMS_MAX: u32 = 256;
+pub const _POSIX_SEM_VALUE_MAX: u32 = 32767;
+pub const _POSIX_SIGQUEUE_MAX: u32 = 32;
+pub const _POSIX_SSIZE_MAX: u32 = 32767;
+pub const _POSIX_STREAM_MAX: u32 = 8;
+pub const _POSIX_SYMLINK_MAX: u32 = 255;
+pub const _POSIX_SYMLOOP_MAX: u32 = 8;
+pub const _POSIX_TIMER_MAX: u32 = 32;
+pub const _POSIX_TTY_NAME_MAX: u32 = 9;
+pub const _POSIX_TZNAME_MAX: u32 = 6;
+pub const _POSIX_CLOCKRES_MIN: u32 = 20000000;
+pub const NR_OPEN: u32 = 1024;
+pub const NGROUPS_MAX: u32 = 65536;
+pub const ARG_MAX: u32 = 131072;
+pub const LINK_MAX: u32 = 127;
+pub const MAX_CANON: u32 = 255;
+pub const MAX_INPUT: u32 = 255;
+pub const NAME_MAX: u32 = 255;
+pub const PATH_MAX: u32 = 4096;
+pub const PIPE_BUF: u32 = 4096;
+pub const XATTR_NAME_MAX: u32 = 255;
+pub const XATTR_SIZE_MAX: u32 = 65536;
+pub const XATTR_LIST_MAX: u32 = 65536;
+pub const RTSIG_MAX: u32 = 32;
+pub const _POSIX_THREAD_KEYS_MAX: u32 = 128;
+pub const PTHREAD_KEYS_MAX: u32 = 1024;
+pub const _POSIX_THREAD_DESTRUCTOR_ITERATIONS: u32 = 4;
+pub const PTHREAD_DESTRUCTOR_ITERATIONS: u32 = 4;
+pub const _POSIX_THREAD_THREADS_MAX: u32 = 64;
+pub const AIO_PRIO_DELTA_MAX: u32 = 20;
+pub const PTHREAD_STACK_MIN: u32 = 16384;
+pub const DELAYTIMER_MAX: u32 = 2147483647;
+pub const TTY_NAME_MAX: u32 = 32;
+pub const LOGIN_NAME_MAX: u32 = 256;
+pub const HOST_NAME_MAX: u32 = 64;
+pub const MQ_PRIO_MAX: u32 = 32768;
+pub const SEM_VALUE_MAX: u32 = 2147483647;
+pub const _BITS_POSIX2_LIM_H: u32 = 1;
+pub const _POSIX2_BC_BASE_MAX: u32 = 99;
+pub const _POSIX2_BC_DIM_MAX: u32 = 2048;
+pub const _POSIX2_BC_SCALE_MAX: u32 = 99;
+pub const _POSIX2_BC_STRING_MAX: u32 = 1000;
+pub const _POSIX2_COLL_WEIGHTS_MAX: u32 = 2;
+pub const _POSIX2_EXPR_NEST_MAX: u32 = 32;
+pub const _POSIX2_LINE_MAX: u32 = 2048;
+pub const _POSIX2_RE_DUP_MAX: u32 = 255;
+pub const _POSIX2_CHARCLASS_NAME_MAX: u32 = 14;
+pub const BC_BASE_MAX: u32 = 99;
+pub const BC_DIM_MAX: u32 = 2048;
+pub const BC_SCALE_MAX: u32 = 99;
+pub const BC_STRING_MAX: u32 = 1000;
+pub const COLL_WEIGHTS_MAX: u32 = 255;
+pub const EXPR_NEST_MAX: u32 = 32;
+pub const LINE_MAX: u32 = 2048;
+pub const CHARCLASS_NAME_MAX: u32 = 2048;
+pub const RE_DUP_MAX: u32 = 32767;
+pub const _ERRNO_H: u32 = 1;
+pub const _BITS_ERRNO_H: u32 = 1;
+pub const EPERM: u32 = 1;
+pub const ENOENT: u32 = 2;
+pub const ESRCH: u32 = 3;
+pub const EINTR: u32 = 4;
+pub const EIO: u32 = 5;
+pub const ENXIO: u32 = 6;
+pub const E2BIG: u32 = 7;
+pub const ENOEXEC: u32 = 8;
+pub const EBADF: u32 = 9;
+pub const ECHILD: u32 = 10;
+pub const EAGAIN: u32 = 11;
+pub const ENOMEM: u32 = 12;
+pub const EACCES: u32 = 13;
+pub const EFAULT: u32 = 14;
+pub const ENOTBLK: u32 = 15;
+pub const EBUSY: u32 = 16;
+pub const EEXIST: u32 = 17;
+pub const EXDEV: u32 = 18;
+pub const ENODEV: u32 = 19;
+pub const ENOTDIR: u32 = 20;
+pub const EISDIR: u32 = 21;
+pub const EINVAL: u32 = 22;
+pub const ENFILE: u32 = 23;
+pub const EMFILE: u32 = 24;
+pub const ENOTTY: u32 = 25;
+pub const ETXTBSY: u32 = 26;
+pub const EFBIG: u32 = 27;
+pub const ENOSPC: u32 = 28;
+pub const ESPIPE: u32 = 29;
+pub const EROFS: u32 = 30;
+pub const EMLINK: u32 = 31;
+pub const EPIPE: u32 = 32;
+pub const EDOM: u32 = 33;
+pub const ERANGE: u32 = 34;
+pub const EDEADLK: u32 = 35;
+pub const ENAMETOOLONG: u32 = 36;
+pub const ENOLCK: u32 = 37;
+pub const ENOSYS: u32 = 38;
+pub const ENOTEMPTY: u32 = 39;
+pub const ELOOP: u32 = 40;
+pub const EWOULDBLOCK: u32 = 11;
+pub const ENOMSG: u32 = 42;
+pub const EIDRM: u32 = 43;
+pub const ECHRNG: u32 = 44;
+pub const EL2NSYNC: u32 = 45;
+pub const EL3HLT: u32 = 46;
+pub const EL3RST: u32 = 47;
+pub const ELNRNG: u32 = 48;
+pub const EUNATCH: u32 = 49;
+pub const ENOCSI: u32 = 50;
+pub const EL2HLT: u32 = 51;
+pub const EBADE: u32 = 52;
+pub const EBADR: u32 = 53;
+pub const EXFULL: u32 = 54;
+pub const ENOANO: u32 = 55;
+pub const EBADRQC: u32 = 56;
+pub const EBADSLT: u32 = 57;
+pub const EDEADLOCK: u32 = 35;
+pub const EBFONT: u32 = 59;
+pub const ENOSTR: u32 = 60;
+pub const ENODATA: u32 = 61;
+pub const ETIME: u32 = 62;
+pub const ENOSR: u32 = 63;
+pub const ENONET: u32 = 64;
+pub const ENOPKG: u32 = 65;
+pub const EREMOTE: u32 = 66;
+pub const ENOLINK: u32 = 67;
+pub const EADV: u32 = 68;
+pub const ESRMNT: u32 = 69;
+pub const ECOMM: u32 = 70;
+pub const EPROTO: u32 = 71;
+pub const EMULTIHOP: u32 = 72;
+pub const EDOTDOT: u32 = 73;
+pub const EBADMSG: u32 = 74;
+pub const EOVERFLOW: u32 = 75;
+pub const ENOTUNIQ: u32 = 76;
+pub const EBADFD: u32 = 77;
+pub const EREMCHG: u32 = 78;
+pub const ELIBACC: u32 = 79;
+pub const ELIBBAD: u32 = 80;
+pub const ELIBSCN: u32 = 81;
+pub const ELIBMAX: u32 = 82;
+pub const ELIBEXEC: u32 = 83;
+pub const EILSEQ: u32 = 84;
+pub const ERESTART: u32 = 85;
+pub const ESTRPIPE: u32 = 86;
+pub const EUSERS: u32 = 87;
+pub const ENOTSOCK: u32 = 88;
+pub const EDESTADDRREQ: u32 = 89;
+pub const EMSGSIZE: u32 = 90;
+pub const EPROTOTYPE: u32 = 91;
+pub const ENOPROTOOPT: u32 = 92;
+pub const EPROTONOSUPPORT: u32 = 93;
+pub const ESOCKTNOSUPPORT: u32 = 94;
+pub const EOPNOTSUPP: u32 = 95;
+pub const EPFNOSUPPORT: u32 = 96;
+pub const EAFNOSUPPORT: u32 = 97;
+pub const EADDRINUSE: u32 = 98;
+pub const EADDRNOTAVAIL: u32 = 99;
+pub const ENETDOWN: u32 = 100;
+pub const ENETUNREACH: u32 = 101;
+pub const ENETRESET: u32 = 102;
+pub const ECONNABORTED: u32 = 103;
+pub const ECONNRESET: u32 = 104;
+pub const ENOBUFS: u32 = 105;
+pub const EISCONN: u32 = 106;
+pub const ENOTCONN: u32 = 107;
+pub const ESHUTDOWN: u32 = 108;
+pub const ETOOMANYREFS: u32 = 109;
+pub const ETIMEDOUT: u32 = 110;
+pub const ECONNREFUSED: u32 = 111;
+pub const EHOSTDOWN: u32 = 112;
+pub const EHOSTUNREACH: u32 = 113;
+pub const EALREADY: u32 = 114;
+pub const EINPROGRESS: u32 = 115;
+pub const ESTALE: u32 = 116;
+pub const EUCLEAN: u32 = 117;
+pub const ENOTNAM: u32 = 118;
+pub const ENAVAIL: u32 = 119;
+pub const EISNAM: u32 = 120;
+pub const EREMOTEIO: u32 = 121;
+pub const EDQUOT: u32 = 122;
+pub const ENOMEDIUM: u32 = 123;
+pub const EMEDIUMTYPE: u32 = 124;
+pub const ECANCELED: u32 = 125;
+pub const ENOKEY: u32 = 126;
+pub const EKEYEXPIRED: u32 = 127;
+pub const EKEYREVOKED: u32 = 128;
+pub const EKEYREJECTED: u32 = 129;
+pub const EOWNERDEAD: u32 = 130;
+pub const ENOTRECOVERABLE: u32 = 131;
+pub const ERFKILL: u32 = 132;
+pub const EHWPOISON: u32 = 133;
+pub const ENOTSUP: u32 = 95;
+pub const HAVE___BUILTIN_CLZ: u32 = 1;
 pub const HTS_PATH_SEPARATOR_CHAR: u8 = 58u8;
 pub const HTS_PATH_SEPARATOR_STR: &[u8; 2usize] = b":\0";
 pub const HTS_RESIZE_CLEAR: u32 = 1;
@@ -694,6 +693,78 @@ pub const FT_BCF: u32 = 4;
 pub const FT_BCF_GZ: u32 = 5;
 pub const FT_STDIN: u32 = 8;
 pub const HTS_ALLOW_UNALIGNED: u32 = 1;
+pub const _ASSERT_H: u32 = 1;
+pub const BCF_HL_FLT: u32 = 0;
+pub const BCF_HL_INFO: u32 = 1;
+pub const BCF_HL_FMT: u32 = 2;
+pub const BCF_HL_CTG: u32 = 3;
+pub const BCF_HL_STR: u32 = 4;
+pub const BCF_HL_GEN: u32 = 5;
+pub const BCF_HT_FLAG: u32 = 0;
+pub const BCF_HT_INT: u32 = 1;
+pub const BCF_HT_REAL: u32 = 2;
+pub const BCF_HT_STR: u32 = 3;
+pub const BCF_HT_LONG: u32 = 257;
+pub const BCF_VL_FIXED: u32 = 0;
+pub const BCF_VL_VAR: u32 = 1;
+pub const BCF_VL_A: u32 = 2;
+pub const BCF_VL_G: u32 = 3;
+pub const BCF_VL_R: u32 = 4;
+pub const BCF_DT_ID: u32 = 0;
+pub const BCF_DT_CTG: u32 = 1;
+pub const BCF_DT_SAMPLE: u32 = 2;
+pub const BCF_BT_NULL: u32 = 0;
+pub const BCF_BT_INT8: u32 = 1;
+pub const BCF_BT_INT16: u32 = 2;
+pub const BCF_BT_INT32: u32 = 3;
+pub const BCF_BT_INT64: u32 = 4;
+pub const BCF_BT_FLOAT: u32 = 5;
+pub const BCF_BT_CHAR: u32 = 7;
+pub const VCF_REF: u32 = 0;
+pub const VCF_SNP: u32 = 1;
+pub const VCF_MNP: u32 = 2;
+pub const VCF_INDEL: u32 = 4;
+pub const VCF_OTHER: u32 = 8;
+pub const VCF_BND: u32 = 16;
+pub const VCF_OVERLAP: u32 = 32;
+pub const VCF_INS: u32 = 64;
+pub const VCF_DEL: u32 = 128;
+pub const VCF_ANY: u32 = 255;
+pub const BCF1_DIRTY_ID: u32 = 1;
+pub const BCF1_DIRTY_ALS: u32 = 2;
+pub const BCF1_DIRTY_FLT: u32 = 4;
+pub const BCF1_DIRTY_INF: u32 = 8;
+pub const BCF_ERR_CTG_UNDEF: u32 = 1;
+pub const BCF_ERR_TAG_UNDEF: u32 = 2;
+pub const BCF_ERR_NCOLS: u32 = 4;
+pub const BCF_ERR_LIMITS: u32 = 8;
+pub const BCF_ERR_CHAR: u32 = 16;
+pub const BCF_ERR_CTG_INVALID: u32 = 32;
+pub const BCF_ERR_TAG_INVALID: u32 = 64;
+pub const BCF_UN_STR: u32 = 1;
+pub const BCF_UN_FLT: u32 = 2;
+pub const BCF_UN_INFO: u32 = 4;
+pub const BCF_UN_SHR: u32 = 7;
+pub const BCF_UN_FMT: u32 = 8;
+pub const BCF_UN_IND: u32 = 8;
+pub const BCF_UN_ALL: u32 = 15;
+pub const bcf_gt_missing: u32 = 0;
+pub const bcf_int8_vector_end: i32 = -127;
+pub const bcf_int16_vector_end: i32 = -32767;
+pub const bcf_int32_vector_end: i32 = -2147483647;
+pub const bcf_int64_vector_end: i64 = -9223372036854775807;
+pub const bcf_str_vector_end: u32 = 0;
+pub const bcf_int8_missing: i32 = -128;
+pub const bcf_int16_missing: i32 = -32768;
+pub const bcf_int32_missing: i32 = -2147483648;
+pub const bcf_int64_missing: i64 = -9223372036854775808;
+pub const bcf_str_missing: u32 = 7;
+pub const BCF_MAX_BT_INT8: u32 = 127;
+pub const BCF_MAX_BT_INT16: u32 = 32767;
+pub const BCF_MAX_BT_INT32: u32 = 2147483647;
+pub const BCF_MIN_BT_INT8: i32 = -120;
+pub const BCF_MIN_BT_INT16: i32 = -32760;
+pub const BCF_MIN_BT_INT32: i32 = -2147483640;
 pub const SAM_FORMAT_VERSION: &[u8; 4usize] = b"1.6\0";
 pub const BAM_CMATCH: u32 = 0;
 pub const BAM_CINS: u32 = 1;
@@ -723,10 +794,348 @@ pub const BAM_FDUP: u32 = 1024;
 pub const BAM_FSUPPLEMENTARY: u32 = 2048;
 pub const BAM_USER_OWNS_STRUCT: u32 = 1;
 pub const BAM_USER_OWNS_DATA: u32 = 2;
-pub type va_list = __builtin_va_list;
-pub type __gnuc_va_list = __builtin_va_list;
+pub const BGZF_BLOCK_SIZE: u32 = 65280;
+pub const BGZF_MAX_BLOCK_SIZE: u32 = 65536;
+pub const BGZF_ERR_ZLIB: u32 = 1;
+pub const BGZF_ERR_HEADER: u32 = 2;
+pub const BGZF_ERR_IO: u32 = 4;
+pub const BGZF_ERR_MISUSE: u32 = 8;
+pub const BGZF_ERR_MT: u32 = 16;
+pub const BGZF_ERR_CRC: u32 = 32;
+pub const GT_HOM_RR: u32 = 0;
+pub const GT_HOM_AA: u32 = 1;
+pub const GT_HET_RA: u32 = 2;
+pub const GT_HET_AA: u32 = 3;
+pub const GT_HAPL_R: u32 = 4;
+pub const GT_HAPL_A: u32 = 5;
+pub const GT_UNKN: u32 = 6;
+pub const TBX_MAX_SHIFT: u32 = 31;
+pub const TBX_GENERIC: u32 = 0;
+pub const TBX_SAM: u32 = 1;
+pub const TBX_VCF: u32 = 2;
+pub const TBX_UCSC: u32 = 65536;
+pub const COLLAPSE_NONE: u32 = 0;
+pub const COLLAPSE_SNPS: u32 = 1;
+pub const COLLAPSE_INDELS: u32 = 2;
+pub const COLLAPSE_ANY: u32 = 4;
+pub const COLLAPSE_SOME: u32 = 8;
+pub const COLLAPSE_BOTH: u32 = 3;
+pub const BCF_SR_PAIR_SNPS: u32 = 1;
+pub const BCF_SR_PAIR_INDELS: u32 = 2;
+pub const BCF_SR_PAIR_ANY: u32 = 4;
+pub const BCF_SR_PAIR_SOME: u32 = 8;
+pub const BCF_SR_PAIR_SNP_REF: u32 = 16;
+pub const BCF_SR_PAIR_INDEL_REF: u32 = 32;
+pub const BCF_SR_PAIR_EXACT: u32 = 64;
+pub const BCF_SR_PAIR_BOTH: u32 = 3;
+pub const BCF_SR_PAIR_BOTH_REF: u32 = 51;
 pub type size_t = ::std::os::raw::c_ulong;
 pub type wchar_t = ::std::os::raw::c_int;
+#[repr(C)]
+#[repr(align(16))]
+#[derive(Debug, Copy, Clone)]
+pub struct max_align_t {
+    pub __clang_max_align_nonce1: ::std::os::raw::c_longlong,
+    pub __bindgen_padding_0: u64,
+    pub __clang_max_align_nonce2: u128,
+}
+#[test]
+fn bindgen_test_layout_max_align_t() {
+    assert_eq!(
+        ::std::mem::size_of::<max_align_t>(),
+        32usize,
+        concat!("Size of: ", stringify!(max_align_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<max_align_t>(),
+        16usize,
+        concat!("Alignment of ", stringify!(max_align_t))
+    );
+    fn test_field___clang_max_align_nonce1() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<max_align_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).__clang_max_align_nonce1) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(max_align_t),
+                "::",
+                stringify!(__clang_max_align_nonce1)
+            )
+        );
+    }
+    test_field___clang_max_align_nonce1();
+    fn test_field___clang_max_align_nonce2() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<max_align_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).__clang_max_align_nonce2) as usize - ptr as usize
+            },
+            16usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(max_align_t),
+                "::",
+                stringify!(__clang_max_align_nonce2)
+            )
+        );
+    }
+    test_field___clang_max_align_nonce2();
+}
+pub type __u_char = ::std::os::raw::c_uchar;
+pub type __u_short = ::std::os::raw::c_ushort;
+pub type __u_int = ::std::os::raw::c_uint;
+pub type __u_long = ::std::os::raw::c_ulong;
+pub type __int8_t = ::std::os::raw::c_schar;
+pub type __uint8_t = ::std::os::raw::c_uchar;
+pub type __int16_t = ::std::os::raw::c_short;
+pub type __uint16_t = ::std::os::raw::c_ushort;
+pub type __int32_t = ::std::os::raw::c_int;
+pub type __uint32_t = ::std::os::raw::c_uint;
+pub type __int64_t = ::std::os::raw::c_long;
+pub type __uint64_t = ::std::os::raw::c_ulong;
+pub type __int_least8_t = __int8_t;
+pub type __uint_least8_t = __uint8_t;
+pub type __int_least16_t = __int16_t;
+pub type __uint_least16_t = __uint16_t;
+pub type __int_least32_t = __int32_t;
+pub type __uint_least32_t = __uint32_t;
+pub type __int_least64_t = __int64_t;
+pub type __uint_least64_t = __uint64_t;
+pub type __quad_t = ::std::os::raw::c_long;
+pub type __u_quad_t = ::std::os::raw::c_ulong;
+pub type __intmax_t = ::std::os::raw::c_long;
+pub type __uintmax_t = ::std::os::raw::c_ulong;
+pub type __dev_t = ::std::os::raw::c_ulong;
+pub type __uid_t = ::std::os::raw::c_uint;
+pub type __gid_t = ::std::os::raw::c_uint;
+pub type __ino_t = ::std::os::raw::c_ulong;
+pub type __ino64_t = ::std::os::raw::c_ulong;
+pub type __mode_t = ::std::os::raw::c_uint;
+pub type __nlink_t = ::std::os::raw::c_ulong;
+pub type __off_t = ::std::os::raw::c_long;
+pub type __off64_t = ::std::os::raw::c_long;
+pub type __pid_t = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct __fsid_t {
+    pub __val: [::std::os::raw::c_int; 2usize],
+}
+#[test]
+fn bindgen_test_layout___fsid_t() {
+    assert_eq!(
+        ::std::mem::size_of::<__fsid_t>(),
+        8usize,
+        concat!("Size of: ", stringify!(__fsid_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<__fsid_t>(),
+        4usize,
+        concat!("Alignment of ", stringify!(__fsid_t))
+    );
+    fn test_field___val() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<__fsid_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).__val) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(__fsid_t),
+                "::",
+                stringify!(__val)
+            )
+        );
+    }
+    test_field___val();
+}
+pub type __clock_t = ::std::os::raw::c_long;
+pub type __rlim_t = ::std::os::raw::c_ulong;
+pub type __rlim64_t = ::std::os::raw::c_ulong;
+pub type __id_t = ::std::os::raw::c_uint;
+pub type __time_t = ::std::os::raw::c_long;
+pub type __useconds_t = ::std::os::raw::c_uint;
+pub type __suseconds_t = ::std::os::raw::c_long;
+pub type __suseconds64_t = ::std::os::raw::c_long;
+pub type __daddr_t = ::std::os::raw::c_int;
+pub type __key_t = ::std::os::raw::c_int;
+pub type __clockid_t = ::std::os::raw::c_int;
+pub type __timer_t = *mut ::std::os::raw::c_void;
+pub type __blksize_t = ::std::os::raw::c_long;
+pub type __blkcnt_t = ::std::os::raw::c_long;
+pub type __blkcnt64_t = ::std::os::raw::c_long;
+pub type __fsblkcnt_t = ::std::os::raw::c_ulong;
+pub type __fsblkcnt64_t = ::std::os::raw::c_ulong;
+pub type __fsfilcnt_t = ::std::os::raw::c_ulong;
+pub type __fsfilcnt64_t = ::std::os::raw::c_ulong;
+pub type __fsword_t = ::std::os::raw::c_long;
+pub type __ssize_t = ::std::os::raw::c_long;
+pub type __syscall_slong_t = ::std::os::raw::c_long;
+pub type __syscall_ulong_t = ::std::os::raw::c_ulong;
+pub type __loff_t = __off64_t;
+pub type __caddr_t = *mut ::std::os::raw::c_char;
+pub type __intptr_t = ::std::os::raw::c_long;
+pub type __socklen_t = ::std::os::raw::c_uint;
+pub type __sig_atomic_t = ::std::os::raw::c_int;
+pub type int_least8_t = __int_least8_t;
+pub type int_least16_t = __int_least16_t;
+pub type int_least32_t = __int_least32_t;
+pub type int_least64_t = __int_least64_t;
+pub type uint_least8_t = __uint_least8_t;
+pub type uint_least16_t = __uint_least16_t;
+pub type uint_least32_t = __uint_least32_t;
+pub type uint_least64_t = __uint_least64_t;
+pub type int_fast8_t = ::std::os::raw::c_schar;
+pub type int_fast16_t = ::std::os::raw::c_long;
+pub type int_fast32_t = ::std::os::raw::c_long;
+pub type int_fast64_t = ::std::os::raw::c_long;
+pub type uint_fast8_t = ::std::os::raw::c_uchar;
+pub type uint_fast16_t = ::std::os::raw::c_ulong;
+pub type uint_fast32_t = ::std::os::raw::c_ulong;
+pub type uint_fast64_t = ::std::os::raw::c_ulong;
+pub type intmax_t = __intmax_t;
+pub type uintmax_t = __uintmax_t;
+pub type __gwchar_t = ::std::os::raw::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct imaxdiv_t {
+    pub quot: ::std::os::raw::c_long,
+    pub rem: ::std::os::raw::c_long,
+}
+#[test]
+fn bindgen_test_layout_imaxdiv_t() {
+    assert_eq!(
+        ::std::mem::size_of::<imaxdiv_t>(),
+        16usize,
+        concat!("Size of: ", stringify!(imaxdiv_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<imaxdiv_t>(),
+        8usize,
+        concat!("Alignment of ", stringify!(imaxdiv_t))
+    );
+    fn test_field_quot() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<imaxdiv_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).quot) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(imaxdiv_t),
+                "::",
+                stringify!(quot)
+            )
+        );
+    }
+    test_field_quot();
+    fn test_field_rem() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<imaxdiv_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).rem) as usize - ptr as usize
+            },
+            8usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(imaxdiv_t),
+                "::",
+                stringify!(rem)
+            )
+        );
+    }
+    test_field_rem();
+}
+extern "C" {
+    pub fn imaxabs(__n: intmax_t) -> intmax_t;
+}
+extern "C" {
+    pub fn imaxdiv(__numer: intmax_t, __denom: intmax_t) -> imaxdiv_t;
+}
+extern "C" {
+    pub fn strtoimax(
+        __nptr: *const ::std::os::raw::c_char,
+        __endptr: *mut *mut ::std::os::raw::c_char,
+        __base: ::std::os::raw::c_int,
+    ) -> intmax_t;
+}
+extern "C" {
+    pub fn strtoumax(
+        __nptr: *const ::std::os::raw::c_char,
+        __endptr: *mut *mut ::std::os::raw::c_char,
+        __base: ::std::os::raw::c_int,
+    ) -> uintmax_t;
+}
+extern "C" {
+    pub fn wcstoimax(
+        __nptr: *const __gwchar_t,
+        __endptr: *mut *mut __gwchar_t,
+        __base: ::std::os::raw::c_int,
+    ) -> intmax_t;
+}
+extern "C" {
+    pub fn wcstoumax(
+        __nptr: *const __gwchar_t,
+        __endptr: *mut *mut __gwchar_t,
+        __base: ::std::os::raw::c_int,
+    ) -> uintmax_t;
+}
+#[doc = "< All logging disabled."]
+pub const htsLogLevel_HTS_LOG_OFF: htsLogLevel = 0;
+#[doc = "< Logging of errors only."]
+pub const htsLogLevel_HTS_LOG_ERROR: htsLogLevel = 1;
+#[doc = "< Logging of errors and warnings."]
+pub const htsLogLevel_HTS_LOG_WARNING: htsLogLevel = 3;
+#[doc = "< Logging of errors, warnings, and normal but significant events."]
+pub const htsLogLevel_HTS_LOG_INFO: htsLogLevel = 4;
+#[doc = "< Logging of all except the most detailed debug events."]
+pub const htsLogLevel_HTS_LOG_DEBUG: htsLogLevel = 5;
+#[doc = "< All logging enabled."]
+pub const htsLogLevel_HTS_LOG_TRACE: htsLogLevel = 6;
+#[doc = " Log levels."]
+pub type htsLogLevel = ::std::os::raw::c_uint;
+extern "C" {
+    #[doc = " Sets the selected log level."]
+    pub fn hts_set_log_level(level: htsLogLevel);
+}
+extern "C" {
+    #[doc = " Gets the selected log level."]
+    pub fn hts_get_log_level() -> htsLogLevel;
+}
+extern "C" {
+    #[doc = " Selected log level."]
+    #[doc = "*!"]
+    #[doc = "* One of the HTS_LOG_* values. The default is HTS_LOG_WARNING."]
+    #[doc = "* \\note Avoid direct use of this variable. Use hts_set_log_level and hts_get_log_level instead."]
+    #[doc = "*/"]
+    pub static mut hts_verbose: ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Logs an event."]
+    #[doc = " \\param severity      Severity of the event:"]
+    #[doc = "                      - HTS_LOG_ERROR means that something went wrong so that a task could not be completed."]
+    #[doc = "                      - HTS_LOG_WARNING means that something unexpected happened, but that execution can continue, perhaps in a degraded mode."]
+    #[doc = "                      - HTS_LOG_INFO means that something normal but significant happened."]
+    #[doc = "                      - HTS_LOG_DEBUG means that something normal and insignificant happened."]
+    #[doc = "                      - HTS_LOG_TRACE means that something happened that might be of interest when troubleshooting."]
+    #[doc = " \\param context       Context where the event occurred. Typically set to \"__func__\"."]
+    #[doc = " \\param format        Format string with placeholders, like printf."]
+    pub fn hts_log(
+        severity: htsLogLevel,
+        context: *const ::std::os::raw::c_char,
+        format: *const ::std::os::raw::c_char,
+        ...
+    );
+}
 pub type _Float32 = f32;
 pub type _Float64 = f64;
 pub type _Float32x = f64;
@@ -971,103 +1380,6 @@ extern "C" {
 extern "C" {
     pub fn a64l(__s: *const ::std::os::raw::c_char) -> ::std::os::raw::c_long;
 }
-pub type __u_char = ::std::os::raw::c_uchar;
-pub type __u_short = ::std::os::raw::c_ushort;
-pub type __u_int = ::std::os::raw::c_uint;
-pub type __u_long = ::std::os::raw::c_ulong;
-pub type __int8_t = ::std::os::raw::c_schar;
-pub type __uint8_t = ::std::os::raw::c_uchar;
-pub type __int16_t = ::std::os::raw::c_short;
-pub type __uint16_t = ::std::os::raw::c_ushort;
-pub type __int32_t = ::std::os::raw::c_int;
-pub type __uint32_t = ::std::os::raw::c_uint;
-pub type __int64_t = ::std::os::raw::c_long;
-pub type __uint64_t = ::std::os::raw::c_ulong;
-pub type __int_least8_t = __int8_t;
-pub type __uint_least8_t = __uint8_t;
-pub type __int_least16_t = __int16_t;
-pub type __uint_least16_t = __uint16_t;
-pub type __int_least32_t = __int32_t;
-pub type __uint_least32_t = __uint32_t;
-pub type __int_least64_t = __int64_t;
-pub type __uint_least64_t = __uint64_t;
-pub type __quad_t = ::std::os::raw::c_long;
-pub type __u_quad_t = ::std::os::raw::c_ulong;
-pub type __intmax_t = ::std::os::raw::c_long;
-pub type __uintmax_t = ::std::os::raw::c_ulong;
-pub type __dev_t = ::std::os::raw::c_ulong;
-pub type __uid_t = ::std::os::raw::c_uint;
-pub type __gid_t = ::std::os::raw::c_uint;
-pub type __ino_t = ::std::os::raw::c_ulong;
-pub type __ino64_t = ::std::os::raw::c_ulong;
-pub type __mode_t = ::std::os::raw::c_uint;
-pub type __nlink_t = ::std::os::raw::c_ulong;
-pub type __off_t = ::std::os::raw::c_long;
-pub type __off64_t = ::std::os::raw::c_long;
-pub type __pid_t = ::std::os::raw::c_int;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct __fsid_t {
-    pub __val: [::std::os::raw::c_int; 2usize],
-}
-#[test]
-fn bindgen_test_layout___fsid_t() {
-    assert_eq!(
-        ::std::mem::size_of::<__fsid_t>(),
-        8usize,
-        concat!("Size of: ", stringify!(__fsid_t))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<__fsid_t>(),
-        4usize,
-        concat!("Alignment of ", stringify!(__fsid_t))
-    );
-    fn test_field___val() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<__fsid_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).__val) as usize - ptr as usize
-            },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(__fsid_t),
-                "::",
-                stringify!(__val)
-            )
-        );
-    }
-    test_field___val();
-}
-pub type __clock_t = ::std::os::raw::c_long;
-pub type __rlim_t = ::std::os::raw::c_ulong;
-pub type __rlim64_t = ::std::os::raw::c_ulong;
-pub type __id_t = ::std::os::raw::c_uint;
-pub type __time_t = ::std::os::raw::c_long;
-pub type __useconds_t = ::std::os::raw::c_uint;
-pub type __suseconds_t = ::std::os::raw::c_long;
-pub type __suseconds64_t = ::std::os::raw::c_long;
-pub type __daddr_t = ::std::os::raw::c_int;
-pub type __key_t = ::std::os::raw::c_int;
-pub type __clockid_t = ::std::os::raw::c_int;
-pub type __timer_t = *mut ::std::os::raw::c_void;
-pub type __blksize_t = ::std::os::raw::c_long;
-pub type __blkcnt_t = ::std::os::raw::c_long;
-pub type __blkcnt64_t = ::std::os::raw::c_long;
-pub type __fsblkcnt_t = ::std::os::raw::c_ulong;
-pub type __fsblkcnt64_t = ::std::os::raw::c_ulong;
-pub type __fsfilcnt_t = ::std::os::raw::c_ulong;
-pub type __fsfilcnt64_t = ::std::os::raw::c_ulong;
-pub type __fsword_t = ::std::os::raw::c_long;
-pub type __ssize_t = ::std::os::raw::c_long;
-pub type __syscall_slong_t = ::std::os::raw::c_long;
-pub type __syscall_ulong_t = ::std::os::raw::c_ulong;
-pub type __loff_t = __off64_t;
-pub type __caddr_t = *mut ::std::os::raw::c_char;
-pub type __intptr_t = ::std::os::raw::c_long;
-pub type __socklen_t = ::std::os::raw::c_uint;
-pub type __sig_atomic_t = ::std::os::raw::c_int;
 pub type u_char = __u_char;
 pub type u_short = __u_short;
 pub type u_int = __u_int;
@@ -3291,397 +3603,6 @@ extern "C" {
     pub fn getloadavg(__loadavg: *mut f64, __nelem: ::std::os::raw::c_int)
         -> ::std::os::raw::c_int;
 }
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct string_t {
-    pub str_: *mut ::std::os::raw::c_char,
-    pub used: size_t,
-}
-#[test]
-fn bindgen_test_layout_string_t() {
-    assert_eq!(
-        ::std::mem::size_of::<string_t>(),
-        16usize,
-        concat!("Size of: ", stringify!(string_t))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<string_t>(),
-        8usize,
-        concat!("Alignment of ", stringify!(string_t))
-    );
-    fn test_field_str() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<string_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).str_) as usize - ptr as usize
-            },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(string_t),
-                "::",
-                stringify!(str_)
-            )
-        );
-    }
-    test_field_str();
-    fn test_field_used() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<string_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).used) as usize - ptr as usize
-            },
-            8usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(string_t),
-                "::",
-                stringify!(used)
-            )
-        );
-    }
-    test_field_used();
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct string_alloc_t {
-    pub max_length: size_t,
-    pub nstrings: size_t,
-    pub max_strings: size_t,
-    pub strings: *mut string_t,
-}
-#[test]
-fn bindgen_test_layout_string_alloc_t() {
-    assert_eq!(
-        ::std::mem::size_of::<string_alloc_t>(),
-        32usize,
-        concat!("Size of: ", stringify!(string_alloc_t))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<string_alloc_t>(),
-        8usize,
-        concat!("Alignment of ", stringify!(string_alloc_t))
-    );
-    fn test_field_max_length() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<string_alloc_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).max_length) as usize - ptr as usize
-            },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(string_alloc_t),
-                "::",
-                stringify!(max_length)
-            )
-        );
-    }
-    test_field_max_length();
-    fn test_field_nstrings() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<string_alloc_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).nstrings) as usize - ptr as usize
-            },
-            8usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(string_alloc_t),
-                "::",
-                stringify!(nstrings)
-            )
-        );
-    }
-    test_field_nstrings();
-    fn test_field_max_strings() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<string_alloc_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).max_strings) as usize - ptr as usize
-            },
-            16usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(string_alloc_t),
-                "::",
-                stringify!(max_strings)
-            )
-        );
-    }
-    test_field_max_strings();
-    fn test_field_strings() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<string_alloc_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).strings) as usize - ptr as usize
-            },
-            24usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(string_alloc_t),
-                "::",
-                stringify!(strings)
-            )
-        );
-    }
-    test_field_strings();
-}
-extern "C" {
-    pub fn string_pool_create(max_length: size_t) -> *mut string_alloc_t;
-}
-extern "C" {
-    pub fn string_pool_destroy(a_str: *mut string_alloc_t);
-}
-extern "C" {
-    pub fn string_alloc(a_str: *mut string_alloc_t, length: size_t) -> *mut ::std::os::raw::c_char;
-}
-extern "C" {
-    pub fn string_dup(
-        a_str: *mut string_alloc_t,
-        instr: *const ::std::os::raw::c_char,
-    ) -> *mut ::std::os::raw::c_char;
-}
-extern "C" {
-    pub fn string_ndup(
-        a_str: *mut string_alloc_t,
-        instr: *const ::std::os::raw::c_char,
-        len: size_t,
-    ) -> *mut ::std::os::raw::c_char;
-}
-#[repr(C)]
-#[repr(align(16))]
-#[derive(Debug, Copy, Clone)]
-pub struct max_align_t {
-    pub __clang_max_align_nonce1: ::std::os::raw::c_longlong,
-    pub __bindgen_padding_0: u64,
-    pub __clang_max_align_nonce2: u128,
-}
-#[test]
-fn bindgen_test_layout_max_align_t() {
-    assert_eq!(
-        ::std::mem::size_of::<max_align_t>(),
-        32usize,
-        concat!("Size of: ", stringify!(max_align_t))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<max_align_t>(),
-        16usize,
-        concat!("Alignment of ", stringify!(max_align_t))
-    );
-    fn test_field___clang_max_align_nonce1() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<max_align_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).__clang_max_align_nonce1) as usize - ptr as usize
-            },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(max_align_t),
-                "::",
-                stringify!(__clang_max_align_nonce1)
-            )
-        );
-    }
-    test_field___clang_max_align_nonce1();
-    fn test_field___clang_max_align_nonce2() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<max_align_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).__clang_max_align_nonce2) as usize - ptr as usize
-            },
-            16usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(max_align_t),
-                "::",
-                stringify!(__clang_max_align_nonce2)
-            )
-        );
-    }
-    test_field___clang_max_align_nonce2();
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct pool_t {
-    pub pool: *mut ::std::os::raw::c_void,
-    pub used: size_t,
-}
-#[test]
-fn bindgen_test_layout_pool_t() {
-    assert_eq!(
-        ::std::mem::size_of::<pool_t>(),
-        16usize,
-        concat!("Size of: ", stringify!(pool_t))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<pool_t>(),
-        8usize,
-        concat!("Alignment of ", stringify!(pool_t))
-    );
-    fn test_field_pool() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<pool_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).pool) as usize - ptr as usize
-            },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(pool_t),
-                "::",
-                stringify!(pool)
-            )
-        );
-    }
-    test_field_pool();
-    fn test_field_used() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<pool_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).used) as usize - ptr as usize
-            },
-            8usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(pool_t),
-                "::",
-                stringify!(used)
-            )
-        );
-    }
-    test_field_used();
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct pool_alloc_t {
-    pub dsize: size_t,
-    pub psize: size_t,
-    pub npools: size_t,
-    pub pools: *mut pool_t,
-    pub free: *mut ::std::os::raw::c_void,
-}
-#[test]
-fn bindgen_test_layout_pool_alloc_t() {
-    assert_eq!(
-        ::std::mem::size_of::<pool_alloc_t>(),
-        40usize,
-        concat!("Size of: ", stringify!(pool_alloc_t))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<pool_alloc_t>(),
-        8usize,
-        concat!("Alignment of ", stringify!(pool_alloc_t))
-    );
-    fn test_field_dsize() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<pool_alloc_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).dsize) as usize - ptr as usize
-            },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(pool_alloc_t),
-                "::",
-                stringify!(dsize)
-            )
-        );
-    }
-    test_field_dsize();
-    fn test_field_psize() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<pool_alloc_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).psize) as usize - ptr as usize
-            },
-            8usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(pool_alloc_t),
-                "::",
-                stringify!(psize)
-            )
-        );
-    }
-    test_field_psize();
-    fn test_field_npools() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<pool_alloc_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).npools) as usize - ptr as usize
-            },
-            16usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(pool_alloc_t),
-                "::",
-                stringify!(npools)
-            )
-        );
-    }
-    test_field_npools();
-    fn test_field_pools() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<pool_alloc_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).pools) as usize - ptr as usize
-            },
-            24usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(pool_alloc_t),
-                "::",
-                stringify!(pools)
-            )
-        );
-    }
-    test_field_pools();
-    fn test_field_free() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<pool_alloc_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).free) as usize - ptr as usize
-            },
-            32usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(pool_alloc_t),
-                "::",
-                stringify!(free)
-            )
-        );
-    }
-    test_field_free();
-}
-extern "C" {
-    pub fn pool_create(dsize: size_t) -> *mut pool_alloc_t;
-}
-extern "C" {
-    pub fn pool_destroy(p: *mut pool_alloc_t);
-}
-extern "C" {
-    pub fn pool_alloc(p: *mut pool_alloc_t) -> *mut ::std::os::raw::c_void;
-}
-extern "C" {
-    pub fn pool_free(p: *mut pool_alloc_t, ptr: *mut ::std::os::raw::c_void);
-}
 extern "C" {
     pub fn memcpy(
         __dest: *mut ::std::os::raw::c_void,
@@ -4100,24 +4021,8 @@ extern "C" {
         __n: ::std::os::raw::c_ulong,
     ) -> *mut ::std::os::raw::c_char;
 }
-pub type int_least8_t = __int_least8_t;
-pub type int_least16_t = __int_least16_t;
-pub type int_least32_t = __int_least32_t;
-pub type int_least64_t = __int_least64_t;
-pub type uint_least8_t = __uint_least8_t;
-pub type uint_least16_t = __uint_least16_t;
-pub type uint_least32_t = __uint_least32_t;
-pub type uint_least64_t = __uint_least64_t;
-pub type int_fast8_t = ::std::os::raw::c_schar;
-pub type int_fast16_t = ::std::os::raw::c_long;
-pub type int_fast32_t = ::std::os::raw::c_long;
-pub type int_fast64_t = ::std::os::raw::c_long;
-pub type uint_fast8_t = ::std::os::raw::c_uchar;
-pub type uint_fast16_t = ::std::os::raw::c_ulong;
-pub type uint_fast32_t = ::std::os::raw::c_ulong;
-pub type uint_fast64_t = ::std::os::raw::c_ulong;
-pub type intmax_t = __intmax_t;
-pub type uintmax_t = __uintmax_t;
+pub type va_list = __builtin_va_list;
+pub type __gnuc_va_list = __builtin_va_list;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct __mbstate_t {
@@ -5577,152 +5482,6 @@ extern "C" {
         fgets_fn: kgets_func2,
         fp: *mut ::std::os::raw::c_void,
     ) -> ::std::os::raw::c_int;
-}
-pub type khint32_t = ::std::os::raw::c_uint;
-pub type khint64_t = ::std::os::raw::c_ulong;
-pub type khint_t = khint32_t;
-pub type khiter_t = khint_t;
-pub const __ac_HASH_UPPER: f64 = 0.77;
-pub type kh_cstr_t = *const ::std::os::raw::c_char;
-pub type __gwchar_t = ::std::os::raw::c_int;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct imaxdiv_t {
-    pub quot: ::std::os::raw::c_long,
-    pub rem: ::std::os::raw::c_long,
-}
-#[test]
-fn bindgen_test_layout_imaxdiv_t() {
-    assert_eq!(
-        ::std::mem::size_of::<imaxdiv_t>(),
-        16usize,
-        concat!("Size of: ", stringify!(imaxdiv_t))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<imaxdiv_t>(),
-        8usize,
-        concat!("Alignment of ", stringify!(imaxdiv_t))
-    );
-    fn test_field_quot() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<imaxdiv_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).quot) as usize - ptr as usize
-            },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(imaxdiv_t),
-                "::",
-                stringify!(quot)
-            )
-        );
-    }
-    test_field_quot();
-    fn test_field_rem() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<imaxdiv_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).rem) as usize - ptr as usize
-            },
-            8usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(imaxdiv_t),
-                "::",
-                stringify!(rem)
-            )
-        );
-    }
-    test_field_rem();
-}
-extern "C" {
-    pub fn imaxabs(__n: intmax_t) -> intmax_t;
-}
-extern "C" {
-    pub fn imaxdiv(__numer: intmax_t, __denom: intmax_t) -> imaxdiv_t;
-}
-extern "C" {
-    pub fn strtoimax(
-        __nptr: *const ::std::os::raw::c_char,
-        __endptr: *mut *mut ::std::os::raw::c_char,
-        __base: ::std::os::raw::c_int,
-    ) -> intmax_t;
-}
-extern "C" {
-    pub fn strtoumax(
-        __nptr: *const ::std::os::raw::c_char,
-        __endptr: *mut *mut ::std::os::raw::c_char,
-        __base: ::std::os::raw::c_int,
-    ) -> uintmax_t;
-}
-extern "C" {
-    pub fn wcstoimax(
-        __nptr: *const __gwchar_t,
-        __endptr: *mut *mut __gwchar_t,
-        __base: ::std::os::raw::c_int,
-    ) -> intmax_t;
-}
-extern "C" {
-    pub fn wcstoumax(
-        __nptr: *const __gwchar_t,
-        __endptr: *mut *mut __gwchar_t,
-        __base: ::std::os::raw::c_int,
-    ) -> uintmax_t;
-}
-#[doc = "< All logging disabled."]
-pub const htsLogLevel_HTS_LOG_OFF: htsLogLevel = 0;
-#[doc = "< Logging of errors only."]
-pub const htsLogLevel_HTS_LOG_ERROR: htsLogLevel = 1;
-#[doc = "< Logging of errors and warnings."]
-pub const htsLogLevel_HTS_LOG_WARNING: htsLogLevel = 3;
-#[doc = "< Logging of errors, warnings, and normal but significant events."]
-pub const htsLogLevel_HTS_LOG_INFO: htsLogLevel = 4;
-#[doc = "< Logging of all except the most detailed debug events."]
-pub const htsLogLevel_HTS_LOG_DEBUG: htsLogLevel = 5;
-#[doc = "< All logging enabled."]
-pub const htsLogLevel_HTS_LOG_TRACE: htsLogLevel = 6;
-#[doc = " Log levels."]
-pub type htsLogLevel = ::std::os::raw::c_uint;
-extern "C" {
-    #[doc = " Sets the selected log level."]
-    pub fn hts_set_log_level(level: htsLogLevel);
-}
-extern "C" {
-    #[doc = " Gets the selected log level."]
-    pub fn hts_get_log_level() -> htsLogLevel;
-}
-extern "C" {
-    #[doc = " Selected log level."]
-    #[doc = "*!"]
-    #[doc = "* One of the HTS_LOG_* values. The default is HTS_LOG_WARNING."]
-    #[doc = "* \\note Avoid direct use of this variable. Use hts_set_log_level and hts_get_log_level instead."]
-    #[doc = "*/"]
-    pub static mut hts_verbose: ::std::os::raw::c_int;
-}
-extern "C" {
-    #[doc = " Logs an event."]
-    #[doc = " \\param severity      Severity of the event:"]
-    #[doc = "                      - HTS_LOG_ERROR means that something went wrong so that a task could not be completed."]
-    #[doc = "                      - HTS_LOG_WARNING means that something unexpected happened, but that execution can continue, perhaps in a degraded mode."]
-    #[doc = "                      - HTS_LOG_INFO means that something normal but significant happened."]
-    #[doc = "                      - HTS_LOG_DEBUG means that something normal and insignificant happened."]
-    #[doc = "                      - HTS_LOG_TRACE means that something happened that might be of interest when troubleshooting."]
-    #[doc = " \\param context       Context where the event occurred. Typically set to \"__func__\"."]
-    #[doc = " \\param format        Format string with placeholders, like printf."]
-    pub fn hts_log(
-        severity: htsLogLevel,
-        context: *const ::std::os::raw::c_char,
-        format: *const ::std::os::raw::c_char,
-        ...
-    );
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct BGZF {
-    _unused: [u8; 0],
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -8623,6 +8382,2601 @@ extern "C" {
 pub type uint16_u = u16;
 pub type uint32_u = u32;
 pub type uint64_u = u64;
+extern "C" {
+    pub fn __assert_fail(
+        __assertion: *const ::std::os::raw::c_char,
+        __file: *const ::std::os::raw::c_char,
+        __line: ::std::os::raw::c_uint,
+        __function: *const ::std::os::raw::c_char,
+    );
+}
+extern "C" {
+    pub fn __assert_perror_fail(
+        __errnum: ::std::os::raw::c_int,
+        __file: *const ::std::os::raw::c_char,
+        __line: ::std::os::raw::c_uint,
+        __function: *const ::std::os::raw::c_char,
+    );
+}
+extern "C" {
+    pub fn __assert(
+        __assertion: *const ::std::os::raw::c_char,
+        __file: *const ::std::os::raw::c_char,
+        __line: ::std::os::raw::c_int,
+    );
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct bcf_hrec_t {
+    pub type_: ::std::os::raw::c_int,
+    pub key: *mut ::std::os::raw::c_char,
+    pub value: *mut ::std::os::raw::c_char,
+    pub nkeys: ::std::os::raw::c_int,
+    pub keys: *mut *mut ::std::os::raw::c_char,
+    pub vals: *mut *mut ::std::os::raw::c_char,
+}
+#[test]
+fn bindgen_test_layout_bcf_hrec_t() {
+    assert_eq!(
+        ::std::mem::size_of::<bcf_hrec_t>(),
+        48usize,
+        concat!("Size of: ", stringify!(bcf_hrec_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<bcf_hrec_t>(),
+        8usize,
+        concat!("Alignment of ", stringify!(bcf_hrec_t))
+    );
+    fn test_field_type() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_hrec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).type_) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_hrec_t),
+                "::",
+                stringify!(type_)
+            )
+        );
+    }
+    test_field_type();
+    fn test_field_key() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_hrec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).key) as usize - ptr as usize
+            },
+            8usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_hrec_t),
+                "::",
+                stringify!(key)
+            )
+        );
+    }
+    test_field_key();
+    fn test_field_value() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_hrec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).value) as usize - ptr as usize
+            },
+            16usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_hrec_t),
+                "::",
+                stringify!(value)
+            )
+        );
+    }
+    test_field_value();
+    fn test_field_nkeys() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_hrec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).nkeys) as usize - ptr as usize
+            },
+            24usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_hrec_t),
+                "::",
+                stringify!(nkeys)
+            )
+        );
+    }
+    test_field_nkeys();
+    fn test_field_keys() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_hrec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).keys) as usize - ptr as usize
+            },
+            32usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_hrec_t),
+                "::",
+                stringify!(keys)
+            )
+        );
+    }
+    test_field_keys();
+    fn test_field_vals() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_hrec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).vals) as usize - ptr as usize
+            },
+            40usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_hrec_t),
+                "::",
+                stringify!(vals)
+            )
+        );
+    }
+    test_field_vals();
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct bcf_idinfo_t {
+    pub info: [u64; 3usize],
+    pub hrec: [*mut bcf_hrec_t; 3usize],
+    pub id: ::std::os::raw::c_int,
+}
+#[test]
+fn bindgen_test_layout_bcf_idinfo_t() {
+    assert_eq!(
+        ::std::mem::size_of::<bcf_idinfo_t>(),
+        56usize,
+        concat!("Size of: ", stringify!(bcf_idinfo_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<bcf_idinfo_t>(),
+        8usize,
+        concat!("Alignment of ", stringify!(bcf_idinfo_t))
+    );
+    fn test_field_info() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_idinfo_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).info) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_idinfo_t),
+                "::",
+                stringify!(info)
+            )
+        );
+    }
+    test_field_info();
+    fn test_field_hrec() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_idinfo_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).hrec) as usize - ptr as usize
+            },
+            24usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_idinfo_t),
+                "::",
+                stringify!(hrec)
+            )
+        );
+    }
+    test_field_hrec();
+    fn test_field_id() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_idinfo_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).id) as usize - ptr as usize
+            },
+            48usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_idinfo_t),
+                "::",
+                stringify!(id)
+            )
+        );
+    }
+    test_field_id();
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct bcf_idpair_t {
+    pub key: *const ::std::os::raw::c_char,
+    pub val: *const bcf_idinfo_t,
+}
+#[test]
+fn bindgen_test_layout_bcf_idpair_t() {
+    assert_eq!(
+        ::std::mem::size_of::<bcf_idpair_t>(),
+        16usize,
+        concat!("Size of: ", stringify!(bcf_idpair_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<bcf_idpair_t>(),
+        8usize,
+        concat!("Alignment of ", stringify!(bcf_idpair_t))
+    );
+    fn test_field_key() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_idpair_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).key) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_idpair_t),
+                "::",
+                stringify!(key)
+            )
+        );
+    }
+    test_field_key();
+    fn test_field_val() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_idpair_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).val) as usize - ptr as usize
+            },
+            8usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_idpair_t),
+                "::",
+                stringify!(val)
+            )
+        );
+    }
+    test_field_val();
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct bcf_hdr_t {
+    pub n: [i32; 3usize],
+    pub id: [*mut bcf_idpair_t; 3usize],
+    pub dict: [*mut ::std::os::raw::c_void; 3usize],
+    pub samples: *mut *mut ::std::os::raw::c_char,
+    pub hrec: *mut *mut bcf_hrec_t,
+    pub nhrec: ::std::os::raw::c_int,
+    pub dirty: ::std::os::raw::c_int,
+    pub ntransl: ::std::os::raw::c_int,
+    pub transl: [*mut ::std::os::raw::c_int; 2usize],
+    pub nsamples_ori: ::std::os::raw::c_int,
+    pub keep_samples: *mut u8,
+    pub mem: kstring_t,
+    pub m: [i32; 3usize],
+}
+#[test]
+fn bindgen_test_layout_bcf_hdr_t() {
+    assert_eq!(
+        ::std::mem::size_of::<bcf_hdr_t>(),
+        168usize,
+        concat!("Size of: ", stringify!(bcf_hdr_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<bcf_hdr_t>(),
+        8usize,
+        concat!("Alignment of ", stringify!(bcf_hdr_t))
+    );
+    fn test_field_n() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_hdr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).n) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_hdr_t),
+                "::",
+                stringify!(n)
+            )
+        );
+    }
+    test_field_n();
+    fn test_field_id() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_hdr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).id) as usize - ptr as usize
+            },
+            16usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_hdr_t),
+                "::",
+                stringify!(id)
+            )
+        );
+    }
+    test_field_id();
+    fn test_field_dict() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_hdr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).dict) as usize - ptr as usize
+            },
+            40usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_hdr_t),
+                "::",
+                stringify!(dict)
+            )
+        );
+    }
+    test_field_dict();
+    fn test_field_samples() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_hdr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).samples) as usize - ptr as usize
+            },
+            64usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_hdr_t),
+                "::",
+                stringify!(samples)
+            )
+        );
+    }
+    test_field_samples();
+    fn test_field_hrec() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_hdr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).hrec) as usize - ptr as usize
+            },
+            72usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_hdr_t),
+                "::",
+                stringify!(hrec)
+            )
+        );
+    }
+    test_field_hrec();
+    fn test_field_nhrec() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_hdr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).nhrec) as usize - ptr as usize
+            },
+            80usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_hdr_t),
+                "::",
+                stringify!(nhrec)
+            )
+        );
+    }
+    test_field_nhrec();
+    fn test_field_dirty() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_hdr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).dirty) as usize - ptr as usize
+            },
+            84usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_hdr_t),
+                "::",
+                stringify!(dirty)
+            )
+        );
+    }
+    test_field_dirty();
+    fn test_field_ntransl() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_hdr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).ntransl) as usize - ptr as usize
+            },
+            88usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_hdr_t),
+                "::",
+                stringify!(ntransl)
+            )
+        );
+    }
+    test_field_ntransl();
+    fn test_field_transl() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_hdr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).transl) as usize - ptr as usize
+            },
+            96usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_hdr_t),
+                "::",
+                stringify!(transl)
+            )
+        );
+    }
+    test_field_transl();
+    fn test_field_nsamples_ori() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_hdr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).nsamples_ori) as usize - ptr as usize
+            },
+            112usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_hdr_t),
+                "::",
+                stringify!(nsamples_ori)
+            )
+        );
+    }
+    test_field_nsamples_ori();
+    fn test_field_keep_samples() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_hdr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).keep_samples) as usize - ptr as usize
+            },
+            120usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_hdr_t),
+                "::",
+                stringify!(keep_samples)
+            )
+        );
+    }
+    test_field_keep_samples();
+    fn test_field_mem() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_hdr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).mem) as usize - ptr as usize
+            },
+            128usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_hdr_t),
+                "::",
+                stringify!(mem)
+            )
+        );
+    }
+    test_field_mem();
+    fn test_field_m() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_hdr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).m) as usize - ptr as usize
+            },
+            152usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_hdr_t),
+                "::",
+                stringify!(m)
+            )
+        );
+    }
+    test_field_m();
+}
+extern "C" {
+    pub static mut bcf_type_shift: [u8; 0usize];
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct bcf_variant_t {
+    pub type_: ::std::os::raw::c_int,
+    pub n: ::std::os::raw::c_int,
+}
+#[test]
+fn bindgen_test_layout_bcf_variant_t() {
+    assert_eq!(
+        ::std::mem::size_of::<bcf_variant_t>(),
+        8usize,
+        concat!("Size of: ", stringify!(bcf_variant_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<bcf_variant_t>(),
+        4usize,
+        concat!("Alignment of ", stringify!(bcf_variant_t))
+    );
+    fn test_field_type() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_variant_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).type_) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_variant_t),
+                "::",
+                stringify!(type_)
+            )
+        );
+    }
+    test_field_type();
+    fn test_field_n() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_variant_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).n) as usize - ptr as usize
+            },
+            4usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_variant_t),
+                "::",
+                stringify!(n)
+            )
+        );
+    }
+    test_field_n();
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct bcf_fmt_t {
+    pub id: ::std::os::raw::c_int,
+    pub n: ::std::os::raw::c_int,
+    pub size: ::std::os::raw::c_int,
+    pub type_: ::std::os::raw::c_int,
+    pub p: *mut u8,
+    pub p_len: u32,
+    pub _bitfield_align_1: [u32; 0],
+    pub _bitfield_1: __BindgenBitfieldUnit<[u8; 4usize]>,
+}
+#[test]
+fn bindgen_test_layout_bcf_fmt_t() {
+    assert_eq!(
+        ::std::mem::size_of::<bcf_fmt_t>(),
+        32usize,
+        concat!("Size of: ", stringify!(bcf_fmt_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<bcf_fmt_t>(),
+        8usize,
+        concat!("Alignment of ", stringify!(bcf_fmt_t))
+    );
+    fn test_field_id() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_fmt_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).id) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_fmt_t),
+                "::",
+                stringify!(id)
+            )
+        );
+    }
+    test_field_id();
+    fn test_field_n() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_fmt_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).n) as usize - ptr as usize
+            },
+            4usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_fmt_t),
+                "::",
+                stringify!(n)
+            )
+        );
+    }
+    test_field_n();
+    fn test_field_size() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_fmt_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).size) as usize - ptr as usize
+            },
+            8usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_fmt_t),
+                "::",
+                stringify!(size)
+            )
+        );
+    }
+    test_field_size();
+    fn test_field_type() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_fmt_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).type_) as usize - ptr as usize
+            },
+            12usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_fmt_t),
+                "::",
+                stringify!(type_)
+            )
+        );
+    }
+    test_field_type();
+    fn test_field_p() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_fmt_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).p) as usize - ptr as usize
+            },
+            16usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_fmt_t),
+                "::",
+                stringify!(p)
+            )
+        );
+    }
+    test_field_p();
+    fn test_field_p_len() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_fmt_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).p_len) as usize - ptr as usize
+            },
+            24usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_fmt_t),
+                "::",
+                stringify!(p_len)
+            )
+        );
+    }
+    test_field_p_len();
+}
+impl bcf_fmt_t {
+    #[inline]
+    pub fn p_off(&self) -> u32 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(0usize, 31u8) as u32) }
+    }
+    #[inline]
+    pub fn set_p_off(&mut self, val: u32) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(0usize, 31u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn p_free(&self) -> u32 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(31usize, 1u8) as u32) }
+    }
+    #[inline]
+    pub fn set_p_free(&mut self, val: u32) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(31usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn new_bitfield_1(p_off: u32, p_free: u32) -> __BindgenBitfieldUnit<[u8; 4usize]> {
+        let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 4usize]> = Default::default();
+        __bindgen_bitfield_unit.set(0usize, 31u8, {
+            let p_off: u32 = unsafe { ::std::mem::transmute(p_off) };
+            p_off as u64
+        });
+        __bindgen_bitfield_unit.set(31usize, 1u8, {
+            let p_free: u32 = unsafe { ::std::mem::transmute(p_free) };
+            p_free as u64
+        });
+        __bindgen_bitfield_unit
+    }
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct bcf_info_t {
+    pub key: ::std::os::raw::c_int,
+    pub type_: ::std::os::raw::c_int,
+    pub v1: bcf_info_t__bindgen_ty_1,
+    pub vptr: *mut u8,
+    pub vptr_len: u32,
+    pub _bitfield_align_1: [u32; 0],
+    pub _bitfield_1: __BindgenBitfieldUnit<[u8; 4usize]>,
+    pub len: ::std::os::raw::c_int,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union bcf_info_t__bindgen_ty_1 {
+    pub i: i64,
+    pub f: f32,
+}
+#[test]
+fn bindgen_test_layout_bcf_info_t__bindgen_ty_1() {
+    assert_eq!(
+        ::std::mem::size_of::<bcf_info_t__bindgen_ty_1>(),
+        8usize,
+        concat!("Size of: ", stringify!(bcf_info_t__bindgen_ty_1))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<bcf_info_t__bindgen_ty_1>(),
+        8usize,
+        concat!("Alignment of ", stringify!(bcf_info_t__bindgen_ty_1))
+    );
+    fn test_field_i() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_info_t__bindgen_ty_1>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).i) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_info_t__bindgen_ty_1),
+                "::",
+                stringify!(i)
+            )
+        );
+    }
+    test_field_i();
+    fn test_field_f() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_info_t__bindgen_ty_1>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).f) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_info_t__bindgen_ty_1),
+                "::",
+                stringify!(f)
+            )
+        );
+    }
+    test_field_f();
+}
+#[test]
+fn bindgen_test_layout_bcf_info_t() {
+    assert_eq!(
+        ::std::mem::size_of::<bcf_info_t>(),
+        40usize,
+        concat!("Size of: ", stringify!(bcf_info_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<bcf_info_t>(),
+        8usize,
+        concat!("Alignment of ", stringify!(bcf_info_t))
+    );
+    fn test_field_key() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_info_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).key) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_info_t),
+                "::",
+                stringify!(key)
+            )
+        );
+    }
+    test_field_key();
+    fn test_field_type() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_info_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).type_) as usize - ptr as usize
+            },
+            4usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_info_t),
+                "::",
+                stringify!(type_)
+            )
+        );
+    }
+    test_field_type();
+    fn test_field_v1() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_info_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).v1) as usize - ptr as usize
+            },
+            8usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_info_t),
+                "::",
+                stringify!(v1)
+            )
+        );
+    }
+    test_field_v1();
+    fn test_field_vptr() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_info_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).vptr) as usize - ptr as usize
+            },
+            16usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_info_t),
+                "::",
+                stringify!(vptr)
+            )
+        );
+    }
+    test_field_vptr();
+    fn test_field_vptr_len() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_info_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).vptr_len) as usize - ptr as usize
+            },
+            24usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_info_t),
+                "::",
+                stringify!(vptr_len)
+            )
+        );
+    }
+    test_field_vptr_len();
+    fn test_field_len() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_info_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).len) as usize - ptr as usize
+            },
+            32usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_info_t),
+                "::",
+                stringify!(len)
+            )
+        );
+    }
+    test_field_len();
+}
+impl bcf_info_t {
+    #[inline]
+    pub fn vptr_off(&self) -> u32 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(0usize, 31u8) as u32) }
+    }
+    #[inline]
+    pub fn set_vptr_off(&mut self, val: u32) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(0usize, 31u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn vptr_free(&self) -> u32 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(31usize, 1u8) as u32) }
+    }
+    #[inline]
+    pub fn set_vptr_free(&mut self, val: u32) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(31usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn new_bitfield_1(vptr_off: u32, vptr_free: u32) -> __BindgenBitfieldUnit<[u8; 4usize]> {
+        let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 4usize]> = Default::default();
+        __bindgen_bitfield_unit.set(0usize, 31u8, {
+            let vptr_off: u32 = unsafe { ::std::mem::transmute(vptr_off) };
+            vptr_off as u64
+        });
+        __bindgen_bitfield_unit.set(31usize, 1u8, {
+            let vptr_free: u32 = unsafe { ::std::mem::transmute(vptr_free) };
+            vptr_free as u64
+        });
+        __bindgen_bitfield_unit
+    }
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct bcf_dec_t {
+    pub m_fmt: ::std::os::raw::c_int,
+    pub m_info: ::std::os::raw::c_int,
+    pub m_id: ::std::os::raw::c_int,
+    pub m_als: ::std::os::raw::c_int,
+    pub m_allele: ::std::os::raw::c_int,
+    pub m_flt: ::std::os::raw::c_int,
+    pub n_flt: ::std::os::raw::c_int,
+    pub flt: *mut ::std::os::raw::c_int,
+    pub id: *mut ::std::os::raw::c_char,
+    pub als: *mut ::std::os::raw::c_char,
+    pub allele: *mut *mut ::std::os::raw::c_char,
+    pub info: *mut bcf_info_t,
+    pub fmt: *mut bcf_fmt_t,
+    pub var: *mut bcf_variant_t,
+    pub n_var: ::std::os::raw::c_int,
+    pub var_type: ::std::os::raw::c_int,
+    pub shared_dirty: ::std::os::raw::c_int,
+    pub indiv_dirty: ::std::os::raw::c_int,
+}
+#[test]
+fn bindgen_test_layout_bcf_dec_t() {
+    assert_eq!(
+        ::std::mem::size_of::<bcf_dec_t>(),
+        104usize,
+        concat!("Size of: ", stringify!(bcf_dec_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<bcf_dec_t>(),
+        8usize,
+        concat!("Alignment of ", stringify!(bcf_dec_t))
+    );
+    fn test_field_m_fmt() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_dec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).m_fmt) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_dec_t),
+                "::",
+                stringify!(m_fmt)
+            )
+        );
+    }
+    test_field_m_fmt();
+    fn test_field_m_info() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_dec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).m_info) as usize - ptr as usize
+            },
+            4usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_dec_t),
+                "::",
+                stringify!(m_info)
+            )
+        );
+    }
+    test_field_m_info();
+    fn test_field_m_id() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_dec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).m_id) as usize - ptr as usize
+            },
+            8usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_dec_t),
+                "::",
+                stringify!(m_id)
+            )
+        );
+    }
+    test_field_m_id();
+    fn test_field_m_als() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_dec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).m_als) as usize - ptr as usize
+            },
+            12usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_dec_t),
+                "::",
+                stringify!(m_als)
+            )
+        );
+    }
+    test_field_m_als();
+    fn test_field_m_allele() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_dec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).m_allele) as usize - ptr as usize
+            },
+            16usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_dec_t),
+                "::",
+                stringify!(m_allele)
+            )
+        );
+    }
+    test_field_m_allele();
+    fn test_field_m_flt() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_dec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).m_flt) as usize - ptr as usize
+            },
+            20usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_dec_t),
+                "::",
+                stringify!(m_flt)
+            )
+        );
+    }
+    test_field_m_flt();
+    fn test_field_n_flt() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_dec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).n_flt) as usize - ptr as usize
+            },
+            24usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_dec_t),
+                "::",
+                stringify!(n_flt)
+            )
+        );
+    }
+    test_field_n_flt();
+    fn test_field_flt() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_dec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).flt) as usize - ptr as usize
+            },
+            32usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_dec_t),
+                "::",
+                stringify!(flt)
+            )
+        );
+    }
+    test_field_flt();
+    fn test_field_id() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_dec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).id) as usize - ptr as usize
+            },
+            40usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_dec_t),
+                "::",
+                stringify!(id)
+            )
+        );
+    }
+    test_field_id();
+    fn test_field_als() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_dec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).als) as usize - ptr as usize
+            },
+            48usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_dec_t),
+                "::",
+                stringify!(als)
+            )
+        );
+    }
+    test_field_als();
+    fn test_field_allele() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_dec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).allele) as usize - ptr as usize
+            },
+            56usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_dec_t),
+                "::",
+                stringify!(allele)
+            )
+        );
+    }
+    test_field_allele();
+    fn test_field_info() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_dec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).info) as usize - ptr as usize
+            },
+            64usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_dec_t),
+                "::",
+                stringify!(info)
+            )
+        );
+    }
+    test_field_info();
+    fn test_field_fmt() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_dec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).fmt) as usize - ptr as usize
+            },
+            72usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_dec_t),
+                "::",
+                stringify!(fmt)
+            )
+        );
+    }
+    test_field_fmt();
+    fn test_field_var() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_dec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).var) as usize - ptr as usize
+            },
+            80usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_dec_t),
+                "::",
+                stringify!(var)
+            )
+        );
+    }
+    test_field_var();
+    fn test_field_n_var() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_dec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).n_var) as usize - ptr as usize
+            },
+            88usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_dec_t),
+                "::",
+                stringify!(n_var)
+            )
+        );
+    }
+    test_field_n_var();
+    fn test_field_var_type() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_dec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).var_type) as usize - ptr as usize
+            },
+            92usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_dec_t),
+                "::",
+                stringify!(var_type)
+            )
+        );
+    }
+    test_field_var_type();
+    fn test_field_shared_dirty() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_dec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).shared_dirty) as usize - ptr as usize
+            },
+            96usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_dec_t),
+                "::",
+                stringify!(shared_dirty)
+            )
+        );
+    }
+    test_field_shared_dirty();
+    fn test_field_indiv_dirty() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_dec_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).indiv_dirty) as usize - ptr as usize
+            },
+            100usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_dec_t),
+                "::",
+                stringify!(indiv_dirty)
+            )
+        );
+    }
+    test_field_indiv_dirty();
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct bcf1_t {
+    pub pos: hts_pos_t,
+    pub rlen: hts_pos_t,
+    pub rid: i32,
+    pub qual: f32,
+    pub _bitfield_align_1: [u32; 0],
+    pub _bitfield_1: __BindgenBitfieldUnit<[u8; 8usize]>,
+    pub shared: kstring_t,
+    pub indiv: kstring_t,
+    pub d: bcf_dec_t,
+    pub max_unpack: ::std::os::raw::c_int,
+    pub unpacked: ::std::os::raw::c_int,
+    pub unpack_size: [::std::os::raw::c_int; 3usize],
+    pub errcode: ::std::os::raw::c_int,
+}
+#[test]
+fn bindgen_test_layout_bcf1_t() {
+    assert_eq!(
+        ::std::mem::size_of::<bcf1_t>(),
+        208usize,
+        concat!("Size of: ", stringify!(bcf1_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<bcf1_t>(),
+        8usize,
+        concat!("Alignment of ", stringify!(bcf1_t))
+    );
+    fn test_field_pos() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf1_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).pos) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf1_t),
+                "::",
+                stringify!(pos)
+            )
+        );
+    }
+    test_field_pos();
+    fn test_field_rlen() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf1_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).rlen) as usize - ptr as usize
+            },
+            8usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf1_t),
+                "::",
+                stringify!(rlen)
+            )
+        );
+    }
+    test_field_rlen();
+    fn test_field_rid() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf1_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).rid) as usize - ptr as usize
+            },
+            16usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf1_t),
+                "::",
+                stringify!(rid)
+            )
+        );
+    }
+    test_field_rid();
+    fn test_field_qual() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf1_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).qual) as usize - ptr as usize
+            },
+            20usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf1_t),
+                "::",
+                stringify!(qual)
+            )
+        );
+    }
+    test_field_qual();
+    fn test_field_shared() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf1_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).shared) as usize - ptr as usize
+            },
+            32usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf1_t),
+                "::",
+                stringify!(shared)
+            )
+        );
+    }
+    test_field_shared();
+    fn test_field_indiv() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf1_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).indiv) as usize - ptr as usize
+            },
+            56usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf1_t),
+                "::",
+                stringify!(indiv)
+            )
+        );
+    }
+    test_field_indiv();
+    fn test_field_d() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf1_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).d) as usize - ptr as usize
+            },
+            80usize,
+            concat!("Offset of field: ", stringify!(bcf1_t), "::", stringify!(d))
+        );
+    }
+    test_field_d();
+    fn test_field_max_unpack() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf1_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).max_unpack) as usize - ptr as usize
+            },
+            184usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf1_t),
+                "::",
+                stringify!(max_unpack)
+            )
+        );
+    }
+    test_field_max_unpack();
+    fn test_field_unpacked() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf1_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).unpacked) as usize - ptr as usize
+            },
+            188usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf1_t),
+                "::",
+                stringify!(unpacked)
+            )
+        );
+    }
+    test_field_unpacked();
+    fn test_field_unpack_size() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf1_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).unpack_size) as usize - ptr as usize
+            },
+            192usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf1_t),
+                "::",
+                stringify!(unpack_size)
+            )
+        );
+    }
+    test_field_unpack_size();
+    fn test_field_errcode() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf1_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).errcode) as usize - ptr as usize
+            },
+            204usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf1_t),
+                "::",
+                stringify!(errcode)
+            )
+        );
+    }
+    test_field_errcode();
+}
+impl bcf1_t {
+    #[inline]
+    pub fn n_info(&self) -> u32 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(0usize, 16u8) as u32) }
+    }
+    #[inline]
+    pub fn set_n_info(&mut self, val: u32) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(0usize, 16u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn n_allele(&self) -> u32 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(16usize, 16u8) as u32) }
+    }
+    #[inline]
+    pub fn set_n_allele(&mut self, val: u32) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(16usize, 16u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn n_fmt(&self) -> u32 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(32usize, 8u8) as u32) }
+    }
+    #[inline]
+    pub fn set_n_fmt(&mut self, val: u32) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(32usize, 8u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn n_sample(&self) -> u32 {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(40usize, 24u8) as u32) }
+    }
+    #[inline]
+    pub fn set_n_sample(&mut self, val: u32) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(40usize, 24u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn new_bitfield_1(
+        n_info: u32,
+        n_allele: u32,
+        n_fmt: u32,
+        n_sample: u32,
+    ) -> __BindgenBitfieldUnit<[u8; 8usize]> {
+        let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 8usize]> = Default::default();
+        __bindgen_bitfield_unit.set(0usize, 16u8, {
+            let n_info: u32 = unsafe { ::std::mem::transmute(n_info) };
+            n_info as u64
+        });
+        __bindgen_bitfield_unit.set(16usize, 16u8, {
+            let n_allele: u32 = unsafe { ::std::mem::transmute(n_allele) };
+            n_allele as u64
+        });
+        __bindgen_bitfield_unit.set(32usize, 8u8, {
+            let n_fmt: u32 = unsafe { ::std::mem::transmute(n_fmt) };
+            n_fmt as u64
+        });
+        __bindgen_bitfield_unit.set(40usize, 24u8, {
+            let n_sample: u32 = unsafe { ::std::mem::transmute(n_sample) };
+            n_sample as u64
+        });
+        __bindgen_bitfield_unit
+    }
+}
+extern "C" {
+    #[doc = "  bcf_hdr_init() - create an empty BCF header."]
+    #[doc = "  @param mode    \"r\" or \"w\""]
+    #[doc = ""]
+    #[doc = "  When opened for writing, the mandatory fileFormat and"]
+    #[doc = "  FILTER=PASS lines are added automatically."]
+    #[doc = ""]
+    #[doc = " The bcf_hdr_t struct returned by a successful call should be freed"]
+    #[doc = " via bcf_hdr_destroy() when it is no longer needed."]
+    pub fn bcf_hdr_init(mode: *const ::std::os::raw::c_char) -> *mut bcf_hdr_t;
+}
+extern "C" {
+    #[doc = " Destroy a BCF header struct"]
+    pub fn bcf_hdr_destroy(h: *mut bcf_hdr_t);
+}
+extern "C" {
+    #[doc = " Allocate and initialize a bcf1_t object."]
+    #[doc = ""]
+    #[doc = " The bcf1_t struct returned by a successful call should be freed"]
+    #[doc = " via bcf_destroy() when it is no longer needed."]
+    pub fn bcf_init() -> *mut bcf1_t;
+}
+extern "C" {
+    #[doc = " Deallocate a bcf1_t object"]
+    pub fn bcf_destroy(v: *mut bcf1_t);
+}
+extern "C" {
+    #[doc = "  Same as bcf_destroy() but frees only the memory allocated by bcf1_t,"]
+    #[doc = "  not the bcf1_t object itself."]
+    pub fn bcf_empty(v: *mut bcf1_t);
+}
+extern "C" {
+    #[doc = "  Make the bcf1_t object ready for next read. Intended mostly for"]
+    #[doc = "  internal use, the user should rarely need to call this function"]
+    #[doc = "  directly."]
+    pub fn bcf_clear(v: *mut bcf1_t);
+}
+#[doc = " @brief File handle returned by hts_open() etc."]
+#[doc = " This structure should be considered opaque by end users. There should be"]
+#[doc = " no need to access most fields directly in user code, and in cases where"]
+#[doc = " it is desirable accessor functions such as hts_get_format() are provided."]
+pub type vcfFile = htsFile;
+extern "C" {
+    #[doc = " Read a VCF or BCF header"]
+    #[doc = "** @param  fp  The file to read the header from"]
+    #[doc = "@return Pointer to a populated header structure on success;"]
+    #[doc = "NULL on failure"]
+    #[doc = ""]
+    #[doc = "The bcf_hdr_t struct returned by a successful call should be freed"]
+    #[doc = "via bcf_hdr_destroy() when it is no longer needed."]
+    #[doc = "*/"]
+    pub fn bcf_hdr_read(fp: *mut htsFile) -> *mut bcf_hdr_t;
+}
+extern "C" {
+    #[doc = "  bcf_hdr_set_samples() - for more efficient VCF parsing when only one/few samples are needed"]
+    #[doc = "  @param samples  samples to include or exclude from file or as a comma-separated string."]
+    #[doc = "              LIST|FILE   .. select samples in list/file"]
+    #[doc = "              ^LIST|FILE  .. exclude samples from list/file"]
+    #[doc = "              -           .. include all samples"]
+    #[doc = "              NULL        .. exclude all samples"]
+    #[doc = "  @param is_file  @p samples is a file (1) or a comma-separated list (0)"]
+    #[doc = ""]
+    #[doc = "  The bottleneck of VCF reading is parsing of genotype fields. If the"]
+    #[doc = "  reader knows in advance that only subset of samples is needed (possibly"]
+    #[doc = "  no samples at all), the performance of bcf_read() can be significantly"]
+    #[doc = "  improved by calling bcf_hdr_set_samples after bcf_hdr_read()."]
+    #[doc = "  The function bcf_read() will subset the VCF/BCF records automatically"]
+    #[doc = "  with the notable exception when reading records via bcf_itr_next()."]
+    #[doc = "  In this case, bcf_subset_format() must be called explicitly, because"]
+    #[doc = "  bcf_readrec() does not see the header."]
+    #[doc = ""]
+    #[doc = "  Returns 0 on success, -1 on error or a positive integer if the list"]
+    #[doc = "  contains samples not present in the VCF header. In such a case, the"]
+    #[doc = "  return value is the index of the offending sample."]
+    pub fn bcf_hdr_set_samples(
+        hdr: *mut bcf_hdr_t,
+        samples: *const ::std::os::raw::c_char,
+        is_file: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bcf_subset_format(hdr: *const bcf_hdr_t, rec: *mut bcf1_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Write a VCF or BCF header"]
+    #[doc = "** @param  fp  Output file"]
+    #[doc = "@param  h   The header to write"]
+    #[doc = "@return 0 on success; -1 on failure"]
+    #[doc = "*/"]
+    pub fn bcf_hdr_write(fp: *mut htsFile, h: *mut bcf_hdr_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Parse VCF line contained in kstring and populate the bcf1_t struct"]
+    #[doc = " The line must not end with \\n or \\r characters."]
+    pub fn vcf_parse(
+        s: *mut kstring_t,
+        h: *const bcf_hdr_t,
+        v: *mut bcf1_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Complete the file opening mode, according to its extension."]
+    #[doc = " @param mode      Preallocated mode string to be completed."]
+    #[doc = " @param fn        File name to be opened."]
+    #[doc = " @param format    Format string (vcf|bcf|vcf.gz)"]
+    #[doc = " @return          0 on success; -1 on failure"]
+    pub fn vcf_open_mode(
+        mode: *mut ::std::os::raw::c_char,
+        fn_: *const ::std::os::raw::c_char,
+        format: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " The opposite of vcf_parse. It should rarely be called directly, see vcf_write"]
+    pub fn vcf_format(
+        h: *const bcf_hdr_t,
+        v: *const bcf1_t,
+        s: *mut kstring_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Read next VCF or BCF record"]
+    #[doc = "** @param fp  The file to read the record from"]
+    #[doc = "@param h   The header for the vcf/bcf file"]
+    #[doc = "@param v   The bcf1_t structure to populate"]
+    #[doc = "@return 0 on success; -1 on end of file; < -1 on critical error"]
+    #[doc = ""]
+    #[doc = "On errors which are not critical for reading, such as missing header"]
+    #[doc = "definitions in vcf files, zero will be returned but v->errcode will have been"]
+    #[doc = "set to one of BCF_ERR* codes and must be checked before calling bcf_write()."]
+    #[doc = "*/"]
+    pub fn bcf_read(fp: *mut htsFile, h: *const bcf_hdr_t, v: *mut bcf1_t)
+        -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bcf_unpack(b: *mut bcf1_t, which: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bcf_dup(src: *mut bcf1_t) -> *mut bcf1_t;
+}
+extern "C" {
+    pub fn bcf_copy(dst: *mut bcf1_t, src: *mut bcf1_t) -> *mut bcf1_t;
+}
+extern "C" {
+    #[doc = " Write one VCF or BCF record. The type is determined at the open() call."]
+    #[doc = "** @param  fp  The file to write to"]
+    #[doc = "@param  h   The header for the vcf/bcf file"]
+    #[doc = "@param  v   The bcf1_t structure to write"]
+    #[doc = "@return 0 on success; -1 on error"]
+    #[doc = "*/"]
+    pub fn bcf_write(fp: *mut htsFile, h: *mut bcf_hdr_t, v: *mut bcf1_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = "  The following functions work only with VCFs and should rarely be called"]
+    #[doc = "  directly. Usually one wants to use their bcf_* alternatives, which work"]
+    #[doc = "  transparently with both VCFs and BCFs."]
+    #[doc = "@return Pointer to a populated header structure on success;"]
+    #[doc = "NULL on failure"]
+    #[doc = ""]
+    #[doc = "Use bcf_hdr_read() instead."]
+    #[doc = ""]
+    #[doc = "The bcf_hdr_t struct returned by a successful call should be freed"]
+    #[doc = "via bcf_hdr_destroy() when it is no longer needed."]
+    pub fn vcf_hdr_read(fp: *mut htsFile) -> *mut bcf_hdr_t;
+}
+extern "C" {
+    #[doc = " Write a VCF format header"]
+    #[doc = "** @param  fp  Output file"]
+    #[doc = "@param  h   The header to write"]
+    #[doc = "@return 0 on success; -1 on failure"]
+    #[doc = ""]
+    #[doc = "Use bcf_hdr_write() instead"]
+    #[doc = "*/"]
+    pub fn vcf_hdr_write(fp: *mut htsFile, h: *const bcf_hdr_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Read a record from a VCF file"]
+    #[doc = "** @param fp  The file to read the record from"]
+    #[doc = "@param h   The header for the vcf file"]
+    #[doc = "@param v   The bcf1_t structure to populate"]
+    #[doc = "@return 0 on success; -1 on end of file; < -1 on error"]
+    #[doc = ""]
+    #[doc = "Use bcf_read() instead"]
+    #[doc = "*/"]
+    pub fn vcf_read(fp: *mut htsFile, h: *const bcf_hdr_t, v: *mut bcf1_t)
+        -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Write a record to a VCF file"]
+    #[doc = "** @param  fp  The file to write to"]
+    #[doc = "@param h   The header for the vcf file"]
+    #[doc = "@param v   The bcf1_t structure to write"]
+    #[doc = "@return 0 on success; -1 on error"]
+    #[doc = ""]
+    #[doc = "Use bcf_write() instead"]
+    #[doc = "*/"]
+    pub fn vcf_write(
+        fp: *mut htsFile,
+        h: *const bcf_hdr_t,
+        v: *mut bcf1_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Helper function for the bcf_itr_next() macro; internal use, ignore it"]
+    pub fn bcf_readrec(
+        fp: *mut BGZF,
+        null: *mut ::std::os::raw::c_void,
+        v: *mut ::std::os::raw::c_void,
+        tid: *mut ::std::os::raw::c_int,
+        beg: *mut hts_pos_t,
+        end: *mut hts_pos_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Write a line to a VCF file"]
+    #[doc = "** @param line   Line to write"]
+    #[doc = "@param fp     File to write it to"]
+    #[doc = "@return 0 on success; -1 on failure"]
+    #[doc = ""]
+    #[doc = "@note No checks are done on the line being added, apart from"]
+    #[doc = "ensuring that it ends with a newline.  This function"]
+    #[doc = "should therefore be used with care."]
+    #[doc = "*/"]
+    pub fn vcf_write_line(fp: *mut htsFile, line: *mut kstring_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Create a new header using the supplied template"]
+    #[doc = ""]
+    #[doc = "  The bcf_hdr_t struct returned by a successful call should be freed"]
+    #[doc = "  via bcf_hdr_destroy() when it is no longer needed."]
+    #[doc = "  @return NULL on failure, header otherwise"]
+    pub fn bcf_hdr_dup(hdr: *const bcf_hdr_t) -> *mut bcf_hdr_t;
+}
+extern "C" {
+    #[doc = "  Copy header lines from src to dst if not already present in dst. See also bcf_translate()."]
+    #[doc = "  Returns 0 on success or sets a bit on error:"]
+    #[doc = "      1 .. conflicting definitions of tag length"]
+    #[doc = "      // todo"]
+    pub fn bcf_hdr_combine(dst: *mut bcf_hdr_t, src: *const bcf_hdr_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = "  bcf_hdr_merge() - copy header lines from src to dst, see also bcf_translate()"]
+    #[doc = "  @param dst: the destination header to be merged into, NULL on the first pass"]
+    #[doc = "  @param src: the source header"]
+    #[doc = "  @return NULL on failure, header otherwise"]
+    #[doc = ""]
+    #[doc = "  Notes:"]
+    #[doc = "      - use as:"]
+    #[doc = "          bcf_hdr_t *dst = NULL;"]
+    #[doc = "          for (i=0; i<nsrc; i++) dst = bcf_hdr_merge(dst,src[i]);"]
+    #[doc = ""]
+    #[doc = "      - bcf_hdr_merge() replaces bcf_hdr_combine() which had a problem when"]
+    #[doc = "      combining multiple BCF headers. The current bcf_hdr_combine()"]
+    #[doc = "      does not have this problem, but became slow when used for many files."]
+    pub fn bcf_hdr_merge(dst: *mut bcf_hdr_t, src: *const bcf_hdr_t) -> *mut bcf_hdr_t;
+}
+extern "C" {
+    #[doc = "  bcf_hdr_add_sample() - add a new sample."]
+    #[doc = "  @param sample:  sample name to be added"]
+    #[doc = ""]
+    #[doc = "  Note:"]
+    #[doc = "      After all samples have been added, the internal header structure must be updated"]
+    #[doc = "      by calling bcf_hdr_sync(). This is normally done automatically by the first bcf_hdr_write()"]
+    #[doc = "      or bcf_write() call. Otherwise, the caller must force the update by calling bcf_hdr_sync()"]
+    #[doc = "      explicitly."]
+    pub fn bcf_hdr_add_sample(
+        hdr: *mut bcf_hdr_t,
+        sample: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Read VCF header from a file and update the header"]
+    pub fn bcf_hdr_set(
+        hdr: *mut bcf_hdr_t,
+        fname: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Appends formatted header text to _str_."]
+    #[doc = "** If _is_bcf_ is zero, `IDX` fields are discarded."]
+    #[doc = "*  @return 0 if successful, or negative if an error occurred"]
+    #[doc = "*  @since 1.4"]
+    #[doc = "*/"]
+    pub fn bcf_hdr_format(
+        hdr: *const bcf_hdr_t,
+        is_bcf: ::std::os::raw::c_int,
+        str_: *mut kstring_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Returns formatted header (newly allocated string) and its length,"]
+    #[doc = "  excluding the terminating \\0. If is_bcf parameter is unset, IDX"]
+    #[doc = "  fields are discarded."]
+    #[doc = "  @deprecated Use bcf_hdr_format() instead as it can handle huge headers."]
+    pub fn bcf_hdr_fmt_text(
+        hdr: *const bcf_hdr_t,
+        is_bcf: ::std::os::raw::c_int,
+        len: *mut ::std::os::raw::c_int,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    #[doc = " Append new VCF header line, returns 0 on success"]
+    pub fn bcf_hdr_append(
+        h: *mut bcf_hdr_t,
+        line: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bcf_hdr_printf(
+        h: *mut bcf_hdr_t,
+        format: *const ::std::os::raw::c_char,
+        ...
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " VCF version, e.g. VCFv4.2"]
+    pub fn bcf_hdr_get_version(hdr: *const bcf_hdr_t) -> *const ::std::os::raw::c_char;
+}
+extern "C" {
+    #[doc = " Set version in bcf header"]
+    #[doc = "**"]
+    #[doc = "@param hdr     BCF header struct"]
+    #[doc = "@param version Version to set, e.g. \"VCFv4.3\""]
+    #[doc = "@return 0 on success; < 0 on error"]
+    #[doc = "*/"]
+    pub fn bcf_hdr_set_version(
+        hdr: *mut bcf_hdr_t,
+        version: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = "  bcf_hdr_remove() - remove VCF header tag"]
+    #[doc = "  @param type:      one of BCF_HL_*"]
+    #[doc = "  @param key:       tag name or NULL to remove all tags of the given type"]
+    pub fn bcf_hdr_remove(
+        h: *mut bcf_hdr_t,
+        type_: ::std::os::raw::c_int,
+        key: *const ::std::os::raw::c_char,
+    );
+}
+extern "C" {
+    #[doc = "  bcf_hdr_subset() - creates a new copy of the header removing unwanted samples"]
+    #[doc = "  @param n:        number of samples to keep"]
+    #[doc = "  @param samples:  names of the samples to keep"]
+    #[doc = "  @param imap:     mapping from index in @samples to the sample index in the original file"]
+    #[doc = "  @return NULL on failure, header otherwise"]
+    #[doc = ""]
+    #[doc = "  Sample names not present in h0 are ignored. The number of unmatched samples can be checked"]
+    #[doc = "  by comparing n and bcf_hdr_nsamples(out_hdr)."]
+    #[doc = "  This function can be used to reorder samples."]
+    #[doc = "  See also bcf_subset() which subsets individual records."]
+    #[doc = "  The bcf_hdr_t struct returned by a successful call should be freed"]
+    #[doc = "  via bcf_hdr_destroy() when it is no longer needed."]
+    pub fn bcf_hdr_subset(
+        h0: *const bcf_hdr_t,
+        n: ::std::os::raw::c_int,
+        samples: *const *mut ::std::os::raw::c_char,
+        imap: *mut ::std::os::raw::c_int,
+    ) -> *mut bcf_hdr_t;
+}
+extern "C" {
+    #[doc = " Creates a list of sequence names. It is up to the caller to free the list (but not the sequence names)"]
+    pub fn bcf_hdr_seqnames(
+        h: *const bcf_hdr_t,
+        nseqs: *mut ::std::os::raw::c_int,
+    ) -> *mut *const ::std::os::raw::c_char;
+}
+extern "C" {
+    #[doc = " The following functions are for internal use and should rarely be called directly"]
+    pub fn bcf_hdr_parse(
+        hdr: *mut bcf_hdr_t,
+        htxt: *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Synchronize internal header structures"]
+    #[doc = "** @param h  Header"]
+    #[doc = "@return 0 on success, -1 on failure"]
+    #[doc = ""]
+    #[doc = "This function updates the id, sample and contig arrays in the"]
+    #[doc = "bcf_hdr_t structure so that they point to the same locations as"]
+    #[doc = "the id, sample and contig dictionaries."]
+    #[doc = "*/"]
+    pub fn bcf_hdr_sync(h: *mut bcf_hdr_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " bcf_hdr_parse_line() - parse a single line of VCF textual header"]
+    #[doc = " @param h     BCF header struct"]
+    #[doc = " @param line  One or more lines of header text"]
+    #[doc = " @param len   Filled out with length data parsed from 'line'."]
+    #[doc = " @return bcf_hrec_t* on success;"]
+    #[doc = "         NULL on error or on end of header text."]
+    #[doc = "         NB: to distinguish error from end-of-header, check *len:"]
+    #[doc = "           *len == 0 indicates @p line did not start with \"##\""]
+    #[doc = "           *len == -1 indicates failure, likely due to out of memory"]
+    #[doc = "           *len > 0 indicates a malformed header line"]
+    #[doc = ""]
+    #[doc = " If *len > 0 on exit, it will contain the full length of the line"]
+    #[doc = " including any trailing newline (this includes cases where NULL was"]
+    #[doc = " returned due to a malformed line).  Callers can use this to skip to"]
+    #[doc = " the next header line."]
+    pub fn bcf_hdr_parse_line(
+        h: *const bcf_hdr_t,
+        line: *const ::std::os::raw::c_char,
+        len: *mut ::std::os::raw::c_int,
+    ) -> *mut bcf_hrec_t;
+}
+extern "C" {
+    #[doc = " Convert a bcf header record to string form"]
+    #[doc = "**"]
+    #[doc = "* @param hrec    Header record"]
+    #[doc = "* @param str     Destination kstring"]
+    #[doc = "* @return 0 on success; < 0 on error"]
+    #[doc = "*/"]
+    pub fn bcf_hrec_format(hrec: *const bcf_hrec_t, str_: *mut kstring_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bcf_hdr_add_hrec(hdr: *mut bcf_hdr_t, hrec: *mut bcf_hrec_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = "  bcf_hdr_get_hrec() - get header line info"]
+    #[doc = "  @param type:  one of the BCF_HL_* types: FLT,INFO,FMT,CTG,STR,GEN"]
+    #[doc = "  @param key:   the header key for generic lines (e.g. \"fileformat\"), any field"]
+    #[doc = "                  for structured lines, typically \"ID\"."]
+    #[doc = "  @param value: the value which pairs with key. Can be be NULL for BCF_HL_GEN"]
+    #[doc = "  @param str_class: the class of BCF_HL_STR line (e.g. \"ALT\" or \"SAMPLE\"), otherwise NULL"]
+    pub fn bcf_hdr_get_hrec(
+        hdr: *const bcf_hdr_t,
+        type_: ::std::os::raw::c_int,
+        key: *const ::std::os::raw::c_char,
+        value: *const ::std::os::raw::c_char,
+        str_class: *const ::std::os::raw::c_char,
+    ) -> *mut bcf_hrec_t;
+}
+extern "C" {
+    #[doc = " Duplicate a header record"]
+    #[doc = "** @param hrec   Header record to copy"]
+    #[doc = "@return A new header record on success; NULL on failure"]
+    #[doc = ""]
+    #[doc = "The bcf_hrec_t struct returned by a successful call should be freed"]
+    #[doc = "via bcf_hrec_destroy() when it is no longer needed."]
+    #[doc = "*/"]
+    pub fn bcf_hrec_dup(hrec: *mut bcf_hrec_t) -> *mut bcf_hrec_t;
+}
+extern "C" {
+    #[doc = " Add a new header record key"]
+    #[doc = "** @param hrec  Header record"]
+    #[doc = "@param str   Key name"]
+    #[doc = "@param len   Length of @p str"]
+    #[doc = "@return 0 on success; -1 on failure"]
+    #[doc = "*/"]
+    pub fn bcf_hrec_add_key(
+        hrec: *mut bcf_hrec_t,
+        str_: *const ::std::os::raw::c_char,
+        len: size_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Set a header record value"]
+    #[doc = "** @param hrec      Header record"]
+    #[doc = "@param i         Index of value"]
+    #[doc = "@param str       Value to set"]
+    #[doc = "@param len       Length of @p str"]
+    #[doc = "@param is_quoted Value should be quoted"]
+    #[doc = "@return 0 on success; -1 on failure"]
+    #[doc = "*/"]
+    pub fn bcf_hrec_set_val(
+        hrec: *mut bcf_hrec_t,
+        i: ::std::os::raw::c_int,
+        str_: *const ::std::os::raw::c_char,
+        len: size_t,
+        is_quoted: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bcf_hrec_find_key(
+        hrec: *mut bcf_hrec_t,
+        key: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Add an IDX header record"]
+    #[doc = "** @param hrec   Header record"]
+    #[doc = "@param idx    IDX value to add"]
+    #[doc = "@return 0 on success; -1 on failure"]
+    #[doc = "*/"]
+    pub fn hrec_add_idx(hrec: *mut bcf_hrec_t, idx: ::std::os::raw::c_int)
+        -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Free up a header record and associated structures"]
+    #[doc = "** @param hrec  Header record"]
+    #[doc = "*/"]
+    pub fn bcf_hrec_destroy(hrec: *mut bcf_hrec_t);
+}
+extern "C" {
+    #[doc = " See the description of bcf_hdr_subset()"]
+    pub fn bcf_subset(
+        h: *const bcf_hdr_t,
+        v: *mut bcf1_t,
+        n: ::std::os::raw::c_int,
+        imap: *mut ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = "  bcf_translate() - translate tags ids to be consistent with different header. This function"]
+    #[doc = "                    is useful when lines from multiple VCF need to be combined."]
+    #[doc = "  @dst_hdr:   the destination header, to be used in bcf_write(), see also bcf_hdr_combine()"]
+    #[doc = "  @src_hdr:   the source header, used in bcf_read()"]
+    #[doc = "  @src_line:  line obtained by bcf_read()"]
+    pub fn bcf_translate(
+        dst_hdr: *const bcf_hdr_t,
+        src_hdr: *mut bcf_hdr_t,
+        src_line: *mut bcf1_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Get variant types in a BCF record"]
+    #[doc = "**"]
+    #[doc = "*  @param rec   BCF/VCF record"]
+    #[doc = "*  @return Types of variant present"]
+    #[doc = "*"]
+    #[doc = "*  The return value will be a bitwise-or of VCF_SNP, VCF_MNP,"]
+    #[doc = "*  VCF_INDEL, VCF_OTHER, VCF_BND or VCF_OVERLAP.  If will return"]
+    #[doc = "*  VCF_REF (i.e. 0) if none of the other types is present."]
+    #[doc = "*  @deprecated Please use bcf_has_variant_types() instead"]
+    #[doc = "*/"]
+    pub fn bcf_get_variant_types(rec: *mut bcf1_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Get variant type in a BCF record, for a given allele"]
+    #[doc = "**"]
+    #[doc = "*  @param  rec        BCF/VCF record"]
+    #[doc = "*  @param  ith_allele Allele to check"]
+    #[doc = "*  @return Type of variant present"]
+    #[doc = "*"]
+    #[doc = "*  The return value will be one of VCF_REF, VCF_SNP, VCF_MNP,"]
+    #[doc = "*  VCF_INDEL, VCF_OTHER, VCF_BND or VCF_OVERLAP."]
+    #[doc = "*  @deprecated Please use bcf_has_variant_type() instead"]
+    #[doc = "*/"]
+    pub fn bcf_get_variant_type(
+        rec: *mut bcf1_t,
+        ith_allele: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+#[doc = "< Types present exactly match tested for"]
+pub const bcf_variant_match_bcf_match_exact: bcf_variant_match = 0;
+#[doc = "< At least one variant type in common"]
+pub const bcf_variant_match_bcf_match_overlap: bcf_variant_match = 1;
+#[doc = "< Test set is a subset of types present"]
+pub const bcf_variant_match_bcf_match_subset: bcf_variant_match = 2;
+#[doc = " Match mode for bcf_has_variant_types()"]
+pub type bcf_variant_match = ::std::os::raw::c_uint;
+extern "C" {
+    #[doc = " Check for presence of variant types in a BCF record"]
+    #[doc = "**"]
+    #[doc = "*  @param rec      BCF/VCF record"]
+    #[doc = "*  @param bitmask  Set of variant types to test for"]
+    #[doc = "*  @param mode     Match mode"]
+    #[doc = "*  @return >0 if the variant types are present,"]
+    #[doc = "*           0 if not present,"]
+    #[doc = "*          -1 on error"]
+    #[doc = "*"]
+    #[doc = "*  @p bitmask should be the bitwise-or of the variant types (VCF_SNP,"]
+    #[doc = "*     VCF_MNP, etc.) to test for."]
+    #[doc = "*"]
+    #[doc = "*  The return value is the bitwise-and of the set of types present"]
+    #[doc = "*  and @p bitmask.  Callers that want to check for the presence of more"]
+    #[doc = "*  than one type can avoid function call overhead by passing all the"]
+    #[doc = "*  types to be checked for in a single call to this function, in"]
+    #[doc = "*  bcf_match_overlap mode, and then check for them individually in the"]
+    #[doc = "*  returned value."]
+    #[doc = "*"]
+    #[doc = "*  As VCF_REF is represented by 0 (i.e. the absence of other variants)"]
+    #[doc = "*  it should be tested for using"]
+    #[doc = "*    bcf_has_variant_types(rec, VCF_REF, bcf_match_exact)"]
+    #[doc = "*  which will return 1 if no other variant type is present, otherwise 0."]
+    #[doc = "*/"]
+    pub fn bcf_has_variant_types(
+        rec: *mut bcf1_t,
+        bitmask: u32,
+        mode: bcf_variant_match,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Check for presence of variant types in a BCF record, for a given allele"]
+    #[doc = "**"]
+    #[doc = "*  @param rec         BCF/VCF record"]
+    #[doc = "*  @param ith_allele  Allele to check"]
+    #[doc = "*  @param bitmask     Set of variant types to test for"]
+    #[doc = "*  @return >0 if one of the variant types is present,"]
+    #[doc = "*           0 if not present,"]
+    #[doc = "*          -1 on error"]
+    #[doc = "*"]
+    #[doc = "*  @p bitmask should be the bitwise-or of the variant types (VCF_SNP,"]
+    #[doc = "*     VCF_MNP, etc.) to test for, or VCF_REF on its own."]
+    #[doc = "*"]
+    #[doc = "*  The return value is the bitwise-and of the set of types present"]
+    #[doc = "*  and @p bitmask.  Callers that want to check for the presence of more"]
+    #[doc = "*  than one type can avoid function call overhead by passing all the"]
+    #[doc = "*  types to be checked for in a single call to this function, and then"]
+    #[doc = "*  check for them individually in the returned value."]
+    #[doc = "*"]
+    #[doc = "*  As a special case, if @p bitmask is VCF_REF (i.e. 0), the function"]
+    #[doc = "*  tests for an exact match.  The return value will be 1 if the"]
+    #[doc = "*  variant type calculated for the allele is VCF_REF, otherwise if"]
+    #[doc = "*  any other type is present it will be 0."]
+    #[doc = "*/"]
+    pub fn bcf_has_variant_type(
+        rec: *mut bcf1_t,
+        ith_allele: ::std::os::raw::c_int,
+        bitmask: u32,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Return the number of bases affected by a variant, for a given allele"]
+    #[doc = "**"]
+    #[doc = "*  @param rec         BCF/VCF record"]
+    #[doc = "*  @param ith_allele  Allele index"]
+    #[doc = "*  @return The number of bases affected (negative for deletions),"]
+    #[doc = "*          or bcf_int32_missing on error."]
+    #[doc = "*/"]
+    pub fn bcf_variant_length(
+        rec: *mut bcf1_t,
+        ith_allele: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bcf_is_snp(v: *mut bcf1_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = "  bcf_update_filter() - sets the FILTER column"]
+    #[doc = "  @flt_ids:  The filter IDs to set, numeric IDs returned by bcf_hdr_id2int(hdr, BCF_DT_ID, \"PASS\")"]
+    #[doc = "  @n:        Number of filters. If n==0, all filters are removed"]
+    pub fn bcf_update_filter(
+        hdr: *const bcf_hdr_t,
+        line: *mut bcf1_t,
+        flt_ids: *mut ::std::os::raw::c_int,
+        n: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = "  bcf_add_filter() - adds to the FILTER column"]
+    #[doc = "  @flt_id:   filter ID to add, numeric ID returned by bcf_hdr_id2int(hdr, BCF_DT_ID, \"PASS\")"]
+    #[doc = ""]
+    #[doc = "  If flt_id is PASS, all existing filters are removed first. If other than PASS, existing PASS is removed."]
+    pub fn bcf_add_filter(
+        hdr: *const bcf_hdr_t,
+        line: *mut bcf1_t,
+        flt_id: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = "  bcf_remove_filter() - removes from the FILTER column"]
+    #[doc = "  @flt_id:   filter ID to remove, numeric ID returned by bcf_hdr_id2int(hdr, BCF_DT_ID, \"PASS\")"]
+    #[doc = "  @pass:     when set to 1 and no filters are present, set to PASS"]
+    pub fn bcf_remove_filter(
+        hdr: *const bcf_hdr_t,
+        line: *mut bcf1_t,
+        flt_id: ::std::os::raw::c_int,
+        pass: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = "  Returns 1 if present, 0 if absent, or -1 if filter does not exist. \"PASS\" and \".\" can be used interchangeably."]
+    pub fn bcf_has_filter(
+        hdr: *const bcf_hdr_t,
+        line: *mut bcf1_t,
+        filter: *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = "  bcf_update_alleles() and bcf_update_alleles_str() - update REF and ALT column"]
+    #[doc = "  @alleles:           Array of alleles"]
+    #[doc = "  @nals:              Number of alleles"]
+    #[doc = "  @alleles_string:    Comma-separated alleles, starting with the REF allele"]
+    pub fn bcf_update_alleles(
+        hdr: *const bcf_hdr_t,
+        line: *mut bcf1_t,
+        alleles: *mut *const ::std::os::raw::c_char,
+        nals: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bcf_update_alleles_str(
+        hdr: *const bcf_hdr_t,
+        line: *mut bcf1_t,
+        alleles_string: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = "  bcf_update_id() - sets new ID string"]
+    #[doc = "  bcf_add_id() - adds to the ID string checking for duplicates"]
+    pub fn bcf_update_id(
+        hdr: *const bcf_hdr_t,
+        line: *mut bcf1_t,
+        id: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bcf_add_id(
+        hdr: *const bcf_hdr_t,
+        line: *mut bcf1_t,
+        id: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bcf_update_info(
+        hdr: *const bcf_hdr_t,
+        line: *mut bcf1_t,
+        key: *const ::std::os::raw::c_char,
+        values: *const ::std::os::raw::c_void,
+        n: ::std::os::raw::c_int,
+        type_: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bcf_update_format_string(
+        hdr: *const bcf_hdr_t,
+        line: *mut bcf1_t,
+        key: *const ::std::os::raw::c_char,
+        values: *mut *const ::std::os::raw::c_char,
+        n: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bcf_update_format(
+        hdr: *const bcf_hdr_t,
+        line: *mut bcf1_t,
+        key: *const ::std::os::raw::c_char,
+        values: *const ::std::os::raw::c_void,
+        n: ::std::os::raw::c_int,
+        type_: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " bcf_get_fmt() - returns pointer to FORMAT's field data"]
+    #[doc = " @header: for access to BCF_DT_ID dictionary"]
+    #[doc = " @line:   VCF line obtained from vcf_parse1"]
+    #[doc = " @fmt:    one of GT,PL,..."]
+    #[doc = ""]
+    #[doc = " Returns bcf_fmt_t* if the call succeeded, or returns NULL when the field"]
+    #[doc = " is not available."]
+    pub fn bcf_get_fmt(
+        hdr: *const bcf_hdr_t,
+        line: *mut bcf1_t,
+        key: *const ::std::os::raw::c_char,
+    ) -> *mut bcf_fmt_t;
+}
+extern "C" {
+    pub fn bcf_get_info(
+        hdr: *const bcf_hdr_t,
+        line: *mut bcf1_t,
+        key: *const ::std::os::raw::c_char,
+    ) -> *mut bcf_info_t;
+}
+extern "C" {
+    #[doc = " bcf_get_*_id() - returns pointer to FORMAT/INFO field data given the header index instead of the string ID"]
+    #[doc = " @line: VCF line obtained from vcf_parse1"]
+    #[doc = " @id:  The header index for the tag, obtained from bcf_hdr_id2int()"]
+    #[doc = ""]
+    #[doc = " Returns bcf_fmt_t* / bcf_info_t*. These functions do not check if the index is valid"]
+    #[doc = " as their goal is to avoid the header lookup."]
+    pub fn bcf_get_fmt_id(line: *mut bcf1_t, id: ::std::os::raw::c_int) -> *mut bcf_fmt_t;
+}
+extern "C" {
+    pub fn bcf_get_info_id(line: *mut bcf1_t, id: ::std::os::raw::c_int) -> *mut bcf_info_t;
+}
+extern "C" {
+    pub fn bcf_get_info_values(
+        hdr: *const bcf_hdr_t,
+        line: *mut bcf1_t,
+        tag: *const ::std::os::raw::c_char,
+        dst: *mut *mut ::std::os::raw::c_void,
+        ndst: *mut ::std::os::raw::c_int,
+        type_: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bcf_get_format_string(
+        hdr: *const bcf_hdr_t,
+        line: *mut bcf1_t,
+        tag: *const ::std::os::raw::c_char,
+        dst: *mut *mut *mut ::std::os::raw::c_char,
+        ndst: *mut ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bcf_get_format_values(
+        hdr: *const bcf_hdr_t,
+        line: *mut bcf1_t,
+        tag: *const ::std::os::raw::c_char,
+        dst: *mut *mut ::std::os::raw::c_void,
+        ndst: *mut ::std::os::raw::c_int,
+        type_: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = "  bcf_hdr_id2int() - Translates string into numeric ID"]
+    #[doc = "  bcf_hdr_int2id() - Translates numeric ID into string"]
+    #[doc = "  @type:     one of BCF_DT_ID, BCF_DT_CTG, BCF_DT_SAMPLE"]
+    #[doc = "  @id:       tag name, such as: PL, DP, GT, etc."]
+    #[doc = ""]
+    #[doc = "  Returns -1 if string is not in dictionary, otherwise numeric ID which identifies"]
+    #[doc = "  fields in BCF records."]
+    pub fn bcf_hdr_id2int(
+        hdr: *const bcf_hdr_t,
+        type_: ::std::os::raw::c_int,
+        id: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Convert BCF FORMAT data to string form"]
+    #[doc = "**"]
+    #[doc = "* @param s    kstring to write into"]
+    #[doc = "* @param n    number of items in @p data"]
+    #[doc = "* @param type type of items in @p data"]
+    #[doc = "* @param data BCF format data"]
+    #[doc = "* @return  0 on success"]
+    #[doc = "*         -1 if out of memory"]
+    #[doc = "*/"]
+    pub fn bcf_fmt_array(
+        s: *mut kstring_t,
+        n: ::std::os::raw::c_int,
+        type_: ::std::os::raw::c_int,
+        data: *mut ::std::os::raw::c_void,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bcf_fmt_sized_array(s: *mut kstring_t, ptr: *mut u8) -> *mut u8;
+}
+extern "C" {
+    #[doc = " Encode a variable-length char array in BCF format"]
+    #[doc = "**"]
+    #[doc = "* @param s    kstring to write into"]
+    #[doc = "* @param l    length of input"]
+    #[doc = "* @param a    input data to encode"]
+    #[doc = "* @return 0 on success; < 0 on error"]
+    #[doc = "*/"]
+    pub fn bcf_enc_vchar(
+        s: *mut kstring_t,
+        l: ::std::os::raw::c_int,
+        a: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Encode a variable-length integer array in BCF format"]
+    #[doc = "**"]
+    #[doc = "* @param s      kstring to write into"]
+    #[doc = "* @param n      total number of items in @p a (<= 0 to encode BCF_BT_NULL)"]
+    #[doc = "* @param a      input data to encode"]
+    #[doc = "* @param wsize  vector length (<= 0 is equivalent to @p n)"]
+    #[doc = "* @return 0 on success; < 0 on error"]
+    #[doc = "* @note @p n should be an exact multiple of @p wsize"]
+    #[doc = "*/"]
+    pub fn bcf_enc_vint(
+        s: *mut kstring_t,
+        n: ::std::os::raw::c_int,
+        a: *mut i32,
+        wsize: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Encode a variable-length float array in BCF format"]
+    #[doc = "**"]
+    #[doc = "* @param s      kstring to write into"]
+    #[doc = "* @param n      total number of items in @p a (<= 0 to encode BCF_BT_NULL)"]
+    #[doc = "* @param a      input data to encode"]
+    #[doc = "* @return 0 on success; < 0 on error"]
+    #[doc = "*/"]
+    pub fn bcf_enc_vfloat(
+        s: *mut kstring_t,
+        n: ::std::os::raw::c_int,
+        a: *mut f32,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Load a BCF index from a given index file name"]
+    #[doc = "**  @param fn     Input BAM/BCF/etc filename"]
+    #[doc = "@param fnidx  The input index filename"]
+    #[doc = "@return  The index, or NULL if an error occurred."]
+    #[doc = "@note This only works for BCF files.  Consider synced_bcf_reader instead"]
+    #[doc = "which works for both BCF and VCF."]
+    #[doc = "*/"]
+    pub fn bcf_index_load2(
+        fn_: *const ::std::os::raw::c_char,
+        fnidx: *const ::std::os::raw::c_char,
+    ) -> *mut hts_idx_t;
+}
+extern "C" {
+    #[doc = " Load a BCF index from a given index file name"]
+    #[doc = "**  @param fn     Input BAM/BCF/etc filename"]
+    #[doc = "@param fnidx  The input index filename"]
+    #[doc = "@param flags  Flags to alter behaviour (see description)"]
+    #[doc = "@return  The index, or NULL if an error occurred."]
+    #[doc = "@note This only works for BCF files.  Consider synced_bcf_reader instead"]
+    #[doc = "which works for both BCF and VCF."]
+    #[doc = ""]
+    #[doc = "The @p flags parameter can be set to a combination of the following"]
+    #[doc = "values:"]
+    #[doc = ""]
+    #[doc = "HTS_IDX_SAVE_REMOTE   Save a local copy of any remote indexes"]
+    #[doc = "HTS_IDX_SILENT_FAIL   Fail silently if the index is not present"]
+    #[doc = ""]
+    #[doc = "Equivalent to hts_idx_load3(fn, fnidx, HTS_FMT_CSI, flags);"]
+    #[doc = "*/"]
+    pub fn bcf_index_load3(
+        fn_: *const ::std::os::raw::c_char,
+        fnidx: *const ::std::os::raw::c_char,
+        flags: ::std::os::raw::c_int,
+    ) -> *mut hts_idx_t;
+}
+extern "C" {
+    #[doc = "  bcf_index_build() - Generate and save an index file"]
+    #[doc = "  @fn:         Input VCF(compressed)/BCF filename"]
+    #[doc = "  @min_shift:  log2(width of the smallest bin), e.g. a value of 14"]
+    #[doc = "  imposes a 16k base lower limit on the width of index bins."]
+    #[doc = "  Positive to generate CSI, or 0 to generate TBI. However, a small"]
+    #[doc = "  value of min_shift would create a large index, which would lead to"]
+    #[doc = "  reduced performance when using the index. A recommended value is 14."]
+    #[doc = "  For BCF files, only the CSI index can be generated."]
+    #[doc = ""]
+    #[doc = "  Returns 0 if successful, or negative if an error occurred."]
+    #[doc = ""]
+    #[doc = "  List of error codes:"]
+    #[doc = "      -1 .. indexing failed"]
+    #[doc = "      -2 .. opening @fn failed"]
+    #[doc = "      -3 .. format not indexable"]
+    #[doc = "      -4 .. failed to create and/or save the index"]
+    pub fn bcf_index_build(
+        fn_: *const ::std::os::raw::c_char,
+        min_shift: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = "  bcf_index_build2() - Generate and save an index to a specific file"]
+    #[doc = "  @fn:         Input VCF/BCF filename"]
+    #[doc = "  @fnidx:      Output filename, or NULL to add .csi/.tbi to @fn"]
+    #[doc = "  @min_shift:  Positive to generate CSI, or 0 to generate TBI"]
+    #[doc = ""]
+    #[doc = "  Returns 0 if successful, or negative if an error occurred."]
+    #[doc = ""]
+    #[doc = "  List of error codes:"]
+    #[doc = "      -1 .. indexing failed"]
+    #[doc = "      -2 .. opening @fn failed"]
+    #[doc = "      -3 .. format not indexable"]
+    #[doc = "      -4 .. failed to create and/or save the index"]
+    pub fn bcf_index_build2(
+        fn_: *const ::std::os::raw::c_char,
+        fnidx: *const ::std::os::raw::c_char,
+        min_shift: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = "  bcf_index_build3() - Generate and save an index to a specific file"]
+    #[doc = "  @fn:         Input VCF/BCF filename"]
+    #[doc = "  @fnidx:      Output filename, or NULL to add .csi/.tbi to @fn"]
+    #[doc = "  @min_shift:  Positive to generate CSI, or 0 to generate TBI"]
+    #[doc = "  @n_threads:  Number of VCF/BCF decoder threads"]
+    #[doc = ""]
+    #[doc = "  Returns 0 if successful, or negative if an error occurred."]
+    #[doc = ""]
+    #[doc = "  List of error codes:"]
+    #[doc = "      -1 .. indexing failed"]
+    #[doc = "      -2 .. opening @fn failed"]
+    #[doc = "      -3 .. format not indexable"]
+    #[doc = "      -4 .. failed to create and/or save the index"]
+    pub fn bcf_index_build3(
+        fn_: *const ::std::os::raw::c_char,
+        fnidx: *const ::std::os::raw::c_char,
+        min_shift: ::std::os::raw::c_int,
+        n_threads: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Initialise fp->idx for the current format type, for VCF and BCF files."]
+    #[doc = "** @param fp        File handle for the data file being written."]
+    #[doc = "@param h         BCF header structured (needed for BAI and CSI)."]
+    #[doc = "@param min_shift CSI bin size (CSI default is 14)."]
+    #[doc = "@param fnidx     Filename to write index to.  This pointer must remain valid"]
+    #[doc = "until after bcf_idx_save is called."]
+    #[doc = "@return          0 on success, <0 on failure."]
+    #[doc = "@note This must be called after the header has been written, but before"]
+    #[doc = "any other data."]
+    #[doc = "*/"]
+    pub fn bcf_idx_init(
+        fp: *mut htsFile,
+        h: *mut bcf_hdr_t,
+        min_shift: ::std::os::raw::c_int,
+        fnidx: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Writes the index initialised with bcf_idx_init to disk."]
+    #[doc = "** @param fp        File handle for the data file being written."]
+    #[doc = "@return          0 on success, <0 on failure."]
+    #[doc = "*/"]
+    pub fn bcf_idx_save(fp: *mut htsFile) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub static mut bcf_float_vector_end: u32;
+}
+extern "C" {
+    pub static mut bcf_float_missing: u32;
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct sam_hrecs_t {
+    _unused: [u8; 0],
+}
 #[doc = " @typedef"]
 #[doc = "@abstract Structure for the alignment header."]
 #[doc = "@field n_targets   number of reference sequences"]
@@ -11332,1472 +13686,3608 @@ extern "C" {
         ntype: *mut ::std::os::raw::c_int,
     ) -> *mut ::std::os::raw::c_int;
 }
-#[doc = " A single key:value pair on a header line"]
-#[doc = ""]
-#[doc = " These form a linked list and hold strings. The strings are"]
-#[doc = " allocated from a string_alloc_t pool referenced in the master"]
-#[doc = " sam_hrecs_t structure. Do not attempt to free, malloc or manipulate"]
-#[doc = " these strings directly."]
+pub const cram_content_type_CT_ERROR: cram_content_type = -1;
+pub const cram_content_type_FILE_HEADER: cram_content_type = 0;
+pub const cram_content_type_COMPRESSION_HEADER: cram_content_type = 1;
+pub const cram_content_type_MAPPED_SLICE: cram_content_type = 2;
+pub const cram_content_type_UNMAPPED_SLICE: cram_content_type = 3;
+pub const cram_content_type_EXTERNAL: cram_content_type = 4;
+pub const cram_content_type_CORE: cram_content_type = 5;
+pub type cram_content_type = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct sam_hrec_tag_s {
-    pub next: *mut sam_hrec_tag_s,
-    pub str_: *const ::std::os::raw::c_char,
-    pub len: ::std::os::raw::c_int,
+pub struct cram_file_def {
+    _unused: [u8; 0],
 }
-#[test]
-fn bindgen_test_layout_sam_hrec_tag_s() {
-    assert_eq!(
-        ::std::mem::size_of::<sam_hrec_tag_s>(),
-        24usize,
-        concat!("Size of: ", stringify!(sam_hrec_tag_s))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<sam_hrec_tag_s>(),
-        8usize,
-        concat!("Alignment of ", stringify!(sam_hrec_tag_s))
-    );
-    fn test_field_next() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrec_tag_s>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).next) as usize - ptr as usize
-            },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrec_tag_s),
-                "::",
-                stringify!(next)
-            )
-        );
-    }
-    test_field_next();
-    fn test_field_str() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrec_tag_s>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).str_) as usize - ptr as usize
-            },
-            8usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrec_tag_s),
-                "::",
-                stringify!(str_)
-            )
-        );
-    }
-    test_field_str();
-    fn test_field_len() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrec_tag_s>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).len) as usize - ptr as usize
-            },
-            16usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrec_tag_s),
-                "::",
-                stringify!(len)
-            )
-        );
-    }
-    test_field_len();
-}
-#[doc = " A single key:value pair on a header line"]
-#[doc = ""]
-#[doc = " These form a linked list and hold strings. The strings are"]
-#[doc = " allocated from a string_alloc_t pool referenced in the master"]
-#[doc = " sam_hrecs_t structure. Do not attempt to free, malloc or manipulate"]
-#[doc = " these strings directly."]
-pub type sam_hrec_tag_t = sam_hrec_tag_s;
-#[doc = " The parsed version of the SAM header string."]
-#[doc = ""]
-#[doc = " Each header type (SQ, RG, HD, etc) points to its own sam_hdr_type"]
-#[doc = " struct via the main hash table h in the sam_hrecs_t struct."]
-#[doc = ""]
-#[doc = " These in turn consist of circular bi-directional linked lists (ie"]
-#[doc = " rings) to hold the multiple instances of the same header type"]
-#[doc = " code. For example if we have 5 \\@SQ lines the primary hash table"]
-#[doc = " will key on \\@SQ pointing to the first sam_hdr_type and that in turn"]
-#[doc = " will be part of a ring of 5 elements."]
-#[doc = ""]
-#[doc = " For each sam_hdr_type structure we also point to a sam_hdr_tag"]
-#[doc = " structure which holds the tokenised attributes; the tab separated"]
-#[doc = " key:value pairs per line."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct sam_hrec_type_s {
-    pub next: *mut sam_hrec_type_s,
-    pub prev: *mut sam_hrec_type_s,
-    pub global_next: *mut sam_hrec_type_s,
-    pub global_prev: *mut sam_hrec_type_s,
-    pub tag: *mut sam_hrec_tag_t,
-    pub type_: khint32_t,
+pub struct cram_container {
+    _unused: [u8; 0],
 }
-#[test]
-fn bindgen_test_layout_sam_hrec_type_s() {
-    assert_eq!(
-        ::std::mem::size_of::<sam_hrec_type_s>(),
-        48usize,
-        concat!("Size of: ", stringify!(sam_hrec_type_s))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<sam_hrec_type_s>(),
-        8usize,
-        concat!("Alignment of ", stringify!(sam_hrec_type_s))
-    );
-    fn test_field_next() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrec_type_s>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).next) as usize - ptr as usize
-            },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrec_type_s),
-                "::",
-                stringify!(next)
-            )
-        );
-    }
-    test_field_next();
-    fn test_field_prev() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrec_type_s>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).prev) as usize - ptr as usize
-            },
-            8usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrec_type_s),
-                "::",
-                stringify!(prev)
-            )
-        );
-    }
-    test_field_prev();
-    fn test_field_global_next() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrec_type_s>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).global_next) as usize - ptr as usize
-            },
-            16usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrec_type_s),
-                "::",
-                stringify!(global_next)
-            )
-        );
-    }
-    test_field_global_next();
-    fn test_field_global_prev() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrec_type_s>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).global_prev) as usize - ptr as usize
-            },
-            24usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrec_type_s),
-                "::",
-                stringify!(global_prev)
-            )
-        );
-    }
-    test_field_global_prev();
-    fn test_field_tag() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrec_type_s>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).tag) as usize - ptr as usize
-            },
-            32usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrec_type_s),
-                "::",
-                stringify!(tag)
-            )
-        );
-    }
-    test_field_tag();
-    fn test_field_type() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrec_type_s>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).type_) as usize - ptr as usize
-            },
-            40usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrec_type_s),
-                "::",
-                stringify!(type_)
-            )
-        );
-    }
-    test_field_type();
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct cram_block {
+    _unused: [u8; 0],
 }
-#[doc = " The parsed version of the SAM header string."]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct cram_slice {
+    _unused: [u8; 0],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct cram_metrics {
+    _unused: [u8; 0],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct cram_block_slice_hdr {
+    _unused: [u8; 0],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct cram_block_compression_hdr {
+    _unused: [u8; 0],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct refs_t {
+    _unused: [u8; 0],
+}
+extern "C" {
+    pub fn cram_fd_get_header(fd: *mut cram_fd) -> *mut sam_hdr_t;
+}
+extern "C" {
+    pub fn cram_fd_set_header(fd: *mut cram_fd, hdr: *mut sam_hdr_t);
+}
+extern "C" {
+    pub fn cram_fd_get_version(fd: *mut cram_fd) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn cram_fd_set_version(fd: *mut cram_fd, vers: ::std::os::raw::c_int);
+}
+extern "C" {
+    pub fn cram_major_vers(fd: *mut cram_fd) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn cram_minor_vers(fd: *mut cram_fd) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn cram_fd_get_fp(fd: *mut cram_fd) -> *mut hFILE;
+}
+extern "C" {
+    pub fn cram_fd_set_fp(fd: *mut cram_fd, fp: *mut hFILE);
+}
+extern "C" {
+    pub fn cram_container_get_length(c: *mut cram_container) -> i32;
+}
+extern "C" {
+    pub fn cram_container_set_length(c: *mut cram_container, length: i32);
+}
+extern "C" {
+    pub fn cram_container_get_num_blocks(c: *mut cram_container) -> i32;
+}
+extern "C" {
+    pub fn cram_container_set_num_blocks(c: *mut cram_container, num_blocks: i32);
+}
+extern "C" {
+    pub fn cram_container_get_landmarks(
+        c: *mut cram_container,
+        num_landmarks: *mut i32,
+    ) -> *mut i32;
+}
+extern "C" {
+    pub fn cram_container_set_landmarks(
+        c: *mut cram_container,
+        num_landmarks: i32,
+        landmarks: *mut i32,
+    );
+}
+extern "C" {
+    pub fn cram_container_is_empty(fd: *mut cram_fd) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn cram_block_get_content_id(b: *mut cram_block) -> i32;
+}
+extern "C" {
+    pub fn cram_block_get_comp_size(b: *mut cram_block) -> i32;
+}
+extern "C" {
+    pub fn cram_block_get_uncomp_size(b: *mut cram_block) -> i32;
+}
+extern "C" {
+    pub fn cram_block_get_crc32(b: *mut cram_block) -> i32;
+}
+extern "C" {
+    pub fn cram_block_get_data(b: *mut cram_block) -> *mut ::std::os::raw::c_void;
+}
+extern "C" {
+    pub fn cram_block_get_content_type(b: *mut cram_block) -> cram_content_type;
+}
+extern "C" {
+    pub fn cram_block_set_content_id(b: *mut cram_block, id: i32);
+}
+extern "C" {
+    pub fn cram_block_set_comp_size(b: *mut cram_block, size: i32);
+}
+extern "C" {
+    pub fn cram_block_set_uncomp_size(b: *mut cram_block, size: i32);
+}
+extern "C" {
+    pub fn cram_block_set_crc32(b: *mut cram_block, crc: i32);
+}
+extern "C" {
+    pub fn cram_block_set_data(b: *mut cram_block, data: *mut ::std::os::raw::c_void);
+}
+extern "C" {
+    pub fn cram_block_append(
+        b: *mut cram_block,
+        data: *const ::std::os::raw::c_void,
+        size: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn cram_block_update_size(b: *mut cram_block);
+}
+extern "C" {
+    pub fn cram_block_get_offset(b: *mut cram_block) -> size_t;
+}
+extern "C" {
+    pub fn cram_block_set_offset(b: *mut cram_block, offset: size_t);
+}
+extern "C" {
+    pub fn cram_block_size(b: *mut cram_block) -> u32;
+}
+extern "C" {
+    pub fn cram_transcode_rg(
+        in_: *mut cram_fd,
+        out: *mut cram_fd,
+        c: *mut cram_container,
+        nrg: ::std::os::raw::c_int,
+        in_rg: *mut ::std::os::raw::c_int,
+        out_rg: *mut ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn cram_copy_slice(
+        in_: *mut cram_fd,
+        out: *mut cram_fd,
+        num_slice: i32,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn cram_slice_hdr_get_num_blocks(hdr: *mut cram_block_slice_hdr) -> i32;
+}
+extern "C" {
+    pub fn cram_slice_hdr_get_embed_ref_id(h: *mut cram_block_slice_hdr) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn cram_slice_hdr_get_coords(
+        h: *mut cram_block_slice_hdr,
+        refid: *mut ::std::os::raw::c_int,
+        start: *mut hts_pos_t,
+        span: *mut hts_pos_t,
+    );
+}
+extern "C" {
+    pub fn cram_decode_slice_header(
+        fd: *mut cram_fd,
+        b: *mut cram_block,
+    ) -> *mut cram_block_slice_hdr;
+}
+extern "C" {
+    pub fn cram_free_slice_header(hdr: *mut cram_block_slice_hdr);
+}
+extern "C" {
+    #[doc = " Allocates a new cram_block structure with a specified content_type and"]
+    #[doc = " id."]
+    #[doc = ""]
+    #[doc = " @return"]
+    #[doc = " Returns block pointer on success;"]
+    #[doc = "         NULL on failure"]
+    #[doc = ""]
+    #[doc = " The cram_block struct returned by a successful call should be freed"]
+    #[doc = " via cram_free_block() when it is no longer needed."]
+    pub fn cram_new_block(
+        content_type: cram_content_type,
+        content_id: ::std::os::raw::c_int,
+    ) -> *mut cram_block;
+}
+extern "C" {
+    #[doc = " Reads a block from a cram file."]
+    #[doc = ""]
+    #[doc = " @return"]
+    #[doc = " Returns cram_block pointer on success;"]
+    #[doc = "         NULL on failure"]
+    #[doc = ""]
+    #[doc = " The cram_block struct returned by a successful call should be freed"]
+    #[doc = " via cram_free_block() when it is no longer needed."]
+    pub fn cram_read_block(fd: *mut cram_fd) -> *mut cram_block;
+}
+extern "C" {
+    #[doc = " Writes a CRAM block."]
+    #[doc = ""]
+    #[doc = " @return"]
+    #[doc = " Returns 0 on success;"]
+    #[doc = "        -1 on failure"]
+    pub fn cram_write_block(fd: *mut cram_fd, b: *mut cram_block) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Frees a CRAM block, deallocating internal data too."]
+    pub fn cram_free_block(b: *mut cram_block);
+}
+extern "C" {
+    #[doc = " Uncompresses a CRAM block, if compressed."]
+    #[doc = ""]
+    #[doc = " @return"]
+    #[doc = " Returns 0 on success;"]
+    #[doc = "        -1 on failure"]
+    pub fn cram_uncompress_block(b: *mut cram_block) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Compresses a block."]
+    #[doc = ""]
+    #[doc = " Compresses a block using one of two different zlib strategies. If we only"]
+    #[doc = " want one choice set strat2 to be -1."]
+    #[doc = ""]
+    #[doc = " The logic here is that sometimes Z_RLE does a better job than Z_FILTERED"]
+    #[doc = " or Z_DEFAULT_STRATEGY on quality data. If so, we'd rather use it as it is"]
+    #[doc = " significantly faster."]
+    #[doc = ""]
+    #[doc = " @return"]
+    #[doc = " Returns 0 on success;"]
+    #[doc = "        -1 on failure"]
+    pub fn cram_compress_block(
+        fd: *mut cram_fd,
+        b: *mut cram_block,
+        metrics: *mut cram_metrics,
+        method: ::std::os::raw::c_int,
+        level: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn cram_compress_block2(
+        fd: *mut cram_fd,
+        s: *mut cram_slice,
+        b: *mut cram_block,
+        metrics: *mut cram_metrics,
+        method: ::std::os::raw::c_int,
+        level: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Creates a new container, specifying the maximum number of slices"]
+    #[doc = " and records permitted."]
+    #[doc = ""]
+    #[doc = " @return"]
+    #[doc = " Returns cram_container ptr on success;"]
+    #[doc = "         NULL on failure"]
+    #[doc = ""]
+    #[doc = " The cram_container struct returned by a successful call should be freed"]
+    #[doc = " via cram_free_container() when it is no longer needed."]
+    pub fn cram_new_container(
+        nrec: ::std::os::raw::c_int,
+        nslice: ::std::os::raw::c_int,
+    ) -> *mut cram_container;
+}
+extern "C" {
+    pub fn cram_free_container(c: *mut cram_container);
+}
+extern "C" {
+    #[doc = " Reads a container header."]
+    #[doc = ""]
+    #[doc = " @return"]
+    #[doc = " Returns cram_container on success;"]
+    #[doc = "         NULL on failure or no container left (fd->err == 0)."]
+    #[doc = ""]
+    #[doc = " The cram_container struct returned by a successful call should be freed"]
+    #[doc = " via cram_free_container() when it is no longer needed."]
+    pub fn cram_read_container(fd: *mut cram_fd) -> *mut cram_container;
+}
+extern "C" {
+    #[doc = " Writes a container structure."]
+    #[doc = ""]
+    #[doc = " @return"]
+    #[doc = " Returns 0 on success;"]
+    #[doc = "        -1 on failure"]
+    pub fn cram_write_container(fd: *mut cram_fd, h: *mut cram_container) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn cram_store_container(
+        fd: *mut cram_fd,
+        c: *mut cram_container,
+        dat: *mut ::std::os::raw::c_char,
+        size: *mut ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn cram_container_size(c: *mut cram_container) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Opens a CRAM file for read (mode \"rb\") or write (\"wb\")."]
+    #[doc = ""]
+    #[doc = " The filename may be \"-\" to indicate stdin or stdout."]
+    #[doc = ""]
+    #[doc = " @return"]
+    #[doc = " Returns file handle on success;"]
+    #[doc = "         NULL on failure."]
+    pub fn cram_open(
+        filename: *const ::std::os::raw::c_char,
+        mode: *const ::std::os::raw::c_char,
+    ) -> *mut cram_fd;
+}
+extern "C" {
+    #[doc = " Opens an existing stream for reading or writing."]
+    #[doc = ""]
+    #[doc = " @return"]
+    #[doc = " Returns file handle on success;"]
+    #[doc = "         NULL on failure."]
+    pub fn cram_dopen(
+        fp: *mut hFILE,
+        filename: *const ::std::os::raw::c_char,
+        mode: *const ::std::os::raw::c_char,
+    ) -> *mut cram_fd;
+}
+extern "C" {
+    #[doc = " Closes a CRAM file."]
+    #[doc = ""]
+    #[doc = " @return"]
+    #[doc = " Returns 0 on success;"]
+    #[doc = "        -1 on failure"]
+    pub fn cram_close(fd: *mut cram_fd) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn cram_seek(
+        fd: *mut cram_fd,
+        offset: off_t,
+        whence: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn cram_flush(fd: *mut cram_fd) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Checks for end of file on a cram_fd stream."]
+    #[doc = ""]
+    #[doc = " @return"]
+    #[doc = " Returns 0 if not at end of file"]
+    #[doc = "         1 if we hit an expected EOF (end of range or EOF block)"]
+    #[doc = "         2 for other EOF (end of stream without EOF block)"]
+    pub fn cram_eof(fd: *mut cram_fd) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Sets options on the cram_fd."]
+    #[doc = ""]
+    #[doc = " See CRAM_OPT_* definitions in hts.h."]
+    #[doc = " Use this immediately after opening."]
+    #[doc = ""]
+    #[doc = " @return"]
+    #[doc = " Returns 0 on success;"]
+    #[doc = "        -1 on failure"]
+    pub fn cram_set_option(fd: *mut cram_fd, opt: hts_fmt_option, ...) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Sets options on the cram_fd."]
+    #[doc = ""]
+    #[doc = " See CRAM_OPT_* definitions in hts.h."]
+    #[doc = " Use this immediately after opening."]
+    #[doc = ""]
+    #[doc = " @return"]
+    #[doc = " Returns 0 on success;"]
+    #[doc = "        -1 on failure"]
+    pub fn cram_set_voption(
+        fd: *mut cram_fd,
+        opt: hts_fmt_option,
+        args: *mut __va_list_tag,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Attaches a header to a cram_fd."]
+    #[doc = ""]
+    #[doc = " This should be used when creating a new cram_fd for writing where"]
+    #[doc = " we have an SAM_hdr already constructed (eg from a file we've read"]
+    #[doc = " in)."]
+    #[doc = ""]
+    #[doc = " @return"]
+    #[doc = " Returns 0 on success;"]
+    #[doc = "        -1 on failure"]
+    pub fn cram_set_header(fd: *mut cram_fd, hdr: *mut sam_hdr_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Check if this file has a proper EOF block"]
+    #[doc = ""]
+    #[doc = " @return"]
+    #[doc = " Returns 3 if the file is a version of CRAM that does not contain EOF blocks"]
+    #[doc = "         2 if the file is a stream and thus unseekable"]
+    #[doc = "         1 if the file contains an EOF block"]
+    #[doc = "         0 if the file does not contain an EOF block"]
+    #[doc = "        -1 if an error occurred whilst reading the file or we could not seek back to where we were"]
+    #[doc = ""]
+    pub fn cram_check_EOF(fd: *mut cram_fd) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn int32_put_blk(b: *mut cram_block, val: i32) -> ::std::os::raw::c_int;
+}
+#[doc = " @typedef"]
+#[doc = "@abstract Structure for the alignment header."]
+#[doc = "@field n_targets   number of reference sequences"]
+#[doc = "@field l_text      length of the plain text in the header (may be zero if"]
+#[doc = "the header has been edited)"]
+#[doc = "@field target_len  lengths of the reference sequences"]
+#[doc = "@field target_name names of the reference sequences"]
+#[doc = "@field text        plain text (may be NULL if the header has been edited)"]
+#[doc = "@field sdict       header dictionary"]
+#[doc = "@field hrecs       pointer to the extended header struct (internal use only)"]
+#[doc = "@field ref_count   reference count"]
 #[doc = ""]
-#[doc = " Each header type (SQ, RG, HD, etc) points to its own sam_hdr_type"]
-#[doc = " struct via the main hash table h in the sam_hrecs_t struct."]
-#[doc = ""]
-#[doc = " These in turn consist of circular bi-directional linked lists (ie"]
-#[doc = " rings) to hold the multiple instances of the same header type"]
-#[doc = " code. For example if we have 5 \\@SQ lines the primary hash table"]
-#[doc = " will key on \\@SQ pointing to the first sam_hdr_type and that in turn"]
-#[doc = " will be part of a ring of 5 elements."]
-#[doc = ""]
-#[doc = " For each sam_hdr_type structure we also point to a sam_hdr_tag"]
-#[doc = " structure which holds the tokenised attributes; the tab separated"]
-#[doc = " key:value pairs per line."]
-pub type sam_hrec_type_t = sam_hrec_type_s;
-#[doc = " Parsed \\@SQ lines"]
+#[doc = "@note The text and l_text fields are included for backwards compatibility."]
+#[doc = "These fields may be set to NULL and zero respectively as a side-effect"]
+#[doc = "of calling some header API functions.  New code that needs to access the"]
+#[doc = "header text should use the sam_hdr_str() and sam_hdr_length() functions"]
+#[doc = "instead of these fields."]
+pub type SAM_hdr = sam_hdr_t;
+extern "C" {
+    #[doc = " Returns the refs_t structure used by a cram file handle."]
+    #[doc = ""]
+    #[doc = " This may be used in conjunction with option CRAM_OPT_SHARED_REF to"]
+    #[doc = " share reference memory between multiple file handles."]
+    #[doc = ""]
+    #[doc = " @return"]
+    #[doc = " Returns NULL if none exists or the file handle is not a CRAM file."]
+    pub fn cram_get_refs(fd: *mut htsFile) -> *mut refs_t;
+}
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct sam_hrec_sq_t {
-    pub name: *const ::std::os::raw::c_char,
-    pub len: hts_pos_t,
-    pub ty: *mut sam_hrec_type_t,
+pub struct bgzf_mtaux_t {
+    _unused: [u8; 0],
 }
-#[test]
-fn bindgen_test_layout_sam_hrec_sq_t() {
-    assert_eq!(
-        ::std::mem::size_of::<sam_hrec_sq_t>(),
-        24usize,
-        concat!("Size of: ", stringify!(sam_hrec_sq_t))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<sam_hrec_sq_t>(),
-        8usize,
-        concat!("Alignment of ", stringify!(sam_hrec_sq_t))
-    );
-    fn test_field_name() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrec_sq_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).name) as usize - ptr as usize
-            },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrec_sq_t),
-                "::",
-                stringify!(name)
-            )
-        );
-    }
-    test_field_name();
-    fn test_field_len() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrec_sq_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).len) as usize - ptr as usize
-            },
-            8usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrec_sq_t),
-                "::",
-                stringify!(len)
-            )
-        );
-    }
-    test_field_len();
-    fn test_field_ty() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrec_sq_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).ty) as usize - ptr as usize
-            },
-            16usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrec_sq_t),
-                "::",
-                stringify!(ty)
-            )
-        );
-    }
-    test_field_ty();
-}
-#[doc = " Parsed \\@RG lines"]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct sam_hrec_rg_t {
-    pub name: *const ::std::os::raw::c_char,
-    pub ty: *mut sam_hrec_type_t,
-    pub name_len: ::std::os::raw::c_int,
-    pub id: ::std::os::raw::c_int,
+pub struct bgzidx_t {
+    _unused: [u8; 0],
 }
-#[test]
-fn bindgen_test_layout_sam_hrec_rg_t() {
-    assert_eq!(
-        ::std::mem::size_of::<sam_hrec_rg_t>(),
-        24usize,
-        concat!("Size of: ", stringify!(sam_hrec_rg_t))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<sam_hrec_rg_t>(),
-        8usize,
-        concat!("Alignment of ", stringify!(sam_hrec_rg_t))
-    );
-    fn test_field_name() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrec_rg_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).name) as usize - ptr as usize
-            },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrec_rg_t),
-                "::",
-                stringify!(name)
-            )
-        );
-    }
-    test_field_name();
-    fn test_field_ty() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrec_rg_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).ty) as usize - ptr as usize
-            },
-            8usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrec_rg_t),
-                "::",
-                stringify!(ty)
-            )
-        );
-    }
-    test_field_ty();
-    fn test_field_name_len() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrec_rg_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).name_len) as usize - ptr as usize
-            },
-            16usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrec_rg_t),
-                "::",
-                stringify!(name_len)
-            )
-        );
-    }
-    test_field_name_len();
-    fn test_field_id() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrec_rg_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).id) as usize - ptr as usize
-            },
-            20usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrec_rg_t),
-                "::",
-                stringify!(id)
-            )
-        );
-    }
-    test_field_id();
-}
-#[doc = " Parsed \\@PG lines"]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct sam_hrec_pg_t {
-    pub name: *const ::std::os::raw::c_char,
-    pub ty: *mut sam_hrec_type_t,
-    pub name_len: ::std::os::raw::c_int,
-    pub id: ::std::os::raw::c_int,
-    pub prev_id: ::std::os::raw::c_int,
+pub struct bgzf_cache_t {
+    _unused: [u8; 0],
 }
-#[test]
-fn bindgen_test_layout_sam_hrec_pg_t() {
-    assert_eq!(
-        ::std::mem::size_of::<sam_hrec_pg_t>(),
-        32usize,
-        concat!("Size of: ", stringify!(sam_hrec_pg_t))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<sam_hrec_pg_t>(),
-        8usize,
-        concat!("Alignment of ", stringify!(sam_hrec_pg_t))
-    );
-    fn test_field_name() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrec_pg_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).name) as usize - ptr as usize
-            },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrec_pg_t),
-                "::",
-                stringify!(name)
-            )
-        );
-    }
-    test_field_name();
-    fn test_field_ty() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrec_pg_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).ty) as usize - ptr as usize
-            },
-            8usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrec_pg_t),
-                "::",
-                stringify!(ty)
-            )
-        );
-    }
-    test_field_ty();
-    fn test_field_name_len() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrec_pg_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).name_len) as usize - ptr as usize
-            },
-            16usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrec_pg_t),
-                "::",
-                stringify!(name_len)
-            )
-        );
-    }
-    test_field_name_len();
-    fn test_field_id() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrec_pg_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).id) as usize - ptr as usize
-            },
-            20usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrec_pg_t),
-                "::",
-                stringify!(id)
-            )
-        );
-    }
-    test_field_id();
-    fn test_field_prev_id() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrec_pg_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).prev_id) as usize - ptr as usize
-            },
-            24usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrec_pg_t),
-                "::",
-                stringify!(prev_id)
-            )
-        );
-    }
-    test_field_prev_id();
-}
-pub const sam_sort_order_ORDER_UNKNOWN: sam_sort_order = -1;
-pub const sam_sort_order_ORDER_UNSORTED: sam_sort_order = 0;
-pub const sam_sort_order_ORDER_NAME: sam_sort_order = 1;
-pub const sam_sort_order_ORDER_COORD: sam_sort_order = 2;
-#[doc = " Sort order parsed from @HD line"]
-pub type sam_sort_order = ::std::os::raw::c_int;
-pub const sam_group_order_ORDER_NONE: sam_group_order = -1;
-pub const sam_group_order_ORDER_QUERY: sam_group_order = 0;
-pub const sam_group_order_ORDER_REFERENCE: sam_group_order = 1;
-pub type sam_group_order = ::std::os::raw::c_int;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct kh_sam_hrecs_t_s {
-    pub n_buckets: khint_t,
-    pub size: khint_t,
-    pub n_occupied: khint_t,
-    pub upper_bound: khint_t,
-    pub flags: *mut khint32_t,
-    pub keys: *mut khint32_t,
-    pub vals: *mut *mut sam_hrec_type_t,
+pub struct z_stream_s {
+    _unused: [u8; 0],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct BGZF {
+    pub _bitfield_align_1: [u16; 0],
+    pub _bitfield_1: __BindgenBitfieldUnit<[u8; 4usize]>,
+    pub cache_size: ::std::os::raw::c_int,
+    pub block_length: ::std::os::raw::c_int,
+    pub block_clength: ::std::os::raw::c_int,
+    pub block_offset: ::std::os::raw::c_int,
+    pub block_address: i64,
+    pub uncompressed_address: i64,
+    pub uncompressed_block: *mut ::std::os::raw::c_void,
+    pub compressed_block: *mut ::std::os::raw::c_void,
+    pub cache: *mut bgzf_cache_t,
+    pub fp: *mut hFILE,
+    pub mt: *mut bgzf_mtaux_t,
+    pub idx: *mut bgzidx_t,
+    pub idx_build_otf: ::std::os::raw::c_int,
+    pub gz_stream: *mut z_stream_s,
+    pub seeked: i64,
 }
 #[test]
-fn bindgen_test_layout_kh_sam_hrecs_t_s() {
+fn bindgen_test_layout_BGZF() {
     assert_eq!(
-        ::std::mem::size_of::<kh_sam_hrecs_t_s>(),
-        40usize,
-        concat!("Size of: ", stringify!(kh_sam_hrecs_t_s))
+        ::std::mem::size_of::<BGZF>(),
+        112usize,
+        concat!("Size of: ", stringify!(BGZF))
     );
     assert_eq!(
-        ::std::mem::align_of::<kh_sam_hrecs_t_s>(),
+        ::std::mem::align_of::<BGZF>(),
         8usize,
-        concat!("Alignment of ", stringify!(kh_sam_hrecs_t_s))
+        concat!("Alignment of ", stringify!(BGZF))
     );
-    fn test_field_n_buckets() {
+    fn test_field_cache_size() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<kh_sam_hrecs_t_s>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<BGZF>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).n_buckets) as usize - ptr as usize
-            },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(kh_sam_hrecs_t_s),
-                "::",
-                stringify!(n_buckets)
-            )
-        );
-    }
-    test_field_n_buckets();
-    fn test_field_size() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<kh_sam_hrecs_t_s>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).size) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).cache_size) as usize - ptr as usize
             },
             4usize,
             concat!(
                 "Offset of field: ",
-                stringify!(kh_sam_hrecs_t_s),
+                stringify!(BGZF),
                 "::",
-                stringify!(size)
+                stringify!(cache_size)
             )
         );
     }
-    test_field_size();
-    fn test_field_n_occupied() {
+    test_field_cache_size();
+    fn test_field_block_length() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<kh_sam_hrecs_t_s>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<BGZF>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).n_occupied) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).block_length) as usize - ptr as usize
             },
             8usize,
             concat!(
                 "Offset of field: ",
-                stringify!(kh_sam_hrecs_t_s),
+                stringify!(BGZF),
                 "::",
-                stringify!(n_occupied)
+                stringify!(block_length)
             )
         );
     }
-    test_field_n_occupied();
-    fn test_field_upper_bound() {
+    test_field_block_length();
+    fn test_field_block_clength() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<kh_sam_hrecs_t_s>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<BGZF>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).upper_bound) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).block_clength) as usize - ptr as usize
             },
             12usize,
             concat!(
                 "Offset of field: ",
-                stringify!(kh_sam_hrecs_t_s),
+                stringify!(BGZF),
                 "::",
-                stringify!(upper_bound)
+                stringify!(block_clength)
             )
         );
     }
-    test_field_upper_bound();
-    fn test_field_flags() {
+    test_field_block_clength();
+    fn test_field_block_offset() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<kh_sam_hrecs_t_s>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<BGZF>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).flags) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).block_offset) as usize - ptr as usize
             },
             16usize,
             concat!(
                 "Offset of field: ",
-                stringify!(kh_sam_hrecs_t_s),
+                stringify!(BGZF),
                 "::",
-                stringify!(flags)
+                stringify!(block_offset)
             )
         );
     }
-    test_field_flags();
-    fn test_field_keys() {
+    test_field_block_offset();
+    fn test_field_block_address() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<kh_sam_hrecs_t_s>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<BGZF>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).keys) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).block_address) as usize - ptr as usize
             },
             24usize,
             concat!(
                 "Offset of field: ",
-                stringify!(kh_sam_hrecs_t_s),
+                stringify!(BGZF),
                 "::",
-                stringify!(keys)
+                stringify!(block_address)
             )
         );
     }
-    test_field_keys();
-    fn test_field_vals() {
+    test_field_block_address();
+    fn test_field_uncompressed_address() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<kh_sam_hrecs_t_s>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<BGZF>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).vals) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).uncompressed_address) as usize - ptr as usize
             },
             32usize,
             concat!(
                 "Offset of field: ",
-                stringify!(kh_sam_hrecs_t_s),
+                stringify!(BGZF),
                 "::",
-                stringify!(vals)
+                stringify!(uncompressed_address)
             )
         );
     }
-    test_field_vals();
-}
-pub type kh_sam_hrecs_t_t = kh_sam_hrecs_t_s;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct kh_m_s2i_s {
-    pub n_buckets: khint_t,
-    pub size: khint_t,
-    pub n_occupied: khint_t,
-    pub upper_bound: khint_t,
-    pub flags: *mut khint32_t,
-    pub keys: *mut kh_cstr_t,
-    pub vals: *mut ::std::os::raw::c_int,
-}
-#[test]
-fn bindgen_test_layout_kh_m_s2i_s() {
-    assert_eq!(
-        ::std::mem::size_of::<kh_m_s2i_s>(),
-        40usize,
-        concat!("Size of: ", stringify!(kh_m_s2i_s))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<kh_m_s2i_s>(),
-        8usize,
-        concat!("Alignment of ", stringify!(kh_m_s2i_s))
-    );
-    fn test_field_n_buckets() {
+    test_field_uncompressed_address();
+    fn test_field_uncompressed_block() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<kh_m_s2i_s>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<BGZF>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).n_buckets) as usize - ptr as usize
-            },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(kh_m_s2i_s),
-                "::",
-                stringify!(n_buckets)
-            )
-        );
-    }
-    test_field_n_buckets();
-    fn test_field_size() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<kh_m_s2i_s>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).size) as usize - ptr as usize
-            },
-            4usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(kh_m_s2i_s),
-                "::",
-                stringify!(size)
-            )
-        );
-    }
-    test_field_size();
-    fn test_field_n_occupied() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<kh_m_s2i_s>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).n_occupied) as usize - ptr as usize
-            },
-            8usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(kh_m_s2i_s),
-                "::",
-                stringify!(n_occupied)
-            )
-        );
-    }
-    test_field_n_occupied();
-    fn test_field_upper_bound() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<kh_m_s2i_s>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).upper_bound) as usize - ptr as usize
-            },
-            12usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(kh_m_s2i_s),
-                "::",
-                stringify!(upper_bound)
-            )
-        );
-    }
-    test_field_upper_bound();
-    fn test_field_flags() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<kh_m_s2i_s>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).flags) as usize - ptr as usize
-            },
-            16usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(kh_m_s2i_s),
-                "::",
-                stringify!(flags)
-            )
-        );
-    }
-    test_field_flags();
-    fn test_field_keys() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<kh_m_s2i_s>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).keys) as usize - ptr as usize
-            },
-            24usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(kh_m_s2i_s),
-                "::",
-                stringify!(keys)
-            )
-        );
-    }
-    test_field_keys();
-    fn test_field_vals() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<kh_m_s2i_s>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).vals) as usize - ptr as usize
-            },
-            32usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(kh_m_s2i_s),
-                "::",
-                stringify!(vals)
-            )
-        );
-    }
-    test_field_vals();
-}
-pub type kh_m_s2i_t = kh_m_s2i_s;
-#[doc = " Primary structure for header manipulation"]
-#[doc = ""]
-#[doc = " The initial header text is held in the text kstring_t, but is also"]
-#[doc = " parsed out into SQ, RG and PG arrays. These have a hash table"]
-#[doc = " associated with each to allow lookup by ID or SN fields instead of"]
-#[doc = " their numeric array indices. Additionally PG has an array to hold"]
-#[doc = " the linked list start points (the last in a PP chain)."]
-#[doc = ""]
-#[doc = " Use the appropriate sam_hdr_* functions to edit the header, and"]
-#[doc = " call sam_hdr_rebuild() any time the textual form needs to be"]
-#[doc = " updated again."]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct sam_hrecs_t {
-    pub h: *mut kh_sam_hrecs_t_t,
-    #[doc = "!< First line (usually @HD)"]
-    pub first_line: *mut sam_hrec_type_t,
-    #[doc = "!< Pool of sam_hdr_tag->str strings"]
-    pub str_pool: *mut string_alloc_t,
-    #[doc = "!< Pool of sam_hdr_type structs"]
-    pub type_pool: *mut pool_alloc_t,
-    #[doc = "!< Pool of sam_hdr_tag structs"]
-    pub tag_pool: *mut pool_alloc_t,
-    #[doc = "!< Number of \\@SQ lines"]
-    pub nref: ::std::os::raw::c_int,
-    #[doc = "!< Number of entries available in ref[]"]
-    pub ref_sz: ::std::os::raw::c_int,
-    #[doc = "!< Array of parsed \\@SQ lines"]
-    pub ref_: *mut sam_hrec_sq_t,
-    #[doc = "!< Maps SQ SN field to ref[] index"]
-    pub ref_hash: *mut kh_m_s2i_t,
-    #[doc = "!< Number of \\@RG lines"]
-    pub nrg: ::std::os::raw::c_int,
-    #[doc = "!< number of entries available in rg[]"]
-    pub rg_sz: ::std::os::raw::c_int,
-    #[doc = "!< Array of parsed \\@RG lines"]
-    pub rg: *mut sam_hrec_rg_t,
-    #[doc = "!< Maps RG ID field to rg[] index"]
-    pub rg_hash: *mut kh_m_s2i_t,
-    #[doc = "!< Number of \\@PG lines"]
-    pub npg: ::std::os::raw::c_int,
-    #[doc = "!< Number of entries available in pg[]"]
-    pub pg_sz: ::std::os::raw::c_int,
-    #[doc = "!< Number of terminating \\@PG lines"]
-    pub npg_end: ::std::os::raw::c_int,
-    #[doc = "!< Size of pg_end field"]
-    pub npg_end_alloc: ::std::os::raw::c_int,
-    #[doc = "!< Array of parsed \\@PG lines"]
-    pub pg: *mut sam_hrec_pg_t,
-    #[doc = "!< Maps PG ID field to pg[] index"]
-    pub pg_hash: *mut kh_m_s2i_t,
-    #[doc = "!< \\@PG chain termination IDs"]
-    pub pg_end: *mut ::std::os::raw::c_int,
-    pub ID_buf: *mut ::std::os::raw::c_char,
-    pub ID_buf_sz: u32,
-    pub ID_cnt: ::std::os::raw::c_int,
-    pub dirty: ::std::os::raw::c_int,
-    pub refs_changed: ::std::os::raw::c_int,
-    pub pgs_changed: ::std::os::raw::c_int,
-    pub type_count: ::std::os::raw::c_int,
-    pub type_order: *mut [::std::os::raw::c_char; 3usize],
-}
-#[test]
-fn bindgen_test_layout_sam_hrecs_t() {
-    assert_eq!(
-        ::std::mem::size_of::<sam_hrecs_t>(),
-        168usize,
-        concat!("Size of: ", stringify!(sam_hrecs_t))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<sam_hrecs_t>(),
-        8usize,
-        concat!("Alignment of ", stringify!(sam_hrecs_t))
-    );
-    fn test_field_h() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).h) as usize - ptr as usize
-            },
-            0usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrecs_t),
-                "::",
-                stringify!(h)
-            )
-        );
-    }
-    test_field_h();
-    fn test_field_first_line() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).first_line) as usize - ptr as usize
-            },
-            8usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrecs_t),
-                "::",
-                stringify!(first_line)
-            )
-        );
-    }
-    test_field_first_line();
-    fn test_field_str_pool() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).str_pool) as usize - ptr as usize
-            },
-            16usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrecs_t),
-                "::",
-                stringify!(str_pool)
-            )
-        );
-    }
-    test_field_str_pool();
-    fn test_field_type_pool() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).type_pool) as usize - ptr as usize
-            },
-            24usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrecs_t),
-                "::",
-                stringify!(type_pool)
-            )
-        );
-    }
-    test_field_type_pool();
-    fn test_field_tag_pool() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).tag_pool) as usize - ptr as usize
-            },
-            32usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrecs_t),
-                "::",
-                stringify!(tag_pool)
-            )
-        );
-    }
-    test_field_tag_pool();
-    fn test_field_nref() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).nref) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).uncompressed_block) as usize - ptr as usize
             },
             40usize,
             concat!(
                 "Offset of field: ",
-                stringify!(sam_hrecs_t),
+                stringify!(BGZF),
                 "::",
-                stringify!(nref)
+                stringify!(uncompressed_block)
             )
         );
     }
-    test_field_nref();
-    fn test_field_ref_sz() {
+    test_field_uncompressed_block();
+    fn test_field_compressed_block() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<BGZF>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).ref_sz) as usize - ptr as usize
-            },
-            44usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrecs_t),
-                "::",
-                stringify!(ref_sz)
-            )
-        );
-    }
-    test_field_ref_sz();
-    fn test_field_ref() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).ref_) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).compressed_block) as usize - ptr as usize
             },
             48usize,
             concat!(
                 "Offset of field: ",
-                stringify!(sam_hrecs_t),
+                stringify!(BGZF),
                 "::",
-                stringify!(ref_)
+                stringify!(compressed_block)
             )
         );
     }
-    test_field_ref();
-    fn test_field_ref_hash() {
+    test_field_compressed_block();
+    fn test_field_cache() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<BGZF>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).ref_hash) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).cache) as usize - ptr as usize
             },
             56usize,
             concat!(
                 "Offset of field: ",
-                stringify!(sam_hrecs_t),
+                stringify!(BGZF),
                 "::",
-                stringify!(ref_hash)
+                stringify!(cache)
             )
         );
     }
-    test_field_ref_hash();
-    fn test_field_nrg() {
+    test_field_cache();
+    fn test_field_fp() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<BGZF>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).nrg) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).fp) as usize - ptr as usize
             },
             64usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrecs_t),
-                "::",
-                stringify!(nrg)
-            )
+            concat!("Offset of field: ", stringify!(BGZF), "::", stringify!(fp))
         );
     }
-    test_field_nrg();
-    fn test_field_rg_sz() {
+    test_field_fp();
+    fn test_field_mt() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<BGZF>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).rg_sz) as usize - ptr as usize
-            },
-            68usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrecs_t),
-                "::",
-                stringify!(rg_sz)
-            )
-        );
-    }
-    test_field_rg_sz();
-    fn test_field_rg() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).rg) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).mt) as usize - ptr as usize
             },
             72usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrecs_t),
-                "::",
-                stringify!(rg)
-            )
+            concat!("Offset of field: ", stringify!(BGZF), "::", stringify!(mt))
         );
     }
-    test_field_rg();
-    fn test_field_rg_hash() {
+    test_field_mt();
+    fn test_field_idx() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<BGZF>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).rg_hash) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).idx) as usize - ptr as usize
             },
             80usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrecs_t),
-                "::",
-                stringify!(rg_hash)
-            )
+            concat!("Offset of field: ", stringify!(BGZF), "::", stringify!(idx))
         );
     }
-    test_field_rg_hash();
-    fn test_field_npg() {
+    test_field_idx();
+    fn test_field_idx_build_otf() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<BGZF>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).npg) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).idx_build_otf) as usize - ptr as usize
             },
             88usize,
             concat!(
                 "Offset of field: ",
-                stringify!(sam_hrecs_t),
+                stringify!(BGZF),
                 "::",
-                stringify!(npg)
+                stringify!(idx_build_otf)
             )
         );
     }
-    test_field_npg();
-    fn test_field_pg_sz() {
+    test_field_idx_build_otf();
+    fn test_field_gz_stream() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<BGZF>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).pg_sz) as usize - ptr as usize
-            },
-            92usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrecs_t),
-                "::",
-                stringify!(pg_sz)
-            )
-        );
-    }
-    test_field_pg_sz();
-    fn test_field_npg_end() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).npg_end) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).gz_stream) as usize - ptr as usize
             },
             96usize,
             concat!(
                 "Offset of field: ",
-                stringify!(sam_hrecs_t),
+                stringify!(BGZF),
                 "::",
-                stringify!(npg_end)
+                stringify!(gz_stream)
             )
         );
     }
-    test_field_npg_end();
-    fn test_field_npg_end_alloc() {
+    test_field_gz_stream();
+    fn test_field_seeked() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<BGZF>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).npg_end_alloc) as usize - ptr as usize
-            },
-            100usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrecs_t),
-                "::",
-                stringify!(npg_end_alloc)
-            )
-        );
-    }
-    test_field_npg_end_alloc();
-    fn test_field_pg() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).pg) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).seeked) as usize - ptr as usize
             },
             104usize,
             concat!(
                 "Offset of field: ",
-                stringify!(sam_hrecs_t),
+                stringify!(BGZF),
                 "::",
-                stringify!(pg)
+                stringify!(seeked)
             )
         );
     }
-    test_field_pg();
-    fn test_field_pg_hash() {
+    test_field_seeked();
+}
+impl BGZF {
+    #[inline]
+    pub fn errcode(&self) -> ::std::os::raw::c_uint {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(0usize, 16u8) as u32) }
+    }
+    #[inline]
+    pub fn set_errcode(&mut self, val: ::std::os::raw::c_uint) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(0usize, 16u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn reserved(&self) -> ::std::os::raw::c_uint {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(16usize, 1u8) as u32) }
+    }
+    #[inline]
+    pub fn set_reserved(&mut self, val: ::std::os::raw::c_uint) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(16usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn is_write(&self) -> ::std::os::raw::c_uint {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(17usize, 1u8) as u32) }
+    }
+    #[inline]
+    pub fn set_is_write(&mut self, val: ::std::os::raw::c_uint) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(17usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn no_eof_block(&self) -> ::std::os::raw::c_uint {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(18usize, 1u8) as u32) }
+    }
+    #[inline]
+    pub fn set_no_eof_block(&mut self, val: ::std::os::raw::c_uint) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(18usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn is_be(&self) -> ::std::os::raw::c_uint {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(19usize, 1u8) as u32) }
+    }
+    #[inline]
+    pub fn set_is_be(&mut self, val: ::std::os::raw::c_uint) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(19usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn compress_level(&self) -> ::std::os::raw::c_int {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(20usize, 9u8) as u32) }
+    }
+    #[inline]
+    pub fn set_compress_level(&mut self, val: ::std::os::raw::c_int) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(20usize, 9u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn last_block_eof(&self) -> ::std::os::raw::c_uint {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(29usize, 1u8) as u32) }
+    }
+    #[inline]
+    pub fn set_last_block_eof(&mut self, val: ::std::os::raw::c_uint) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(29usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn is_compressed(&self) -> ::std::os::raw::c_uint {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(30usize, 1u8) as u32) }
+    }
+    #[inline]
+    pub fn set_is_compressed(&mut self, val: ::std::os::raw::c_uint) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(30usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn is_gzip(&self) -> ::std::os::raw::c_uint {
+        unsafe { ::std::mem::transmute(self._bitfield_1.get(31usize, 1u8) as u32) }
+    }
+    #[inline]
+    pub fn set_is_gzip(&mut self, val: ::std::os::raw::c_uint) {
+        unsafe {
+            let val: u32 = ::std::mem::transmute(val);
+            self._bitfield_1.set(31usize, 1u8, val as u64)
+        }
+    }
+    #[inline]
+    pub fn new_bitfield_1(
+        errcode: ::std::os::raw::c_uint,
+        reserved: ::std::os::raw::c_uint,
+        is_write: ::std::os::raw::c_uint,
+        no_eof_block: ::std::os::raw::c_uint,
+        is_be: ::std::os::raw::c_uint,
+        compress_level: ::std::os::raw::c_int,
+        last_block_eof: ::std::os::raw::c_uint,
+        is_compressed: ::std::os::raw::c_uint,
+        is_gzip: ::std::os::raw::c_uint,
+    ) -> __BindgenBitfieldUnit<[u8; 4usize]> {
+        let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 4usize]> = Default::default();
+        __bindgen_bitfield_unit.set(0usize, 16u8, {
+            let errcode: u32 = unsafe { ::std::mem::transmute(errcode) };
+            errcode as u64
+        });
+        __bindgen_bitfield_unit.set(16usize, 1u8, {
+            let reserved: u32 = unsafe { ::std::mem::transmute(reserved) };
+            reserved as u64
+        });
+        __bindgen_bitfield_unit.set(17usize, 1u8, {
+            let is_write: u32 = unsafe { ::std::mem::transmute(is_write) };
+            is_write as u64
+        });
+        __bindgen_bitfield_unit.set(18usize, 1u8, {
+            let no_eof_block: u32 = unsafe { ::std::mem::transmute(no_eof_block) };
+            no_eof_block as u64
+        });
+        __bindgen_bitfield_unit.set(19usize, 1u8, {
+            let is_be: u32 = unsafe { ::std::mem::transmute(is_be) };
+            is_be as u64
+        });
+        __bindgen_bitfield_unit.set(20usize, 9u8, {
+            let compress_level: u32 = unsafe { ::std::mem::transmute(compress_level) };
+            compress_level as u64
+        });
+        __bindgen_bitfield_unit.set(29usize, 1u8, {
+            let last_block_eof: u32 = unsafe { ::std::mem::transmute(last_block_eof) };
+            last_block_eof as u64
+        });
+        __bindgen_bitfield_unit.set(30usize, 1u8, {
+            let is_compressed: u32 = unsafe { ::std::mem::transmute(is_compressed) };
+            is_compressed as u64
+        });
+        __bindgen_bitfield_unit.set(31usize, 1u8, {
+            let is_gzip: u32 = unsafe { ::std::mem::transmute(is_gzip) };
+            is_gzip as u64
+        });
+        __bindgen_bitfield_unit
+    }
+}
+extern "C" {
+    #[doc = " Open an existing file descriptor for reading or writing."]
+    #[doc = ""]
+    #[doc = " @param fd    file descriptor"]
+    #[doc = "              Note that the file must be opened in binary mode, or else"]
+    #[doc = "              there will be problems on platforms that make a difference"]
+    #[doc = "              between text and binary mode."]
+    #[doc = " @param mode  mode matching /[rwag][u0-9]+/: 'r' for reading, 'w' for"]
+    #[doc = "              writing, 'a' for appending, 'g' for gzip rather than BGZF"]
+    #[doc = "              compression (with 'w' only), and digit specifies the zlib"]
+    #[doc = "              compression level."]
+    #[doc = "              Note that there is a distinction between 'u' and '0': the"]
+    #[doc = "              first yields plain uncompressed output whereas the latter"]
+    #[doc = "              outputs uncompressed data wrapped in the zlib format."]
+    #[doc = " @return      BGZF file handler; 0 on error"]
+    pub fn bgzf_dopen(fd: ::std::os::raw::c_int, mode: *const ::std::os::raw::c_char) -> *mut BGZF;
+}
+extern "C" {
+    #[doc = " Open the specified file for reading or writing."]
+    pub fn bgzf_open(
+        path: *const ::std::os::raw::c_char,
+        mode: *const ::std::os::raw::c_char,
+    ) -> *mut BGZF;
+}
+extern "C" {
+    #[doc = " Open an existing hFILE stream for reading or writing."]
+    pub fn bgzf_hopen(fp: *mut hFILE, mode: *const ::std::os::raw::c_char) -> *mut BGZF;
+}
+extern "C" {
+    #[doc = " Close the BGZF and free all associated resources."]
+    #[doc = ""]
+    #[doc = " @param fp    BGZF file handler"]
+    #[doc = " @return      0 on success and -1 on error"]
+    pub fn bgzf_close(fp: *mut BGZF) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Read up to _length_ bytes from the file storing into _data_."]
+    #[doc = ""]
+    #[doc = " @param fp     BGZF file handler"]
+    #[doc = " @param data   data array to read into"]
+    #[doc = " @param length size of data to read"]
+    #[doc = " @return       number of bytes actually read; 0 on end-of-file and -1 on error"]
+    pub fn bgzf_read(fp: *mut BGZF, data: *mut ::std::os::raw::c_void, length: size_t) -> ssize_t;
+}
+extern "C" {
+    #[doc = " Write _length_ bytes from _data_ to the file.  If no I/O errors occur,"]
+    #[doc = " the complete _length_ bytes will be written (or queued for writing)."]
+    #[doc = ""]
+    #[doc = " @param fp     BGZF file handler"]
+    #[doc = " @param data   data array to write"]
+    #[doc = " @param length size of data to write"]
+    #[doc = " @return       number of bytes written (i.e., _length_); negative on error"]
+    pub fn bgzf_write(
+        fp: *mut BGZF,
+        data: *const ::std::os::raw::c_void,
+        length: size_t,
+    ) -> ssize_t;
+}
+extern "C" {
+    #[doc = " Write _length_ bytes from _data_ to the file, the index will be used to"]
+    #[doc = " decide the amount of uncompressed data to be written to each bgzip block."]
+    #[doc = " If no I/O errors occur, the complete _length_ bytes will be written (or"]
+    #[doc = " queued for writing)."]
+    #[doc = " @param fp     BGZF file handler"]
+    #[doc = " @param data   data array to write"]
+    #[doc = " @param length size of data to write"]
+    #[doc = " @return       number of bytes written (i.e., _length_); negative on error"]
+    pub fn bgzf_block_write(
+        fp: *mut BGZF,
+        data: *const ::std::os::raw::c_void,
+        length: size_t,
+    ) -> ssize_t;
+}
+extern "C" {
+    #[doc = " Returns the next byte in the file without consuming it."]
+    #[doc = " @param fp     BGZF file handler"]
+    #[doc = " @return       -1 on EOF,"]
+    #[doc = "               -2 on error,"]
+    #[doc = "               otherwise the unsigned byte value."]
+    pub fn bgzf_peek(fp: *mut BGZF) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Read up to _length_ bytes directly from the underlying stream without"]
+    #[doc = " decompressing.  Bypasses BGZF blocking, so must be used with care in"]
+    #[doc = " specialised circumstances only."]
+    #[doc = ""]
+    #[doc = " @param fp     BGZF file handler"]
+    #[doc = " @param data   data array to read into"]
+    #[doc = " @param length number of raw bytes to read"]
+    #[doc = " @return       number of bytes actually read; 0 on end-of-file and -1 on error"]
+    pub fn bgzf_raw_read(
+        fp: *mut BGZF,
+        data: *mut ::std::os::raw::c_void,
+        length: size_t,
+    ) -> ssize_t;
+}
+extern "C" {
+    #[doc = " Write _length_ bytes directly to the underlying stream without"]
+    #[doc = " compressing.  Bypasses BGZF blocking, so must be used with care"]
+    #[doc = " in specialised circumstances only."]
+    #[doc = ""]
+    #[doc = " @param fp     BGZF file handler"]
+    #[doc = " @param data   data array to write"]
+    #[doc = " @param length number of raw bytes to write"]
+    #[doc = " @return       number of bytes actually written; -1 on error"]
+    pub fn bgzf_raw_write(
+        fp: *mut BGZF,
+        data: *const ::std::os::raw::c_void,
+        length: size_t,
+    ) -> ssize_t;
+}
+extern "C" {
+    #[doc = " Write the data in the buffer to the file."]
+    #[doc = ""]
+    #[doc = " @param fp     BGZF file handle"]
+    #[doc = " @return       0 on success and -1 on error"]
+    pub fn bgzf_flush(fp: *mut BGZF) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Set the file to read from the location specified by _pos_."]
+    #[doc = ""]
+    #[doc = " @param fp     BGZF file handler"]
+    #[doc = " @param pos    virtual file offset returned by bgzf_tell()"]
+    #[doc = " @param whence must be SEEK_SET"]
+    #[doc = " @return       0 on success and -1 on error"]
+    #[doc = ""]
+    #[doc = " @note It is not permitted to seek on files open for writing,"]
+    #[doc = " or files compressed with gzip (as opposed to bgzip)."]
+    pub fn bgzf_seek(fp: *mut BGZF, pos: i64, whence: ::std::os::raw::c_int) -> i64;
+}
+extern "C" {
+    #[doc = " Check if the BGZF end-of-file (EOF) marker is present"]
+    #[doc = ""]
+    #[doc = " @param fp    BGZF file handler opened for reading"]
+    #[doc = " @return      1 if the EOF marker is present and correct;"]
+    #[doc = "              2 if it can't be checked, e.g., because fp isn't seekable;"]
+    #[doc = "              0 if the EOF marker is absent;"]
+    #[doc = "              -1 (with errno set) on error"]
+    pub fn bgzf_check_EOF(fp: *mut BGZF) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Return the file's compression format"]
+    #[doc = ""]
+    #[doc = " @param fp  BGZF file handle"]
+    #[doc = " @return    A small integer matching the corresponding"]
+    #[doc = "            `enum htsCompression` value:"]
+    #[doc = "   - 0 / `no_compression` if the file is uncompressed"]
+    #[doc = "   - 1 / `gzip` if the file is plain GZIP-compressed"]
+    #[doc = "   - 2 / `bgzf` if the file is BGZF-compressed"]
+    #[doc = " @since 1.4"]
+    pub fn bgzf_compression(fp: *mut BGZF) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Check if a file is in the BGZF format"]
+    #[doc = ""]
+    #[doc = " @param fn    file name"]
+    #[doc = " @return      1 if _fn_ is BGZF; 0 if not or on I/O error"]
+    pub fn bgzf_is_bgzf(fn_: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Set the cache size. Only effective when compiled with -DBGZF_CACHE."]
+    #[doc = ""]
+    #[doc = " @param fp    BGZF file handler"]
+    #[doc = " @param size  size of cache in bytes; 0 to disable caching (default)"]
+    pub fn bgzf_set_cache_size(fp: *mut BGZF, size: ::std::os::raw::c_int);
+}
+extern "C" {
+    #[doc = " Flush the file if the remaining buffer size is smaller than _size_"]
+    #[doc = " @return      0 if flushing succeeded or was not needed; negative on error"]
+    pub fn bgzf_flush_try(fp: *mut BGZF, size: ssize_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Read one byte from a BGZF file. It is faster than bgzf_read()"]
+    #[doc = " @param fp     BGZF file handler"]
+    #[doc = " @return       byte read; -1 on end-of-file or error"]
+    pub fn bgzf_getc(fp: *mut BGZF) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Read one line from a BGZF file. It is faster than bgzf_getc()"]
+    #[doc = ""]
+    #[doc = " @param fp     BGZF file handler"]
+    #[doc = " @param delim  delimiter"]
+    #[doc = " @param str    string to write to; must be initialized"]
+    #[doc = " @return       length of the string; -1 on end-of-file; <= -2 on error"]
+    pub fn bgzf_getline(
+        fp: *mut BGZF,
+        delim: ::std::os::raw::c_int,
+        str_: *mut kstring_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Read the next BGZF block."]
+    pub fn bgzf_read_block(fp: *mut BGZF) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Enable multi-threading (when compiled with -DBGZF_MT) via a shared"]
+    #[doc = " thread pool.  This means both encoder and decoder can balance"]
+    #[doc = " usage across a single pool of worker jobs."]
+    #[doc = ""]
+    #[doc = " @param fp          BGZF file handler; must be opened for writing"]
+    #[doc = " @param pool        The thread pool (see hts_create_threads)"]
+    pub fn bgzf_thread_pool(
+        fp: *mut BGZF,
+        pool: *mut hts_tpool,
+        qsize: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Enable multi-threading (only effective when the library was compiled"]
+    #[doc = " with -DBGZF_MT)"]
+    #[doc = ""]
+    #[doc = " @param fp          BGZF file handler; must be opened for writing"]
+    #[doc = " @param n_threads   #threads used for writing"]
+    #[doc = " @param n_sub_blks  #blocks processed by each thread; a value 64-256 is recommended"]
+    pub fn bgzf_mt(
+        fp: *mut BGZF,
+        n_threads: ::std::os::raw::c_int,
+        n_sub_blks: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Compress a single BGZF block."]
+    #[doc = ""]
+    #[doc = " @param dst    output buffer (must have size >= BGZF_MAX_BLOCK_SIZE)"]
+    #[doc = " @param dlen   size of output buffer; updated on return to the number"]
+    #[doc = "               of bytes actually written to dst"]
+    #[doc = " @param src    buffer to be compressed"]
+    #[doc = " @param slen   size of data to compress (must be <= BGZF_BLOCK_SIZE)"]
+    #[doc = " @param level  compression level"]
+    #[doc = " @return       0 on success and negative on error"]
+    pub fn bgzf_compress(
+        dst: *mut ::std::os::raw::c_void,
+        dlen: *mut size_t,
+        src: *const ::std::os::raw::c_void,
+        slen: size_t,
+        level: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = "  Position BGZF at the uncompressed offset"]
+    #[doc = ""]
+    #[doc = "  @param fp           BGZF file handler; must be opened for reading"]
+    #[doc = "  @param uoffset      file offset in the uncompressed data"]
+    #[doc = "  @param where        must be SEEK_SET"]
+    #[doc = ""]
+    #[doc = "  Returns 0 on success and -1 on error."]
+    #[doc = ""]
+    #[doc = "  @note It is not permitted to seek on files open for writing,"]
+    #[doc = "  or files compressed with gzip (as opposed to bgzip)."]
+    pub fn bgzf_useek(
+        fp: *mut BGZF,
+        uoffset: off_t,
+        where_: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = "  Position in uncompressed BGZF"]
+    #[doc = ""]
+    #[doc = "  @param fp           BGZF file handler; must be opened for reading"]
+    #[doc = ""]
+    #[doc = "  Returns the current offset on success and -1 on error."]
+    pub fn bgzf_utell(fp: *mut BGZF) -> off_t;
+}
+extern "C" {
+    #[doc = " Tell BGZF to build index while compressing."]
+    #[doc = ""]
+    #[doc = " @param fp          BGZF file handler; can be opened for reading or writing."]
+    #[doc = ""]
+    #[doc = " Returns 0 on success and -1 on error."]
+    #[doc = ""]
+    #[doc = " @note This function must be called before any data has been read or"]
+    #[doc = " written, and in particular before calling bgzf_mt() on the same"]
+    #[doc = " file handle (as threads may start reading data before the index"]
+    #[doc = " has been set up)."]
+    pub fn bgzf_index_build_init(fp: *mut BGZF) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Load BGZF index"]
+    #[doc = "**"]
+    #[doc = "* @param fp          BGZF file handler"]
+    #[doc = "* @param bname       base name"]
+    #[doc = "* @param suffix      suffix to add to bname (can be NULL)"]
+    #[doc = "* @return 0 on success and -1 on error."]
+    #[doc = "*/"]
+    pub fn bgzf_index_load(
+        fp: *mut BGZF,
+        bname: *const ::std::os::raw::c_char,
+        suffix: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Load BGZF index from an hFILE"]
+    #[doc = "**"]
+    #[doc = "* @param fp   BGZF file handle"]
+    #[doc = "* @param idx  hFILE to read from"]
+    #[doc = "* @param name file name (for error reporting only; can be NULL)"]
+    #[doc = "* @return 0 on success and -1 on error."]
+    #[doc = "*"]
+    #[doc = "* Populates @p fp with index data read from the hFILE handle @p idx."]
+    #[doc = "* The file pointer to @idx should point to the start of the index"]
+    #[doc = "* data when this function is called."]
+    #[doc = "*"]
+    #[doc = "* The file name can optionally be passed in the @p name parameter.  This"]
+    #[doc = "* is only used for printing error messages; if NULL the word \"index\" is"]
+    #[doc = "* used instead."]
+    #[doc = "*/"]
+    pub fn bgzf_index_load_hfile(
+        fp: *mut BGZF,
+        idx: *mut hFILE,
+        name: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Save BGZF index"]
+    #[doc = "**"]
+    #[doc = "* @param fp          BGZF file handler"]
+    #[doc = "* @param bname       base name"]
+    #[doc = "* @param suffix      suffix to add to bname (can be NULL)"]
+    #[doc = "* @return 0 on success and -1 on error."]
+    #[doc = "*/"]
+    pub fn bgzf_index_dump(
+        fp: *mut BGZF,
+        bname: *const ::std::os::raw::c_char,
+        suffix: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Write a BGZF index to an hFILE"]
+    #[doc = "**"]
+    #[doc = "* @param fp     BGZF file handle"]
+    #[doc = "* @param idx    hFILE to write to"]
+    #[doc = "* @param name   file name (for error reporting only, can be NULL)"]
+    #[doc = "* @return 0 on success and -1 on error."]
+    #[doc = "*"]
+    #[doc = "* Write index data from @p fp to the file @p idx."]
+    #[doc = "*"]
+    #[doc = "* The file name can optionally be passed in the @p name parameter.  This"]
+    #[doc = "* is only used for printing error messages; if NULL the word \"index\" is"]
+    #[doc = "* used instead."]
+    #[doc = "*/"]
+    pub fn bgzf_index_dump_hfile(
+        fp: *mut BGZF,
+        idx: *mut hFILE,
+        name: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = "  bcf_trim_alleles() - remove ALT alleles unused in genotype fields"]
+    #[doc = "  @header:  for access to BCF_DT_ID dictionary"]
+    #[doc = "  @line:    VCF line obtain from vcf_parse1"]
+    #[doc = ""]
+    #[doc = "  Returns the number of removed alleles on success or negative"]
+    #[doc = "  on error:"]
+    #[doc = "      -1 .. some allele index is out of bounds"]
+    #[doc = "      -2 .. could not remove alleles"]
+    pub fn bcf_trim_alleles(header: *const bcf_hdr_t, line: *mut bcf1_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = "  bcf_remove_alleles() - remove ALT alleles according to bitmask @mask"]
+    #[doc = "  @header:  for access to BCF_DT_ID dictionary"]
+    #[doc = "  @line:    VCF line obtained from vcf_parse1"]
+    #[doc = "  @mask:    alleles to remove"]
+    #[doc = ""]
+    #[doc = "  If you have more than 31 alleles, then the integer bit mask will"]
+    #[doc = "  overflow, so use bcf_remove_allele_set instead"]
+    #[doc = "  Returns 0 on success, <0 on error"]
+    pub fn bcf_remove_alleles(
+        header: *const bcf_hdr_t,
+        line: *mut bcf1_t,
+        mask: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = "  bcf_remove_allele_set() - remove ALT alleles according to bitset @rm_set"]
+    #[doc = "  @header:  for access to BCF_DT_ID dictionary"]
+    #[doc = "  @line:    VCF line obtained from vcf_parse1"]
+    #[doc = "  @rm_set:  pointer to kbitset_t object with bits set for allele"]
+    #[doc = "            indexes to remove"]
+    #[doc = ""]
+    #[doc = "  Returns 0 on success or -1 on failure"]
+    #[doc = ""]
+    #[doc = "  Number=A,R,G INFO and FORMAT fields will be updated accordingly."]
+    pub fn bcf_remove_allele_set(
+        header: *const bcf_hdr_t,
+        line: *mut bcf1_t,
+        rm_set: *const kbitset_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = "  bcf_calc_ac() - calculate the number of REF and ALT alleles"]
+    #[doc = "  @header:  for access to BCF_DT_ID dictionary"]
+    #[doc = "  @line:    VCF line obtained from vcf_parse1"]
+    #[doc = "  @ac:      array of length line->n_allele"]
+    #[doc = "  @which:   determine if INFO/AN,AC and indv fields be used"]
+    #[doc = ""]
+    #[doc = "  Returns 1 if the call succeeded, or 0 if the value could not"]
+    #[doc = "  be determined."]
+    #[doc = ""]
+    #[doc = "  The value of @which determines if existing INFO/AC,AN can be"]
+    #[doc = "  used (BCF_UN_INFO) and and if indv fields can be split (BCF_UN_FMT)."]
+    pub fn bcf_calc_ac(
+        header: *const bcf_hdr_t,
+        line: *mut bcf1_t,
+        ac: *mut ::std::os::raw::c_int,
+        which: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bcf_gt_type(
+        fmt_ptr: *mut bcf_fmt_t,
+        isample: ::std::os::raw::c_int,
+        ial: *mut ::std::os::raw::c_int,
+        jal: *mut ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct tbx_conf_t {
+    pub preset: i32,
+    pub sc: i32,
+    pub bc: i32,
+    pub ec: i32,
+    pub meta_char: i32,
+    pub line_skip: i32,
+}
+#[test]
+fn bindgen_test_layout_tbx_conf_t() {
+    assert_eq!(
+        ::std::mem::size_of::<tbx_conf_t>(),
+        24usize,
+        concat!("Size of: ", stringify!(tbx_conf_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<tbx_conf_t>(),
+        4usize,
+        concat!("Alignment of ", stringify!(tbx_conf_t))
+    );
+    fn test_field_preset() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<tbx_conf_t>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).pg_hash) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).preset) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(tbx_conf_t),
+                "::",
+                stringify!(preset)
+            )
+        );
+    }
+    test_field_preset();
+    fn test_field_sc() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<tbx_conf_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).sc) as usize - ptr as usize
+            },
+            4usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(tbx_conf_t),
+                "::",
+                stringify!(sc)
+            )
+        );
+    }
+    test_field_sc();
+    fn test_field_bc() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<tbx_conf_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).bc) as usize - ptr as usize
+            },
+            8usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(tbx_conf_t),
+                "::",
+                stringify!(bc)
+            )
+        );
+    }
+    test_field_bc();
+    fn test_field_ec() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<tbx_conf_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).ec) as usize - ptr as usize
+            },
+            12usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(tbx_conf_t),
+                "::",
+                stringify!(ec)
+            )
+        );
+    }
+    test_field_ec();
+    fn test_field_meta_char() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<tbx_conf_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).meta_char) as usize - ptr as usize
+            },
+            16usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(tbx_conf_t),
+                "::",
+                stringify!(meta_char)
+            )
+        );
+    }
+    test_field_meta_char();
+    fn test_field_line_skip() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<tbx_conf_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).line_skip) as usize - ptr as usize
+            },
+            20usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(tbx_conf_t),
+                "::",
+                stringify!(line_skip)
+            )
+        );
+    }
+    test_field_line_skip();
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct tbx_t {
+    pub conf: tbx_conf_t,
+    pub idx: *mut hts_idx_t,
+    pub dict: *mut ::std::os::raw::c_void,
+}
+#[test]
+fn bindgen_test_layout_tbx_t() {
+    assert_eq!(
+        ::std::mem::size_of::<tbx_t>(),
+        40usize,
+        concat!("Size of: ", stringify!(tbx_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<tbx_t>(),
+        8usize,
+        concat!("Alignment of ", stringify!(tbx_t))
+    );
+    fn test_field_conf() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<tbx_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).conf) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(tbx_t),
+                "::",
+                stringify!(conf)
+            )
+        );
+    }
+    test_field_conf();
+    fn test_field_idx() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<tbx_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).idx) as usize - ptr as usize
+            },
+            24usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(tbx_t),
+                "::",
+                stringify!(idx)
+            )
+        );
+    }
+    test_field_idx();
+    fn test_field_dict() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<tbx_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).dict) as usize - ptr as usize
+            },
+            32usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(tbx_t),
+                "::",
+                stringify!(dict)
+            )
+        );
+    }
+    test_field_dict();
+}
+extern "C" {
+    pub static tbx_conf_gff: tbx_conf_t;
+}
+extern "C" {
+    pub static tbx_conf_bed: tbx_conf_t;
+}
+extern "C" {
+    pub static tbx_conf_psltbl: tbx_conf_t;
+}
+extern "C" {
+    pub static tbx_conf_sam: tbx_conf_t;
+}
+extern "C" {
+    pub static tbx_conf_vcf: tbx_conf_t;
+}
+extern "C" {
+    pub fn tbx_name2id(tbx: *mut tbx_t, ss: *const ::std::os::raw::c_char)
+        -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn hts_get_bgzfp(fp: *mut htsFile) -> *mut BGZF;
+}
+extern "C" {
+    pub fn tbx_readrec(
+        fp: *mut BGZF,
+        tbxv: *mut ::std::os::raw::c_void,
+        sv: *mut ::std::os::raw::c_void,
+        tid: *mut ::std::os::raw::c_int,
+        beg: *mut hts_pos_t,
+        end: *mut hts_pos_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Build an index of the lines in a BGZF-compressed file"]
+    #[doc = "** The index struct returned by a successful call should be freed"]
+    #[doc = "via tbx_destroy() when it is no longer needed."]
+    #[doc = "*/"]
+    pub fn tbx_index(
+        fp: *mut BGZF,
+        min_shift: ::std::os::raw::c_int,
+        conf: *const tbx_conf_t,
+    ) -> *mut tbx_t;
+}
+extern "C" {
+    pub fn tbx_index_build(
+        fn_: *const ::std::os::raw::c_char,
+        min_shift: ::std::os::raw::c_int,
+        conf: *const tbx_conf_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn tbx_index_build2(
+        fn_: *const ::std::os::raw::c_char,
+        fnidx: *const ::std::os::raw::c_char,
+        min_shift: ::std::os::raw::c_int,
+        conf: *const tbx_conf_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn tbx_index_build3(
+        fn_: *const ::std::os::raw::c_char,
+        fnidx: *const ::std::os::raw::c_char,
+        min_shift: ::std::os::raw::c_int,
+        n_threads: ::std::os::raw::c_int,
+        conf: *const tbx_conf_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Load or stream a .tbi or .csi index"]
+    #[doc = "** @param fn     Name of the data file corresponding to the index"]
+    #[doc = ""]
+    #[doc = "Equivalent to tbx_index_load3(fn, NULL, HTS_IDX_SAVE_REMOTE);"]
+    #[doc = "*/"]
+    pub fn tbx_index_load(fn_: *const ::std::os::raw::c_char) -> *mut tbx_t;
+}
+extern "C" {
+    #[doc = " Load or stream a .tbi or .csi index"]
+    #[doc = "** @param fn     Name of the data file corresponding to the index"]
+    #[doc = "@param fnidx  Name of the indexed file"]
+    #[doc = "@return The index, or NULL if an error occurred"]
+    #[doc = ""]
+    #[doc = "If @p fnidx is NULL, the index name will be derived from @p fn."]
+    #[doc = ""]
+    #[doc = "Equivalent to tbx_index_load3(fn, fnidx, HTS_IDX_SAVE_REMOTE);"]
+    #[doc = "*/"]
+    pub fn tbx_index_load2(
+        fn_: *const ::std::os::raw::c_char,
+        fnidx: *const ::std::os::raw::c_char,
+    ) -> *mut tbx_t;
+}
+extern "C" {
+    #[doc = " Load or stream a .tbi or .csi index"]
+    #[doc = "** @param fn     Name of the data file corresponding to the index"]
+    #[doc = "@param fnidx  Name of the indexed file"]
+    #[doc = "@param flags  Flags to alter behaviour (see description)"]
+    #[doc = "@return The index, or NULL if an error occurred"]
+    #[doc = ""]
+    #[doc = "If @p fnidx is NULL, the index name will be derived from @p fn."]
+    #[doc = ""]
+    #[doc = "The @p flags parameter can be set to a combination of the following"]
+    #[doc = "values:"]
+    #[doc = ""]
+    #[doc = "HTS_IDX_SAVE_REMOTE   Save a local copy of any remote indexes"]
+    #[doc = "HTS_IDX_SILENT_FAIL   Fail silently if the index is not present"]
+    #[doc = ""]
+    #[doc = "The index struct returned by a successful call should be freed"]
+    #[doc = "via tbx_destroy() when it is no longer needed."]
+    #[doc = "*/"]
+    pub fn tbx_index_load3(
+        fn_: *const ::std::os::raw::c_char,
+        fnidx: *const ::std::os::raw::c_char,
+        flags: ::std::os::raw::c_int,
+    ) -> *mut tbx_t;
+}
+extern "C" {
+    pub fn tbx_seqnames(
+        tbx: *mut tbx_t,
+        n: *mut ::std::os::raw::c_int,
+    ) -> *mut *const ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn tbx_destroy(tbx: *mut tbx_t);
+}
+pub const bcf_sr_opt_t_BCF_SR_REQUIRE_IDX: bcf_sr_opt_t = 0;
+pub const bcf_sr_opt_t_BCF_SR_PAIR_LOGIC: bcf_sr_opt_t = 1;
+pub const bcf_sr_opt_t_BCF_SR_ALLOW_NO_IDX: bcf_sr_opt_t = 2;
+pub const bcf_sr_opt_t_BCF_SR_REGIONS_OVERLAP: bcf_sr_opt_t = 3;
+pub const bcf_sr_opt_t_BCF_SR_TARGETS_OVERLAP: bcf_sr_opt_t = 4;
+pub type bcf_sr_opt_t = ::std::os::raw::c_uint;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct bcf_sr_region_t {
+    _unused: [u8; 0],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct bcf_sr_regions_t {
+    pub tbx: *mut tbx_t,
+    pub itr: *mut hts_itr_t,
+    pub line: kstring_t,
+    pub file: *mut htsFile,
+    pub fname: *mut ::std::os::raw::c_char,
+    pub is_bin: ::std::os::raw::c_int,
+    pub als: *mut *mut ::std::os::raw::c_char,
+    pub als_str: kstring_t,
+    pub nals: ::std::os::raw::c_int,
+    pub mals: ::std::os::raw::c_int,
+    pub als_type: ::std::os::raw::c_int,
+    pub missed_reg_handler: ::std::option::Option<
+        unsafe extern "C" fn(arg1: *mut bcf_sr_regions_t, arg2: *mut ::std::os::raw::c_void),
+    >,
+    pub missed_reg_data: *mut ::std::os::raw::c_void,
+    pub regs: *mut bcf_sr_region_t,
+    pub seq_hash: *mut ::std::os::raw::c_void,
+    pub seq_names: *mut *mut ::std::os::raw::c_char,
+    pub nseqs: ::std::os::raw::c_int,
+    pub iseq: ::std::os::raw::c_int,
+    pub start: hts_pos_t,
+    pub end: hts_pos_t,
+    pub prev_seq: ::std::os::raw::c_int,
+    pub prev_start: hts_pos_t,
+    pub prev_end: hts_pos_t,
+    pub overlap: ::std::os::raw::c_int,
+}
+#[test]
+fn bindgen_test_layout_bcf_sr_regions_t() {
+    assert_eq!(
+        ::std::mem::size_of::<bcf_sr_regions_t>(),
+        208usize,
+        concat!("Size of: ", stringify!(bcf_sr_regions_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<bcf_sr_regions_t>(),
+        8usize,
+        concat!("Alignment of ", stringify!(bcf_sr_regions_t))
+    );
+    fn test_field_tbx() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).tbx) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_regions_t),
+                "::",
+                stringify!(tbx)
+            )
+        );
+    }
+    test_field_tbx();
+    fn test_field_itr() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).itr) as usize - ptr as usize
+            },
+            8usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_regions_t),
+                "::",
+                stringify!(itr)
+            )
+        );
+    }
+    test_field_itr();
+    fn test_field_line() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).line) as usize - ptr as usize
+            },
+            16usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_regions_t),
+                "::",
+                stringify!(line)
+            )
+        );
+    }
+    test_field_line();
+    fn test_field_file() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).file) as usize - ptr as usize
+            },
+            40usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_regions_t),
+                "::",
+                stringify!(file)
+            )
+        );
+    }
+    test_field_file();
+    fn test_field_fname() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).fname) as usize - ptr as usize
+            },
+            48usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_regions_t),
+                "::",
+                stringify!(fname)
+            )
+        );
+    }
+    test_field_fname();
+    fn test_field_is_bin() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).is_bin) as usize - ptr as usize
+            },
+            56usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_regions_t),
+                "::",
+                stringify!(is_bin)
+            )
+        );
+    }
+    test_field_is_bin();
+    fn test_field_als() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).als) as usize - ptr as usize
+            },
+            64usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_regions_t),
+                "::",
+                stringify!(als)
+            )
+        );
+    }
+    test_field_als();
+    fn test_field_als_str() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).als_str) as usize - ptr as usize
+            },
+            72usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_regions_t),
+                "::",
+                stringify!(als_str)
+            )
+        );
+    }
+    test_field_als_str();
+    fn test_field_nals() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).nals) as usize - ptr as usize
+            },
+            96usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_regions_t),
+                "::",
+                stringify!(nals)
+            )
+        );
+    }
+    test_field_nals();
+    fn test_field_mals() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).mals) as usize - ptr as usize
+            },
+            100usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_regions_t),
+                "::",
+                stringify!(mals)
+            )
+        );
+    }
+    test_field_mals();
+    fn test_field_als_type() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).als_type) as usize - ptr as usize
+            },
+            104usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_regions_t),
+                "::",
+                stringify!(als_type)
+            )
+        );
+    }
+    test_field_als_type();
+    fn test_field_missed_reg_handler() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).missed_reg_handler) as usize - ptr as usize
             },
             112usize,
             concat!(
                 "Offset of field: ",
-                stringify!(sam_hrecs_t),
+                stringify!(bcf_sr_regions_t),
                 "::",
-                stringify!(pg_hash)
+                stringify!(missed_reg_handler)
             )
         );
     }
-    test_field_pg_hash();
-    fn test_field_pg_end() {
+    test_field_missed_reg_handler();
+    fn test_field_missed_reg_data() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).pg_end) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).missed_reg_data) as usize - ptr as usize
             },
             120usize,
             concat!(
                 "Offset of field: ",
-                stringify!(sam_hrecs_t),
+                stringify!(bcf_sr_regions_t),
                 "::",
-                stringify!(pg_end)
+                stringify!(missed_reg_data)
             )
         );
     }
-    test_field_pg_end();
-    fn test_field_ID_buf() {
+    test_field_missed_reg_data();
+    fn test_field_regs() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).ID_buf) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).regs) as usize - ptr as usize
             },
             128usize,
             concat!(
                 "Offset of field: ",
-                stringify!(sam_hrecs_t),
+                stringify!(bcf_sr_regions_t),
                 "::",
-                stringify!(ID_buf)
+                stringify!(regs)
             )
         );
     }
-    test_field_ID_buf();
-    fn test_field_ID_buf_sz() {
+    test_field_regs();
+    fn test_field_seq_hash() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).ID_buf_sz) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).seq_hash) as usize - ptr as usize
             },
             136usize,
             concat!(
                 "Offset of field: ",
-                stringify!(sam_hrecs_t),
+                stringify!(bcf_sr_regions_t),
                 "::",
-                stringify!(ID_buf_sz)
+                stringify!(seq_hash)
             )
         );
     }
-    test_field_ID_buf_sz();
-    fn test_field_ID_cnt() {
+    test_field_seq_hash();
+    fn test_field_seq_names() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).ID_cnt) as usize - ptr as usize
-            },
-            140usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrecs_t),
-                "::",
-                stringify!(ID_cnt)
-            )
-        );
-    }
-    test_field_ID_cnt();
-    fn test_field_dirty() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).dirty) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).seq_names) as usize - ptr as usize
             },
             144usize,
             concat!(
                 "Offset of field: ",
-                stringify!(sam_hrecs_t),
+                stringify!(bcf_sr_regions_t),
                 "::",
-                stringify!(dirty)
+                stringify!(seq_names)
             )
         );
     }
-    test_field_dirty();
-    fn test_field_refs_changed() {
+    test_field_seq_names();
+    fn test_field_nseqs() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).refs_changed) as usize - ptr as usize
-            },
-            148usize,
-            concat!(
-                "Offset of field: ",
-                stringify!(sam_hrecs_t),
-                "::",
-                stringify!(refs_changed)
-            )
-        );
-    }
-    test_field_refs_changed();
-    fn test_field_pgs_changed() {
-        assert_eq!(
-            unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
-                let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).pgs_changed) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).nseqs) as usize - ptr as usize
             },
             152usize,
             concat!(
                 "Offset of field: ",
-                stringify!(sam_hrecs_t),
+                stringify!(bcf_sr_regions_t),
                 "::",
-                stringify!(pgs_changed)
+                stringify!(nseqs)
             )
         );
     }
-    test_field_pgs_changed();
-    fn test_field_type_count() {
+    test_field_nseqs();
+    fn test_field_iseq() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).type_count) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).iseq) as usize - ptr as usize
             },
             156usize,
             concat!(
                 "Offset of field: ",
-                stringify!(sam_hrecs_t),
+                stringify!(bcf_sr_regions_t),
                 "::",
-                stringify!(type_count)
+                stringify!(iseq)
             )
         );
     }
-    test_field_type_count();
-    fn test_field_type_order() {
+    test_field_iseq();
+    fn test_field_start() {
         assert_eq!(
             unsafe {
-                let uninit = ::std::mem::MaybeUninit::<sam_hrecs_t>::uninit();
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
                 let ptr = uninit.as_ptr();
-                ::std::ptr::addr_of!((*ptr).type_order) as usize - ptr as usize
+                ::std::ptr::addr_of!((*ptr).start) as usize - ptr as usize
             },
             160usize,
             concat!(
                 "Offset of field: ",
-                stringify!(sam_hrecs_t),
+                stringify!(bcf_sr_regions_t),
                 "::",
-                stringify!(type_order)
+                stringify!(start)
             )
         );
     }
-    test_field_type_order();
+    test_field_start();
+    fn test_field_end() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).end) as usize - ptr as usize
+            },
+            168usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_regions_t),
+                "::",
+                stringify!(end)
+            )
+        );
+    }
+    test_field_end();
+    fn test_field_prev_seq() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).prev_seq) as usize - ptr as usize
+            },
+            176usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_regions_t),
+                "::",
+                stringify!(prev_seq)
+            )
+        );
+    }
+    test_field_prev_seq();
+    fn test_field_prev_start() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).prev_start) as usize - ptr as usize
+            },
+            184usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_regions_t),
+                "::",
+                stringify!(prev_start)
+            )
+        );
+    }
+    test_field_prev_start();
+    fn test_field_prev_end() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).prev_end) as usize - ptr as usize
+            },
+            192usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_regions_t),
+                "::",
+                stringify!(prev_end)
+            )
+        );
+    }
+    test_field_prev_end();
+    fn test_field_overlap() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_regions_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).overlap) as usize - ptr as usize
+            },
+            200usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_regions_t),
+                "::",
+                stringify!(overlap)
+            )
+        );
+    }
+    test_field_overlap();
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct bcf_sr_t {
+    pub file: *mut htsFile,
+    pub tbx_idx: *mut tbx_t,
+    pub bcf_idx: *mut hts_idx_t,
+    pub header: *mut bcf_hdr_t,
+    pub itr: *mut hts_itr_t,
+    pub fname: *mut ::std::os::raw::c_char,
+    pub buffer: *mut *mut bcf1_t,
+    pub nbuffer: ::std::os::raw::c_int,
+    pub mbuffer: ::std::os::raw::c_int,
+    pub nfilter_ids: ::std::os::raw::c_int,
+    pub filter_ids: *mut ::std::os::raw::c_int,
+    pub samples: *mut ::std::os::raw::c_int,
+    pub n_smpl: ::std::os::raw::c_int,
+}
+#[test]
+fn bindgen_test_layout_bcf_sr_t() {
+    assert_eq!(
+        ::std::mem::size_of::<bcf_sr_t>(),
+        96usize,
+        concat!("Size of: ", stringify!(bcf_sr_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<bcf_sr_t>(),
+        8usize,
+        concat!("Alignment of ", stringify!(bcf_sr_t))
+    );
+    fn test_field_file() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).file) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_t),
+                "::",
+                stringify!(file)
+            )
+        );
+    }
+    test_field_file();
+    fn test_field_tbx_idx() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).tbx_idx) as usize - ptr as usize
+            },
+            8usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_t),
+                "::",
+                stringify!(tbx_idx)
+            )
+        );
+    }
+    test_field_tbx_idx();
+    fn test_field_bcf_idx() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).bcf_idx) as usize - ptr as usize
+            },
+            16usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_t),
+                "::",
+                stringify!(bcf_idx)
+            )
+        );
+    }
+    test_field_bcf_idx();
+    fn test_field_header() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).header) as usize - ptr as usize
+            },
+            24usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_t),
+                "::",
+                stringify!(header)
+            )
+        );
+    }
+    test_field_header();
+    fn test_field_itr() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).itr) as usize - ptr as usize
+            },
+            32usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_t),
+                "::",
+                stringify!(itr)
+            )
+        );
+    }
+    test_field_itr();
+    fn test_field_fname() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).fname) as usize - ptr as usize
+            },
+            40usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_t),
+                "::",
+                stringify!(fname)
+            )
+        );
+    }
+    test_field_fname();
+    fn test_field_buffer() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).buffer) as usize - ptr as usize
+            },
+            48usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_t),
+                "::",
+                stringify!(buffer)
+            )
+        );
+    }
+    test_field_buffer();
+    fn test_field_nbuffer() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).nbuffer) as usize - ptr as usize
+            },
+            56usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_t),
+                "::",
+                stringify!(nbuffer)
+            )
+        );
+    }
+    test_field_nbuffer();
+    fn test_field_mbuffer() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).mbuffer) as usize - ptr as usize
+            },
+            60usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_t),
+                "::",
+                stringify!(mbuffer)
+            )
+        );
+    }
+    test_field_mbuffer();
+    fn test_field_nfilter_ids() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).nfilter_ids) as usize - ptr as usize
+            },
+            64usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_t),
+                "::",
+                stringify!(nfilter_ids)
+            )
+        );
+    }
+    test_field_nfilter_ids();
+    fn test_field_filter_ids() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).filter_ids) as usize - ptr as usize
+            },
+            72usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_t),
+                "::",
+                stringify!(filter_ids)
+            )
+        );
+    }
+    test_field_filter_ids();
+    fn test_field_samples() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).samples) as usize - ptr as usize
+            },
+            80usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_t),
+                "::",
+                stringify!(samples)
+            )
+        );
+    }
+    test_field_samples();
+    fn test_field_n_smpl() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_sr_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).n_smpl) as usize - ptr as usize
+            },
+            88usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_sr_t),
+                "::",
+                stringify!(n_smpl)
+            )
+        );
+    }
+    test_field_n_smpl();
+}
+pub const bcf_sr_error_open_failed: bcf_sr_error = 0;
+pub const bcf_sr_error_not_bgzf: bcf_sr_error = 1;
+pub const bcf_sr_error_idx_load_failed: bcf_sr_error = 2;
+pub const bcf_sr_error_file_type_error: bcf_sr_error = 3;
+pub const bcf_sr_error_api_usage_error: bcf_sr_error = 4;
+pub const bcf_sr_error_header_error: bcf_sr_error = 5;
+pub const bcf_sr_error_no_eof: bcf_sr_error = 6;
+pub const bcf_sr_error_no_memory: bcf_sr_error = 7;
+pub const bcf_sr_error_vcf_parse_error: bcf_sr_error = 8;
+pub const bcf_sr_error_bcf_read_error: bcf_sr_error = 9;
+pub const bcf_sr_error_noidx_error: bcf_sr_error = 10;
+pub type bcf_sr_error = ::std::os::raw::c_uint;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct bcf_srs_t {
+    pub collapse: ::std::os::raw::c_int,
+    pub apply_filters: *mut ::std::os::raw::c_char,
+    pub require_index: ::std::os::raw::c_int,
+    pub max_unpack: ::std::os::raw::c_int,
+    pub has_line: *mut ::std::os::raw::c_int,
+    pub errnum: bcf_sr_error,
+    pub readers: *mut bcf_sr_t,
+    pub nreaders: ::std::os::raw::c_int,
+    pub streaming: ::std::os::raw::c_int,
+    pub explicit_regs: ::std::os::raw::c_int,
+    pub samples: *mut *mut ::std::os::raw::c_char,
+    pub regions: *mut bcf_sr_regions_t,
+    pub targets: *mut bcf_sr_regions_t,
+    pub targets_als: ::std::os::raw::c_int,
+    pub targets_exclude: ::std::os::raw::c_int,
+    pub tmps: kstring_t,
+    pub n_smpl: ::std::os::raw::c_int,
+    pub n_threads: ::std::os::raw::c_int,
+    pub p: *mut htsThreadPool,
+    pub aux: *mut ::std::os::raw::c_void,
+}
+#[test]
+fn bindgen_test_layout_bcf_srs_t() {
+    assert_eq!(
+        ::std::mem::size_of::<bcf_srs_t>(),
+        144usize,
+        concat!("Size of: ", stringify!(bcf_srs_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<bcf_srs_t>(),
+        8usize,
+        concat!("Alignment of ", stringify!(bcf_srs_t))
+    );
+    fn test_field_collapse() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_srs_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).collapse) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_srs_t),
+                "::",
+                stringify!(collapse)
+            )
+        );
+    }
+    test_field_collapse();
+    fn test_field_apply_filters() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_srs_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).apply_filters) as usize - ptr as usize
+            },
+            8usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_srs_t),
+                "::",
+                stringify!(apply_filters)
+            )
+        );
+    }
+    test_field_apply_filters();
+    fn test_field_require_index() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_srs_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).require_index) as usize - ptr as usize
+            },
+            16usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_srs_t),
+                "::",
+                stringify!(require_index)
+            )
+        );
+    }
+    test_field_require_index();
+    fn test_field_max_unpack() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_srs_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).max_unpack) as usize - ptr as usize
+            },
+            20usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_srs_t),
+                "::",
+                stringify!(max_unpack)
+            )
+        );
+    }
+    test_field_max_unpack();
+    fn test_field_has_line() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_srs_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).has_line) as usize - ptr as usize
+            },
+            24usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_srs_t),
+                "::",
+                stringify!(has_line)
+            )
+        );
+    }
+    test_field_has_line();
+    fn test_field_errnum() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_srs_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).errnum) as usize - ptr as usize
+            },
+            32usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_srs_t),
+                "::",
+                stringify!(errnum)
+            )
+        );
+    }
+    test_field_errnum();
+    fn test_field_readers() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_srs_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).readers) as usize - ptr as usize
+            },
+            40usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_srs_t),
+                "::",
+                stringify!(readers)
+            )
+        );
+    }
+    test_field_readers();
+    fn test_field_nreaders() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_srs_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).nreaders) as usize - ptr as usize
+            },
+            48usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_srs_t),
+                "::",
+                stringify!(nreaders)
+            )
+        );
+    }
+    test_field_nreaders();
+    fn test_field_streaming() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_srs_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).streaming) as usize - ptr as usize
+            },
+            52usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_srs_t),
+                "::",
+                stringify!(streaming)
+            )
+        );
+    }
+    test_field_streaming();
+    fn test_field_explicit_regs() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_srs_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).explicit_regs) as usize - ptr as usize
+            },
+            56usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_srs_t),
+                "::",
+                stringify!(explicit_regs)
+            )
+        );
+    }
+    test_field_explicit_regs();
+    fn test_field_samples() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_srs_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).samples) as usize - ptr as usize
+            },
+            64usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_srs_t),
+                "::",
+                stringify!(samples)
+            )
+        );
+    }
+    test_field_samples();
+    fn test_field_regions() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_srs_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).regions) as usize - ptr as usize
+            },
+            72usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_srs_t),
+                "::",
+                stringify!(regions)
+            )
+        );
+    }
+    test_field_regions();
+    fn test_field_targets() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_srs_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).targets) as usize - ptr as usize
+            },
+            80usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_srs_t),
+                "::",
+                stringify!(targets)
+            )
+        );
+    }
+    test_field_targets();
+    fn test_field_targets_als() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_srs_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).targets_als) as usize - ptr as usize
+            },
+            88usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_srs_t),
+                "::",
+                stringify!(targets_als)
+            )
+        );
+    }
+    test_field_targets_als();
+    fn test_field_targets_exclude() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_srs_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).targets_exclude) as usize - ptr as usize
+            },
+            92usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_srs_t),
+                "::",
+                stringify!(targets_exclude)
+            )
+        );
+    }
+    test_field_targets_exclude();
+    fn test_field_tmps() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_srs_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).tmps) as usize - ptr as usize
+            },
+            96usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_srs_t),
+                "::",
+                stringify!(tmps)
+            )
+        );
+    }
+    test_field_tmps();
+    fn test_field_n_smpl() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_srs_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).n_smpl) as usize - ptr as usize
+            },
+            120usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_srs_t),
+                "::",
+                stringify!(n_smpl)
+            )
+        );
+    }
+    test_field_n_smpl();
+    fn test_field_n_threads() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_srs_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).n_threads) as usize - ptr as usize
+            },
+            124usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_srs_t),
+                "::",
+                stringify!(n_threads)
+            )
+        );
+    }
+    test_field_n_threads();
+    fn test_field_p() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_srs_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).p) as usize - ptr as usize
+            },
+            128usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_srs_t),
+                "::",
+                stringify!(p)
+            )
+        );
+    }
+    test_field_p();
+    fn test_field_aux() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<bcf_srs_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).aux) as usize - ptr as usize
+            },
+            136usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(bcf_srs_t),
+                "::",
+                stringify!(aux)
+            )
+        );
+    }
+    test_field_aux();
 }
 extern "C" {
-    #[doc = " Method for parsing the header text and populating the"]
-    #[doc = " internal hash tables. After calling this method, the"]
-    #[doc = " parsed representation becomes the single source of truth."]
+    #[doc = " Allocate and initialize a bcf_srs_t struct."]
     #[doc = ""]
-    #[doc = " @param bh    Header structure, previously initialised by a"]
-    #[doc = "              sam_hdr_init call"]
-    #[doc = " @return      0 on success, -1 on failure"]
-    pub fn sam_hdr_fill_hrecs(bh: *mut sam_hdr_t) -> ::std::os::raw::c_int;
+    #[doc = "  The bcf_srs_t struct returned by a successful call should be freed"]
+    #[doc = "  via bcf_sr_destroy() when it is no longer needed."]
+    pub fn bcf_sr_init() -> *mut bcf_srs_t;
 }
 extern "C" {
-    #[doc = " Reconstructs the text representation of the header from"]
-    #[doc = " the hash table data after a change has been performed on"]
-    #[doc = " the header."]
-    #[doc = ""]
-    #[doc = " @return  0 on success, -1 on failure"]
-    pub fn sam_hdr_rebuild(bh: *mut sam_hdr_t) -> ::std::os::raw::c_int;
+    #[doc = " Destroy a bcf_srs_t struct"]
+    pub fn bcf_sr_destroy(readers: *mut bcf_srs_t);
 }
 extern "C" {
-    #[doc = " Creates an empty SAM header, ready to be populated."]
-    #[doc = ""]
-    #[doc = " @return"]
-    #[doc = " Returns a sam_hrecs_t struct on success (free with sam_hrecs_free())"]
-    #[doc = "         NULL on failure"]
-    pub fn sam_hrecs_new() -> *mut sam_hrecs_t;
+    pub fn bcf_sr_strerror(errnum: ::std::os::raw::c_int) -> *mut ::std::os::raw::c_char;
 }
 extern "C" {
-    #[doc = " Produces a duplicate copy of hrecs and returns it."]
-    #[doc = " @return"]
-    #[doc = " Returns NULL on failure"]
-    pub fn sam_hrecs_dup(hrecs: *mut sam_hrecs_t) -> *mut sam_hrecs_t;
+    pub fn bcf_sr_set_opt(readers: *mut bcf_srs_t, opt: bcf_sr_opt_t, ...)
+        -> ::std::os::raw::c_int;
 }
 extern "C" {
-    #[doc = " Update sam_hdr_t target_name and target_len arrays"]
+    #[doc = " bcf_sr_set_threads() - allocates a thread-pool for use by the synced reader."]
+    #[doc = " @n_threads: size of thread pool"]
     #[doc = ""]
-    #[doc = "  sam_hdr_t and sam_hrecs_t are specified separately so that sam_hdr_dup"]
-    #[doc = "  can use it to construct target arrays from the source header."]
-    #[doc = ""]
-    #[doc = "  @return 0 on success; -1 on failure"]
-    pub fn sam_hdr_update_target_arrays(
-        bh: *mut sam_hdr_t,
-        hrecs: *const sam_hrecs_t,
-        refs_changed: ::std::os::raw::c_int,
+    #[doc = " Returns 0 if the call succeeded, or <0 on error."]
+    pub fn bcf_sr_set_threads(
+        files: *mut bcf_srs_t,
+        n_threads: ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
-    #[doc = " Reconstructs a kstring from the header hash table."]
+    #[doc = " Deallocates thread memory, if owned by us."]
+    pub fn bcf_sr_destroy_threads(files: *mut bcf_srs_t);
+}
+extern "C" {
+    #[doc = "  bcf_sr_add_reader() - open new reader"]
+    #[doc = "  @readers: holder of the open readers"]
+    #[doc = "  @fname:   the VCF file"]
     #[doc = ""]
-    #[doc = " @return"]
-    #[doc = " Returns 0 on success"]
-    #[doc = "        -1 on failure"]
-    pub fn sam_hrecs_rebuild_text(
-        hrecs: *const sam_hrecs_t,
-        ks: *mut kstring_t,
+    #[doc = "  Returns 1 if the call succeeded, or 0 on error."]
+    #[doc = ""]
+    #[doc = "  See also the bcf_srs_t data structure for parameters controlling"]
+    #[doc = "  the reader's logic."]
+    pub fn bcf_sr_add_reader(
+        readers: *mut bcf_srs_t,
+        fname: *const ::std::os::raw::c_char,
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
-    #[doc = " Deallocates all storage used by a sam_hrecs_t struct."]
+    pub fn bcf_sr_remove_reader(files: *mut bcf_srs_t, i: ::std::os::raw::c_int);
+}
+extern "C" {
+    #[doc = " bcf_sr_next_line() - the iterator"]
+    #[doc = " @readers:    holder of the open readers"]
     #[doc = ""]
-    #[doc = " This also decrements the header reference count. If after decrementing"]
-    #[doc = " it is still non-zero then the header is assumed to be in use by another"]
-    #[doc = " caller and the free is not done."]
-    pub fn sam_hrecs_free(hrecs: *mut sam_hrecs_t);
+    #[doc = " Returns the number of readers which have the current line"]
+    #[doc = " (bcf_sr_t.buffer[0]) set at this position. Use the bcf_sr_has_line macro to"]
+    #[doc = " determine which of the readers are set."]
+    pub fn bcf_sr_next_line(readers: *mut bcf_srs_t) -> ::std::os::raw::c_int;
 }
 extern "C" {
-    #[doc = " @return"]
-    #[doc = " Returns the first header item matching 'type'. If ID is non-NULL it checks"]
-    #[doc = " for the tag ID: and compares against the specified ID."]
-    #[doc = ""]
-    #[doc = " Returns NULL if no type/ID is found"]
-    pub fn sam_hrecs_find_type_id(
-        hrecs: *mut sam_hrecs_t,
-        type_: *const ::std::os::raw::c_char,
-        ID_key: *const ::std::os::raw::c_char,
-        ID_value: *const ::std::os::raw::c_char,
-    ) -> *mut sam_hrec_type_t;
-}
-extern "C" {
-    pub fn sam_hrecs_find_key(
-        type_: *mut sam_hrec_type_t,
-        key: *const ::std::os::raw::c_char,
-        prev: *mut *mut sam_hrec_tag_t,
-    ) -> *mut sam_hrec_tag_t;
-}
-extern "C" {
-    pub fn sam_hrecs_remove_key(
-        hrecs: *mut sam_hrecs_t,
-        type_: *mut sam_hrec_type_t,
-        key: *const ::std::os::raw::c_char,
+    #[doc = "  bcf_sr_seek() - set all readers to selected position"]
+    #[doc = "  @seq:  sequence name; NULL to seek to start"]
+    #[doc = "  @pos:  0-based coordinate"]
+    pub fn bcf_sr_seek(
+        readers: *mut bcf_srs_t,
+        seq: *const ::std::os::raw::c_char,
+        pos: hts_pos_t,
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
-    #[doc = " Looks up a read-group by name and returns a pointer to the start of the"]
-    #[doc = " associated tag list."]
+    #[doc = " bcf_sr_set_samples() - sets active samples"]
+    #[doc = " @readers: holder of the open readers"]
+    #[doc = " @samples: this can be one of: file name with one sample per line;"]
+    #[doc = "           or column-separated list of samples; or '-' for a list of"]
+    #[doc = "           samples shared by all files. If first character is the"]
+    #[doc = "           exclamation mark, all but the listed samples are included."]
+    #[doc = " @is_file: 0: list of samples; 1: file with sample names"]
     #[doc = ""]
-    #[doc = " @return"]
-    #[doc = " Returns NULL on failure"]
-    pub fn sam_hrecs_find_rg(
-        hrecs: *mut sam_hrecs_t,
-        rg: *const ::std::os::raw::c_char,
-    ) -> *mut sam_hrec_rg_t;
+    #[doc = " Returns 1 if the call succeeded, or 0 on error."]
+    pub fn bcf_sr_set_samples(
+        readers: *mut bcf_srs_t,
+        samples: *const ::std::os::raw::c_char,
+        is_file: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
 }
 extern "C" {
-    #[doc = " Returns the sort order from the @HD SO: field"]
-    pub fn sam_hrecs_sort_order(hrecs: *mut sam_hrecs_t) -> sam_sort_order;
+    #[doc = "  bcf_sr_set_targets(), bcf_sr_set_regions() - init targets/regions"]
+    #[doc = "  @readers:   holder of the open readers"]
+    #[doc = "  @targets:   list of regions, one-based and inclusive."]
+    #[doc = "  @is_fname:  0: targets is a comma-separated list of regions (chr,chr:from-to)"]
+    #[doc = "              1: targets is a tabix indexed file with a list of regions"]
+    #[doc = "              (<chr,pos> or <chr,from,to>)"]
+    #[doc = ""]
+    #[doc = "  Returns 0 if the call succeeded, or -1 on error."]
+    #[doc = ""]
+    #[doc = "  Both functions behave the same way, unlisted positions will be skipped by"]
+    #[doc = "  bcf_sr_next_line(). However, there is an important difference: regions use"]
+    #[doc = "  index to jump to desired positions while targets streams the whole files"]
+    #[doc = "  and merely skip unlisted positions."]
+    #[doc = ""]
+    #[doc = "  Moreover, bcf_sr_set_targets() accepts an optional parameter $alleles which"]
+    #[doc = "  is interpreted as a 1-based column index in the tab-delimited file where"]
+    #[doc = "  alleles are listed. This in principle enables to perform the COLLAPSE_*"]
+    #[doc = "  logic also with tab-delimited files. However, the current implementation"]
+    #[doc = "  considers the alleles merely as a suggestion for prioritizing one of possibly"]
+    #[doc = "  duplicate VCF lines. It is up to the caller to examine targets->als if"]
+    #[doc = "  perfect match is sought after. Note that the duplicate positions in targets"]
+    #[doc = "  file are currently not supported."]
+    #[doc = "  Targets (but not regions) can be prefixed with \"^\" to request logical complement,"]
+    #[doc = "  for example \"^X,Y,MT\" indicates that sequences X, Y and MT should be skipped."]
+    #[doc = ""]
+    #[doc = "  API note: bcf_sr_set_regions/bcf_sr_set_targets MUST be called before the"]
+    #[doc = "  first call to bcf_sr_add_reader()."]
+    pub fn bcf_sr_set_targets(
+        readers: *mut bcf_srs_t,
+        targets: *const ::std::os::raw::c_char,
+        is_file: ::std::os::raw::c_int,
+        alleles: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
 }
 extern "C" {
-    #[doc = " Returns the group order from the @HD SO: field"]
-    pub fn sam_hrecs_group_order(hrecs: *mut sam_hrecs_t) -> sam_group_order;
+    pub fn bcf_sr_set_regions(
+        readers: *mut bcf_srs_t,
+        regions: *const ::std::os::raw::c_char,
+        is_file: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bcf_sr_regions_init(
+        regions: *const ::std::os::raw::c_char,
+        is_file: ::std::os::raw::c_int,
+        chr: ::std::os::raw::c_int,
+        from: ::std::os::raw::c_int,
+        to: ::std::os::raw::c_int,
+    ) -> *mut bcf_sr_regions_t;
+}
+extern "C" {
+    pub fn bcf_sr_regions_destroy(regions: *mut bcf_sr_regions_t);
+}
+extern "C" {
+    pub fn bcf_sr_regions_seek(
+        regions: *mut bcf_sr_regions_t,
+        chr: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bcf_sr_regions_next(reg: *mut bcf_sr_regions_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bcf_sr_regions_overlap(
+        reg: *mut bcf_sr_regions_t,
+        seq: *const ::std::os::raw::c_char,
+        start: hts_pos_t,
+        end: hts_pos_t,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bcf_sr_regions_flush(regs: *mut bcf_sr_regions_t) -> ::std::os::raw::c_int;
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct kbitset_t {
+    pub n: size_t,
+    pub n_max: size_t,
+    pub b: [::std::os::raw::c_ulong; 1usize],
+}
+#[test]
+fn bindgen_test_layout_kbitset_t() {
+    assert_eq!(
+        ::std::mem::size_of::<kbitset_t>(),
+        24usize,
+        concat!("Size of: ", stringify!(kbitset_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<kbitset_t>(),
+        8usize,
+        concat!("Alignment of ", stringify!(kbitset_t))
+    );
+    fn test_field_n() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<kbitset_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).n) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(kbitset_t),
+                "::",
+                stringify!(n)
+            )
+        );
+    }
+    test_field_n();
+    fn test_field_n_max() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<kbitset_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).n_max) as usize - ptr as usize
+            },
+            8usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(kbitset_t),
+                "::",
+                stringify!(n_max)
+            )
+        );
+    }
+    test_field_n_max();
+    fn test_field_b() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<kbitset_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).b) as usize - ptr as usize
+            },
+            16usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(kbitset_t),
+                "::",
+                stringify!(b)
+            )
+        );
+    }
+    test_field_b();
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct kbitset_iter_t {
+    pub mask: ::std::os::raw::c_ulong,
+    pub elt: size_t,
+    pub i: ::std::os::raw::c_int,
+}
+#[test]
+fn bindgen_test_layout_kbitset_iter_t() {
+    assert_eq!(
+        ::std::mem::size_of::<kbitset_iter_t>(),
+        24usize,
+        concat!("Size of: ", stringify!(kbitset_iter_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<kbitset_iter_t>(),
+        8usize,
+        concat!("Alignment of ", stringify!(kbitset_iter_t))
+    );
+    fn test_field_mask() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<kbitset_iter_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).mask) as usize - ptr as usize
+            },
+            0usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(kbitset_iter_t),
+                "::",
+                stringify!(mask)
+            )
+        );
+    }
+    test_field_mask();
+    fn test_field_elt() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<kbitset_iter_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).elt) as usize - ptr as usize
+            },
+            8usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(kbitset_iter_t),
+                "::",
+                stringify!(elt)
+            )
+        );
+    }
+    test_field_elt();
+    fn test_field_i() {
+        assert_eq!(
+            unsafe {
+                let uninit = ::std::mem::MaybeUninit::<kbitset_iter_t>::uninit();
+                let ptr = uninit.as_ptr();
+                ::std::ptr::addr_of!((*ptr).i) as usize - ptr as usize
+            },
+            16usize,
+            concat!(
+                "Offset of field: ",
+                stringify!(kbitset_iter_t),
+                "::",
+                stringify!(i)
+            )
+        );
+    }
+    test_field_i();
+}
+#[doc = " @file"]
+#[doc = ""]
+#[doc = "Index FASTA or FASTQ files and extract subsequence."]
+#[doc = ""]
+#[doc = "The fai file index columns for FASTA are:"]
+#[doc = "- chromosome name"]
+#[doc = "- chromosome length: number of bases"]
+#[doc = "- offset: number of bytes to skip to get to the first base"]
+#[doc = "from the beginning of the file, including the length"]
+#[doc = "of the sequence description string (`>chr ..\\n`)"]
+#[doc = "- line length: number of bases per line (excluding `\\n`)"]
+#[doc = "- binary line length: number of bytes, including `\\n`"]
+#[doc = ""]
+#[doc = "The index for FASTQ is similar to above:"]
+#[doc = "- chromosome name"]
+#[doc = "- chromosome length: number of bases"]
+#[doc = "- sequence offset: number of bytes to skip to get to the first base"]
+#[doc = "from the beginning of the file, including the length"]
+#[doc = "of the sequence description string (`@chr ..\\n`)"]
+#[doc = "- line length: number of bases per line (excluding `\\n`)"]
+#[doc = "- binary line length: number of bytes, including `\\n`"]
+#[doc = "- quality offset: number of bytes to skip from the beginning of the file"]
+#[doc = "to get to the first quality value in the indexed entry."]
+#[doc = ""]
+#[doc = "The FASTQ version of the index uses line length and binary line length"]
+#[doc = "for both the sequence and the quality values, so they must be line"]
+#[doc = "wrapped in the same way."]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct faidx_t {
+    _unused: [u8; 0],
+}
+pub const fai_format_options_FAI_NONE: fai_format_options = 0;
+pub const fai_format_options_FAI_FASTA: fai_format_options = 1;
+pub const fai_format_options_FAI_FASTQ: fai_format_options = 2;
+#[doc = " File format to be dealing with."]
+pub type fai_format_options = ::std::os::raw::c_uint;
+extern "C" {
+    #[doc = " Build index for a FASTA or FASTQ or bgzip-compressed FASTA or FASTQ file."]
+    #[doc = "**  @param  fn  FASTA/FASTQ file name"]
+    #[doc = "@param  fnfai Name of .fai file to build."]
+    #[doc = "@param  fngzi Name of .gzi file to build (if fn is bgzip-compressed)."]
+    #[doc = "@return     0 on success; or -1 on failure"]
+    #[doc = ""]
+    #[doc = "If fnfai is NULL, \".fai\" will be appended to fn to make the FAI file name."]
+    #[doc = "If fngzi is NULL, \".gzi\" will be appended to fn for the GZI file.  The GZI"]
+    #[doc = "file will only be built if fn is bgzip-compressed."]
+    #[doc = "*/"]
+    pub fn fai_build3(
+        fn_: *const ::std::os::raw::c_char,
+        fnfai: *const ::std::os::raw::c_char,
+        fngzi: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Build index for a FASTA or FASTQ or bgzip-compressed FASTA or FASTQ file."]
+    #[doc = "** @param  fn  FASTA/FASTQ file name"]
+    #[doc = "@return     0 on success; or -1 on failure"]
+    #[doc = ""]
+    #[doc = "File \"fn.fai\" will be generated.  This function is equivalent to"]
+    #[doc = "fai_build3(fn, NULL, NULL);"]
+    #[doc = "*/"]
+    pub fn fai_build(fn_: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Destroy a faidx_t struct"]
+    pub fn fai_destroy(fai: *mut faidx_t);
+}
+pub const fai_load_options_FAI_CREATE: fai_load_options = 1;
+pub type fai_load_options = ::std::os::raw::c_uint;
+extern "C" {
+    #[doc = " Load FASTA indexes."]
+    #[doc = "** @param  fn  File name of the FASTA file (can be compressed with bgzip)."]
+    #[doc = "@param  fnfai File name of the FASTA index."]
+    #[doc = "@param  fngzi File name of the bgzip index."]
+    #[doc = "@param  flags Option flags to control index file caching and creation."]
+    #[doc = "@return Pointer to a faidx_t struct on success, NULL on failure."]
+    #[doc = ""]
+    #[doc = "If fnfai is NULL, \".fai\" will be appended to fn to make the FAI file name."]
+    #[doc = "If fngzi is NULL, \".gzi\" will be appended to fn for the bgzip index name."]
+    #[doc = "The bgzip index is only needed if fn is compressed."]
+    #[doc = ""]
+    #[doc = "If (flags & FAI_CREATE) is true, the index files will be built using"]
+    #[doc = "fai_build3() if they are not already present."]
+    #[doc = ""]
+    #[doc = "The struct returned by a successful call should be freed via fai_destroy()"]
+    #[doc = "when it is no longer needed."]
+    #[doc = "*/"]
+    pub fn fai_load3(
+        fn_: *const ::std::os::raw::c_char,
+        fnfai: *const ::std::os::raw::c_char,
+        fngzi: *const ::std::os::raw::c_char,
+        flags: ::std::os::raw::c_int,
+    ) -> *mut faidx_t;
+}
+extern "C" {
+    #[doc = " Load index from \"fn.fai\"."]
+    #[doc = "** @param  fn  File name of the FASTA file"]
+    #[doc = "@return Pointer to a faidx_t struct on success, NULL on failure."]
+    #[doc = ""]
+    #[doc = "This function is equivalent to fai_load3(fn, NULL, NULL, FAI_CREATE|FAI_CACHE);"]
+    #[doc = "*/"]
+    pub fn fai_load(fn_: *const ::std::os::raw::c_char) -> *mut faidx_t;
+}
+extern "C" {
+    #[doc = " Load FASTA or FASTQ indexes."]
+    #[doc = "** @param  fn  File name of the FASTA/FASTQ file (can be compressed with bgzip)."]
+    #[doc = "@param  fnfai File name of the FASTA/FASTQ index."]
+    #[doc = "@param  fngzi File name of the bgzip index."]
+    #[doc = "@param  flags Option flags to control index file caching and creation."]
+    #[doc = "@param  format FASTA or FASTQ file format"]
+    #[doc = "@return Pointer to a faidx_t struct on success, NULL on failure."]
+    #[doc = ""]
+    #[doc = "If fnfai is NULL, \".fai\" will be appended to fn to make the FAI file name."]
+    #[doc = "If fngzi is NULL, \".gzi\" will be appended to fn for the bgzip index name."]
+    #[doc = "The bgzip index is only needed if fn is compressed."]
+    #[doc = ""]
+    #[doc = "If (flags & FAI_CREATE) is true, the index files will be built using"]
+    #[doc = "fai_build3() if they are not already present."]
+    #[doc = ""]
+    #[doc = "The struct returned by a successful call should be freed via fai_destroy()"]
+    #[doc = "when it is no longer needed."]
+    #[doc = "*/"]
+    pub fn fai_load3_format(
+        fn_: *const ::std::os::raw::c_char,
+        fnfai: *const ::std::os::raw::c_char,
+        fngzi: *const ::std::os::raw::c_char,
+        flags: ::std::os::raw::c_int,
+        format: fai_format_options,
+    ) -> *mut faidx_t;
+}
+extern "C" {
+    #[doc = " Load index from \"fn.fai\"."]
+    #[doc = "** @param  fn  File name of the FASTA/FASTQ file"]
+    #[doc = "@param  format FASTA or FASTQ file format"]
+    #[doc = "@return Pointer to a faidx_t struct on success, NULL on failure."]
+    #[doc = ""]
+    #[doc = "This function is equivalent to fai_load3_format(fn, NULL, NULL, FAI_CREATE|FAI_CACHE, format);"]
+    #[doc = "*/"]
+    pub fn fai_load_format(
+        fn_: *const ::std::os::raw::c_char,
+        format: fai_format_options,
+    ) -> *mut faidx_t;
+}
+extern "C" {
+    #[doc = " Fetch the sequence in a region"]
+    #[doc = "** @param  fai  Pointer to the faidx_t struct"]
+    #[doc = "@param  reg  Region in the format \"chr2:20,000-30,000\""]
+    #[doc = "@param  len  Length of the region; -2 if seq not present, -1 general error"]
+    #[doc = "@return      Pointer to the sequence; `NULL` on failure"]
+    #[doc = ""]
+    #[doc = "The returned sequence is allocated by `malloc()` family and should be destroyed"]
+    #[doc = "by end users by calling `free()` on it."]
+    #[doc = ""]
+    #[doc = "To work around ambiguous parsing issues, eg both \"chr1\" and \"chr1:100-200\""]
+    #[doc = "are reference names, quote using curly braces."]
+    #[doc = "Thus \"{chr1}:100-200\" and \"{chr1:100-200}\" disambiguate the above example."]
+    #[doc = "*/"]
+    pub fn fai_fetch(
+        fai: *const faidx_t,
+        reg: *const ::std::os::raw::c_char,
+        len: *mut ::std::os::raw::c_int,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn fai_fetch64(
+        fai: *const faidx_t,
+        reg: *const ::std::os::raw::c_char,
+        len: *mut hts_pos_t,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    #[doc = " Fetch the quality string for a region for FASTQ files"]
+    #[doc = "** @param  fai  Pointer to the faidx_t struct"]
+    #[doc = "@param  reg  Region in the format \"chr2:20,000-30,000\""]
+    #[doc = "@param  len  Length of the region; -2 if seq not present, -1 general error"]
+    #[doc = "@return      Pointer to the quality string; null on failure"]
+    #[doc = ""]
+    #[doc = "The returned quality string is allocated by `malloc()` family and should be"]
+    #[doc = "destroyed by end users by calling `free()` on it."]
+    #[doc = ""]
+    #[doc = "Region names can be quoted with curly braces, as for fai_fetch()."]
+    #[doc = "*/"]
+    pub fn fai_fetchqual(
+        fai: *const faidx_t,
+        reg: *const ::std::os::raw::c_char,
+        len: *mut ::std::os::raw::c_int,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn fai_fetchqual64(
+        fai: *const faidx_t,
+        reg: *const ::std::os::raw::c_char,
+        len: *mut hts_pos_t,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    #[doc = " Fetch the number of sequences"]
+    #[doc = "** @param  fai  Pointer to the faidx_t struct"]
+    #[doc = "@return      The number of sequences"]
+    #[doc = "*/"]
+    pub fn faidx_fetch_nseq(fai: *const faidx_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Fetch the sequence in a region"]
+    #[doc = "** @param  fai  Pointer to the faidx_t struct"]
+    #[doc = "@param  c_name Region name"]
+    #[doc = "@param  p_beg_i  Beginning position number (zero-based)"]
+    #[doc = "@param  p_end_i  End position number (zero-based)"]
+    #[doc = "@param  len  Length of the region; -2 if c_name not present, -1 general error"]
+    #[doc = "@return      Pointer to the sequence; null on failure"]
+    #[doc = ""]
+    #[doc = "The returned sequence is allocated by `malloc()` family and should be destroyed"]
+    #[doc = "by end users by calling `free()` on it."]
+    #[doc = "*/"]
+    pub fn faidx_fetch_seq(
+        fai: *const faidx_t,
+        c_name: *const ::std::os::raw::c_char,
+        p_beg_i: ::std::os::raw::c_int,
+        p_end_i: ::std::os::raw::c_int,
+        len: *mut ::std::os::raw::c_int,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    #[doc = " Fetch the sequence in a region"]
+    #[doc = "** @param  fai  Pointer to the faidx_t struct"]
+    #[doc = "@param  c_name Region name"]
+    #[doc = "@param  p_beg_i  Beginning position number (zero-based)"]
+    #[doc = "@param  p_end_i  End position number (zero-based)"]
+    #[doc = "@param  len  Length of the region; -2 if c_name not present, -1 general error"]
+    #[doc = "@return      Pointer to the sequence; null on failure"]
+    #[doc = ""]
+    #[doc = "The returned sequence is allocated by `malloc()` family and should be destroyed"]
+    #[doc = "by end users by calling `free()` on it."]
+    #[doc = "*/"]
+    pub fn faidx_fetch_seq64(
+        fai: *const faidx_t,
+        c_name: *const ::std::os::raw::c_char,
+        p_beg_i: hts_pos_t,
+        p_end_i: hts_pos_t,
+        len: *mut hts_pos_t,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    #[doc = " Fetch the quality string in a region for FASTQ files"]
+    #[doc = "** @param  fai  Pointer to the faidx_t struct"]
+    #[doc = "@param  c_name Region name"]
+    #[doc = "@param  p_beg_i  Beginning position number (zero-based)"]
+    #[doc = "@param  p_end_i  End position number (zero-based)"]
+    #[doc = "@param  len  Length of the region; -2 if c_name not present, -1 general error"]
+    #[doc = "@return      Pointer to the sequence; null on failure"]
+    #[doc = ""]
+    #[doc = "The returned sequence is allocated by `malloc()` family and should be destroyed"]
+    #[doc = "by end users by calling `free()` on it."]
+    #[doc = "*/"]
+    pub fn faidx_fetch_qual(
+        fai: *const faidx_t,
+        c_name: *const ::std::os::raw::c_char,
+        p_beg_i: ::std::os::raw::c_int,
+        p_end_i: ::std::os::raw::c_int,
+        len: *mut ::std::os::raw::c_int,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    #[doc = " Fetch the quality string in a region for FASTQ files"]
+    #[doc = "** @param  fai  Pointer to the faidx_t struct"]
+    #[doc = "@param  c_name Region name"]
+    #[doc = "@param  p_beg_i  Beginning position number (zero-based)"]
+    #[doc = "@param  p_end_i  End position number (zero-based)"]
+    #[doc = "@param  len  Length of the region; -2 if c_name not present, -1 general error"]
+    #[doc = "@return      Pointer to the sequence; null on failure"]
+    #[doc = ""]
+    #[doc = "The returned sequence is allocated by `malloc()` family and should be destroyed"]
+    #[doc = "by end users by calling `free()` on it."]
+    #[doc = "*/"]
+    pub fn faidx_fetch_qual64(
+        fai: *const faidx_t,
+        c_name: *const ::std::os::raw::c_char,
+        p_beg_i: hts_pos_t,
+        p_end_i: hts_pos_t,
+        len: *mut hts_pos_t,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    #[doc = " Query if sequence is present"]
+    #[doc = "**   @param  fai  Pointer to the faidx_t struct"]
+    #[doc = "@param  seq  Sequence name"]
+    #[doc = "@return      1 if present or 0 if absent"]
+    #[doc = "*/"]
+    pub fn faidx_has_seq(
+        fai: *const faidx_t,
+        seq: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Return number of sequences in fai index"]
+    pub fn faidx_nseq(fai: *const faidx_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Return name of i-th sequence"]
+    pub fn faidx_iseq(
+        fai: *const faidx_t,
+        i: ::std::os::raw::c_int,
+    ) -> *const ::std::os::raw::c_char;
+}
+extern "C" {
+    #[doc = " Return sequence length, -1 if not present"]
+    pub fn faidx_seq_len(
+        fai: *const faidx_t,
+        seq: *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Parses a region string."]
+    #[doc = "** @param  fai   Pointer to the faidx_t struct"]
+    #[doc = "@param  s     Region string"]
+    #[doc = "@param  tid   Returns which i-th sequence is described in the region."]
+    #[doc = "@param  beg   Returns the start of the region (0 based)"]
+    #[doc = "@param  end   Returns the one past last of the region (0 based)"]
+    #[doc = "@param  flags Parsing method, see HTS_PARSE_* in hts.h."]
+    #[doc = "@return       Pointer to end of parsed s if successful, NULL if not."]
+    #[doc = ""]
+    #[doc = "To work around ambiguous parsing issues, eg both \"chr1\" and \"chr1:100-200\""]
+    #[doc = "are reference names, quote using curly braces."]
+    #[doc = "Thus \"{chr1}:100-200\" and \"{chr1:100-200}\" disambiguate the above example."]
+    #[doc = "*/"]
+    pub fn fai_parse_region(
+        fai: *const faidx_t,
+        s: *const ::std::os::raw::c_char,
+        tid: *mut ::std::os::raw::c_int,
+        beg: *mut hts_pos_t,
+        end: *mut hts_pos_t,
+        flags: ::std::os::raw::c_int,
+    ) -> *const ::std::os::raw::c_char;
+}
+extern "C" {
+    #[doc = " Sets the cache size of the underlying BGZF compressed file"]
+    #[doc = "** @param  fai         Pointer to the faidx_t struct"]
+    #[doc = "*  @param  cache_size  Selected cache size in bytes"]
+    #[doc = "*/"]
+    pub fn fai_set_cache_size(fai: *mut faidx_t, cache_size: ::std::os::raw::c_int);
+}
+extern "C" {
+    #[doc = " Determines the path to the reference index file"]
+    #[doc = "** @param  fa    String with the path to the reference file"]
+    #[doc = "*  @return       String with the path to the reference index file, or NULL on failure"]
+    #[doc = ""]
+    #[doc = "If the reference path has the format reference.fa##idx##index.fa.fai,"]
+    #[doc = "the index path is taken directly from it as index.fa.fai."]
+    #[doc = "If the reference file is local and the index file cannot be found, it"]
+    #[doc = "will be created alongside the reference file."]
+    #[doc = "If the reference file is remote and the index file cannot be found,"]
+    #[doc = "the method returns NULL."]
+    #[doc = ""]
+    #[doc = "The returned string has to be freed by the user at the end of its scope."]
+    #[doc = "*/"]
+    pub fn fai_path(fa: *const ::std::os::raw::c_char) -> *mut ::std::os::raw::c_char;
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct hts_tpool_process {
+    _unused: [u8; 0],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct hts_tpool_result {
+    _unused: [u8; 0],
+}
+extern "C" {
+    pub fn hts_tpool_init(n: ::std::os::raw::c_int) -> *mut hts_tpool;
+}
+extern "C" {
+    pub fn hts_tpool_size(p: *mut hts_tpool) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Add an item to the work pool."]
+    #[doc = "**"]
+    #[doc = "* @param p     Thread pool"]
+    #[doc = "* @param q     Process queue"]
+    #[doc = "* @param func  Function run by the thread pool"]
+    #[doc = "* @param arg   Data for use by func()"]
+    #[doc = "* @return 0 on success"]
+    #[doc = "*        -1 on failure"]
+    #[doc = "*/"]
+    pub fn hts_tpool_dispatch(
+        p: *mut hts_tpool,
+        q: *mut hts_tpool_process,
+        func: ::std::option::Option<
+            unsafe extern "C" fn(arg: *mut ::std::os::raw::c_void) -> *mut ::std::os::raw::c_void,
+        >,
+        arg: *mut ::std::os::raw::c_void,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Add an item to the work pool, with nonblocking option."]
+    #[doc = "**"]
+    #[doc = "* @param p         Thread pool"]
+    #[doc = "* @param q         Process queue"]
+    #[doc = "* @param func      Function run by the thread pool"]
+    #[doc = "* @param arg       Data for use by func()"]
+    #[doc = "* @param nonblock  Non-blocking flag (see description)"]
+    #[doc = "* @return 0 on success"]
+    #[doc = "*        -1 on failure"]
+    #[doc = "*"]
+    #[doc = "* The @p nonblock parameter can take one of the following values:"]
+    #[doc = "*      0 => block if input queue is full"]
+    #[doc = "*     +1 => don't block if input queue is full, but do not add task"]
+    #[doc = "*     -1 => add task regardless of whether queue is full (over-size)"]
+    #[doc = "*"]
+    #[doc = "* If @p nonblock is +1 and the queue is full, -1 will be returned and"]
+    #[doc = "* `errno` is set to `EAGAIN`."]
+    #[doc = "*/"]
+    pub fn hts_tpool_dispatch2(
+        p: *mut hts_tpool,
+        q: *mut hts_tpool_process,
+        func: ::std::option::Option<
+            unsafe extern "C" fn(arg: *mut ::std::os::raw::c_void) -> *mut ::std::os::raw::c_void,
+        >,
+        arg: *mut ::std::os::raw::c_void,
+        nonblock: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[doc = " Add an item to the work pool, with nonblocking and cleanup callbacks."]
+    #[doc = "**"]
+    #[doc = "* @param p               Thread pool"]
+    #[doc = "* @param q               Process queue"]
+    #[doc = "* @param exec_func       Function run by the thread pool"]
+    #[doc = "* @param arg             Data for use by func()"]
+    #[doc = "* @param job_cleanup     Callback to clean up when discarding jobs"]
+    #[doc = "* @param result_cleanup  Callback to clean up when discarding result data"]
+    #[doc = "* @param nonblock        Non-blocking flag (see description)"]
+    #[doc = "* @return 0 on success"]
+    #[doc = "*        -1 on failure"]
+    #[doc = "*"]
+    #[doc = "* The @p nonblock parameter can take one of the following values:"]
+    #[doc = "*      0 => block if input queue is full"]
+    #[doc = "*     +1 => don't block if input queue is full, but do not add task"]
+    #[doc = "*     -1 => add task regardless of whether queue is full (over-size)"]
+    #[doc = "*"]
+    #[doc = "* If @p nonblock is +1 and the queue is full, -1 will be returned and"]
+    #[doc = "* `errno` is set to `EAGAIN`."]
+    #[doc = "*"]
+    #[doc = "* The job_cleanup() and result_cleanup() callbacks are used when discarding"]
+    #[doc = "* data from a queue, for example when calling hts_tpool_process_reset()"]
+    #[doc = "* or hts_tpool_process_destroy()."]
+    #[doc = "*"]
+    #[doc = "* If not NULL, job_cleanup() will be called for each pending job with the"]
+    #[doc = "* value of @p arg that was set for that job.  This can be used to free"]
+    #[doc = "* any data associated with @p arg, and also @p arg itself."]
+    #[doc = "*"]
+    #[doc = "* Similarly, result_cleanup() can be used to free any results left by"]
+    #[doc = "* jobs that had started before hts_tpool_process_reset() was called."]
+    #[doc = "* The argument passed to result_cleanup() is the pointer that would"]
+    #[doc = "* have been returned by calling hts_tpool_result_data() on the result"]
+    #[doc = "* when pulled from the queue."]
+    #[doc = "*"]
+    #[doc = "* job_cleanup() and result_cleanup() are only called when discarding jobs."]
+    #[doc = "* For jobs that are processed normally, it is the responsibility of"]
+    #[doc = "* exec_func() and / or consumers of any results to do any cleaning up"]
+    #[doc = "* necessary."]
+    #[doc = "*/"]
+    pub fn hts_tpool_dispatch3(
+        p: *mut hts_tpool,
+        q: *mut hts_tpool_process,
+        exec_func: ::std::option::Option<
+            unsafe extern "C" fn(arg: *mut ::std::os::raw::c_void) -> *mut ::std::os::raw::c_void,
+        >,
+        arg: *mut ::std::os::raw::c_void,
+        job_cleanup: ::std::option::Option<unsafe extern "C" fn(arg: *mut ::std::os::raw::c_void)>,
+        result_cleanup: ::std::option::Option<
+            unsafe extern "C" fn(data: *mut ::std::os::raw::c_void),
+        >,
+        nonblock: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn hts_tpool_wake_dispatch(q: *mut hts_tpool_process);
+}
+extern "C" {
+    pub fn hts_tpool_process_flush(q: *mut hts_tpool_process) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn hts_tpool_process_reset(
+        q: *mut hts_tpool_process,
+        free_results: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn hts_tpool_process_qsize(q: *mut hts_tpool_process) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn hts_tpool_destroy(p: *mut hts_tpool);
+}
+extern "C" {
+    pub fn hts_tpool_kill(p: *mut hts_tpool);
+}
+extern "C" {
+    pub fn hts_tpool_next_result(q: *mut hts_tpool_process) -> *mut hts_tpool_result;
+}
+extern "C" {
+    pub fn hts_tpool_next_result_wait(q: *mut hts_tpool_process) -> *mut hts_tpool_result;
+}
+extern "C" {
+    pub fn hts_tpool_delete_result(r: *mut hts_tpool_result, free_data: ::std::os::raw::c_int);
+}
+extern "C" {
+    pub fn hts_tpool_result_data(r: *mut hts_tpool_result) -> *mut ::std::os::raw::c_void;
+}
+extern "C" {
+    pub fn hts_tpool_process_init(
+        p: *mut hts_tpool,
+        qsize: ::std::os::raw::c_int,
+        in_only: ::std::os::raw::c_int,
+    ) -> *mut hts_tpool_process;
+}
+extern "C" {
+    pub fn hts_tpool_process_destroy(q: *mut hts_tpool_process);
+}
+extern "C" {
+    pub fn hts_tpool_process_empty(q: *mut hts_tpool_process) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn hts_tpool_process_len(q: *mut hts_tpool_process) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn hts_tpool_process_sz(q: *mut hts_tpool_process) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn hts_tpool_process_shutdown(q: *mut hts_tpool_process);
+}
+extern "C" {
+    pub fn hts_tpool_process_is_shutdown(q: *mut hts_tpool_process) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn hts_tpool_process_attach(p: *mut hts_tpool, q: *mut hts_tpool_process);
+}
+extern "C" {
+    pub fn hts_tpool_process_detach(p: *mut hts_tpool, q: *mut hts_tpool_process);
+}
+extern "C" {
+    pub fn hts_tpool_process_ref_incr(q: *mut hts_tpool_process);
+}
+extern "C" {
+    pub fn hts_tpool_process_ref_decr(q: *mut hts_tpool_process);
+}
+extern "C" {
+    #[doc = " <div rustbindgen replaces=\"kbs_init2\"></div>"]
+    #[link_name = "\u{1}wrap_kbs_init2"]
+    pub fn kbs_init2(ni: size_t, fill: ::std::os::raw::c_int) -> *mut kbitset_t;
+}
+extern "C" {
+    #[doc = " <div rustbindgen replaces=\"kbs_init\"></div>"]
+    #[link_name = "\u{1}wrap_kbs_init"]
+    pub fn kbs_init(ni: size_t) -> *mut kbitset_t;
+}
+extern "C" {
+    #[doc = " <div rustbindgen replaces=\"kbs_insert\"></div>"]
+    #[link_name = "\u{1}wrap_kbs_insert"]
+    pub fn kbs_insert(bs: *mut kbitset_t, i: ::std::os::raw::c_int);
+}
+extern "C" {
+    #[doc = " <div rustbindgen replaces=\"kbs_destroy\"></div>"]
+    #[link_name = "\u{1}wrap_kbs_destroy"]
+    pub fn kbs_destroy(bs: *mut kbitset_t);
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct __locale_data {
+    pub _address: u8,
 }
 pub type __builtin_va_list = [__va_list_tag; 1usize];
 #[repr(C)]
@@ -12888,9 +17378,4 @@ fn bindgen_test_layout___va_list_tag() {
         );
     }
     test_field_reg_save_area();
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct __locale_data {
-    pub _address: u8,
 }
