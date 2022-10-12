@@ -56,9 +56,15 @@ const FILES: &[&str] = &[
     "htscodecs/htscodecs/htscodecs.c",
     "htscodecs/htscodecs/pack.c",
     "htscodecs/htscodecs/rANS_static4x16pr.c",
+    "htscodecs/htscodecs/rANS_static32x16pr_avx2.c",
+    "htscodecs/htscodecs/rANS_static32x16pr_avx512.c",
+    "htscodecs/htscodecs/rANS_static32x16pr_sse4.c",
+    "htscodecs/htscodecs/rANS_static32x16pr_neon.c",
+    "htscodecs/htscodecs/rANS_static32x16pr.c",
     "htscodecs/htscodecs/rANS_static.c",
     "htscodecs/htscodecs/rle.c",
     "htscodecs/htscodecs/tokenise_name3.c",
+    "htscodecs/htscodecs/utils.c",
 ];
 
 fn main() {
@@ -178,6 +184,35 @@ fn main() {
         println!("cargo:rerun-if-changed=htslib/hfile_s3.c");
         cfg.file("htslib/hfile_s3_write.c");
         println!("cargo:rerun-if-changed=htslib/hfile_s3_write.c");
+    }
+
+    // pass through target-feature flags to enable special instruction
+    // support in htscodecs build.
+    // TODO: add AVX512 support once Rust has it as a target feature.
+    if let Ok(targets) = env::var("CARGO_CFG_TARGET_FEATURE") {
+        if targets.contains("avx2") {
+            cfg.flag("-mavx2");
+            config_lines.push("#define HAVE_AVX2 1");
+        }
+
+        if targets.contains("sse4.1") {
+            cfg.flag("-msse4.1");
+            config_lines.push("#define HAVE_SSE4_1 1");
+        }
+
+        if targets.contains("ssse3") {
+            cfg.flag("-mssse3");
+            config_lines.push("#define HAVE_SSSE3 1");
+        }
+
+        if targets.contains("popcnt") {
+            cfg.flag("-mpopcnt");
+            config_lines.push("#define HAVE_POPCNT 1");
+        }
+
+        if targets.contains("neon") {
+            config_lines.push("#define __ARM_NEON 1");
+        }
     }
 
     // write out config.h which controls the options htslib will use
