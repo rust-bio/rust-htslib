@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.3](https://github.com/rust-bio/rust-htslib/compare/hts-sys-v2.0.2...hts-sys-v2.0.3) (2022-10-13)
+
+
+### Performance Improvements
+
+* update htslib and corresponding bindings to 1.16 ([#366](https://github.com/rust-bio/rust-htslib/issues/366)) ([f597ce0](https://github.com/rust-bio/rust-htslib/commit/f597ce0451e3f3c393166a7291486bbc2bde4c39))
+
 ### [2.0.2](https://www.github.com/rust-bio/rust-htslib/compare/hts-sys-v2.0.1...hts-sys-v2.0.2) (2021-07-17)
 
 
