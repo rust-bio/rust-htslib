@@ -1953,6 +1953,11 @@ impl CigarStringView {
         pos
     }
 
+    /// Get the start position of the alignment (0-based).
+    pub fn pos(&self) -> i64 {
+        self.pos
+    }
+
     /// Get number of bases softclipped at the beginning of the alignment.
     pub fn leading_softclips(&self) -> i64 {
         self.first().map_or(0, |cigar| {
@@ -2180,6 +2185,12 @@ mod tests {
         for op in &cigar {
             println!("{}", op);
         }
+    }
+
+    #[test]
+    fn test_cigar_string_view_pos() {
+        let cigar = CigarString(vec![Cigar::Match(100), Cigar::SoftClip(10)]).into_view(5);
+        assert_eq!(cigar.pos(), 5);
     }
 
     #[test]
