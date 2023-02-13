@@ -17493,6 +17493,129 @@ extern "C" {
         flag: ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_int;
 }
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct hts_base_mod_state {
+    _unused: [u8; 0],
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct hts_base_mod {
+    pub modified_base: ::std::os::raw::c_int,
+    pub canonical_base: ::std::os::raw::c_int,
+    pub strand: ::std::os::raw::c_int,
+    pub qual: ::std::os::raw::c_int,
+}
+#[test]
+fn bindgen_test_layout_hts_base_mod() {
+    assert_eq!(
+        ::std::mem::size_of::<hts_base_mod>(),
+        16usize,
+        concat!("Size of: ", stringify!(hts_base_mod))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<hts_base_mod>(),
+        4usize,
+        concat!("Alignment of ", stringify!(hts_base_mod))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<hts_base_mod>())).modified_base as *const _ as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(hts_base_mod),
+            "::",
+            stringify!(modified_base)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<hts_base_mod>())).canonical_base as *const _ as usize },
+        4usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(hts_base_mod),
+            "::",
+            stringify!(canonical_base)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<hts_base_mod>())).strand as *const _ as usize },
+        8usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(hts_base_mod),
+            "::",
+            stringify!(strand)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<hts_base_mod>())).qual as *const _ as usize },
+        12usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(hts_base_mod),
+            "::",
+            stringify!(qual)
+        )
+    );
+}
+extern "C" {
+    pub fn hts_base_mod_state_alloc() -> *mut hts_base_mod_state;
+}
+extern "C" {
+    pub fn hts_base_mod_state_free(state: *mut hts_base_mod_state);
+}
+extern "C" {
+    pub fn bam_parse_basemod(
+        b: *const bam1_t,
+        state: *mut hts_base_mod_state,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bam_mods_at_next_pos(
+        b: *const bam1_t,
+        state: *mut hts_base_mod_state,
+        mods: *mut hts_base_mod,
+        n_mods: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bam_next_basemod(
+        b: *const bam1_t,
+        state: *mut hts_base_mod_state,
+        mods: *mut hts_base_mod,
+        n_mods: ::std::os::raw::c_int,
+        pos: *mut ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bam_mods_at_qpos(
+        b: *const bam1_t,
+        qpos: ::std::os::raw::c_int,
+        state: *mut hts_base_mod_state,
+        mods: *mut hts_base_mod,
+        n_mods: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bam_mods_query_type(
+        state: *mut hts_base_mod_state,
+        code: ::std::os::raw::c_int,
+        strand: *mut ::std::os::raw::c_int,
+        implicit: *mut ::std::os::raw::c_int,
+        canonical: *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn bam_mods_recorded(
+        state: *mut hts_base_mod_state,
+        ntype: *mut ::std::os::raw::c_int,
+    ) -> *mut ::std::os::raw::c_int;
+}
+
+
 pub const cram_block_method_BM_ERROR: cram_block_method = -1;
 pub const cram_block_method_RAW: cram_block_method = 0;
 pub const cram_block_method_GZIP: cram_block_method = 1;
