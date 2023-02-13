@@ -1020,6 +1020,38 @@ impl Record {
         }
     }
 
+    /// Access the base modifications associated with this Record through the MM tag.
+    /// Example:
+    /// ```
+    ///    if let Ok(mods) = record.base_modifications() {
+    ///        // print metadata for the modifications present in this record
+    ///        for mod_code in mods.recorded() {
+    ///            // print metadata for modification
+    ///            if let Ok(mod_metadata) = mods.query_type(*mod_code) {
+    ///                println!("mod found with code {}/{} flags: [{} {} {}]",
+    ///                        mod_code, *mod_code as u8 as char,
+    ///                        mod_metadata.strand, mod_metadata.implicit, mod_metadata.canonical as u8 as char);
+    ///            }
+    ///        }
+    ///        // iterate over the modifications in this record
+    ///        // the modifications are returned as a tuple with the
+    ///        // position of the modification and a vector<hts_base_mod> containing the
+    ///        // modification entries at that position
+    ///        for res in mods {
+    ///            if let Ok( (position, entries) ) = res {
+    ///                print!("\t{} [", position);
+    ///                for m in entries  {
+    ///                    print!(" {},{}", m.modified_base as u8 as char, m.qual);
+    ///                }
+    ///            }
+    ///            println!(" ]");
+    ///        }
+    ///    }
+    /// ```
+    pub fn base_modifications(&self) -> Result<BaseModifications> {
+        BaseModifications::new(self)
+    }
+
     /// Infer read pair orientation from record. Returns `SequenceReadPairOrientation::None` if record
     /// is not paired, mates are not mapping to the same contig, or mates start at the
     /// same position.
@@ -2169,6 +2201,138 @@ impl<'a> IntoIterator for &'a CigarStringView {
 impl fmt::Display for CigarStringView {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         self.inner.fmt(fmt)
+    }
+}
+
+pub struct BaseModificationMetadata
+{
+    pub strand: i32,
+    pub implicit: i32,
+    pub canonical: i8
+}
+
+/// struct containing the internal state required to access
+/// the base modifications for a bam::Record
+pub struct BaseModifications<'a>
+{
+    record: &'a Record,
+    state: *mut htslib::hts_base_mod_state,
+    capacity: usize
+}
+
+impl BaseModifications<'_> {
+
+    /// Initialize a new BaseModification struct from a bam::Record
+    /// This function allocates memory for the state structure
+    /// and initializes the iterator to the start of the modification
+    /// records.
+    fn new<'a>(r: &'a Record) -> Result<BaseModifications<'a>> {
+        let mut bm = unsafe {
+            BaseModifications {
+                record: r,
+                state: hts_sys::hts_base_mod_state_alloc(),
+                capacity: 4 // default, we will update this after initialization of state
+            }
+        };
+
+        if bm.state.is_null() {
+            panic!("Unable to allocate memory for hts_base_mod_state");
+        }
+
+        // parse the MM tag to initialize the state
+        unsafe {
+            let ret = hts_sys::bam_parse_basemod(bm.record.inner_ptr(), bm.state);
+            if ret != 0 {
+                return Err(Error::BamBaseModificationTagNotFound);
+            }
+        }
+
+        let types = bm.recorded();
+        bm.capacity = types.len();
+        return Ok(bm);
+    }
+
+    /// Return an array containing the modification codes listed for this record.
+    /// Positive values are ascii character codes (eg m), negative values are chEBI codes.
+    pub fn recorded<'a>(&self) -> &'a [i32] {
+        unsafe {
+            let mut n: i32 = 0;
+            let data_ptr: *const i32 = hts_sys::bam_mods_recorded(self.state, &mut n);
+
+            // htslib should not return a null pointer, even when there are no base mods
+            if data_ptr.is_null() {
+                panic!("Unable to obtain pointer to base modifications");
+            }
+            assert!(n >= 0);
+            return slice::from_raw_parts(data_ptr, n as usize);
+        }
+    }
+
+    /// Return metadata for the specified character code indicating the strand
+    /// the base modification was called on, whether the tag uses implicit mode
+    /// and the ascii code for the canonical base.
+    pub fn query_type<'a>(&self, code: i32) -> Result<BaseModificationMetadata> {
+        unsafe {
+            let mut strand: i32 = 0;
+            let mut implicit: i32 = 0;
+            let mut canonical: i8 = 0;
+
+            let ret = hts_sys::bam_mods_query_type(self.state, code, &mut strand, &mut implicit, &mut canonical);
+            if ret == -1 {
+                return Err(Error::BamBaseModificationTypeNotFound);
+            } else {
+                return Ok(BaseModificationMetadata {
+                            strand: strand,
+                            implicit: implicit,
+                            canonical: canonical
+                         });
+            }
+        }
+    }
+}
+
+impl Drop for BaseModifications<'_> {
+    fn drop<'a>(&mut self) {
+        unsafe { hts_sys::hts_base_mod_state_free(self.state); }
+    }
+}
+
+impl<'a> Iterator for BaseModifications<'a> {
+    type Item = Result< (i32, Vec<hts_sys::hts_base_mod>) >;
+
+    fn next(&mut self) -> Option< Self::Item > {
+        let mut pos = -1;
+
+        unsafe {
+            let mut data = Vec::with_capacity(self.capacity);
+
+            let ret = hts_sys::bam_next_basemod(self.record.inner_ptr(),
+                                                self.state,
+                                                data.as_mut_ptr(),
+                                                data.capacity() as i32,
+                                                &mut pos);
+
+            if ret < 0 {
+                return Some(Err(Error::BamBaseModificationIterationFailed));
+            }
+
+            // the htslib API won't write more than max_n mods to the output away but it will
+            // return the actual number of modifications. So we need to check the number of actual
+            // mods and do something when we don't return them all.
+            if ret as usize > data.capacity() {
+                return Some(Err(Error::BamBaseModificationTooManyMods));
+            }
+
+            // we read the modifications directly into the vector, which does
+            // not update the length. handle this here.
+            data.set_len(ret as usize);
+
+            if ret > 0 {
+                Some( Ok( (pos, data) ) )
+            } else {
+                None
+            }
+        }
     }
 }
 
