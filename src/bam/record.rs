@@ -1960,24 +1960,26 @@ impl CigarStringView {
 
     /// Get number of bases softclipped at the beginning of the alignment.
     pub fn leading_softclips(&self) -> i64 {
-        self.first().map_or(0, |cigar| {
-            if let Cigar::SoftClip(s) = cigar {
-                *s as i64
-            } else {
-                0
-            }
-        })
+        self.split_first()
+            .map_or(0, |(leading_cigar, trailing_cigars)| match leading_cigar {
+                Cigar::SoftClip(s) => *s as i64,
+                Cigar::HardClip(_) => CigarString(trailing_cigars.to_vec())
+                    .into_view(0)
+                    .leading_softclips(),
+                _ => 0,
+            })
     }
 
     /// Get number of bases softclipped at the end of the alignment.
     pub fn trailing_softclips(&self) -> i64 {
-        self.last().map_or(0, |cigar| {
-            if let Cigar::SoftClip(s) = cigar {
-                *s as i64
-            } else {
-                0
-            }
-        })
+        self.split_last()
+            .map_or(0, |(trailing_cigar, leading_cigars)| match trailing_cigar {
+                Cigar::SoftClip(s) => *s as i64,
+                Cigar::HardClip(_) => CigarString(leading_cigars.to_vec())
+                    .into_view(0)
+                    .trailing_softclips(),
+                _ => 0,
+            })
     }
 
     /// Get number of bases hardclipped at the beginning of the alignment.
