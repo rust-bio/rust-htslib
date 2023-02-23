@@ -68,6 +68,7 @@ jobs:
         uses: actions-rs/tarpaulin@v0.1
         with:
           args: '--all-features --out Lcov --exclude-files hts-sys/*_prebuilt_bindings.rs -- --test-threads 1'
+          version: 0.22.0
 
       - name: Upload coverage
         uses: coverallsapp/github-action@v1.1.1
