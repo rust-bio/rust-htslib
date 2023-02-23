@@ -99,6 +99,33 @@ impl Reader {
         let bytes = self.fetch_seq(name, begin, end)?;
         Ok(std::str::from_utf8(bytes).unwrap().to_owned())
     }
+
+    /// Fetches the number of sequences in the fai index
+    pub fn fetch_n_seqs(&self) -> u64 {
+        let n = unsafe { htslib::faidx_nseq(self.inner) };
+        n as u64
+    }
+
+    /// Fetches the i-th sequence name
+    ///
+    /// # Arguments
+    ///
+    /// * `i` - index to query
+    pub fn fetch_i_seq(&self, i: i32) -> Result<String> {
+        let cname = unsafe {
+            let ptr = htslib::faidx_iseq(self.inner, i);
+            ffi::CStr::from_ptr(ptr)
+        };
+
+        let out = match cname.to_str() {
+            Ok(s) => s.to_string(),
+            Err(_) => {
+                return Err(Error::FaidxBadSeqName);
+            }
+        };
+
+        Ok(out)
+    }
 }
 
 #[cfg(test)]
