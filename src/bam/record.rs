@@ -2194,6 +2194,22 @@ mod tests {
     }
 
     #[test]
+    fn test_cigar_string_leading_softclips() {
+        let cigar = CigarString(vec![Cigar::SoftClip(10), Cigar::Match(100)]);
+        assert_eq!(cigar.leading_softclips(), 10);
+        let cigar2 = CigarString(vec![Cigar::HardClip(5), Cigar::SoftClip(10), Cigar::Match(100)]);
+        assert_eq!(cigar2.leading_softclips(), 10);
+    }
+
+    #[test]
+    fn test_cigar_string_trailing_softclips() {
+        let cigar = CigarString(vec![Cigar::Match(100), Cigar::SoftClip(10)]);
+        assert_eq!(cigar.trailing_softclips(), 10);
+        let cigar2 = CigarString(vec![Cigar::Match(100), Cigar::SoftClip(10), Cigar::HardClip(5)]);
+        assert_eq!(cigar2.trailing_softclips(), 10);
+    }
+
+    #[test]
     fn test_cigar_read_pos() {
         let vpos = 5; // variant position
 
