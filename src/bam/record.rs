@@ -1925,7 +1925,7 @@ impl fmt::Display for CigarString {
     }
 }
 
-// Get number of leaading/trailing softclips taking hardclips into account
+// Get number of leading/trailing softclips taking hardclips into account
 fn get_softclips(cigar: CigarString) -> i64 {
     match (cigar.get(0), cigar.get(1)) {
         (Some(Cigar::HardClip(_)), Some(Cigar::SoftClip(s))) => *s as i64,
