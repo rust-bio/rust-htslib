@@ -1699,6 +1699,7 @@ custom_derive! {
     /// ```
     #[cfg_attr(feature = "serde_feature", derive(Serialize, Deserialize))]
     #[derive(NewtypeDeref,
+            NewtypeDerefMut,
              NewtypeIndex(usize),
              NewtypeIndexMut(usize),
              NewtypeFrom,
@@ -1924,6 +1925,15 @@ impl fmt::Display for CigarString {
     }
 }
 
+// Get number of leaading/trailing softclips taking hardclips into account
+fn get_softclips(cigar: CigarString) -> i64 {
+    match (cigar.get(0), cigar.get(1)) {
+        (Some(Cigar::HardClip(_)), Some(Cigar::SoftClip(s))) => *s as i64,
+        (Some(Cigar::SoftClip(s)), _) => *s as i64,
+        _ => 0,
+    }
+}
+
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct CigarStringView {
     inner: CigarString,
@@ -1960,26 +1970,14 @@ impl CigarStringView {
 
     /// Get number of bases softclipped at the beginning of the alignment.
     pub fn leading_softclips(&self) -> i64 {
-        self.split_first()
-            .map_or(0, |(leading_cigar, trailing_cigars)| match leading_cigar {
-                Cigar::SoftClip(s) => *s as i64,
-                Cigar::HardClip(_) => CigarString(trailing_cigars.to_vec())
-                    .into_view(0)
-                    .leading_softclips(),
-                _ => 0,
-            })
+        get_softclips(self.to_owned().take())
     }
 
     /// Get number of bases softclipped at the end of the alignment.
     pub fn trailing_softclips(&self) -> i64 {
-        self.split_last()
-            .map_or(0, |(trailing_cigar, leading_cigars)| match trailing_cigar {
-                Cigar::SoftClip(s) => *s as i64,
-                Cigar::HardClip(_) => CigarString(leading_cigars.to_vec())
-                    .into_view(0)
-                    .trailing_softclips(),
-                _ => 0,
-            })
+        let mut cigar = self.to_owned().take();
+        cigar.reverse();
+        get_softclips(cigar)
     }
 
     /// Get number of bases hardclipped at the beginning of the alignment.
