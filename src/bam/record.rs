@@ -1777,7 +1777,7 @@ impl CigarString {
     }
 
     // Get number of leading/trailing softclips taking hardclips into account
-    fn get_softclips(self) -> i64 {
+    fn calc_leading_softclips(&self) -> i64 {
         match (self.get(0), self.get(1)) {
             (Some(Cigar::HardClip(_)), Some(Cigar::SoftClip(s))) => *s as i64,
             (Some(Cigar::SoftClip(s)), _) => *s as i64,
@@ -1970,14 +1970,14 @@ impl CigarStringView {
 
     /// Get number of bases softclipped at the beginning of the alignment.
     pub fn leading_softclips(&self) -> i64 {
-        self.to_owned().take().get_softclips()
+        self.to_owned().take().calc_leading_softclips()
     }
 
     /// Get number of bases softclipped at the end of the alignment.
     pub fn trailing_softclips(&self) -> i64 {
         let mut cigar = self.to_owned().take();
         cigar.reverse();
-        cigar.get_softclips()
+        cigar.calc_leading_softclips()
     }
 
     /// Get number of bases hardclipped at the beginning of the alignment.
