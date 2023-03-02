@@ -1699,6 +1699,7 @@ custom_derive! {
     /// ```
     #[cfg_attr(feature = "serde_feature", derive(Serialize, Deserialize))]
     #[derive(NewtypeDeref,
+            NewtypeDerefMut,
              NewtypeIndex(usize),
              NewtypeIndexMut(usize),
              NewtypeFrom,
@@ -1911,7 +1912,7 @@ impl<'a> IntoIterator for &'a CigarString {
     type IntoIter = ::std::slice::Iter<'a, Cigar>;
 
     fn into_iter(self) -> Self::IntoIter {
-        (&(self.0)).iter()
+        self.0.iter()
     }
 }
 
@@ -1921,6 +1922,16 @@ impl fmt::Display for CigarString {
             fmt.write_fmt(format_args!("{}{}", op.len(), op.char()))?;
         }
         Ok(())
+    }
+}
+
+// Get number of leading/trailing softclips if a CigarString taking hardclips into account
+fn calc_softclips<'a>(mut cigar: impl DoubleEndedIterator<Item = &'a Cigar>) -> i64 {
+    match (cigar.next(), cigar.next()) {
+        (Some(Cigar::HardClip(_)), Some(Cigar::SoftClip(s))) | (Some(Cigar::SoftClip(s)), _) => {
+            *s as i64
+        }
+        _ => 0,
     }
 }
 
@@ -1960,24 +1971,12 @@ impl CigarStringView {
 
     /// Get number of bases softclipped at the beginning of the alignment.
     pub fn leading_softclips(&self) -> i64 {
-        self.first().map_or(0, |cigar| {
-            if let Cigar::SoftClip(s) = cigar {
-                *s as i64
-            } else {
-                0
-            }
-        })
+        calc_softclips(self.iter())
     }
 
     /// Get number of bases softclipped at the end of the alignment.
     pub fn trailing_softclips(&self) -> i64 {
-        self.last().map_or(0, |cigar| {
-            if let Cigar::SoftClip(s) = cigar {
-                *s as i64
-            } else {
-                0
-            }
-        })
+        calc_softclips(self.iter().rev())
     }
 
     /// Get number of bases hardclipped at the beginning of the alignment.
@@ -2191,6 +2190,32 @@ mod tests {
     fn test_cigar_string_view_pos() {
         let cigar = CigarString(vec![Cigar::Match(100), Cigar::SoftClip(10)]).into_view(5);
         assert_eq!(cigar.pos(), 5);
+    }
+
+    #[test]
+    fn test_cigar_string_leading_softclips() {
+        let cigar = CigarString(vec![Cigar::SoftClip(10), Cigar::Match(100)]).into_view(0);
+        assert_eq!(cigar.leading_softclips(), 10);
+        let cigar2 = CigarString(vec![
+            Cigar::HardClip(5),
+            Cigar::SoftClip(10),
+            Cigar::Match(100),
+        ])
+        .into_view(0);
+        assert_eq!(cigar2.leading_softclips(), 10);
+    }
+
+    #[test]
+    fn test_cigar_string_trailing_softclips() {
+        let cigar = CigarString(vec![Cigar::Match(100), Cigar::SoftClip(10)]).into_view(0);
+        assert_eq!(cigar.trailing_softclips(), 10);
+        let cigar2 = CigarString(vec![
+            Cigar::Match(100),
+            Cigar::SoftClip(10),
+            Cigar::HardClip(5),
+        ])
+        .into_view(0);
+        assert_eq!(cigar2.trailing_softclips(), 10);
     }
 
     #[test]
