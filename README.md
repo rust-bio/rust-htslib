@@ -2,7 +2,7 @@
 [![Crates.io](https://img.shields.io/crates/v/rust-htslib.svg)](https://crates.io/crates/rust-htslib)
 [![Crates.io](https://img.shields.io/crates/l/rust-htslib.svg)](https://crates.io/crates/rust-htslib)
 [![docs.rs](https://docs.rs/rust-htslib/badge.svg)](https://docs.rs/rust-htslib)
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/rust-bio/rust-htslib/CI/master?label=tests)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/rust-bio/rust-htslib/rust.yml?branch=master&label=tests)
 [![Coverage Status](https://coveralls.io/repos/github/rust-bio/rust-htslib/badge.svg?branch=master)](https://coveralls.io/github/rust-bio/rust-htslib?branch=master)
 
 # HTSlib bindings for Rust
