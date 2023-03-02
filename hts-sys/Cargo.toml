@@ -1,6 +1,6 @@
 [package]
 name = "hts-sys"
-version = "2.0.3"
+version = "0.41.0"
 authors = ["Christopher Schröder <christopher.schroeder@tu-dortmund.de>", "Johannes Köster <johannes.koester@tu-dortmund.de>"]
 build = "build.rs"
 links = "hts"
