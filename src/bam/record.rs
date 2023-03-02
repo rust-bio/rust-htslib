@@ -1912,7 +1912,7 @@ impl<'a> IntoIterator for &'a CigarString {
     type IntoIter = ::std::slice::Iter<'a, Cigar>;
 
     fn into_iter(self) -> Self::IntoIter {
-        (&(self.0)).iter()
+        self.0.iter()
     }
 }
 
@@ -1927,13 +1927,12 @@ impl fmt::Display for CigarString {
 
 // Get number of leading/trailing softclips if a CigarString taking hardclips into account
 fn calc_softclips<'a>(mut cigar: impl DoubleEndedIterator<Item = &'a Cigar>) -> i64 {
-    let softclips = match (cigar.next(), cigar.next()) {
+    match (cigar.next(), cigar.next()) {
         (Some(Cigar::HardClip(_)), Some(Cigar::SoftClip(s))) | (Some(Cigar::SoftClip(s)), _) => {
             *s as i64
         }
         _ => 0,
-    };
-    softclips
+    }
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
