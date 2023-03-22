@@ -111,7 +111,7 @@ impl Reader {
     /// # Arguments
     ///
     /// * `i` - index to query
-    pub fn fetch_i_seq(&self, i: i32) -> Result<String> {
+    pub fn seq_name(&self, i: i32) -> Result<String> {
         let cname = unsafe {
             let ptr = htslib::faidx_iseq(self.inner, i);
             ffi::CStr::from_ptr(ptr)
