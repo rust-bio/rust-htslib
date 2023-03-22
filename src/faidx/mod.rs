@@ -101,7 +101,7 @@ impl Reader {
     }
 
     /// Fetches the number of sequences in the fai index
-    pub fn fetch_n_seqs(&self) -> u64 {
+    pub fn n_seqs(&self) -> u64 {
         let n = unsafe { htslib::faidx_nseq(self.inner) };
         n as u64
     }
