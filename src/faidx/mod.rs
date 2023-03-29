@@ -8,6 +8,7 @@
 //!
 
 use std::ffi;
+use std::ops::Index;
 use std::path::Path;
 use url::Url;
 
@@ -99,6 +100,19 @@ impl Reader {
         let bytes = self.fetch_seq(name, begin, end)?;
         Ok(std::str::from_utf8(bytes).unwrap().to_owned())
     }
+
+    /// Returns the number of sequences in the index.
+    pub fn n_seqs(&self) -> i32 {
+        (unsafe { htslib::faidx_nseq(self.inner) }) as i32
+    }
+
+    /// Returns the name of the i'th sequence.
+    pub fn seqi(&self, i: usize) -> String {
+        let cs = unsafe {
+            ffi::CStr::from_ptr(htslib::faidx_iseq(self.inner, i as std::os::raw::c_int))
+        };
+        String::from_utf8_lossy(cs.to_bytes()).to_string()
+    }
 }
 
 #[cfg(test)]
@@ -113,6 +127,19 @@ mod tests {
     #[test]
     fn faidx_open() {
         open_reader();
+    }
+
+    #[test]
+    fn n_seqs() {
+        let r = open_reader();
+        assert_eq!(r.n_seqs(), 3);
+    }
+
+    #[test]
+    fn seqi() {
+        let r = open_reader();
+        let n = r.seqi(1);
+        assert_eq!(n, "chr2");
     }
 
     #[test]
