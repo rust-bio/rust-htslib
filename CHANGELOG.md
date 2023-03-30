@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.42.0](https://github.com/rust-bio/rust-htslib/compare/v0.41.1...v0.42.0) (2023-03-30)
+
+
+### Features
+
+* Add ability to fetch number of sequences and I-th sequence from FAI index ([#377](https://github.com/rust-bio/rust-htslib/issues/377)) ([6ecc4bd](https://github.com/rust-bio/rust-htslib/commit/6ecc4bd1f88110da278c7f934453024e4e64ac74))
+
 ## [0.41.1](https://github.com/rust-bio/rust-htslib/compare/v0.41.0...v0.41.1) (2023-03-03)
 
 ### Features
