@@ -225,4 +225,17 @@ mod tests {
         let res = r.fetch_seq("chr1", position_too_large, position_too_large + 1);
         assert_eq!(res, Err(Error::FaidxPositionTooLarge));
     }
+
+    #[test]
+    fn faidx_n_seqs() {
+        let r = open_reader();
+        assert_eq!(r.n_seqs(), 3);
+    }
+
+    #[test]
+    fn faidx_seq_name() {
+        let r = open_reader();
+        let n = r.seq_name(1).unwrap();
+        assert_eq!(n, "chr2");
+    }
 }
