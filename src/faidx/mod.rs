@@ -99,6 +99,33 @@ impl Reader {
         let bytes = self.fetch_seq(name, begin, end)?;
         Ok(std::str::from_utf8(bytes).unwrap().to_owned())
     }
+
+    /// Fetches the number of sequences in the fai index
+    pub fn n_seqs(&self) -> u64 {
+        let n = unsafe { htslib::faidx_nseq(self.inner) };
+        n as u64
+    }
+
+    /// Fetches the i-th sequence name
+    ///
+    /// # Arguments
+    ///
+    /// * `i` - index to query
+    pub fn seq_name(&self, i: i32) -> Result<String> {
+        let cname = unsafe {
+            let ptr = htslib::faidx_iseq(self.inner, i);
+            ffi::CStr::from_ptr(ptr)
+        };
+
+        let out = match cname.to_str() {
+            Ok(s) => s.to_string(),
+            Err(_) => {
+                return Err(Error::FaidxBadSeqName);
+            }
+        };
+
+        Ok(out)
+    }
 }
 
 #[cfg(test)]
@@ -197,5 +224,18 @@ mod tests {
         let position_too_large = i64::MAX as usize;
         let res = r.fetch_seq("chr1", position_too_large, position_too_large + 1);
         assert_eq!(res, Err(Error::FaidxPositionTooLarge));
+    }
+
+    #[test]
+    fn faidx_n_seqs() {
+        let r = open_reader();
+        assert_eq!(r.n_seqs(), 3);
+    }
+
+    #[test]
+    fn faidx_seq_name() {
+        let r = open_reader();
+        let n = r.seq_name(1).unwrap();
+        assert_eq!(n, "chr2");
     }
 }

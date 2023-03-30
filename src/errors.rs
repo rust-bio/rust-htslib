@@ -31,6 +31,8 @@ pub enum Error {
     // Errors for faidx
     #[error("The given position is too large to be converted to i64")]
     FaidxPositionTooLarge,
+    #[error("bad conversion of sequence name")]
+    FaidxBadSeqName,
 
     // Errors for Tbx
     #[error("previous iterator generation failed")]
