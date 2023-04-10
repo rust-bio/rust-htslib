@@ -72,7 +72,7 @@ impl Header {
 
         lazy_static! {
             static ref REC_TYPE_RE: Regex = Regex::new(r"@([A-Z][A-Z])").unwrap();
-            static ref TAG_RE: Regex = Regex::new(r"([A-Za-z][A-Za-z0-9]):([ -~]+)").unwrap();
+            static ref TAG_RE: Regex = Regex::new(r"([A-Za-z][A-Za-z0-9]):([ -~]*)").unwrap();
         }
 
         let header_string = String::from_utf8(self.to_bytes()).unwrap();
