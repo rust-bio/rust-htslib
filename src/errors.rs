@@ -86,6 +86,17 @@ pub enum Error {
     #[error("failed to add aux field, tag is already present")]
     BamAuxTagAlreadyPresent,
 
+    // Errors for base modification fields
+    #[error("no base modification tag found for record")]
+    BamBaseModificationTagNotFound,
+    #[error("no base modification with the specified code found in record")]
+    BamBaseModificationTypeNotFound,
+    #[error("base modification iteration failed")]
+    BamBaseModificationIterationFailed,
+    #[error("base modification found too many modifications")]
+    BamBaseModificationTooManyMods,
+
+
     // Errors for BCF
     #[error("error allocating internal data structure for BCF/VCF reader (out of memory?)")]
     BcfAllocationError,
