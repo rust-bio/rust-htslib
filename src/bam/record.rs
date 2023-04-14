@@ -1020,6 +1020,40 @@ impl Record {
         }
     }
 
+    /// Access the base modifications associated with this Record through the MM tag.
+    /// Example:
+    /// ```
+    ///    if let Ok(mods) = record.basemods_iter() {
+    ///        // print metadata for the modifications present in this record
+    ///        for mod_code in mods.recorded() {
+    ///            if let Ok(mod_metadata) = mods.query_type(*mod_code) {
+    ///                println!("mod found with code {}/{} flags: [{} {} {}]",
+    ///                        mod_code, *mod_code as u8 as char,
+    ///                        mod_metadata.strand, mod_metadata.implicit, mod_metadata.canonical as u8 as char);
+    ///            }
+    ///        }
+    ///
+    ///        // iterate over the modifications in this record
+    ///        // the modifications are returned as a tuple with the
+    ///        // position within SEQ and an hts_base_mod struct
+    ///        for res in mods {
+    ///            if let Ok( (position, m) ) = res {
+    ///                println!("{} {},{}", position, m.modified_base as u8 as char, m.qual);
+    ///            }
+    ///        }
+    ///    }
+    /// ```
+    pub fn basemods_iter(&self) -> Result<BaseModificationsIter> {
+        BaseModificationsIter::new(self)
+    }
+
+    /// An iterator that returns all of the modifications for each position as a vector.
+    /// This is useful for the case where multiple possible modifications can be annotated
+    /// at a single position (for example a C could be 5-mC or 5-hmC)
+    pub fn basemods_position_iter(&self) -> Result<BaseModificationsPositionIter> {
+        BaseModificationsPositionIter::new(self)
+    }
+
     /// Infer read pair orientation from record. Returns `SequenceReadPairOrientation::None` if record
     /// is not paired, mates are not mapping to the same contig, or mates start at the
     /// same position.
@@ -2168,6 +2202,237 @@ impl<'a> IntoIterator for &'a CigarStringView {
 impl fmt::Display for CigarStringView {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         self.inner.fmt(fmt)
+    }
+}
+
+pub struct BaseModificationMetadata
+{
+    pub strand: i32,
+    pub implicit: i32,
+    pub canonical: i8
+}
+
+/// struct containing the internal state required to access
+/// the base modifications for a bam::Record
+pub struct BaseModificationState<'a>
+{
+    record: &'a Record,
+    state: *mut htslib::hts_base_mod_state,
+    buffer: Vec<htslib::hts_base_mod>,
+    buffer_pos: i32
+}
+
+impl BaseModificationState<'_> {
+
+    /// Initialize a new BaseModification struct from a bam::Record
+    /// This function allocates memory for the state structure
+    /// and initializes the iterator to the start of the modification
+    /// records.
+    fn new<'a>(r: &'a Record) -> Result<BaseModificationState<'a>> {
+        let mut bm = unsafe {
+            BaseModificationState {
+                record: r,
+                state: hts_sys::hts_base_mod_state_alloc(),
+                buffer: Vec::new(),
+                buffer_pos: -1
+            }
+        };
+
+        if bm.state.is_null() {
+            panic!("Unable to allocate memory for hts_base_mod_state");
+        }
+
+        // parse the MM tag to initialize the state
+        unsafe {
+            let ret = hts_sys::bam_parse_basemod(bm.record.inner_ptr(), bm.state);
+            if ret != 0 {
+                return Err(Error::BamBaseModificationTagNotFound);
+            }
+        }
+
+        let types = bm.recorded();
+        bm.buffer.reserve(types.len());
+        return Ok(bm);
+    }
+
+    pub fn buffer_next_mods(&mut self) -> Result<usize> {
+
+        unsafe {
+            let ret = hts_sys::bam_next_basemod(self.record.inner_ptr(),
+                                                self.state,
+                                                self.buffer.as_mut_ptr(),
+                                                self.buffer.capacity() as i32,
+                                                &mut self.buffer_pos);
+
+            if ret < 0 {
+                return Err(Error::BamBaseModificationIterationFailed);
+            }
+
+            // the htslib API won't write more than buffer.capacity() mods to the output array but it will
+            // return the actual number of modifications found. We return an error to the caller
+            // in the case where there was insufficient storage to return all mods.
+            if ret as usize > self.buffer.capacity() {
+                return Err(Error::BamBaseModificationTooManyMods);
+            }
+
+            // we read the modifications directly into the vector, which does
+            // not update the length so needs to be manually set
+            self.buffer.set_len(ret as usize);
+
+            return Ok(ret as usize)
+        }
+    }
+
+    /// Return an array containing the modification codes listed for this record.
+    /// Positive values are ascii character codes (eg m), negative values are chEBI codes.
+    pub fn recorded<'a>(&self) -> &'a [i32] {
+        unsafe {
+            let mut n: i32 = 0;
+            let data_ptr: *const i32 = hts_sys::bam_mods_recorded(self.state, &mut n);
+
+            // htslib should not return a null pointer, even when there are no base mods
+            if data_ptr.is_null() {
+                panic!("Unable to obtain pointer to base modifications");
+            }
+            assert!(n >= 0);
+            return slice::from_raw_parts(data_ptr, n as usize);
+        }
+    }
+
+    /// Return metadata for the specified character code indicating the strand
+    /// the base modification was called on, whether the tag uses implicit mode
+    /// and the ascii code for the canonical base.
+    pub fn query_type<'a>(&self, code: i32) -> Result<BaseModificationMetadata> {
+        unsafe {
+            let mut strand: i32 = 0;
+            let mut implicit: i32 = 0;
+            let mut canonical: i8 = 0;
+
+            let ret = hts_sys::bam_mods_query_type(self.state, code, &mut strand, &mut implicit, &mut canonical);
+            if ret == -1 {
+                return Err(Error::BamBaseModificationTypeNotFound);
+            } else {
+                return Ok(BaseModificationMetadata {
+                            strand: strand,
+                            implicit: implicit,
+                            canonical: canonical
+                         });
+            }
+        }
+    }
+}
+
+impl Drop for BaseModificationState<'_> {
+    fn drop<'a>(&mut self) {
+        unsafe { hts_sys::hts_base_mod_state_free(self.state); }
+    }
+}
+
+/// Iterator over the base modifications that returns
+/// a vector for all of the mods at each position
+pub struct BaseModificationsPositionIter<'a>
+{
+    mod_state: BaseModificationState<'a>
+}
+
+impl BaseModificationsPositionIter<'_>
+{
+    fn new<'a>(r: &'a Record) -> Result<BaseModificationsPositionIter<'a>> {
+        let state = BaseModificationState::new(r)?;
+        Ok(BaseModificationsPositionIter { mod_state: state })
+    }
+
+    pub fn recorded<'a>(&self) -> &'a [i32] {
+        return self.mod_state.recorded();
+    }
+
+    pub fn query_type<'a>(&self, code: i32) -> Result<BaseModificationMetadata> {
+        return self.mod_state.query_type(code);
+    }
+}
+
+impl<'a> Iterator for BaseModificationsPositionIter<'a> {
+    type Item = Result< (i32, Vec<hts_sys::hts_base_mod>) >;
+
+    fn next(&mut self) -> Option< Self::Item > {
+        let ret = self.mod_state.buffer_next_mods();
+
+        // Three possible things happened in buffer_next_mods:
+        // 1. the htslib API call was successful but there are no more mods
+        // 2. ths htslib API call was successful and we read some mods
+        // 3. the htslib API call failed, we propogate the error wrapped in an option
+        match ret {
+            Ok(num_mods) => {
+                if num_mods == 0 {
+                    return None;
+                }
+                else {
+                    let data = (self.mod_state.buffer_pos, self.mod_state.buffer.clone());
+                    return Some(Ok(data));
+                }
+            },
+            Err(e) => {
+                return Some(Err(e))
+            }
+        }
+    }
+}
+
+/// Iterator over the base modifications that returns
+/// the next modification found, one by one
+pub struct BaseModificationsIter<'a>
+{
+    mod_state: BaseModificationState<'a>,
+    buffer_idx: usize
+}
+
+impl BaseModificationsIter<'_>
+{
+    fn new<'a>(r: &'a Record) -> Result<BaseModificationsIter<'a>> {
+        let state = BaseModificationState::new(r)?;
+        Ok(BaseModificationsIter { mod_state: state, buffer_idx: 0 })
+    }
+
+    pub fn recorded<'a>(&self) -> &'a [i32] {
+        return self.mod_state.recorded();
+    }
+
+    pub fn query_type<'a>(&self, code: i32) -> Result<BaseModificationMetadata> {
+        return self.mod_state.query_type(code);
+    }
+}
+
+impl<'a> Iterator for BaseModificationsIter<'a> {
+    type Item = Result< (i32, hts_sys::hts_base_mod) >;
+
+    fn next(&mut self) -> Option< Self::Item > {
+
+        if self.buffer_idx == self.mod_state.buffer.len() {
+            // need to use the internal state to read the next
+            // set of modifications into the buffer
+            let ret = self.mod_state.buffer_next_mods();
+
+            match ret {
+                Ok(num_mods) => {
+                    if num_mods == 0 {
+                        // done iterating
+                        return None;
+                    } else {
+                        // we read some mods, reset the position in the buffer then fall through
+                        self.buffer_idx = 0;
+                    }
+                },
+                Err(e) => {
+                    return Some(Err(e))
+                }
+            }
+        }
+
+        // if we got here when there are mods buffered that we haven't emitted yet
+        assert!(self.buffer_idx < self.mod_state.buffer.len());
+        let data = (self.mod_state.buffer_pos, self.mod_state.buffer[self.buffer_idx]);
+        self.buffer_idx += 1;
+        return Some(Ok(data));
     }
 }
 
