@@ -5,7 +5,6 @@
 
 use std::collections::{vec_deque, VecDeque};
 use std::mem;
-use std::rc::Rc;
 use std::str;
 
 use crate::bam;
@@ -20,15 +19,14 @@ use crate::errors::{Error, Result};
 #[derive(Debug)]
 pub struct RecordBuffer {
     reader: bam::IndexedReader,
-    inner: VecDeque<Rc<bam::Record>>,
-    overflow: Option<Rc<bam::Record>>,
+    inner: VecDeque<bam::Record>,
+    overflow: Option<bam::Record>,
     cache_cigar: bool,
     min_refetch_distance: u64,
-    buffer_record: Rc<bam::Record>,
+    buffer_record: bam::Record,
 }
 
 unsafe impl Sync for RecordBuffer {}
-unsafe impl Send for RecordBuffer {}
 
 impl RecordBuffer {
     /// Create a new `RecordBuffer`.
@@ -44,7 +42,7 @@ impl RecordBuffer {
             overflow: None,
             cache_cigar,
             min_refetch_distance: 1,
-            buffer_record: Rc::new(bam::Record::new()),
+            buffer_record: bam::Record::new(),
         }
     }
 
@@ -78,9 +76,9 @@ impl RecordBuffer {
     pub fn fetch(&mut self, chrom: &[u8], start: u64, end: u64) -> Result<(usize, usize)> {
         let mut added = 0;
         // move overflow from last fetch into ringbuffer
-        if self.overflow.is_some() {
+        if let Some(overflow) = self.overflow.take() {
             added += 1;
-            self.inner.push_back(self.overflow.take().unwrap());
+            self.inner.push_back(overflow);
         }
 
         if let Some(tid) = self.reader.header.tid(chrom) {
@@ -110,10 +108,7 @@ impl RecordBuffer {
 
             // extend to the right
             loop {
-                match self
-                    .reader
-                    .read(Rc::get_mut(&mut self.buffer_record).unwrap())
-                {
+                match self.reader.read(&mut self.buffer_record) {
                     None => break,
                     Some(res) => res?,
                 }
@@ -131,10 +126,10 @@ impl RecordBuffer {
 
                 // Record is kept, do not reuse it for next iteration
                 // and thus create a new one.
-                let mut record = mem::replace(&mut self.buffer_record, Rc::new(bam::Record::new()));
+                let mut record = mem::take(&mut self.buffer_record);
 
                 if self.cache_cigar {
-                    Rc::get_mut(&mut record).unwrap().cache_cigar();
+                    record.cache_cigar();
                 }
 
                 if pos >= end as i64 {
@@ -155,12 +150,12 @@ impl RecordBuffer {
     }
 
     /// Iterate over records that have been fetched with `fetch`.
-    pub fn iter(&self) -> vec_deque::Iter<Rc<bam::Record>> {
+    pub fn iter(&self) -> vec_deque::Iter<bam::Record> {
         self.inner.iter()
     }
 
     /// Iterate over mutable references to records that have been fetched with `fetch`.
-    pub fn iter_mut(&mut self) -> vec_deque::IterMut<Rc<bam::Record>> {
+    pub fn iter_mut(&mut self) -> vec_deque::IterMut<bam::Record> {
         self.inner.iter_mut()
     }
 
