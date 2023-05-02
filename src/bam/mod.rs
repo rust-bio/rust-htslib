@@ -2891,4 +2891,19 @@ CCCCCCCCCCCCCCCCCCC"[..],
         assert_eq!(header_refseqs[0].get("SN").unwrap(), "ref_1",);
         assert_eq!(header_refseqs[0].get("LN").unwrap(), "10000000",);
     }
+
+    #[test]
+    fn test_idxstats() {
+        let mut reader = IndexedReader::from_path("test/test.bam").unwrap();
+        let header = reader.header().clone();
+        let expected = vec![
+            (0, (15072423, 6, 0)),
+            (1, (15279345, 0, 0)),
+            (2, (13783700, 0, 0)),
+            (3, (17493793, 0, 0)),
+            (4, (20924149, 0, 0)),
+        ];
+        let actual = reader.index().stats(header).unwrap();
+        assert_eq!(expected, actual);
+    }
 }
