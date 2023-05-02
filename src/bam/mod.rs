@@ -2906,4 +2906,12 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let actual = reader.index().stats(header).unwrap();
         assert_eq!(expected, actual);
     }
+
+    #[test]
+    fn test_number_mapped_and_unmapped() {
+        let mut reader = IndexedReader::from_path("test/test.bam").unwrap();
+        let expected = (6, 0);
+        let actual = reader.index().number_mapped_unmapped(0);
+        assert_eq!(expected, actual);
+    }
 }
