@@ -563,7 +563,7 @@ impl<'a, T: AsRef<[u8]>, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> Fro
 pub struct IndexedReader {
     htsfile: *mut htslib::htsFile,
     header: Rc<HeaderView>,
-    idx: *mut htslib::hts_idx_t,
+    idx: Rc<IndexView>,
     itr: Option<*mut htslib::hts_itr_t>,
     tpool: Option<ThreadPool>,
 }
@@ -609,7 +609,7 @@ impl IndexedReader {
             Ok(IndexedReader {
                 htsfile,
                 header: Rc::new(HeaderView::new(header)),
-                idx,
+                idx: Rc::new(IndexView::new(idx)),
                 itr: None,
                 tpool: None,
             })
@@ -637,7 +637,7 @@ impl IndexedReader {
             Ok(IndexedReader {
                 htsfile,
                 header: Rc::new(HeaderView::new(header)),
-                idx,
+                idx: Rc::new(IndexView::new(idx)),
                 itr: None,
                 tpool: None,
             })
@@ -726,7 +726,9 @@ impl IndexedReader {
         if let Some(itr) = self.itr {
             unsafe { htslib::hts_itr_destroy(itr) }
         }
-        let itr = unsafe { htslib::sam_itr_queryi(self.idx, tid as i32, beg as i64, end as i64) };
+        let itr = unsafe {
+            htslib::sam_itr_queryi(self.index().inner_ptr(), tid as i32, beg as i64, end as i64)
+        };
         if itr.is_null() {
             self.itr = None;
             Err(Error::Fetch)
@@ -744,7 +746,7 @@ impl IndexedReader {
         let rptr = rstr.as_ptr();
         let itr = unsafe {
             htslib::sam_itr_querys(
-                self.idx,
+                self.index().inner_ptr(),
                 self.header().inner_ptr() as *mut hts_sys::sam_hdr_t,
                 rptr,
             )
@@ -782,6 +784,84 @@ impl IndexedReader {
     /// * `path` - path to the FASTA reference
     pub fn set_reference<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
         unsafe { set_fai_filename(self.htsfile, path) }
+    }
+
+    pub fn index(&mut self) -> &IndexView {
+        &self.idx
+    }
+}
+
+#[derive(Debug)]
+pub struct IndexView {
+    inner: *mut hts_sys::hts_idx_t,
+    owned: bool,
+}
+
+impl IndexView {
+    fn new(hts_idx: *mut hts_sys::hts_idx_t) -> Self {
+        Self {
+            inner: hts_idx,
+            owned: true,
+        }
+    }
+
+    #[inline]
+    pub fn inner(&self) -> &hts_sys::hts_idx_t {
+        unsafe { self.inner.as_ref().unwrap() }
+    }
+
+    #[inline]
+    // Pointer to inner bam_hdr_t struct
+    pub fn inner_ptr(&self) -> *const hts_sys::hts_idx_t {
+        self.inner
+    }
+
+    #[inline]
+    pub fn inner_mut(&mut self) -> &mut hts_sys::hts_idx_t {
+        unsafe { self.inner.as_mut().unwrap() }
+    }
+
+    #[inline]
+    // Mutable pointer to bam_hdr_t struct
+    pub fn inner_ptr_mut(&mut self) -> *mut hts_sys::hts_idx_t {
+        self.inner
+    }
+
+    /// Get the number of mapped and unmapped reads for a given target id
+    pub fn number_mapped_unmapped(&self, tid: u32) -> (u64, u64) {
+        let (mut mapped, mut unmapped) = (0, 0);
+        unsafe {
+            hts_sys::hts_idx_get_stat(self.inner, tid as i32, &mut mapped, &mut unmapped);
+        }
+        (mapped, unmapped)
+    }
+
+    /// Similar to samtools idxstats, this returns a vector of tuples
+    /// containing the target name, length, number of mapped reads, and number of unmapped reads.
+    pub fn stats(&self, header: HeaderView) -> Vec<(String, (u64, u64, u64))> {
+        header
+            .target_names()
+            .iter()
+            .map(|tname| {
+                let tid = header.tid(tname).unwrap();
+                let (mapped, unmapped) = self.number_mapped_unmapped(tid);
+                let tname = str::from_utf8(tname).unwrap();
+                let tlen = header.target_len(tid as u32).unwrap();
+                (tname.to_string(), (tlen, mapped, unmapped))
+            })
+            .collect()
+    }
+}
+
+impl Drop for IndexView {
+    fn drop(&mut self) {
+        unsafe {
+            if self.owned {
+                unsafe {
+                    htslib::hts_idx_destroy(self.inner);
+                }
+            }
+        }
     }
 }
 
@@ -851,7 +931,6 @@ impl Drop for IndexedReader {
             if self.itr.is_some() {
                 htslib::hts_itr_destroy(self.itr.unwrap());
             }
-            htslib::hts_idx_destroy(self.idx);
             htslib::hts_close(self.htsfile);
         }
     }
