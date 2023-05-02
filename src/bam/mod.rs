@@ -2893,7 +2893,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
     }
 
     #[test]
-    fn test_idxstats() {
+    fn test_idxstats_bam() {
         let mut reader = IndexedReader::from_path("test/test.bam").unwrap();
         let header = reader.header().clone();
         let expected = vec![
@@ -2908,9 +2908,26 @@ CCCCCCCCCCCCCCCCCCC"[..],
     }
 
     #[test]
-    fn test_number_mapped_and_unmapped() {
+    fn test_number_mapped_and_unmapped_bam() {
         let mut reader = IndexedReader::from_path("test/test.bam").unwrap();
         let expected = (6, 0);
+        let actual = reader.index().number_mapped_unmapped(0);
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_idxstats_cram() {
+        let mut reader = IndexedReader::from_path("test/test_cram.cram").unwrap();
+        let header = reader.header().clone();
+        let expected = vec![(0, (120, 2, 0)), (1, (120, 2, 0)), (2, (120, 2, 0))];
+        let actual = reader.index().stats(header).unwrap();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_number_mapped_and_unmapped_cram() {
+        let mut reader = IndexedReader::from_path("test/test_cram.cram").unwrap();
+        let expected = (2, 0);
         let actual = reader.index().number_mapped_unmapped(0);
         assert_eq!(expected, actual);
     }
