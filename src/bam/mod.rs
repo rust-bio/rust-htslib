@@ -106,7 +106,7 @@ pub trait Read: Sized {
     ///     match result {
     ///         Ok(_) => {
     ///             println!("Read sequence: {:?}", record.seq().as_bytes());
-    ///         },
+    ///         }
     ///         Err(_) => panic!("BAM parsing failed...")
     ///     }
     /// }
@@ -471,6 +471,7 @@ pub enum FetchDefinition<'a> {
     /// Only reads with the BAM flag BAM_FUNMAP (which might not be all reads with reference = -1)
     Unmapped,
 }
+
 impl<'a, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(i32, X, Y)>
     for FetchDefinition<'a>
 {
@@ -480,6 +481,7 @@ impl<'a, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(i32, X, Y)>
         FetchDefinition::Region(tup.0, start.0, stop.0)
     }
 }
+
 impl<'a, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(u32, X, Y)>
     for FetchDefinition<'a>
 {
@@ -1685,6 +1687,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let bam = IndexedReader::from_path(&"test/test.bam").expect("Expected valid index.");
         _test_read_indexed_common(bam);
     }
+
     #[test]
     fn test_read_indexed_different_index_name() {
         let bam = IndexedReader::from_path_and_index(
