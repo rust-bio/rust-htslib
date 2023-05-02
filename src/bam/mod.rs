@@ -706,12 +706,7 @@ impl IndexedReader {
                 match tid {
                     Some(tid) => {
                         //'large position' spec says target len must will fit into an i64.
-                        let len: i64 = self
-                            .header
-                            .target_len(tid as u32)
-                            .unwrap()
-                            .try_into()
-                            .unwrap();
+                        let len: i64 = self.header.target_len(tid).unwrap().try_into().unwrap();
                         self._fetch_by_coord_tuple(tid as i32, 0, len)
                     }
                     None => self._fetch_by_str(s),
@@ -726,9 +721,7 @@ impl IndexedReader {
         if let Some(itr) = self.itr {
             unsafe { htslib::hts_itr_destroy(itr) }
         }
-        let itr = unsafe {
-            htslib::sam_itr_queryi(self.index().inner_ptr(), tid as i32, beg as i64, end as i64)
-        };
+        let itr = unsafe { htslib::sam_itr_queryi(self.index().inner_ptr(), tid, beg, end) };
         if itr.is_null() {
             self.itr = None;
             Err(Error::Fetch)
@@ -855,11 +848,9 @@ impl IndexView {
 
 impl Drop for IndexView {
     fn drop(&mut self) {
-        unsafe {
-            if self.owned {
-                unsafe {
-                    htslib::hts_idx_destroy(self.inner);
-                }
+        if self.owned {
+            unsafe {
+                htslib::hts_idx_destroy(self.inner);
             }
         }
     }
