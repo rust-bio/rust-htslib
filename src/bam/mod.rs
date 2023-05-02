@@ -837,19 +837,19 @@ impl IndexView {
     }
 
     /// Similar to samtools idxstats, this returns a vector of tuples
-    /// containing the target name, length, number of mapped reads, and number of unmapped reads.
-    pub fn stats(&self, header: HeaderView) -> Vec<(String, (u64, u64, u64))> {
+    /// containing the target id, length, number of mapped reads, and number of unmapped reads.
+    pub fn stats(&self, header: HeaderView) -> Option<Vec<(u32, (u64, u64, u64))>> {
         header
             .target_names()
             .iter()
             .map(|tname| {
-                let tid = header.tid(tname).unwrap();
-                let (mapped, unmapped) = self.number_mapped_unmapped(tid);
-                let tname = str::from_utf8(tname).unwrap();
-                let tlen = header.target_len(tid).unwrap();
-                (tname.to_string(), (tlen, mapped, unmapped))
+                header.tid(tname).and_then(|tid| {
+                    let (mapped, unmapped) = self.number_mapped_unmapped(tid);
+                    let tlen = header.target_len(tid);
+                    tlen.map(|tlen| (tid, (tlen, mapped, unmapped)))
+                })
             })
-            .collect()
+            .collect::<Option<_>>()
     }
 }
 
