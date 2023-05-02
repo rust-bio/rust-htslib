@@ -846,7 +846,7 @@ impl IndexView {
                 let tid = header.tid(tname).unwrap();
                 let (mapped, unmapped) = self.number_mapped_unmapped(tid);
                 let tname = str::from_utf8(tname).unwrap();
-                let tlen = header.target_len(tid as u32).unwrap();
+                let tlen = header.target_len(tid).unwrap();
                 (tname.to_string(), (tlen, mapped, unmapped))
             })
             .collect()
