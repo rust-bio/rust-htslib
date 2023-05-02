@@ -811,7 +811,7 @@ impl IndexView {
     }
 
     #[inline]
-    // Pointer to inner bam_hdr_t struct
+    // Pointer to inner hts_idx_t struct
     pub fn inner_ptr(&self) -> *const hts_sys::hts_idx_t {
         self.inner
     }
@@ -822,7 +822,7 @@ impl IndexView {
     }
 
     #[inline]
-    // Mutable pointer to bam_hdr_t struct
+    // Mutable pointer to hts_idx_t struct
     pub fn inner_ptr_mut(&mut self) -> *mut hts_sys::hts_idx_t {
         self.inner
     }
