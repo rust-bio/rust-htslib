@@ -139,7 +139,7 @@ impl<'a> HeaderRecord<'a> {
     /// * `tag` - the tag identifier
     /// * `value` - the value. Can be any type convertible into a string. Preferably numbers or
     ///   strings.
-    pub fn push_tag<V: ToString>(&mut self, tag: &'a [u8], value: &V) -> &mut Self {
+    pub fn push_tag<V: ToString>(&mut self, tag: &'a [u8], value: V) -> &mut Self {
         self.tags.push((tag, value.to_string().into_bytes()));
         self
     }
@@ -154,5 +154,24 @@ impl<'a> HeaderRecord<'a> {
             out.extend(value.iter());
         }
         out
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::HeaderRecord;
+
+    #[test]
+    fn test_push_tag() {
+        let mut record = HeaderRecord::new(b"HD");
+        record.push_tag(b"X1", 0);
+        record.push_tag(b"X2", &0);
+
+        let x = "x".to_string();
+        record.push_tag(b"X3", x.as_str());
+        record.push_tag(b"X4", &x);
+        record.push_tag(b"X5", x);
+
+        assert_eq!(record.to_bytes(), b"@HD\tX1:0\tX2:0\tX3:x\tX4:x\tX5:x");
     }
 }
