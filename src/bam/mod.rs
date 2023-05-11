@@ -231,7 +231,7 @@ pub trait Read: Sized {
     /// ```
     /// use rust_htslib::bam::{Read, Reader};
     /// use hts_sys;
-    /// let mut cram = Reader::from_path(&"test/test.cram").unwrap();
+    /// let mut cram = Reader::from_path(&"test/test_cram.cram").unwrap();
     /// cram.set_cram_options(hts_sys::hts_fmt_option_CRAM_OPT_REQUIRED_FIELDS,
     ///             hts_sys::sam_fields_SAM_RNAME | hts_sys::sam_fields_SAM_FLAG).unwrap();
     /// ```
