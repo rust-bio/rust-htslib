@@ -879,6 +879,8 @@ impl IndexedReader {
 
     /// Similar to samtools idxstats, this returns a vector of tuples
     /// containing the target id, length, number of mapped reads, and number of unmapped reads.
+    /// The last entry in the vector corresponds to the unmapped reads for the entire file, with
+    /// the tid set to -1.
     pub fn index_stats(&mut self) -> Result<Vec<(i64, u64, u64, u64)>> {
         let header = self.header();
         let index = self.index();
