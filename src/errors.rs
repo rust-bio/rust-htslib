@@ -118,4 +118,13 @@ pub enum Error {
 
     #[error("invalid compression level {level}")]
     BgzfInvalidCompressionLevel { level: i8 },
+    #[error("failed setting hts reading options")]
+    HtsSetOpt,
+    #[error("failed calculating slow index statistics")]
+    SlowIdxStats,
+    #[error("invalid tid {tid}")]
+    InvalidTid { tid : i32},
+    #[error("No sequences in the reference")]
+    NoSequencesInReference,
 }
+
