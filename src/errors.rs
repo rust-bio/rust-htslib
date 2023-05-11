@@ -71,6 +71,8 @@ pub enum Error {
     BamBuildIndex,
     #[error("failed to create SAM/BAM/CRAM pileup")]
     BamPileup,
+    #[error("file is not sorted by position")]
+    BamUnsorted,
 
     // Errors for BAM auxiliary fields
     #[error("failed to add aux field (out of memory?)")]

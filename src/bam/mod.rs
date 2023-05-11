@@ -846,7 +846,7 @@ impl IndexedReader {
 
             if tid != last_tid {
                 if (last_tid >= -1) && (counts[tid as usize][0] + counts[tid as usize][1]) > 0 {
-                    panic!("idxstats: file is not position sorted");
+                    return Err(Error::BamUnsorted);
                 }
                 last_tid = tid;
             }
