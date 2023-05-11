@@ -123,8 +123,7 @@ pub enum Error {
     #[error("failed calculating slow index statistics")]
     SlowIdxStats,
     #[error("invalid tid {tid}")]
-    InvalidTid { tid : i32},
+    InvalidTid { tid: i32 },
     #[error("No sequences in the reference")]
     NoSequencesInReference,
 }
-
