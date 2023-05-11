@@ -814,7 +814,6 @@ impl IndexedReader {
 
     // Analogous to slow_idxstats in samtools, see
     // https://github.com/samtools/samtools/blob/556c60fdff977c0e6cadc4c2581661f187098b4d/bam_index.c#L140-L199
-    // TODO proper error handling, actually return values
     unsafe fn slow_idxstats(&mut self) -> Result<Vec<(i64, u64, u64, u64)>> {
         self.set_cram_options(
             hts_sys::hts_fmt_option_CRAM_OPT_REQUIRED_FIELDS,
