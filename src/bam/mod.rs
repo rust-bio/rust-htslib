@@ -25,9 +25,9 @@ use std::str;
 use url::Url;
 
 use crate::errors::{Error, Result};
+use crate::htslib;
 use crate::tpool::ThreadPool;
 use crate::utils::path_as_bytes;
-use crate::{bam, htslib};
 
 pub use crate::bam::buffer::RecordBuffer;
 pub use crate::bam::header::Header;
@@ -220,7 +220,22 @@ pub trait Read: Sized {
     /// * `tpool` - thread pool to use for compression work.
     fn set_thread_pool(&mut self, tpool: &ThreadPool) -> Result<()>;
 
-    fn set_read_options(&mut self, fmt_opt: hts_fmt_option, fields: sam_fields) -> Result<()> {
+    /// If the underlying file is in CRAM format, allows modifying CRAM options.
+    /// Note that this method does *not* check that the underlying file actually is in CRAM format.
+    ///
+    /// # Examples
+    ///
+    /// Set the required fields to RNAME and FLAG,
+    /// potentially allowing htslib to skip over the rest,
+    /// resulting in faster iteration:
+    /// ```
+    /// use rust_htslib::bam::{Read, Reader};
+    /// use hts_sys;
+    /// let mut cram = Reader::from_path(&"test/test.cram").unwrap();
+    /// cram.set_cram_options(hts_sys::hts_fmt_option_CRAM_OPT_REQUIRED_FIELDS,
+    ///             hts_sys::sam_fields_SAM_RNAME | hts_sys::sam_fields_SAM_FLAG).unwrap();
+    /// ```
+    fn set_cram_options(&mut self, fmt_opt: hts_fmt_option, fields: sam_fields) -> Result<()> {
         unsafe {
             if hts_sys::hts_set_opt(self.htsfile(), fmt_opt, fields) != 0 {
                 Err(Error::HtsSetOpt)
@@ -801,13 +816,14 @@ impl IndexedReader {
     // https://github.com/samtools/samtools/blob/556c60fdff977c0e6cadc4c2581661f187098b4d/bam_index.c#L140-L199
     // TODO proper error handling, actually return values
     unsafe fn slow_idxstats(&mut self) -> Result<Vec<(i64, u64, u64, u64)>> {
-        self.set_read_options(
+        self.set_cram_options(
             hts_sys::hts_fmt_option_CRAM_OPT_REQUIRED_FIELDS,
             hts_sys::sam_fields_SAM_RNAME | hts_sys::sam_fields_SAM_FLAG,
         )?;
         let header = self.header();
         let h = header.inner;
-        let (mut ret, mut last_tid) = (-2, -2);
+        let mut ret;
+        let mut last_tid = -2;
         let fp = self.htsfile();
 
         let nref =
