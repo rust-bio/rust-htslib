@@ -219,6 +219,16 @@ pub trait Read: Sized {
     ///
     /// * `tpool` - thread pool to use for compression work.
     fn set_thread_pool(&mut self, tpool: &ThreadPool) -> Result<()>;
+
+    fn set_read_options(&mut self, fmt_opt: hts_fmt_option, fields: sam_fields) -> Result<()> {
+        unsafe {
+            if hts_sys::hts_set_opt(self.htsfile(), fmt_opt, fields) != 0 {
+                Err(Error::HtsSetOpt)
+            } else {
+                Ok(())
+            }
+        }
+    }
 }
 
 /// A BAM reader.
