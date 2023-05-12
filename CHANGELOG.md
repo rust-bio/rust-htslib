@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.43.0](https://github.com/rust-bio/rust-htslib/compare/v0.42.0...v0.43.0) (2023-05-12)
+
+
+### Features
+
+* HeaderRecord::push_tag: Value may be owned ([#388](https://github.com/rust-bio/rust-htslib/issues/388)) ([b64537d](https://github.com/rust-bio/rust-htslib/commit/b64537db011b76e5ace73a5e74c598a62a0a018b))
+* Index for `bam::IndexedReader` ([#387](https://github.com/rust-bio/rust-htslib/issues/387)) ([fb74387](https://github.com/rust-bio/rust-htslib/commit/fb743875182c9232894e07007367f09f05d6e275))
+
 ## [0.42.0](https://github.com/rust-bio/rust-htslib/compare/v0.41.1...v0.42.0) (2023-03-30)
 
 
