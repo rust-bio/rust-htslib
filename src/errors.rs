@@ -71,6 +71,8 @@ pub enum Error {
     BamBuildIndex,
     #[error("failed to create SAM/BAM/CRAM pileup")]
     BamPileup,
+    #[error("file is not sorted by position")]
+    BamUnsorted,
 
     // Errors for BAM auxiliary fields
     #[error("failed to add aux field (out of memory?)")]
@@ -118,4 +120,12 @@ pub enum Error {
 
     #[error("invalid compression level {level}")]
     BgzfInvalidCompressionLevel { level: i8 },
+    #[error("failed setting hts reading options")]
+    HtsSetOpt,
+    #[error("failed calculating slow index statistics")]
+    SlowIdxStats,
+    #[error("invalid tid {tid}")]
+    InvalidTid { tid: i32 },
+    #[error("No sequences in the reference")]
+    NoSequencesInReference,
 }

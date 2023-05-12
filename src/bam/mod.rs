@@ -32,7 +32,9 @@ use crate::utils::path_as_bytes;
 pub use crate::bam::buffer::RecordBuffer;
 pub use crate::bam::header::Header;
 pub use crate::bam::record::Record;
-use std::convert::TryInto;
+use hts_sys::{hts_fmt_option, sam_fields};
+use std::convert::{TryFrom, TryInto};
+use std::mem::MaybeUninit;
 
 /// # Safety
 ///
@@ -106,7 +108,7 @@ pub trait Read: Sized {
     ///     match result {
     ///         Ok(_) => {
     ///             println!("Read sequence: {:?}", record.seq().as_bytes());
-    ///         },
+    ///         }
     ///         Err(_) => panic!("BAM parsing failed...")
     ///     }
     /// }
@@ -217,6 +219,31 @@ pub trait Read: Sized {
     ///
     /// * `tpool` - thread pool to use for compression work.
     fn set_thread_pool(&mut self, tpool: &ThreadPool) -> Result<()>;
+
+    /// If the underlying file is in CRAM format, allows modifying CRAM options.
+    /// Note that this method does *not* check that the underlying file actually is in CRAM format.
+    ///
+    /// # Examples
+    ///
+    /// Set the required fields to RNAME and FLAG,
+    /// potentially allowing htslib to skip over the rest,
+    /// resulting in faster iteration:
+    /// ```
+    /// use rust_htslib::bam::{Read, Reader};
+    /// use hts_sys;
+    /// let mut cram = Reader::from_path(&"test/test_cram.cram").unwrap();
+    /// cram.set_cram_options(hts_sys::hts_fmt_option_CRAM_OPT_REQUIRED_FIELDS,
+    ///             hts_sys::sam_fields_SAM_RNAME | hts_sys::sam_fields_SAM_FLAG).unwrap();
+    /// ```
+    fn set_cram_options(&mut self, fmt_opt: hts_fmt_option, fields: sam_fields) -> Result<()> {
+        unsafe {
+            if hts_sys::hts_set_opt(self.htsfile(), fmt_opt, fields) != 0 {
+                Err(Error::HtsSetOpt)
+            } else {
+                Ok(())
+            }
+        }
+    }
 }
 
 /// A BAM reader.
@@ -471,6 +498,7 @@ pub enum FetchDefinition<'a> {
     /// Only reads with the BAM flag BAM_FUNMAP (which might not be all reads with reference = -1)
     Unmapped,
 }
+
 impl<'a, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(i32, X, Y)>
     for FetchDefinition<'a>
 {
@@ -480,6 +508,7 @@ impl<'a, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(i32, X, Y)>
         FetchDefinition::Region(tup.0, start.0, stop.0)
     }
 }
+
 impl<'a, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> From<(u32, X, Y)>
     for FetchDefinition<'a>
 {
@@ -563,7 +592,7 @@ impl<'a, T: AsRef<[u8]>, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> Fro
 pub struct IndexedReader {
     htsfile: *mut htslib::htsFile,
     header: Rc<HeaderView>,
-    idx: *mut htslib::hts_idx_t,
+    idx: Rc<IndexView>,
     itr: Option<*mut htslib::hts_itr_t>,
     tpool: Option<ThreadPool>,
 }
@@ -609,7 +638,7 @@ impl IndexedReader {
             Ok(IndexedReader {
                 htsfile,
                 header: Rc::new(HeaderView::new(header)),
-                idx,
+                idx: Rc::new(IndexView::new(idx)),
                 itr: None,
                 tpool: None,
             })
@@ -637,7 +666,7 @@ impl IndexedReader {
             Ok(IndexedReader {
                 htsfile,
                 header: Rc::new(HeaderView::new(header)),
-                idx,
+                idx: Rc::new(IndexView::new(idx)),
                 itr: None,
                 tpool: None,
             })
@@ -706,12 +735,7 @@ impl IndexedReader {
                 match tid {
                     Some(tid) => {
                         //'large position' spec says target len must will fit into an i64.
-                        let len: i64 = self
-                            .header
-                            .target_len(tid as u32)
-                            .unwrap()
-                            .try_into()
-                            .unwrap();
+                        let len: i64 = self.header.target_len(tid).unwrap().try_into().unwrap();
                         self._fetch_by_coord_tuple(tid as i32, 0, len)
                     }
                     None => self._fetch_by_str(s),
@@ -726,7 +750,7 @@ impl IndexedReader {
         if let Some(itr) = self.itr {
             unsafe { htslib::hts_itr_destroy(itr) }
         }
-        let itr = unsafe { htslib::sam_itr_queryi(self.idx, tid as i32, beg as i64, end as i64) };
+        let itr = unsafe { htslib::sam_itr_queryi(self.index().inner_ptr(), tid, beg, end) };
         if itr.is_null() {
             self.itr = None;
             Err(Error::Fetch)
@@ -744,7 +768,7 @@ impl IndexedReader {
         let rptr = rstr.as_ptr();
         let itr = unsafe {
             htslib::sam_itr_querys(
-                self.idx,
+                self.index().inner_ptr(),
                 self.header().inner_ptr() as *mut hts_sys::sam_hdr_t,
                 rptr,
             )
@@ -782,6 +806,163 @@ impl IndexedReader {
     /// * `path` - path to the FASTA reference
     pub fn set_reference<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
         unsafe { set_fai_filename(self.htsfile, path) }
+    }
+
+    pub fn index(&self) -> &IndexView {
+        &self.idx
+    }
+
+    // Analogous to slow_idxstats in samtools, see
+    // https://github.com/samtools/samtools/blob/556c60fdff977c0e6cadc4c2581661f187098b4d/bam_index.c#L140-L199
+    unsafe fn slow_idxstats(&mut self) -> Result<Vec<(i64, u64, u64, u64)>> {
+        self.set_cram_options(
+            hts_sys::hts_fmt_option_CRAM_OPT_REQUIRED_FIELDS,
+            hts_sys::sam_fields_SAM_RNAME | hts_sys::sam_fields_SAM_FLAG,
+        )?;
+        let header = self.header();
+        let h = header.inner;
+        let mut ret;
+        let mut last_tid = -2;
+        let fp = self.htsfile();
+
+        let nref =
+            usize::try_from(hts_sys::sam_hdr_nref(h)).map_err(|_| Error::NoSequencesInReference)?;
+        if nref == 0 {
+            return Ok(vec![]);
+        }
+        let mut counts = vec![vec![0; 2]; nref + 1];
+        let mut bb: hts_sys::bam1_t = MaybeUninit::zeroed().assume_init();
+        let b = &mut bb as *mut hts_sys::bam1_t;
+        loop {
+            ret = hts_sys::sam_read1(fp, h, b);
+            if ret < 0 {
+                break;
+            }
+            let tid = (*b).core.tid;
+            if tid >= nref as i32 || tid < -1 {
+                return Err(Error::InvalidTid { tid });
+            }
+
+            if tid != last_tid {
+                if (last_tid >= -1) && (counts[tid as usize][0] + counts[tid as usize][1]) > 0 {
+                    return Err(Error::BamUnsorted);
+                }
+                last_tid = tid;
+            }
+
+            let idx = if ((*b).core.flag as u32 & hts_sys::BAM_FUNMAP) > 0 {
+                1
+            } else {
+                0
+            };
+            counts[(*b).core.tid as usize][idx] += 1;
+        }
+
+        if ret == -1 {
+            let res = (0..nref)
+                .map(|i| {
+                    (
+                        i as i64,
+                        header.target_len(i as u32).unwrap(),
+                        counts[i][0],
+                        counts[i][1],
+                    )
+                })
+                .chain([(-1, 0, counts[nref][0], counts[nref][1])])
+                .collect();
+            Ok(res)
+        } else {
+            Err(Error::SlowIdxStats)
+        }
+    }
+
+    /// Similar to samtools idxstats, this returns a vector of tuples
+    /// containing the target id, length, number of mapped reads, and number of unmapped reads.
+    /// The last entry in the vector corresponds to the unmapped reads for the entire file, with
+    /// the tid set to -1.
+    pub fn index_stats(&mut self) -> Result<Vec<(i64, u64, u64, u64)>> {
+        let header = self.header();
+        let index = self.index();
+        if index.inner_ptr().is_null() {
+            panic!("Index is null");
+        }
+        // the quick index stats method only works for BAM files, not SAM or CRAM
+        unsafe {
+            if (*self.htsfile()).format.format != htslib::htsExactFormat_bam {
+                return self.slow_idxstats();
+            }
+        }
+        Ok((0..header.target_count())
+            .map(|tid| {
+                let (mapped, unmapped) = index.number_mapped_unmapped(tid);
+                let tlen = header.target_len(tid).unwrap();
+                (tid as i64, tlen, mapped, unmapped)
+            })
+            .chain([(-1, 0, 0, index.number_unmapped())])
+            .collect::<_>())
+    }
+}
+
+#[derive(Debug)]
+pub struct IndexView {
+    inner: *mut hts_sys::hts_idx_t,
+    owned: bool,
+}
+
+impl IndexView {
+    fn new(hts_idx: *mut hts_sys::hts_idx_t) -> Self {
+        Self {
+            inner: hts_idx,
+            owned: true,
+        }
+    }
+
+    #[inline]
+    pub fn inner(&self) -> &hts_sys::hts_idx_t {
+        unsafe { self.inner.as_ref().unwrap() }
+    }
+
+    #[inline]
+    // Pointer to inner hts_idx_t struct
+    pub fn inner_ptr(&self) -> *const hts_sys::hts_idx_t {
+        self.inner
+    }
+
+    #[inline]
+    pub fn inner_mut(&mut self) -> &mut hts_sys::hts_idx_t {
+        unsafe { self.inner.as_mut().unwrap() }
+    }
+
+    #[inline]
+    // Mutable pointer to hts_idx_t struct
+    pub fn inner_ptr_mut(&mut self) -> *mut hts_sys::hts_idx_t {
+        self.inner
+    }
+
+    /// Get the number of mapped and unmapped reads for a given target id
+    /// FIXME only valid for BAM, not SAM/CRAM
+    fn number_mapped_unmapped(&self, tid: u32) -> (u64, u64) {
+        let (mut mapped, mut unmapped) = (0, 0);
+        unsafe {
+            hts_sys::hts_idx_get_stat(self.inner, tid as i32, &mut mapped, &mut unmapped);
+        }
+        (mapped, unmapped)
+    }
+
+    /// Get the total number of unmapped reads in the file
+    /// FIXME only valid for BAM, not SAM/CRAM
+    fn number_unmapped(&self) -> u64 {
+        unsafe { hts_sys::hts_idx_get_n_no_coor(self.inner) }
+    }
+}
+
+impl Drop for IndexView {
+    fn drop(&mut self) {
+        if self.owned {
+            unsafe {
+                htslib::hts_idx_destroy(self.inner);
+            }
+        }
     }
 }
 
@@ -851,7 +1032,6 @@ impl Drop for IndexedReader {
             if self.itr.is_some() {
                 htslib::hts_itr_destroy(self.itr.unwrap());
             }
-            htslib::hts_idx_destroy(self.idx);
             htslib::hts_close(self.htsfile);
         }
     }
@@ -1615,6 +1795,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let bam = IndexedReader::from_path(&"test/test.bam").expect("Expected valid index.");
         _test_read_indexed_common(bam);
     }
+
     #[test]
     fn test_read_indexed_different_index_name() {
         let bam = IndexedReader::from_path_and_index(
@@ -2818,4 +2999,80 @@ CCCCCCCCCCCCCCCCCCC"[..],
         assert_eq!(header_refseqs[0].get("SN").unwrap(), "ref_1",);
         assert_eq!(header_refseqs[0].get("LN").unwrap(), "10000000",);
     }
+
+    #[test]
+    fn test_idxstats_bam() {
+        let mut reader = IndexedReader::from_path("test/test.bam").unwrap();
+        let expected = vec![
+            (0, 15072423, 6, 0),
+            (1, 15279345, 0, 0),
+            (2, 13783700, 0, 0),
+            (3, 17493793, 0, 0),
+            (4, 20924149, 0, 0),
+            (-1, 0, 0, 0),
+        ];
+        let actual = reader.index_stats().unwrap();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_number_mapped_and_unmapped_bam() {
+        let reader = IndexedReader::from_path("test/test.bam").unwrap();
+        let expected = (6, 0);
+        let actual = reader.index().number_mapped_unmapped(0);
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_number_unmapped_global_bam() {
+        let reader = IndexedReader::from_path("test/test_unmapped.bam").unwrap();
+        let expected = 8;
+        let actual = reader.index().number_unmapped();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_idxstats_cram() {
+        let mut reader = IndexedReader::from_path("test/test_cram.cram").unwrap();
+        reader.set_reference("test/test_cram.fa").unwrap();
+        let expected = vec![
+            (0, 120, 2, 0),
+            (1, 120, 2, 0),
+            (2, 120, 2, 0),
+            (-1, 0, 0, 0),
+        ];
+        let actual = reader.index_stats().unwrap();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_slow_idxstats_cram() {
+        let mut reader = IndexedReader::from_path("test/test_cram.cram").unwrap();
+        reader.set_reference("test/test_cram.fa").unwrap();
+        let expected = vec![
+            (0, 120, 2, 0),
+            (1, 120, 2, 0),
+            (2, 120, 2, 0),
+            (-1, 0, 0, 0),
+        ];
+        let actual = reader.index_stats().unwrap();
+        assert_eq!(expected, actual);
+    }
+
+    // #[test]
+    // fn test_number_mapped_and_unmapped_cram() {
+    //     let mut reader = IndexedReader::from_path("test/test_cram.cram").unwrap();
+    //     reader.set_reference("test/test_cram.fa").unwrap();
+    //     let expected = (2, 0);
+    //     let actual = reader.index().number_mapped_unmapped(0);
+    //     assert_eq!(expected, actual);
+    // }
+    //
+    // #[test]
+    // fn test_number_unmapped_global_cram() {
+    //     let mut reader = IndexedReader::from_path("test/test_unmapped.cram").unwrap();
+    //     let expected = 8;
+    //     let actual = reader.index().number_unmapped();
+    //     assert_eq!(expected, actual);
+    // }
 }
