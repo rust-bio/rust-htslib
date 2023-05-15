@@ -128,6 +128,14 @@ impl Reader {
     }
 }
 
+impl Drop for Reader {
+    fn drop(&mut self) {
+        unsafe {
+            htslib::fai_destroy(self.inner);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
