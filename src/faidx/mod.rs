@@ -246,4 +246,12 @@ mod tests {
         let n = r.seq_name(1).unwrap();
         assert_eq!(n, "chr2");
     }
+
+    #[test]
+    fn open_many_readers() {
+        for _ in 0..500_000 {
+            let reader = open_reader();
+            drop(reader);
+        }
+    }
 }
