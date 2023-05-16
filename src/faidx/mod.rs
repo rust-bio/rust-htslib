@@ -128,6 +128,14 @@ impl Reader {
     }
 }
 
+impl Drop for Reader {
+    fn drop(&mut self) {
+        unsafe {
+            htslib::fai_destroy(self.inner);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -237,5 +245,13 @@ mod tests {
         let r = open_reader();
         let n = r.seq_name(1).unwrap();
         assert_eq!(n, "chr2");
+    }
+
+    #[test]
+    fn open_many_readers() {
+        for _ in 0..500_000 {
+            let reader = open_reader();
+            drop(reader);
+        }
     }
 }
