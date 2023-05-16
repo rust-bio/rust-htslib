@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.43.1](https://github.com/rust-bio/rust-htslib/compare/v0.43.0...v0.43.1) (2023-05-16)
+
+
+### Bug Fixes
+
+* implement Drop for faidx::Reader, destroying the fai handle ([#391](https://github.com/rust-bio/rust-htslib/issues/391)) ([0e6d6ac](https://github.com/rust-bio/rust-htslib/commit/0e6d6acec9a6d24ed6baf810e56f02394737a046))
+
 ## [0.43.0](https://github.com/rust-bio/rust-htslib/compare/v0.42.0...v0.43.0) (2023-05-12)
 
 
