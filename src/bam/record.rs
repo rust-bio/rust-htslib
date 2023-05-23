@@ -239,7 +239,7 @@ impl Record {
     }
 
     /// Get strand information from record flags.
-    pub fn strand(&mut self) -> ReqStrand {
+    pub fn strand(&self) -> ReqStrand {
         let reverse = self.flags() & 0x10 != 0;
         if reverse {
             ReqStrand::Reverse
