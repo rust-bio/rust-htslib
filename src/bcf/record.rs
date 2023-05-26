@@ -1090,6 +1090,19 @@ impl Record {
     }
 }
 
+impl Clone for Record {
+    fn clone(&self) -> Self {
+        let inner = unsafe {
+            let inner = htslib::bcf_dup(self.inner);
+            inner
+        };
+        Record {
+            inner,
+            header: self.header.clone(),
+        }
+    }
+}
+
 impl genome::AbstractLocus for Record {
     fn contig(&self) -> &str {
         str::from_utf8(
@@ -1567,6 +1580,26 @@ mod tests {
         assert_eq!(record.rlen(), 0);
         assert_eq!(record.sample_count(), 0);
         assert_eq!(record.pos(), 0)
+    }
+
+    #[test]
+    fn test_record_clone() {
+        let tmp = NamedTempFile::new().unwrap();
+        let path = tmp.path();
+        let header = Header::new();
+        let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
+        let mut record = vcf.empty_record();
+        let alleles: &[&[u8]] = &[b"AGG", b"TG"];
+        record.set_alleles(alleles).expect("Failed to set alleles");
+        record.set_pos(6);
+
+        let mut cloned_record = record.clone();
+        cloned_record.set_pos(5);
+
+        assert_eq!(record.pos(), 6);
+        assert_eq!(record.allele_count(), 2);
+        assert_eq!(cloned_record.pos(), 5);
+        assert_eq!(cloned_record.allele_count(), 2);
     }
 
     #[test]
