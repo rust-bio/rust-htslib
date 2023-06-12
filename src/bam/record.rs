@@ -2205,25 +2205,22 @@ impl fmt::Display for CigarStringView {
     }
 }
 
-pub struct BaseModificationMetadata
-{
+pub struct BaseModificationMetadata {
     pub strand: i32,
     pub implicit: i32,
-    pub canonical: i8
+    pub canonical: i8,
 }
 
 /// struct containing the internal state required to access
 /// the base modifications for a bam::Record
-pub struct BaseModificationState<'a>
-{
+pub struct BaseModificationState<'a> {
     record: &'a Record,
     state: *mut htslib::hts_base_mod_state,
     buffer: Vec<htslib::hts_base_mod>,
-    buffer_pos: i32
+    buffer_pos: i32,
 }
 
 impl BaseModificationState<'_> {
-
     /// Initialize a new BaseModification struct from a bam::Record
     /// This function allocates memory for the state structure
     /// and initializes the iterator to the start of the modification
@@ -2234,7 +2231,7 @@ impl BaseModificationState<'_> {
                 record: r,
                 state: hts_sys::hts_base_mod_state_alloc(),
                 buffer: Vec::new(),
-                buffer_pos: -1
+                buffer_pos: -1,
             }
         };
 
@@ -2256,13 +2253,14 @@ impl BaseModificationState<'_> {
     }
 
     pub fn buffer_next_mods(&mut self) -> Result<usize> {
-
         unsafe {
-            let ret = hts_sys::bam_next_basemod(self.record.inner_ptr(),
-                                                self.state,
-                                                self.buffer.as_mut_ptr(),
-                                                self.buffer.capacity() as i32,
-                                                &mut self.buffer_pos);
+            let ret = hts_sys::bam_next_basemod(
+                self.record.inner_ptr(),
+                self.state,
+                self.buffer.as_mut_ptr(),
+                self.buffer.capacity() as i32,
+                &mut self.buffer_pos,
+            );
 
             if ret < 0 {
                 return Err(Error::BamBaseModificationIterationFailed);
@@ -2279,7 +2277,7 @@ impl BaseModificationState<'_> {
             // not update the length so needs to be manually set
             self.buffer.set_len(ret as usize);
 
-            return Ok(ret as usize)
+            return Ok(ret as usize);
         }
     }
 
@@ -2308,15 +2306,21 @@ impl BaseModificationState<'_> {
             let mut implicit: i32 = 0;
             let mut canonical: i8 = 0;
 
-            let ret = hts_sys::bam_mods_query_type(self.state, code, &mut strand, &mut implicit, &mut canonical);
+            let ret = hts_sys::bam_mods_query_type(
+                self.state,
+                code,
+                &mut strand,
+                &mut implicit,
+                &mut canonical,
+            );
             if ret == -1 {
                 return Err(Error::BamBaseModificationTypeNotFound);
             } else {
                 return Ok(BaseModificationMetadata {
-                            strand: strand,
-                            implicit: implicit,
-                            canonical: canonical
-                         });
+                    strand: strand,
+                    implicit: implicit,
+                    canonical: canonical,
+                });
             }
         }
     }
@@ -2324,19 +2328,19 @@ impl BaseModificationState<'_> {
 
 impl Drop for BaseModificationState<'_> {
     fn drop<'a>(&mut self) {
-        unsafe { hts_sys::hts_base_mod_state_free(self.state); }
+        unsafe {
+            hts_sys::hts_base_mod_state_free(self.state);
+        }
     }
 }
 
 /// Iterator over the base modifications that returns
 /// a vector for all of the mods at each position
-pub struct BaseModificationsPositionIter<'a>
-{
-    mod_state: BaseModificationState<'a>
+pub struct BaseModificationsPositionIter<'a> {
+    mod_state: BaseModificationState<'a>,
 }
 
-impl BaseModificationsPositionIter<'_>
-{
+impl BaseModificationsPositionIter<'_> {
     fn new<'a>(r: &'a Record) -> Result<BaseModificationsPositionIter<'a>> {
         let state = BaseModificationState::new(r)?;
         Ok(BaseModificationsPositionIter { mod_state: state })
@@ -2352,9 +2356,9 @@ impl BaseModificationsPositionIter<'_>
 }
 
 impl<'a> Iterator for BaseModificationsPositionIter<'a> {
-    type Item = Result< (i32, Vec<hts_sys::hts_base_mod>) >;
+    type Item = Result<(i32, Vec<hts_sys::hts_base_mod>)>;
 
-    fn next(&mut self) -> Option< Self::Item > {
+    fn next(&mut self) -> Option<Self::Item> {
         let ret = self.mod_state.buffer_next_mods();
 
         // Three possible things happened in buffer_next_mods:
@@ -2365,32 +2369,30 @@ impl<'a> Iterator for BaseModificationsPositionIter<'a> {
             Ok(num_mods) => {
                 if num_mods == 0 {
                     return None;
-                }
-                else {
+                } else {
                     let data = (self.mod_state.buffer_pos, self.mod_state.buffer.clone());
                     return Some(Ok(data));
                 }
-            },
-            Err(e) => {
-                return Some(Err(e))
             }
+            Err(e) => return Some(Err(e)),
         }
     }
 }
 
 /// Iterator over the base modifications that returns
 /// the next modification found, one by one
-pub struct BaseModificationsIter<'a>
-{
+pub struct BaseModificationsIter<'a> {
     mod_state: BaseModificationState<'a>,
-    buffer_idx: usize
+    buffer_idx: usize,
 }
 
-impl BaseModificationsIter<'_>
-{
+impl BaseModificationsIter<'_> {
     fn new<'a>(r: &'a Record) -> Result<BaseModificationsIter<'a>> {
         let state = BaseModificationState::new(r)?;
-        Ok(BaseModificationsIter { mod_state: state, buffer_idx: 0 })
+        Ok(BaseModificationsIter {
+            mod_state: state,
+            buffer_idx: 0,
+        })
     }
 
     pub fn recorded<'a>(&self) -> &'a [i32] {
@@ -2403,10 +2405,9 @@ impl BaseModificationsIter<'_>
 }
 
 impl<'a> Iterator for BaseModificationsIter<'a> {
-    type Item = Result< (i32, hts_sys::hts_base_mod) >;
+    type Item = Result<(i32, hts_sys::hts_base_mod)>;
 
-    fn next(&mut self) -> Option< Self::Item > {
-
+    fn next(&mut self) -> Option<Self::Item> {
         if self.buffer_idx == self.mod_state.buffer.len() {
             // need to use the internal state to read the next
             // set of modifications into the buffer
@@ -2421,16 +2422,17 @@ impl<'a> Iterator for BaseModificationsIter<'a> {
                         // we read some mods, reset the position in the buffer then fall through
                         self.buffer_idx = 0;
                     }
-                },
-                Err(e) => {
-                    return Some(Err(e))
                 }
+                Err(e) => return Some(Err(e)),
             }
         }
 
         // if we got here when there are mods buffered that we haven't emitted yet
         assert!(self.buffer_idx < self.mod_state.buffer.len());
-        let data = (self.mod_state.buffer_pos, self.mod_state.buffer[self.buffer_idx]);
+        let data = (
+            self.mod_state.buffer_pos,
+            self.mod_state.buffer[self.buffer_idx],
+        );
         self.buffer_idx += 1;
         return Some(Ok(data));
     }
