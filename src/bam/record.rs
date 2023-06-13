@@ -2317,9 +2317,9 @@ impl BaseModificationState<'_> {
                 return Err(Error::BamBaseModificationTypeNotFound);
             } else {
                 return Ok(BaseModificationMetadata {
-                    strand: strand,
-                    implicit: implicit,
-                    canonical: canonical,
+                    strand,
+                    implicit,
+                    canonical,
                 });
             }
         }
