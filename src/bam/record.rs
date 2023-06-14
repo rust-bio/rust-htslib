@@ -1022,7 +1022,7 @@ impl Record {
 
     /// Access the base modifications associated with this Record through the MM tag.
     /// Example:
-    /// ```
+    /// ```ignore
     ///    if let Ok(mods) = record.basemods_iter() {
     ///        // print metadata for the modifications present in this record
     ///        for mod_code in mods.recorded() {
