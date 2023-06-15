@@ -1043,7 +1043,7 @@ impl Record {
     ///                println!("{} {},{}", position, m.modified_base as u8 as char, m.qual);
     ///            }
     ///        }
-    ///    }
+    ///    };
     /// ```
     pub fn basemods_iter(&self) -> Result<BaseModificationsIter> {
         BaseModificationsIter::new(self)
