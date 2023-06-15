@@ -1023,27 +1023,33 @@ impl Record {
     /// Access the base modifications associated with this Record through the MM tag.
     /// Example:
     /// ```
-    ///    # use rust_htslib::bam::Record;
-    ///    # let record = Record::new();
-    ///    if let Ok(mods) = record.basemods_iter() {
-    ///        // print metadata for the modifications present in this record
-    ///        for mod_code in mods.recorded() {
-    ///            if let Ok(mod_metadata) = mods.query_type(*mod_code) {
-    ///                println!("mod found with code {}/{} flags: [{} {} {}]",
-    ///                        mod_code, *mod_code as u8 as char,
-    ///                        mod_metadata.strand, mod_metadata.implicit, mod_metadata.canonical as u8 as char);
+    ///    use rust_htslib::bam::{Read, Reader, Record};
+    ///    let mut bam = Reader::from_path(&"test/base_mods/MM-orient.sam").unwrap();
+    ///    let mut mod_count = 0;
+    ///    for r in bam.records() {
+    ///        let record = r.unwrap();
+    ///        if let Ok(mods) = record.basemods_iter() {
+    ///            // print metadata for the modifications present in this record
+    ///            for mod_code in mods.recorded() {
+    ///                if let Ok(mod_metadata) = mods.query_type(*mod_code) {
+    ///                    println!("mod found with code {}/{} flags: [{} {} {}]",
+    ///                              mod_code, *mod_code as u8 as char,
+    ///                              mod_metadata.strand, mod_metadata.implicit, mod_metadata.canonical as u8 as char);
+    ///                }
     ///            }
-    ///        }
     ///
-    ///        // iterate over the modifications in this record
-    ///        // the modifications are returned as a tuple with the
-    ///        // position within SEQ and an hts_base_mod struct
-    ///        for res in mods {
-    ///            if let Ok( (position, m) ) = res {
-    ///                println!("{} {},{}", position, m.modified_base as u8 as char, m.qual);
+    ///            // iterate over the modifications in this record
+    ///            // the modifications are returned as a tuple with the
+    ///            // position within SEQ and an hts_base_mod struct
+    ///            for res in mods {
+    ///                if let Ok( (position, m) ) = res {
+    ///                    println!("{} {},{}", position, m.modified_base as u8 as char, m.qual);
+    ///                    mod_count += 1;
+    ///                }
     ///            }
-    ///        }
-    ///    };
+    ///        };
+    ///    }
+    ///    assert_eq!(mod_count, 14);
     /// ```
     pub fn basemods_iter(&self) -> Result<BaseModificationsIter> {
         BaseModificationsIter::new(self)
