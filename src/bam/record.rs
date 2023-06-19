@@ -2308,6 +2308,8 @@ impl BaseModificationState<'_> {
     /// Return metadata for the specified character code indicating the strand
     /// the base modification was called on, whether the tag uses implicit mode
     /// and the ascii code for the canonical base.
+    /// If there are multiple modifications with the same code this will return the data
+    /// for the first mod.  See https://github.com/samtools/htslib/issues/1635
     pub fn query_type<'a>(&self, code: i32) -> Result<BaseModificationMetadata> {
         unsafe {
             let mut strand: i32 = 0;
@@ -2888,6 +2890,82 @@ mod alignment_cigar_tests {
             let cigar_parse = CigarString::try_from(cigar_str)
                 .expect(&format!("Unable to parse cigar: {}", cigar_str));
             assert_eq!(&cigar_parse, truth);
+        }
+    }
+}
+
+#[cfg(test)]
+mod basemod_tests {
+    use crate::bam::{Read, Reader};
+
+    #[test]
+    pub fn test_count_recorded() {
+        let mut bam = Reader::from_path(&"test/base_mods/MM-double.sam").unwrap();
+
+        for r in bam.records() {
+            let record = r.unwrap();
+            if let Ok(mods) = record.basemods_iter() {
+                let n = mods.recorded().len();
+                assert_eq!(n, 3);
+            };
+        }
+    }
+
+    #[test]
+    pub fn test_query_type() {
+        let mut bam = Reader::from_path(&"test/base_mods/MM-orient.sam").unwrap();
+
+        let mut n_fwd = 0;
+        let mut n_rev = 0;
+
+        for r in bam.records() {
+            let record = r.unwrap();
+            if let Ok(mods) = record.basemods_iter() {
+                for mod_code in mods.recorded() {
+                    if let Ok(mod_metadata) = mods.query_type(*mod_code) {
+                        if mod_metadata.strand == 0 { n_fwd += 1; }
+                        if mod_metadata.strand == 1 { n_rev += 1; }
+                    }
+                }
+            };
+        }
+        assert_eq!(n_fwd, 2);
+        assert_eq!(n_rev, 2);
+    }
+
+    #[test]
+    pub fn test_mod_iter() {
+        let mut bam = Reader::from_path(&"test/base_mods/MM-double.sam").unwrap();
+        let expected_positions = [ 1, 7, 12, 13, 13, 22, 30, 31 ];
+        let mut i = 0;
+
+        for r in bam.records() {
+            let record = r.unwrap();
+            for res in record.basemods_iter().unwrap() {
+                if let Ok( (position, _m) ) = res {
+                    assert_eq!(position, expected_positions[i]);
+                    i += 1;
+                }
+            }
+        }
+    }
+
+    #[test]
+    pub fn test_position_iter() {
+        let mut bam = Reader::from_path(&"test/base_mods/MM-double.sam").unwrap();
+        let expected_positions = [ 1, 7, 12, 13, 22, 30, 31 ];
+        let expected_counts    = [ 1, 1,  1,  2,  1,  1,  1 ];
+        let mut i = 0;
+
+        for r in bam.records() {
+            let record = r.unwrap();
+            for res in record.basemods_position_iter().unwrap() {
+                if let Ok( (position, elements) ) = res {
+                    assert_eq!(position, expected_positions[i]);
+                    assert_eq!(elements.len(), expected_counts[i]);
+                    i += 1;
+                }
+            }
         }
     }
 }
