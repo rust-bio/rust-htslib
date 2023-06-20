@@ -1022,13 +1022,15 @@ mod tests {
                     .expect("Missing tag")[0],
                 format!("string{}", i + 1).as_bytes()
             );
+            let fs1_str_vec = record
+                .format(b"FS1")
+                .string()
+                .expect("Error reading string.");
+            assert_eq!(fs1_str_vec.len(), 1);
             println!(
                 "{}",
                 String::from_utf8_lossy(
-                    record
-                        .format(b"FS1")
-                        .string()
-                        .expect("Error reading string.")[0]
+                    fs1_str_vec[0]
                 )
             );
             assert_eq!(
