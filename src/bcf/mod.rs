@@ -1026,7 +1026,7 @@ mod tests {
                 .format(b"FS1")
                 .string()
                 .expect("Error reading string.");
-            assert_eq!(fs1_str_vec.len(), 1);
+            assert_eq!(fs1_str_vec.len(), 2);
             println!(
                 "{}",
                 String::from_utf8_lossy(
