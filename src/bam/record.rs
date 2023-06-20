@@ -2923,8 +2923,12 @@ mod basemod_tests {
             if let Ok(mods) = record.basemods_iter() {
                 for mod_code in mods.recorded() {
                     if let Ok(mod_metadata) = mods.query_type(*mod_code) {
-                        if mod_metadata.strand == 0 { n_fwd += 1; }
-                        if mod_metadata.strand == 1 { n_rev += 1; }
+                        if mod_metadata.strand == 0 {
+                            n_fwd += 1;
+                        }
+                        if mod_metadata.strand == 1 {
+                            n_rev += 1;
+                        }
                     }
                 }
             };
@@ -2936,13 +2940,13 @@ mod basemod_tests {
     #[test]
     pub fn test_mod_iter() {
         let mut bam = Reader::from_path(&"test/base_mods/MM-double.sam").unwrap();
-        let expected_positions = [ 1, 7, 12, 13, 13, 22, 30, 31 ];
+        let expected_positions = [1, 7, 12, 13, 13, 22, 30, 31];
         let mut i = 0;
 
         for r in bam.records() {
             let record = r.unwrap();
             for res in record.basemods_iter().unwrap() {
-                if let Ok( (position, _m) ) = res {
+                if let Ok((position, _m)) = res {
                     assert_eq!(position, expected_positions[i]);
                     i += 1;
                 }
@@ -2953,14 +2957,14 @@ mod basemod_tests {
     #[test]
     pub fn test_position_iter() {
         let mut bam = Reader::from_path(&"test/base_mods/MM-double.sam").unwrap();
-        let expected_positions = [ 1, 7, 12, 13, 22, 30, 31 ];
-        let expected_counts    = [ 1, 1,  1,  2,  1,  1,  1 ];
+        let expected_positions = [1, 7, 12, 13, 22, 30, 31];
+        let expected_counts = [1, 1, 1, 2, 1, 1, 1];
         let mut i = 0;
 
         for r in bam.records() {
             let record = r.unwrap();
             for res in record.basemods_position_iter().unwrap() {
-                if let Ok( (position, elements) ) = res {
+                if let Ok((position, elements)) = res {
                     assert_eq!(position, expected_positions[i]);
                     assert_eq!(elements.len(), expected_counts[i]);
                     i += 1;
