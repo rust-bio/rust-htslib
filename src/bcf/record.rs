@@ -1285,8 +1285,9 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, B> {
     pub fn integer(mut self) -> Result<Option<BufferBacked<'b, &'b [i32], B>>> {
         self.data(htslib::BCF_HT_INT).map(|data| {
             data.map(|ret| {
-                let values =
-                    unsafe { slice::from_raw_parts(self.buffer.borrow().inner as *const i32, ret as usize) };
+                let values = unsafe {
+                    slice::from_raw_parts(self.buffer.borrow().inner as *const i32, ret as usize)
+                };
                 BufferBacked::new(&values[..ret as usize], self.buffer)
             })
         })
@@ -1303,8 +1304,9 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, B> {
     pub fn float(mut self) -> Result<Option<BufferBacked<'b, &'b [f32], B>>> {
         self.data(htslib::BCF_HT_REAL).map(|data| {
             data.map(|ret| {
-                let values =
-                    unsafe { slice::from_raw_parts(self.buffer.borrow().inner as *const f32, ret as usize) };
+                let values = unsafe {
+                    slice::from_raw_parts(self.buffer.borrow().inner as *const f32, ret as usize)
+                };
                 BufferBacked::new(&values[..ret as usize], self.buffer)
             })
         })
@@ -1436,10 +1438,15 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Format<'a, B> {
     pub fn integer(mut self) -> Result<BufferBacked<'b, Vec<&'b [i32]>, B>> {
         self.data(htslib::BCF_HT_INT).map(|ret| {
             BufferBacked::new(
-                unsafe { slice::from_raw_parts(self.buffer.borrow_mut().inner as *const i32, ret as usize) }
-                    .chunks(self.values_per_sample())
-                    .map(|s| trim_slice(s))
-                    .collect(),
+                unsafe {
+                    slice::from_raw_parts(
+                        self.buffer.borrow_mut().inner as *const i32,
+                        ret as usize,
+                    )
+                }
+                .chunks(self.values_per_sample())
+                .map(|s| trim_slice(s))
+                .collect(),
                 self.buffer,
             )
         })
@@ -1454,10 +1461,15 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Format<'a, B> {
     pub fn float(mut self) -> Result<BufferBacked<'b, Vec<&'b [f32]>, B>> {
         self.data(htslib::BCF_HT_REAL).map(|ret| {
             BufferBacked::new(
-                unsafe { slice::from_raw_parts(self.buffer.borrow_mut().inner as *const f32, ret as usize) }
-                    .chunks(self.values_per_sample())
-                    .map(|s| trim_slice(s))
-                    .collect(),
+                unsafe {
+                    slice::from_raw_parts(
+                        self.buffer.borrow_mut().inner as *const f32,
+                        ret as usize,
+                    )
+                }
+                .chunks(self.values_per_sample())
+                .map(|s| trim_slice(s))
+                .collect(),
                 self.buffer,
             )
         })
@@ -1472,15 +1484,17 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Format<'a, B> {
     pub fn string(mut self) -> Result<BufferBacked<'b, Vec<&'b [u8]>, B>> {
         self.data(htslib::BCF_HT_STR).map(|ret| {
             BufferBacked::new(
-                unsafe { slice::from_raw_parts(self.buffer.borrow_mut().inner as *const u8, ret as usize) }
-                    .chunks(self.values_per_sample())
-                    .map(|s| {
-                        // stop at zero character
-                        s.split(|c| *c == 0u8)
-                            .next()
-                            .expect("Bug: returned string should not be empty.")
-                    })
-                    .collect(),
+                unsafe {
+                    slice::from_raw_parts(self.buffer.borrow_mut().inner as *const u8, ret as usize)
+                }
+                .chunks(self.values_per_sample())
+                .map(|s| {
+                    // stop at zero character
+                    s.split(|c| *c == 0u8)
+                        .next()
+                        .expect("Bug: returned string should not be empty.")
+                })
+                .collect(),
                 self.buffer,
             )
         })
