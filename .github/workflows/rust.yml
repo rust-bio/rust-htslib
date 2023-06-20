@@ -68,7 +68,7 @@ jobs:
         uses: actions-rs/tarpaulin@v0.1
         with:
           version: "0.26.0"
-          args: "--all-features --out Lcov -- --test-threads 1"
+          args: "--all-features --doc --examples --out Lcov -- --test-threads 1"
 
       - name: Upload coverage
         uses: coverallsapp/github-action@v1
