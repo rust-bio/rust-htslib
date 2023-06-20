@@ -67,6 +67,7 @@ jobs:
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
+          # TODO: update to latest tarpaulin once artefact download is fixed: https://github.com/actions-rs/tarpaulin/pull/23
           version: "0.22.0"
           args: "--all-features --doc --examples --out Lcov -- --test-threads 1"
 
