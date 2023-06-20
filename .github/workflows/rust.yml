@@ -52,10 +52,10 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install stable toolchain
+      - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1.0.6
         with:
-          toolchain: stable
+          toolchain: nightly
           override: true
 
       - name: Install system dependencies
@@ -67,8 +67,9 @@ jobs:
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
+          # TODO: update to latest tarpaulin once artefact download is fixed: https://github.com/actions-rs/tarpaulin/pull/23
           version: "0.22.0"
-          args: "--all-features --out Lcov -- --test-threads 1"
+          args: "--all-features --run-types Tests,Doctests --out Lcov -- --test-threads 1"
 
       - name: Upload coverage
         uses: coverallsapp/github-action@v1
