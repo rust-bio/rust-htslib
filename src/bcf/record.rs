@@ -1270,7 +1270,7 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, B> {
             -1 => Err(Error::BcfUndefinedTag { tag: self.desc() }),
             -2 => Err(Error::BcfUnexpectedType { tag: self.desc() }),
             -3 => Ok(None),
-            ret => Ok(Some((n as usize, ret))),
+            ret => Ok(Some((ret as usize, ret))),
         }
     }
 
@@ -1423,7 +1423,7 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Format<'a, B> {
                 tag: self.desc(),
                 record: self.record.desc(),
             }),
-            ret => Ok((n as usize, ret)),
+            ret => Ok((ret as usize, ret)),
         }
     }
 
