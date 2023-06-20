@@ -1023,7 +1023,7 @@ mod tests {
                 format!("string{}", i + 1).as_bytes()
             );
             let fs1_str_vec = record
-                .format(b"FS1")
+                .format_shared_buffer(b"FS1", &mut buffer)
                 .string()
                 .expect("Error reading string.");
             assert_eq!(fs1_str_vec.len(), 2);
