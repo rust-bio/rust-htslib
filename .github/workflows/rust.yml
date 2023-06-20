@@ -52,10 +52,10 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install stable toolchain
+      - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1.0.6
         with:
-          toolchain: stable
+          toolchain: nightly
           override: true
 
       - name: Install system dependencies
