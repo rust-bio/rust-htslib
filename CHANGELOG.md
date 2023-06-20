@@ -2,6 +2,19 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.44.0](https://github.com/rust-bio/rust-htslib/compare/v0.43.1...v0.44.0) (2023-06-20)
+
+
+### Features
+
+* implement Clone for bcf::Record ([#394](https://github.com/rust-bio/rust-htslib/issues/394)) ([e89538d](https://github.com/rust-bio/rust-htslib/commit/e89538d5a9971c6508ac38d92ac468f3d70241aa))
+* implement htslib basemod api ([#385](https://github.com/rust-bio/rust-htslib/issues/385)) ([8beee14](https://github.com/rust-bio/rust-htslib/commit/8beee145a116f7ae936f1b6e36d876116dca18f1))
+
+
+### Bug Fixes
+
+* include doctests in test coverage calculations ([#397](https://github.com/rust-bio/rust-htslib/issues/397)) ([8ed0837](https://github.com/rust-bio/rust-htslib/commit/8ed083783fa1dce09535564a090d37f687fc832f))
+
 ## [0.43.1](https://github.com/rust-bio/rust-htslib/compare/v0.43.0...v0.43.1) (2023-05-16)
 
 
