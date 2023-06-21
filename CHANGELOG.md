@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.44.1](https://github.com/rust-bio/rust-htslib/compare/v0.44.0...v0.44.1) (2023-06-21)
+
+
+### Bug Fixes
+
+* use correct return value in bcf_get_format and bcf_get_info_values ([#398](https://github.com/rust-bio/rust-htslib/issues/398)) ([f9a1981](https://github.com/rust-bio/rust-htslib/commit/f9a1981fa84eef39e35f868ddfc773ea265b94b3))
+
 ## [0.44.0](https://github.com/rust-bio/rust-htslib/compare/v0.43.1...v0.44.0) (2023-06-20)
 
 
