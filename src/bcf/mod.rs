@@ -112,6 +112,7 @@ use url::Url;
 
 pub mod buffer;
 pub mod header;
+pub mod index;
 pub mod record;
 
 use crate::bcf::header::{HeaderView, SampleSubset};
