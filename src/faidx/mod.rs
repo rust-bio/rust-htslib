@@ -126,6 +126,17 @@ impl Reader {
 
         Ok(out)
     }
+
+    /// Fetches the length of the given sequence name.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - the name of the template sequence (e.g., "chr1")
+    pub fn fetch_seq_len<N: AsRef<str>>(&self, name: N) -> u64 {
+        let cname = ffi::CString::new(name.as_ref().as_bytes()).unwrap();
+        let seq_len = unsafe { htslib::faidx_seq_len(self.inner, cname.as_ptr()) };
+        seq_len as u64
+    }
 }
 
 impl Drop for Reader {
@@ -245,6 +256,15 @@ mod tests {
         let r = open_reader();
         let n = r.seq_name(1).unwrap();
         assert_eq!(n, "chr2");
+    }
+
+    #[test]
+    fn faidx_get_seq_len() {
+        let r = open_reader();
+        let chr1_len = r.fetch_seq_len("chr1");
+        let chr2_len = r.fetch_seq_len("chr2");
+        assert_eq!(chr1_len, 120u64);
+        assert_eq!(chr2_len, 120u64);
     }
 
     #[test]
