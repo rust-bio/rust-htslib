@@ -43,6 +43,26 @@ impl std::fmt::Display for BcfBuildError {
 
 /// Build a bcf or vcf.gz index.
 /// Builds tbi or csi depending on index_type.
+///
+///```
+/// // Index a sorted bcf file with csi.
+/// let bcf_path = concat!(env!("CARGO_MANIFEST_DIR"), "/test/test_multi.bcf");
+/// rust_htslib::bcf::index::build(&bcf_path, Some(&"built_test.csi"), /*n_threads=*/ 4u32, rust_htslib::bcf::index::Type::Csi(14)).expect("Failed to build csi index for bcf file.");
+/// assert!(std::path::Path::new(&"built_test.csi").exists());
+///
+/// // Index a bgzip-compresed vcf file with tabix.
+/// let vcf_path = concat!(env!("CARGO_MANIFEST_DIR"), "/test/test_left.vcf.gz");
+/// rust_htslib::bcf::index::build(&vcf_path, Some(&"built_test_vcf.tbx"), /*n_threads=*/ 4u32, rust_htslib::bcf::index::Type::Tbx).expect("Failed to build tbx index for vcf file.");
+/// assert!(std::path::Path::new(&"built_test_vcf.tbx").exists());
+///
+/// // Cannot build a tbi index for a bcf file: returns an Err(BcfBuildError).
+/// assert!(std::panic::catch_unwind(|| rust_htslib::bcf::index::build(bcf_path, Some("built_test.tbi"), 4u32, rust_htslib::bcf::index::Type::Tbx).unwrap()).is_err());
+///
+/// // Cannot built a csi index for a vcf file: returns an Err(BcfBuildError).
+/// let vcf_path = concat!(env!("CARGO_MANIFEST_DIR"), "/test/test_various.vcf");
+/// assert!(std::panic::catch_unwind(|| rust_htslib::bcf::index::build(&vcf_path, Some(&"built_test_vcf.csi"), /*n_threads=*/ 4u32, rust_htslib::bcf::index::Type::Csi(14)).expect("Failed to build csi index for vcf file.")).is_err());
+///```
+///
 pub fn build<P: AsRef<std::path::Path>>(
     bcf_path: P,
     idx_path: Option<P>,
@@ -50,22 +70,31 @@ pub fn build<P: AsRef<std::path::Path>>(
     index_type: Type,
 ) -> Result<(), BcfBuildError> {
     let min_shift = index_type.min_shift();
-    let idx_path_cstr = idx_path.map(|p| utils::path_to_cstring(&p).expect("path_to_cstring"));
-    let ret = unsafe {
+    let idx_path_cstr = idx_path.and_then(|x| utils::path_to_cstring(&x));
+    let bcf_path = utils::path_to_cstring(&bcf_path).ok_or(BcfBuildError {
+        msg: format!(
+            "Failed to format bcf_path to cstring: {:?}",
+            bcf_path.as_ref().display()
+        ),
+    })?;
+    let return_code = unsafe {
         htslib::bcf_index_build3(
-            utils::path_to_cstring(&bcf_path).unwrap().as_ptr(),
-            idx_path_cstr.map_or(std::ptr::null(), |p| p.as_ptr()),
+            bcf_path.as_ptr(),
+            idx_path_cstr
+                .as_ref()
+                .map_or(std::ptr::null(), |p| p.as_ptr()),
             min_shift,
             n_threads as i32,
         )
     };
-    match ret {
-        0 => Ok(()),
-        e => Err(BcfBuildError {
+    if return_code == 0 {
+        Ok(())
+    } else {
+        Err(BcfBuildError {
             msg: format!(
-                "Failed to build  bcf index. Error: {e:?}/{}",
-                BcfBuildError::error_message(e)
+                "Failed to build  bcf index. Error: {return_code:?}/{}",
+                BcfBuildError::error_message(return_code)
             ),
-        }),
+        })
     }
 }
