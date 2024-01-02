@@ -4,6 +4,7 @@
 // except according to those terms.
 
 use std::convert::TryFrom;
+use std::convert::TryInto;
 use std::ffi;
 use std::fmt;
 use std::marker::PhantomData;
