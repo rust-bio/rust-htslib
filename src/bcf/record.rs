@@ -1329,6 +1329,9 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, B> {
     pub fn string(mut self) -> Result<Option<BufferBacked<'b, Vec<&'b [u8]>, B>>> {
         self.data(htslib::BCF_HT_STR).map(|data| {
             data.map(|ret| {
+                if ret == 0 {
+                    return BufferBacked::new(Vec::new(), self.buffer);
+                }
                 BufferBacked::new(
                     unsafe {
                         slice::from_raw_parts(self.buffer.borrow().inner as *const u8, ret as usize)
