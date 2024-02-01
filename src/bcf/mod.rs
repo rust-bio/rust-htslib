@@ -1571,7 +1571,6 @@ mod tests {
         );
     }
 
-
     // #[test]
     // fn test_buffer_lifetime() {
     //     let mut reader = Reader::from_path("test/obs-cornercase.vcf").unwrap();
