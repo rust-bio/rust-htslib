@@ -2,6 +2,18 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.45.0](https://github.com/rust-bio/rust-htslib/compare/v0.44.1...v0.45.0) (2024-02-07)
+
+
+### Features
+
+* adding function to get sequence length to faidx mod ([#410](https://github.com/rust-bio/rust-htslib/issues/410)) ([ae79eba](https://github.com/rust-bio/rust-htslib/commit/ae79eba82ef6929105bdbe08246a8e973660899e))
+
+
+### Bug Fixes
+
+* Loosen acceptable types to support current linux build on aarch64 ([#415](https://github.com/rust-bio/rust-htslib/issues/415)) ([1d78d12](https://github.com/rust-bio/rust-htslib/commit/1d78d1251a052461605d28cd8cf832ccad93ef73))
+
 ## [0.44.1](https://github.com/rust-bio/rust-htslib/compare/v0.44.0...v0.44.1) (2023-06-21)
 
 

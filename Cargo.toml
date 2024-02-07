@@ -9,7 +9,7 @@ license = "MIT"
 name = "rust-htslib"
 readme = "README.md"
 repository = "https://github.com/rust-bio/rust-htslib.git"
-version = "0.44.1"
+version = "0.45.0"
 
 [package.metadata.release]
 pre-release-commit-message = "release version {{version}}"
