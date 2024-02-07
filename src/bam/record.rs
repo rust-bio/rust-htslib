@@ -4,6 +4,7 @@
 // except according to those terms.
 
 use std::convert::TryFrom;
+use std::convert::TryInto;
 use std::ffi;
 use std::fmt;
 use std::marker::PhantomData;
@@ -2216,7 +2217,7 @@ impl fmt::Display for CigarStringView {
 pub struct BaseModificationMetadata {
     pub strand: i32,
     pub implicit: i32,
-    pub canonical: i8,
+    pub canonical: u8,
 }
 
 /// struct containing the internal state required to access
@@ -2314,7 +2315,8 @@ impl BaseModificationState<'_> {
         unsafe {
             let mut strand: i32 = 0;
             let mut implicit: i32 = 0;
-            let mut canonical: i8 = 0;
+            // This may be i8 or u8 in hts_sys.
+            let mut canonical: c_char = 0;
 
             let ret = hts_sys::bam_mods_query_type(
                 self.state,
@@ -2329,7 +2331,7 @@ impl BaseModificationState<'_> {
                 return Ok(BaseModificationMetadata {
                     strand,
                     implicit,
-                    canonical,
+                    canonical: canonical.try_into().unwrap(),
                 });
             }
         }
