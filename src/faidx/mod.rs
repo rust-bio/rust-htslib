@@ -162,6 +162,29 @@ impl Reader {
         let seq_len = unsafe { htslib::faidx_seq_len(self.inner, cname.as_ptr()) };
         seq_len as u64
     }
+
+    /// Returns a Result<Vector<String>> for all seq names.
+    /// # Errors
+    ///
+    /// * `errors::Error::FaidxBadSeqName` - missing sequence name for sequence id.
+    ///
+    /// If thrown, the index is malformed, and the number of sequences in the index does not match the number of sequence names available.
+    ///```
+    /// use rust_htslib::faidx::build;
+    /// let path = std::path::PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"),"/test/test_cram.fa"));
+    /// build(&path).expect("Failed to build fasta index");
+    /// let reader = rust_htslib::faidx::Reader::from_path(path).expect("Failed to open faidx");
+    /// assert_eq!(reader.seq_names(), Ok(vec!["chr1".to_string(), "chr2".to_string(), "chr3".to_string()]));
+    ///```
+    ///
+    pub fn seq_names(&self) -> Result<Vec<String>> {
+        let num_seq = self.n_seqs();
+        let mut ret = Vec::with_capacity(num_seq as usize);
+        for seq_id in 0..num_seq {
+            ret.push(self.seq_name(seq_id as i32)?);
+        }
+        Ok(ret)
+    }
 }
 
 impl Drop for Reader {
