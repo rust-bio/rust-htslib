@@ -57,16 +57,16 @@ impl RecordBuffer {
     }
 
     /// Return start position of buffer
-    fn start(&self) -> Option<u64> {
+    pub fn start(&self) -> Option<u64> {
         self.inner.front().map(|rec| rec.pos() as u64)
     }
 
     /// Return end position of buffer.
-    fn end(&self) -> Option<u64> {
+    pub fn end(&self) -> Option<u64> {
         self.inner.back().map(|rec| rec.pos() as u64)
     }
 
-    fn tid(&self) -> Option<i32> {
+    pub fn tid(&self) -> Option<i32> {
         self.inner.back().map(|rec| rec.tid())
     }
 
