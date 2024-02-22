@@ -2,6 +2,18 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.46.0](https://github.com/rust-bio/rust-htslib/compare/v0.45.0...v0.46.0) (2024-02-22)
+
+
+### Features
+
+* making several RecordBuffer methods public ([6757f52](https://github.com/rust-bio/rust-htslib/commit/6757f5219955fd4edba4f61e62978ce1e001068e))
+
+
+### Bug Fixes
+
+* fix building libz-sys ([#420](https://github.com/rust-bio/rust-htslib/issues/420)) ([01c8849](https://github.com/rust-bio/rust-htslib/commit/01c884945686e7a6756406b579fde28657f70b36))
+
 ## [0.45.0](https://github.com/rust-bio/rust-htslib/compare/v0.44.1...v0.45.0) (2024-02-07)
 
 
