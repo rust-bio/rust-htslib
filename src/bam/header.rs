@@ -4,6 +4,7 @@
 // except according to those terms.
 
 use crate::bam::HeaderView;
+use crate::errors::{Error, Result};
 use lazy_static::lazy_static;
 use linear_map::LinearMap;
 use regex::Regex;
@@ -67,42 +68,50 @@ impl Header {
     /// This returns a header as a HashMap.
     /// Comment lines starting with "@CO" will NOT be included in the HashMap.
     /// Comment lines can be obtained by the `comments` function.
-    pub fn to_hashmap(&self) -> HashMap<String, Vec<LinearMap<String, String>>> {
+    pub fn to_hashmap(&self) -> Result<HashMap<String, Vec<LinearMap<String, String>>>> {
         let mut header_map = HashMap::default();
 
         lazy_static! {
             static ref REC_TYPE_RE: Regex = Regex::new(r"@([A-Z][A-Z])").unwrap();
             static ref TAG_RE: Regex = Regex::new(r"([A-Za-z][A-Za-z0-9]):([ -~]*)").unwrap();
         }
+        if let Ok(header_string) = String::from_utf8(self.to_bytes()) {
+            for line in header_string.split('\n').filter(|x| !x.is_empty()) {
+                let parts: Vec<_> = line.split('\t').filter(|x| !x.is_empty()).collect();
+                if parts.is_empty() {
+                    continue;
+                }
+                let record_type = REC_TYPE_RE
+                    .captures(parts[0])
+                    .and_then(|captures| captures.get(1))
+                    .map(|m| m.as_str().to_owned());
 
-        let header_string = String::from_utf8(self.to_bytes()).unwrap();
-
-        for line in header_string.split('\n').filter(|x| !x.is_empty()) {
-            let parts: Vec<_> = line.split('\t').filter(|x| !x.is_empty()).collect();
-            // assert!(rec_type_re.is_match(parts[0]));
-            let record_type = REC_TYPE_RE
-                .captures(parts[0])
-                .unwrap()
-                .get(1)
-                .unwrap()
-                .as_str()
-                .to_owned();
-            if record_type.eq("CO") {
-                continue;
+                if let Some(record_type) = record_type {
+                    if record_type == "CO" {
+                        continue
+                    }
+                    let mut field = LinearMap::default();
+                    for part in parts.iter().skip(1) {
+                        if let Some(cap) = TAG_RE.captures(part) {
+                            let tag = cap.get(1).unwrap().as_str().to_owned();
+                            let value = cap.get(2).unwrap().as_str().to_owned();
+                            field.insert(tag, value);
+                        } else {
+                            return Err(Error::HeaderParse);
+                        }
+                    }
+                    header_map
+                        .entry(record_type)
+                        .or_insert_with(Vec::new)
+                        .push(field);
+                } else {
+                    return Err(Error::HeaderParse);
+                }
             }
-            let mut field = LinearMap::default();
-            for part in parts.iter().skip(1) {
-                let cap = TAG_RE.captures(part).unwrap();
-                let tag = cap.get(1).unwrap().as_str().to_owned();
-                let value = cap.get(2).unwrap().as_str().to_owned();
-                field.insert(tag, value);
-            }
-            header_map
-                .entry(record_type)
-                .or_insert_with(Vec::new)
-                .push(field);
+            Ok(header_map)
+        } else {
+            Err(Error::HeaderParse)
         }
-        header_map
     }
 
     /// Returns an iterator of comment lines.
@@ -160,6 +169,7 @@ impl<'a> HeaderRecord<'a> {
 #[cfg(test)]
 mod tests {
     use super::HeaderRecord;
+    use crate::bam::Header;
 
     #[test]
     fn test_push_tag() {
@@ -173,5 +183,27 @@ mod tests {
         record.push_tag(b"X5", x);
 
         assert_eq!(record.to_bytes(), b"@HD\tX1:0\tX2:0\tX3:x\tX4:x\tX5:x");
+    }
+
+    #[test]
+    fn test_header_hash_map() {
+        let mut records = Vec::new();
+        let mut record = HeaderRecord::new(b"HD");
+        record.push_tag(b"X1", 0);
+        records.push(record);
+        let mut record = HeaderRecord::new(b"PG");
+        record.push_tag(b"ID", "mytool");
+        records.push(record);
+        let mut record = HeaderRecord::new(b"PG");
+        record.push_tag(b"ID", "other_tool");
+        records.push(record);
+        let header = Header {
+            records: records.into_iter().map(|rec| rec.to_bytes()).collect(),
+        };
+        let hm = header.to_hashmap().unwrap();
+        assert!(hm.contains_key("HD"));
+        assert!(hm.contains_key("PG"));
+        assert_eq!(hm.get("HD").unwrap().len(), 1);
+        assert_eq!(hm.get("PG").unwrap().len(), 2);
     }
 }
