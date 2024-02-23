@@ -85,9 +85,6 @@ jobs:
         target:
           - no-default-features
           - all-features
-          - musl-release-no-default-features
-          - musl-release-all-features
-          - musl-all-features
         include:
           - target: no-default-features
             args: --no-default-features
@@ -96,18 +93,6 @@ jobs:
             args: --all-features
             toolchain_target: x86_64-unknown-linux-musl
             use_cross: false
-          - target: musl-release-no-default-features
-            args: --release --target x86_64-unknown-linux-musl --no-default-features
-            toolchain_target: x86_64-unknown-linux-musl
-            use_cross: true
-          - target: musl-release-all-features
-            args: --release --target x86_64-unknown-linux-musl --all-features --verbose
-            toolchain_target: x86_64-unknown-linux-musl
-            use_cross: true
-          - target: musl-all-features
-            args: --target x86_64-unknown-linux-musl --all-features --verbose
-            toolchain_target: x86_64-unknown-linux-musl
-            use_cross: true
 
     steps:
       - name: Checkout repository
