@@ -1,0 +1,9 @@
+##fileformat=VCFv4.3
+##contig=<ID=chr1,length=10000>
+##INFO=<ID=FOO,Number=1,Type=Integer,Description="Some field">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=STR,Number=1,Type=String,Description="Some string field">
+##FORMAT=<ID=INT,Number=1,Type=Integer,Description="Some integer field">
+##FORMAT=<ID=FLT,Number=1,Type=Float,Description="Some float field">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+chr1	1234	.	t	a	.	.	FOO=1	GT:STR:FLT:INT	.
