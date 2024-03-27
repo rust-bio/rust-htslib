@@ -2,6 +2,19 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.47.0](https://github.com/rust-bio/rust-htslib/compare/v0.46.0...v0.47.0) (2024-03-27)
+
+
+### Features
+
+* Add fasta::build function + FaidxBuildError ([#418](https://github.com/rust-bio/rust-htslib/issues/418)) ([7c575ef](https://github.com/rust-bio/rust-htslib/commit/7c575ef549908745f34d9371986551f3d70ed444))
+* Add rust_htslib::bcf::index::build ([#408](https://github.com/rust-bio/rust-htslib/issues/408)) ([79d70cd](https://github.com/rust-bio/rust-htslib/commit/79d70cd6683f1a019e9052baa495dada709db432))
+
+
+### Bug Fixes
+
+* Panic on trailing omitted FORMAT records ([#417](https://github.com/rust-bio/rust-htslib/issues/417)) ([9f575ee](https://github.com/rust-bio/rust-htslib/commit/9f575ee40e15737731bc8234812c0cf36c1157f4))
+
 ## [0.46.0](https://github.com/rust-bio/rust-htslib/compare/v0.45.0...v0.46.0) (2024-02-22)
 
 
