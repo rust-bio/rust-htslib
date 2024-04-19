@@ -1037,7 +1037,7 @@ impl Drop for IndexedReader {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Format {
     Sam,
     Bam,
