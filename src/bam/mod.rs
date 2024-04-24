@@ -677,7 +677,7 @@ impl IndexedReader {
     ///
     /// Both iterating (with [.records()](trait.Read.html#tymethod.records)) and looping without allocation (with [.read()](trait.Read.html#tymethod.read) are a two stage process:
     /// 1. 'fetch' the region of interest
-    /// 2. iter/loop trough the reads.
+    /// 2. iter/loop through the reads.
     ///
     /// Example:
     /// ```
