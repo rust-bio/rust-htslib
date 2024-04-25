@@ -22,6 +22,31 @@ pub struct Reader {
     inner: *mut htslib::faidx_t,
 }
 
+///
+/// Build a faidx for input path.
+///
+/// # Errors
+/// If indexing fails. Could be malformatted or file could not be accessible.
+///
+///```
+/// use rust_htslib::faidx::build;
+/// let path = std::path::PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"),"/test/test_cram.fa"));
+/// build(&path).expect("Failed to build fasta index");
+///```
+///
+pub fn build(
+    path: impl Into<std::path::PathBuf>,
+) -> Result<(), std::boxed::Box<dyn std::error::Error>> {
+    let path = path.into();
+    let os_path = std::ffi::CString::new(path.display().to_string())?;
+    let rc = unsafe { htslib::fai_build(os_path.as_ptr()) };
+    if rc < 0 {
+        Err(Error::FaidxBuildFailed { path })?
+    } else {
+        Ok(())
+    }
+}
+
 impl Reader {
     /// Create a new Reader from a path.
     ///
@@ -136,6 +161,29 @@ impl Reader {
         let cname = ffi::CString::new(name.as_ref().as_bytes()).unwrap();
         let seq_len = unsafe { htslib::faidx_seq_len(self.inner, cname.as_ptr()) };
         seq_len as u64
+    }
+
+    /// Returns a Result<Vector<String>> for all seq names.
+    /// # Errors
+    ///
+    /// * `errors::Error::FaidxBadSeqName` - missing sequence name for sequence id.
+    ///
+    /// If thrown, the index is malformed, and the number of sequences in the index does not match the number of sequence names available.
+    ///```
+    /// use rust_htslib::faidx::build;
+    /// let path = std::path::PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"),"/test/test_cram.fa"));
+    /// build(&path).expect("Failed to build fasta index");
+    /// let reader = rust_htslib::faidx::Reader::from_path(path).expect("Failed to open faidx");
+    /// assert_eq!(reader.seq_names(), Ok(vec!["chr1".to_string(), "chr2".to_string(), "chr3".to_string()]));
+    ///```
+    ///
+    pub fn seq_names(&self) -> Result<Vec<String>> {
+        let num_seq = self.n_seqs();
+        let mut ret = Vec::with_capacity(num_seq as usize);
+        for seq_id in 0..num_seq {
+            ret.push(self.seq_name(seq_id as i32)?);
+        }
+        Ok(ret)
     }
 }
 

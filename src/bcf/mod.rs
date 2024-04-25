@@ -112,6 +112,7 @@ use url::Url;
 
 pub mod buffer;
 pub mod header;
+pub mod index;
 pub mod record;
 
 use crate::bcf::header::{HeaderView, SampleSubset};
@@ -1546,6 +1547,24 @@ mod tests {
             *first_record.info(b"MATEID").string().unwrap().unwrap(),
             [b"gridss33fb_1085h"]
         );
+    }
+
+    #[test]
+    fn test_trailing_omitted_format_fields() {
+        let mut reader = Reader::from_path("test/test_trailing_omitted_format.vcf").unwrap();
+        let first_record = reader
+            .records()
+            .next()
+            .unwrap()
+            .expect("Fail to read record");
+
+        let expected: Vec<&[u8]> = Vec::new();
+        assert_eq!(*first_record.format(b"STR").string().unwrap(), expected,);
+        assert_eq!(
+            *first_record.format(b"INT").integer().unwrap(),
+            vec![&[i32::missing()]],
+        );
+        assert!(first_record.format(b"FLT").float().unwrap()[0][0].is_nan(),);
     }
 
     // #[test]

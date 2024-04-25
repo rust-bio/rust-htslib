@@ -33,6 +33,8 @@ pub enum Error {
     FaidxPositionTooLarge,
     #[error("bad conversion of sequence name")]
     FaidxBadSeqName,
+    #[error("failed to build index for fasta file {path:?}")]
+    FaidxBuildFailed { path: std::path::PathBuf },
 
     // Errors for Tbx
     #[error("previous iterator generation failed")]
