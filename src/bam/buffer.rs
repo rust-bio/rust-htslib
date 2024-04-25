@@ -11,7 +11,6 @@ use std::str;
 use crate::bam;
 use crate::bam::Read;
 use crate::errors::{Error, Result};
-
 /// A buffer for BAM records. This allows access regions in a sorted BAM file while iterating
 /// over it in a single pass.
 /// The buffer is implemented as a ringbuffer, such that extension or movement to the right has
@@ -25,6 +24,7 @@ pub struct RecordBuffer {
     cache_cigar: bool,
     min_refetch_distance: u64,
     buffer_record: Rc<bam::Record>,
+    start_pos: Option<u64>,
 }
 
 unsafe impl Sync for RecordBuffer {}
@@ -45,6 +45,7 @@ impl RecordBuffer {
             cache_cigar,
             min_refetch_distance: 1,
             buffer_record: Rc::new(bam::Record::new()),
+            start_pos: None
         }
     }
 
@@ -89,8 +90,8 @@ impl RecordBuffer {
             if self.inner.is_empty()
                 || window_start.saturating_sub(self.end().unwrap()) >= self.min_refetch_distance
                 || self.tid().unwrap() != tid as i32
-                || self.start().unwrap() > window_start
-            {
+                || self.start().unwrap() > self.start_pos.unwrap()
+            {   
                 let end = self.reader.header.target_len(tid).unwrap();
                 self.reader.fetch((tid, window_start, end))?;
                 deleted = self.inner.len();
@@ -106,7 +107,7 @@ impl RecordBuffer {
                     self.inner.pop_front();
                 }
                 deleted = to_remove;
-            }
+            }  
 
             // extend to the right
             loop {
@@ -139,6 +140,7 @@ impl RecordBuffer {
 
                 if pos >= end as i64 {
                     self.overflow = Some(record);
+                    self.start_pos = self.start();
                     break;
                 } else {
                     self.inner.push_back(record);
