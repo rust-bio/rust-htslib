@@ -45,7 +45,7 @@ impl RecordBuffer {
             cache_cigar,
             min_refetch_distance: 1,
             buffer_record: Rc::new(bam::Record::new()),
-            start_pos: None
+            start_pos: None,
         }
     }
 
@@ -91,7 +91,7 @@ impl RecordBuffer {
                 || window_start.saturating_sub(self.end().unwrap()) >= self.min_refetch_distance
                 || self.tid().unwrap() != tid as i32
                 || self.start().unwrap() > self.start_pos.unwrap()
-            {   
+            {
                 let end = self.reader.header.target_len(tid).unwrap();
                 self.reader.fetch((tid, window_start, end))?;
                 deleted = self.inner.len();
@@ -107,7 +107,7 @@ impl RecordBuffer {
                     self.inner.pop_front();
                 }
                 deleted = to_remove;
-            }  
+            }
 
             // extend to the right
             loop {
