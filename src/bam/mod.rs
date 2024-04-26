@@ -677,7 +677,7 @@ impl IndexedReader {
     ///
     /// Both iterating (with [.records()](trait.Read.html#tymethod.records)) and looping without allocation (with [.read()](trait.Read.html#tymethod.read) are a two stage process:
     /// 1. 'fetch' the region of interest
-    /// 2. iter/loop trough the reads.
+    /// 2. iter/loop through the reads.
     ///
     /// Example:
     /// ```
@@ -702,6 +702,8 @@ impl IndexedReader {
     /// The start / stop coordinates will take i64 (the correct type as of htslib's 'large
     /// coordinates' expansion), i32, u32, and u64 (with a possible panic! if the coordinate
     /// won't fit an i64).
+    ///
+    /// `start` and `stop` are zero-based. `start` is inclusive, `stop` is exclusive.
     ///
     /// This replaces the old fetch and fetch_str implementations.
     pub fn fetch<'a, T: Into<FetchDefinition<'a>>>(&mut self, fetch_definition: T) -> Result<()> {
@@ -1037,7 +1039,7 @@ impl Drop for IndexedReader {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Format {
     Sam,
     Bam,
