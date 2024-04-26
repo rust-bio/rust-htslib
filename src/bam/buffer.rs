@@ -45,7 +45,7 @@ impl RecordBuffer {
             cache_cigar,
             min_refetch_distance: 1,
             buffer_record: Rc::new(bam::Record::new()),
-            start_pos: None,
+            start_pos: Some(0),
         }
     }
 
@@ -140,7 +140,7 @@ impl RecordBuffer {
 
                 if pos >= end as i64 {
                     self.overflow = Some(record);
-                    self.start_pos = self.start();
+                    self.start_pos = Some(self.start().unwrap_or_else(|| window_start));
                     break;
                 } else {
                     self.inner.push_back(record);
