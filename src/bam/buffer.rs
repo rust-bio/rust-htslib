@@ -87,16 +87,19 @@ impl RecordBuffer {
         if let Some(tid) = self.reader.header.tid(chrom) {
             let mut deleted = 0;
             let window_start = start;
+            println!("Start values: {:?}, {:?}", self.start(), self.start_pos);
             if self.inner.is_empty()
                 || window_start.saturating_sub(self.end().unwrap()) >= self.min_refetch_distance
                 || self.tid().unwrap() != tid as i32
                 || self.start().unwrap() > self.start_pos.unwrap()
-            {
+            {   
+                println!("  Smaller");
                 let end = self.reader.header.target_len(tid).unwrap();
                 self.reader.fetch((tid, window_start, end))?;
                 deleted = self.inner.len();
                 self.inner.clear();
             } else {
+                println!("   Bigger");
                 // remove records too far left
                 let to_remove = self
                     .inner
@@ -140,13 +143,13 @@ impl RecordBuffer {
 
                 if pos >= end as i64 {
                     self.overflow = Some(record);
-                    self.start_pos = Some(self.start().unwrap_or_else(|| window_start));
                     break;
                 } else {
                     self.inner.push_back(record);
                     added += 1;
                 }
             }
+            self.start_pos = Some(self.start().unwrap_or_else(|| window_start));
 
             Ok((added, deleted))
         } else {
