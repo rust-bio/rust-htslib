@@ -91,7 +91,7 @@ impl RecordBuffer {
                 || window_start.saturating_sub(self.end().unwrap()) >= self.min_refetch_distance
                 || self.tid().unwrap() != tid as i32
                 || self.start().unwrap() > self.start_pos.unwrap()
-            {   
+            {
                 let end = self.reader.header.target_len(tid).unwrap();
                 self.reader.fetch((tid, window_start, end))?;
                 deleted = self.inner.len();
