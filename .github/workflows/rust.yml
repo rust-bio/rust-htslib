@@ -133,19 +133,19 @@ jobs:
             os: macOS-10.15
             toolchain_target: x86_64-apple-darwin
             toolchain: stable
-            aux_args: ""
+            aux_args: "--target x86_64-apple-darwin"
             default: false
           - target: intel-bigsur
             os: macOS-11.0
             toolchain_target: x86_64-apple-darwin
             toolchain: stable
-            aux_args: ""
+            aux_args: "--target x86_64-apple-darwin"
             default: false
           - target: silicon-sonoma
              os: macOS-14.0
              toolchain_target: aarch64-apple-darwin
              toolchain: stable
-             aux_args: --target aarch64-apple-darwin
+             aux_args: ""
              default: true
 
     steps:
