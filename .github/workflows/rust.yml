@@ -141,13 +141,12 @@ jobs:
             toolchain: stable
             aux_args: ""
             default: false
-          # TODO enable again and try to find out why this fails
-          # - target: m1-bigsur
-          #   os: macOS-11.0
-          #   toolchain_target: aarch64-apple-darwin
-          #   toolchain: nightly
-          #   aux_args: --target aarch64-apple-darwin
-          #   default: true
+          - target: silicon-sonoma
+             os: macOS-14.0
+             toolchain_target: aarch64-apple-darwin
+             toolchain: stable
+             aux_args: --target aarch64-apple-darwin
+             default: true
 
     steps:
       - name: Checkout repository
