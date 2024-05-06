@@ -155,7 +155,7 @@ jobs:
           submodules: recursive
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1.0.6
+        uses: dtolnay/rust-toolchain
         with:
           toolchain: stable
           override: true
