@@ -121,7 +121,7 @@ jobs:
 
   Testing-MacOS:
     needs: Formatting
-    runs-on: macos-13
+    runs-on: macos-latest
     strategy:
       matrix:
         target:
