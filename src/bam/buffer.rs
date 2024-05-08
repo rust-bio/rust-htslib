@@ -146,7 +146,7 @@ impl RecordBuffer {
                     added += 1;
                 }
             }
-            self.start_pos = Some(self.start().unwrap_or_else(|| window_start));
+            self.start_pos = Some(self.start().unwrap_or(window_start));
 
             Ok((added, deleted))
         } else {
