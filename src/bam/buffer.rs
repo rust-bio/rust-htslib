@@ -11,7 +11,6 @@ use std::str;
 use crate::bam;
 use crate::bam::Read;
 use crate::errors::{Error, Result};
-
 /// A buffer for BAM records. This allows access regions in a sorted BAM file while iterating
 /// over it in a single pass.
 /// The buffer is implemented as a ringbuffer, such that extension or movement to the right has
@@ -25,6 +24,7 @@ pub struct RecordBuffer {
     cache_cigar: bool,
     min_refetch_distance: u64,
     buffer_record: Rc<bam::Record>,
+    start_pos: Option<u64>,
 }
 
 unsafe impl Sync for RecordBuffer {}
@@ -45,6 +45,7 @@ impl RecordBuffer {
             cache_cigar,
             min_refetch_distance: 1,
             buffer_record: Rc::new(bam::Record::new()),
+            start_pos: Some(0),
         }
     }
 
@@ -89,7 +90,7 @@ impl RecordBuffer {
             if self.inner.is_empty()
                 || window_start.saturating_sub(self.end().unwrap()) >= self.min_refetch_distance
                 || self.tid().unwrap() != tid as i32
-                || self.start().unwrap() > window_start
+                || self.start().unwrap() > self.start_pos.unwrap()
             {
                 let end = self.reader.header.target_len(tid).unwrap();
                 self.reader.fetch((tid, window_start, end))?;
@@ -145,6 +146,7 @@ impl RecordBuffer {
                     added += 1;
                 }
             }
+            self.start_pos = Some(self.start().unwrap_or(window_start));
 
             Ok((added, deleted))
         } else {
