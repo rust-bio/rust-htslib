@@ -1392,9 +1392,9 @@ impl HeaderView {
                 header_string.len(),
             );
 
-            let rec = htslib::sam_hdr_parse((l_text + 1) as u64, text as *const c_char);
+            let rec = htslib::sam_hdr_parse((l_text + 1), text as *const c_char);
             (*rec).text = text as *mut c_char;
-            (*rec).l_text = l_text as u64;
+            (*rec).l_text = l_text;
             rec
         };
 
