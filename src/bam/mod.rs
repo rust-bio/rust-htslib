@@ -1127,7 +1127,7 @@ impl Writer {
             );
 
             (*rec).text = text as *mut c_char;
-            (*rec).l_text = l_text as u64;
+            (*rec).l_text = l_text;
             rec
         };
 
