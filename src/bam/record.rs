@@ -152,8 +152,8 @@ impl Record {
 
         let mut sam_string = htslib::kstring_t {
             s: sam_copy.as_ptr() as *mut c_char,
-            l: sam_copy.len() as u64,
-            m: sam_copy.len() as u64,
+            l: sam_copy.len(),
+            m: sam_copy.len(),
         };
 
         let succ = unsafe {
