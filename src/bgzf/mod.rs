@@ -112,11 +112,7 @@ impl Reader {
 impl std::io::Read for Reader {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         let nbytes = unsafe {
-            htslib::bgzf_read(
-                self.inner,
-                buf.as_mut_ptr() as *mut libc::c_void,
-                buf.len() as u64,
-            )
+            htslib::bgzf_read(self.inner, buf.as_mut_ptr() as *mut libc::c_void, buf.len())
         };
         if nbytes < 0 {
             Err(std::io::Error::new(
@@ -257,13 +253,8 @@ impl Writer {
 
 impl std::io::Write for Writer {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        let nbytes = unsafe {
-            htslib::bgzf_write(
-                self.inner,
-                buf.as_ptr() as *mut libc::c_void,
-                buf.len() as u64,
-            )
-        };
+        let nbytes =
+            unsafe { htslib::bgzf_write(self.inner, buf.as_ptr() as *mut libc::c_void, buf.len()) };
         if nbytes < 0 {
             Err(std::io::Error::new(
                 std::io::ErrorKind::Other,
