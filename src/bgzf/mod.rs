@@ -115,7 +115,7 @@ impl std::io::Read for Reader {
             htslib::bgzf_read(
                 self.inner,
                 buf.as_mut_ptr() as *mut libc::c_void,
-                buf.len() as u64,
+                buf.len(),
             )
         };
         if nbytes < 0 {
