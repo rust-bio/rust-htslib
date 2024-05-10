@@ -112,11 +112,7 @@ impl Reader {
 impl std::io::Read for Reader {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         let nbytes = unsafe {
-            htslib::bgzf_read(
-                self.inner,
-                buf.as_mut_ptr() as *mut libc::c_void,
-                buf.len(),
-            )
+            htslib::bgzf_read(self.inner, buf.as_mut_ptr() as *mut libc::c_void, buf.len())
         };
         if nbytes < 0 {
             Err(std::io::Error::new(
