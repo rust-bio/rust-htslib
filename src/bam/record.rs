@@ -152,8 +152,8 @@ impl Record {
 
         let mut sam_string = htslib::kstring_t {
             s: sam_copy.as_ptr() as *mut c_char,
-            l: sam_copy.len() as u64,
-            m: sam_copy.len() as u64,
+            l: sam_copy.len(),
+            m: sam_copy.len(),
         };
 
         let succ = unsafe {
@@ -286,12 +286,12 @@ impl Record {
 
     /// Get insert size.
     pub fn insert_size(&self) -> i64 {
-        self.inner().core.isize
+        self.inner().core.isize_
     }
 
     /// Set insert size.
     pub fn set_insert_size(&mut self, insert_size: i64) {
-        self.inner_mut().core.isize = insert_size;
+        self.inner_mut().core.isize_ = insert_size;
     }
 
     fn qname_capacity(&self) -> usize {

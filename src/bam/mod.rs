@@ -1127,7 +1127,7 @@ impl Writer {
             );
 
             (*rec).text = text as *mut c_char;
-            (*rec).l_text = l_text as u64;
+            (*rec).l_text = l_text;
             rec
         };
 
@@ -1392,9 +1392,9 @@ impl HeaderView {
                 header_string.len(),
             );
 
-            let rec = htslib::sam_hdr_parse((l_text + 1) as u64, text as *const c_char);
+            let rec = htslib::sam_hdr_parse((l_text + 1), text as *const c_char);
             (*rec).text = text as *mut c_char;
-            (*rec).l_text = l_text as u64;
+            (*rec).l_text = l_text;
             rec
         };
 
@@ -1580,7 +1580,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             assert_eq!(c1.inner().core.l_qname, b1.inner().core.l_qname);
             assert_eq!(c1.inner().core.n_cigar, b1.inner().core.n_cigar);
             assert_eq!(c1.inner().core.l_qseq, b1.inner().core.l_qseq);
-            assert_eq!(c1.inner().core.isize, b1.inner().core.isize);
+            assert_eq!(c1.inner().core.isize_, b1.inner().core.isize_);
             //... except m_data
         }
     }
