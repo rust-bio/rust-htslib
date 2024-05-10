@@ -1580,7 +1580,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             assert_eq!(c1.inner().core.l_qname, b1.inner().core.l_qname);
             assert_eq!(c1.inner().core.n_cigar, b1.inner().core.n_cigar);
             assert_eq!(c1.inner().core.l_qseq, b1.inner().core.l_qseq);
-            assert_eq!(c1.inner().core.isize, b1.inner().core.isize);
+            assert_eq!(c1.inner().core.isize_, b1.inner().core.isize_);
             //... except m_data
         }
     }

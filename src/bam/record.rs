@@ -286,12 +286,12 @@ impl Record {
 
     /// Get insert size.
     pub fn insert_size(&self) -> i64 {
-        self.inner().core.isize
+        self.inner().core.isize_
     }
 
     /// Set insert size.
     pub fn set_insert_size(&mut self, insert_size: i64) {
-        self.inner_mut().core.isize = insert_size;
+        self.inner_mut().core.isize_ = insert_size;
     }
 
     fn qname_capacity(&self) -> usize {
