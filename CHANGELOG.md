@@ -2,6 +2,110 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.46.0](https://github.com/rust-bio/rust-htslib/compare/v0.45.0...v0.46.0) (2024-02-22)
+
+
+### Features
+
+* making several RecordBuffer methods public ([6757f52](https://github.com/rust-bio/rust-htslib/commit/6757f5219955fd4edba4f61e62978ce1e001068e))
+
+
+### Bug Fixes
+
+* fix building libz-sys ([#420](https://github.com/rust-bio/rust-htslib/issues/420)) ([01c8849](https://github.com/rust-bio/rust-htslib/commit/01c884945686e7a6756406b579fde28657f70b36))
+
+## [0.45.0](https://github.com/rust-bio/rust-htslib/compare/v0.44.1...v0.45.0) (2024-02-07)
+
+
+### Features
+
+* adding function to get sequence length to faidx mod ([#410](https://github.com/rust-bio/rust-htslib/issues/410)) ([ae79eba](https://github.com/rust-bio/rust-htslib/commit/ae79eba82ef6929105bdbe08246a8e973660899e))
+
+
+### Bug Fixes
+
+* Loosen acceptable types to support current linux build on aarch64 ([#415](https://github.com/rust-bio/rust-htslib/issues/415)) ([1d78d12](https://github.com/rust-bio/rust-htslib/commit/1d78d1251a052461605d28cd8cf832ccad93ef73))
+
+## [0.44.1](https://github.com/rust-bio/rust-htslib/compare/v0.44.0...v0.44.1) (2023-06-21)
+
+
+### Bug Fixes
+
+* use correct return value in bcf_get_format and bcf_get_info_values ([#398](https://github.com/rust-bio/rust-htslib/issues/398)) ([f9a1981](https://github.com/rust-bio/rust-htslib/commit/f9a1981fa84eef39e35f868ddfc773ea265b94b3))
+
+## [0.44.0](https://github.com/rust-bio/rust-htslib/compare/v0.43.1...v0.44.0) (2023-06-20)
+
+
+### Features
+
+* implement Clone for bcf::Record ([#394](https://github.com/rust-bio/rust-htslib/issues/394)) ([e89538d](https://github.com/rust-bio/rust-htslib/commit/e89538d5a9971c6508ac38d92ac468f3d70241aa))
+* implement htslib basemod api ([#385](https://github.com/rust-bio/rust-htslib/issues/385)) ([8beee14](https://github.com/rust-bio/rust-htslib/commit/8beee145a116f7ae936f1b6e36d876116dca18f1))
+
+
+### Bug Fixes
+
+* include doctests in test coverage calculations ([#397](https://github.com/rust-bio/rust-htslib/issues/397)) ([8ed0837](https://github.com/rust-bio/rust-htslib/commit/8ed083783fa1dce09535564a090d37f687fc832f))
+
+## [0.43.1](https://github.com/rust-bio/rust-htslib/compare/v0.43.0...v0.43.1) (2023-05-16)
+
+
+### Bug Fixes
+
+* implement Drop for faidx::Reader, destroying the fai handle ([#391](https://github.com/rust-bio/rust-htslib/issues/391)) ([0e6d6ac](https://github.com/rust-bio/rust-htslib/commit/0e6d6acec9a6d24ed6baf810e56f02394737a046))
+
+## [0.43.0](https://github.com/rust-bio/rust-htslib/compare/v0.42.0...v0.43.0) (2023-05-12)
+
+
+### Features
+
+* HeaderRecord::push_tag: Value may be owned ([#388](https://github.com/rust-bio/rust-htslib/issues/388)) ([b64537d](https://github.com/rust-bio/rust-htslib/commit/b64537db011b76e5ace73a5e74c598a62a0a018b))
+* Index for `bam::IndexedReader` ([#387](https://github.com/rust-bio/rust-htslib/issues/387)) ([fb74387](https://github.com/rust-bio/rust-htslib/commit/fb743875182c9232894e07007367f09f05d6e275))
+
+## [0.42.0](https://github.com/rust-bio/rust-htslib/compare/v0.41.1...v0.42.0) (2023-03-30)
+
+
+### Features
+
+* Add ability to fetch number of sequences and I-th sequence from FAI index ([#377](https://github.com/rust-bio/rust-htslib/issues/377)) ([6ecc4bd](https://github.com/rust-bio/rust-htslib/commit/6ecc4bd1f88110da278c7f934453024e4e64ac74))
+
+## [0.41.1](https://github.com/rust-bio/rust-htslib/compare/v0.41.0...v0.41.1) (2023-03-03)
+
+### Features
+
+* Revised calculation of leading- and trailing-softclips ([#375](https://github.com/rust-bio/rust-htslib/issues/375)) ([b61dd2c](https://github.com/rust-bio/rust-htslib/commit/b61dd2cfb2b74c0180f2d76bbd4ed4eb14fa09b3))
+
+
+### Performance Improvements
+
+* update htslib and corresponding bindings to 1.16 ([#366](https://github.com/rust-bio/rust-htslib/issues/366)) ([f597ce0](https://github.com/rust-bio/rust-htslib/commit/f597ce0451e3f3c393166a7291486bbc2bde4c39))
+
+
+## [0.40.2](https://github.com/rust-bio/rust-htslib/compare/rust-htslib-v0.40.1...rust-htslib-v0.40.2) (2022-10-13)
+
+
+### Performance Improvements
+
+* update htslib and corresponding bindings to 1.16 ([#366](https://github.com/rust-bio/rust-htslib/issues/366)) ([f597ce0](https://github.com/rust-bio/rust-htslib/commit/f597ce0451e3f3c393166a7291486bbc2bde4c39))
+
+## [0.40.1](https://github.com/rust-bio/rust-htslib/compare/rust-htslib-v0.40.0...rust-htslib-v0.40.1) (2022-08-24)
+
+
+### Bug Fixes
+
+* Header::to_hashmap skips `@CO` tags, add `comments()`  method ([#363](https://github.com/rust-bio/rust-htslib/issues/363)) ([c24a7f6](https://github.com/rust-bio/rust-htslib/commit/c24a7f69fbe5d2db4a6f1fbd6eda3922fe7f1c18))
+
+## [0.40.0](https://github.com/rust-bio/rust-htslib/compare/rust-htslib-v0.39.5...rust-htslib-v0.40.0) (2022-07-05)
+
+
+### Features
+
+* Add wrapper of BGZF writer ([#349](https://github.com/rust-bio/rust-htslib/issues/349)) ([965ed88](https://github.com/rust-bio/rust-htslib/commit/965ed886a0c24ee3070e48cc192c0772ac5cbaf4))
+
+
+### Bug Fixes
+
+* update to latest release-please ([b130634](https://github.com/rust-bio/rust-htslib/commit/b130634b3d096e620dcfe59acae2200df3e4d847))
+
 ### [0.39.5](https://www.github.com/rust-bio/rust-htslib/compare/rust-htslib-v0.39.4...rust-htslib-v0.39.5) (2022-05-09)
 
 

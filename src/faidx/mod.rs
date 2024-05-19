@@ -22,6 +22,31 @@ pub struct Reader {
     inner: *mut htslib::faidx_t,
 }
 
+///
+/// Build a faidx for input path.
+///
+/// # Errors
+/// If indexing fails. Could be malformatted or file could not be accessible.
+///
+///```
+/// use rust_htslib::faidx::build;
+/// let path = std::path::PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"),"/test/test_cram.fa"));
+/// build(&path).expect("Failed to build fasta index");
+///```
+///
+pub fn build(
+    path: impl Into<std::path::PathBuf>,
+) -> Result<(), std::boxed::Box<dyn std::error::Error>> {
+    let path = path.into();
+    let os_path = std::ffi::CString::new(path.display().to_string())?;
+    let rc = unsafe { htslib::fai_build(os_path.as_ptr()) };
+    if rc < 0 {
+        Err(Error::FaidxBuildFailed { path })?
+    } else {
+        Ok(())
+    }
+}
+
 impl Reader {
     /// Create a new Reader from a path.
     ///
@@ -98,6 +123,75 @@ impl Reader {
     ) -> Result<String> {
         let bytes = self.fetch_seq(name, begin, end)?;
         Ok(std::str::from_utf8(bytes).unwrap().to_owned())
+    }
+
+    /// Fetches the number of sequences in the fai index
+    pub fn n_seqs(&self) -> u64 {
+        let n = unsafe { htslib::faidx_nseq(self.inner) };
+        n as u64
+    }
+
+    /// Fetches the i-th sequence name
+    ///
+    /// # Arguments
+    ///
+    /// * `i` - index to query
+    pub fn seq_name(&self, i: i32) -> Result<String> {
+        let cname = unsafe {
+            let ptr = htslib::faidx_iseq(self.inner, i);
+            ffi::CStr::from_ptr(ptr)
+        };
+
+        let out = match cname.to_str() {
+            Ok(s) => s.to_string(),
+            Err(_) => {
+                return Err(Error::FaidxBadSeqName);
+            }
+        };
+
+        Ok(out)
+    }
+
+    /// Fetches the length of the given sequence name.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - the name of the template sequence (e.g., "chr1")
+    pub fn fetch_seq_len<N: AsRef<str>>(&self, name: N) -> u64 {
+        let cname = ffi::CString::new(name.as_ref().as_bytes()).unwrap();
+        let seq_len = unsafe { htslib::faidx_seq_len(self.inner, cname.as_ptr()) };
+        seq_len as u64
+    }
+
+    /// Returns a Result<Vector<String>> for all seq names.
+    /// # Errors
+    ///
+    /// * `errors::Error::FaidxBadSeqName` - missing sequence name for sequence id.
+    ///
+    /// If thrown, the index is malformed, and the number of sequences in the index does not match the number of sequence names available.
+    ///```
+    /// use rust_htslib::faidx::build;
+    /// let path = std::path::PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"),"/test/test_cram.fa"));
+    /// build(&path).expect("Failed to build fasta index");
+    /// let reader = rust_htslib::faidx::Reader::from_path(path).expect("Failed to open faidx");
+    /// assert_eq!(reader.seq_names(), Ok(vec!["chr1".to_string(), "chr2".to_string(), "chr3".to_string()]));
+    ///```
+    ///
+    pub fn seq_names(&self) -> Result<Vec<String>> {
+        let num_seq = self.n_seqs();
+        let mut ret = Vec::with_capacity(num_seq as usize);
+        for seq_id in 0..num_seq {
+            ret.push(self.seq_name(seq_id as i32)?);
+        }
+        Ok(ret)
+    }
+}
+
+impl Drop for Reader {
+    fn drop(&mut self) {
+        unsafe {
+            htslib::fai_destroy(self.inner);
+        }
     }
 }
 
@@ -197,5 +291,35 @@ mod tests {
         let position_too_large = i64::MAX as usize;
         let res = r.fetch_seq("chr1", position_too_large, position_too_large + 1);
         assert_eq!(res, Err(Error::FaidxPositionTooLarge));
+    }
+
+    #[test]
+    fn faidx_n_seqs() {
+        let r = open_reader();
+        assert_eq!(r.n_seqs(), 3);
+    }
+
+    #[test]
+    fn faidx_seq_name() {
+        let r = open_reader();
+        let n = r.seq_name(1).unwrap();
+        assert_eq!(n, "chr2");
+    }
+
+    #[test]
+    fn faidx_get_seq_len() {
+        let r = open_reader();
+        let chr1_len = r.fetch_seq_len("chr1");
+        let chr2_len = r.fetch_seq_len("chr2");
+        assert_eq!(chr1_len, 120u64);
+        assert_eq!(chr2_len, 120u64);
+    }
+
+    #[test]
+    fn open_many_readers() {
+        for _ in 0..500_000 {
+            let reader = open_reader();
+            drop(reader);
+        }
     }
 }

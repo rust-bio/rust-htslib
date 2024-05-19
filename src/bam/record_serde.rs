@@ -29,7 +29,7 @@ impl Serialize for Record {
         state.serialize_field("seq_len", &core.l_qseq)?;
         state.serialize_field("mtid", &core.mtid)?;
         state.serialize_field("mpos", &core.mpos)?;
-        state.serialize_field("isize", &core.isize)?;
+        state.serialize_field("isize", &core.isize_)?;
         state.serialize_field("data", Bytes::new(self.data()))?;
         state.end()
     }
@@ -138,7 +138,7 @@ impl<'de> Deserialize<'de> for Record {
                 let mpos = seq
                     .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let isize = seq
+                let isize_ = seq
                     .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
                 let data = seq
@@ -159,7 +159,7 @@ impl<'de> Deserialize<'de> for Record {
                     m.l_qseq = seq_len;
                     m.mtid = mtid;
                     m.mpos = mpos;
-                    m.isize = isize;
+                    m.isize_ = isize_;
                 }
 
                 rec.set_data(&data);
@@ -271,7 +271,7 @@ impl<'de> Deserialize<'de> for Record {
                 let seq_len = seq_len.ok_or_else(|| de::Error::missing_field("seq_len"))?;
                 let mtid = mtid.ok_or_else(|| de::Error::missing_field("mtid"))?;
                 let mpos = mpos.ok_or_else(|| de::Error::missing_field("mpos"))?;
-                let isize = isize.ok_or_else(|| de::Error::missing_field("isize"))?;
+                let isize_ = isize.ok_or_else(|| de::Error::missing_field("isize"))?;
                 let data = data
                     .ok_or_else(|| de::Error::missing_field("data"))?
                     .into_vec();
@@ -289,7 +289,7 @@ impl<'de> Deserialize<'de> for Record {
                     m.l_qseq = seq_len;
                     m.mtid = mtid;
                     m.mpos = mpos;
-                    m.isize = isize;
+                    m.isize_ = isize_;
                 }
 
                 rec.set_data(&data);

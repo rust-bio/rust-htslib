@@ -31,6 +31,10 @@ pub enum Error {
     // Errors for faidx
     #[error("The given position is too large to be converted to i64")]
     FaidxPositionTooLarge,
+    #[error("bad conversion of sequence name")]
+    FaidxBadSeqName,
+    #[error("failed to build index for fasta file {path:?}")]
+    FaidxBuildFailed { path: std::path::PathBuf },
 
     // Errors for Tbx
     #[error("previous iterator generation failed")]
@@ -69,6 +73,8 @@ pub enum Error {
     BamBuildIndex,
     #[error("failed to create SAM/BAM/CRAM pileup")]
     BamPileup,
+    #[error("file is not sorted by position")]
+    BamUnsorted,
 
     // Errors for BAM auxiliary fields
     #[error("failed to add aux field (out of memory?)")]
@@ -83,6 +89,16 @@ pub enum Error {
     BamAuxUnknownType,
     #[error("failed to add aux field, tag is already present")]
     BamAuxTagAlreadyPresent,
+
+    // Errors for base modification fields
+    #[error("no base modification tag found for record")]
+    BamBaseModificationTagNotFound,
+    #[error("no base modification with the specified code found in record")]
+    BamBaseModificationTypeNotFound,
+    #[error("base modification iteration failed")]
+    BamBaseModificationIterationFailed,
+    #[error("base modification found too many modifications")]
+    BamBaseModificationTooManyMods,
 
     // Errors for BCF
     #[error("error allocating internal data structure for BCF/VCF reader (out of memory?)")]
@@ -113,4 +129,15 @@ pub enum Error {
     BcfSetValues,
     #[error("failed to remove alleles in BCF/VCF record")]
     BcfRemoveAlleles,
+
+    #[error("invalid compression level {level}")]
+    BgzfInvalidCompressionLevel { level: i8 },
+    #[error("failed setting hts reading options")]
+    HtsSetOpt,
+    #[error("failed calculating slow index statistics")]
+    SlowIdxStats,
+    #[error("invalid tid {tid}")]
+    InvalidTid { tid: i32 },
+    #[error("No sequences in the reference")]
+    NoSequencesInReference,
 }

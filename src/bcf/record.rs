@@ -1008,7 +1008,7 @@ impl Record {
     }
 
     pub fn remove_alleles(&mut self, remove: &[bool]) -> Result<()> {
-        let rm_set = unsafe { htslib::kbs_init(remove.len() as u64) };
+        let rm_set = unsafe { htslib::kbs_init(remove.len()) };
 
         for (i, &r) in remove.iter().enumerate() {
             if r {
@@ -1087,6 +1087,19 @@ impl Record {
             }
         }
         "".to_owned()
+    }
+}
+
+impl Clone for Record {
+    fn clone(&self) -> Self {
+        let inner = unsafe {
+            let inner = htslib::bcf_dup(self.inner);
+            inner
+        };
+        Record {
+            inner,
+            header: self.header.clone(),
+        }
     }
 }
 
@@ -1238,7 +1251,7 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, B> {
         str::from_utf8(self.tag).unwrap().to_owned()
     }
 
-    fn data(&mut self, data_type: u32) -> Result<Option<(usize, i32)>> {
+    fn data(&mut self, data_type: u32) -> Result<Option<i32>> {
         let mut n: i32 = self.buffer.borrow().len;
         let c_str = ffi::CString::new(self.tag).unwrap();
         let ret = unsafe {
@@ -1257,7 +1270,7 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, B> {
             -1 => Err(Error::BcfUndefinedTag { tag: self.desc() }),
             -2 => Err(Error::BcfUnexpectedType { tag: self.desc() }),
             -3 => Ok(None),
-            ret => Ok(Some((n as usize, ret))),
+            ret => Ok(Some(ret)),
         }
     }
 
@@ -1271,9 +1284,10 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, B> {
     /// memory.
     pub fn integer(mut self) -> Result<Option<BufferBacked<'b, &'b [i32], B>>> {
         self.data(htslib::BCF_HT_INT).map(|data| {
-            data.map(|(n, ret)| {
-                let values =
-                    unsafe { slice::from_raw_parts(self.buffer.borrow().inner as *const i32, n) };
+            data.map(|ret| {
+                let values = unsafe {
+                    slice::from_raw_parts(self.buffer.borrow().inner as *const i32, ret as usize)
+                };
                 BufferBacked::new(&values[..ret as usize], self.buffer)
             })
         })
@@ -1289,9 +1303,10 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, B> {
     /// memory.
     pub fn float(mut self) -> Result<Option<BufferBacked<'b, &'b [f32], B>>> {
         self.data(htslib::BCF_HT_REAL).map(|data| {
-            data.map(|(n, ret)| {
-                let values =
-                    unsafe { slice::from_raw_parts(self.buffer.borrow().inner as *const f32, n) };
+            data.map(|ret| {
+                let values = unsafe {
+                    slice::from_raw_parts(self.buffer.borrow().inner as *const f32, ret as usize)
+                };
                 BufferBacked::new(&values[..ret as usize], self.buffer)
             })
         })
@@ -1300,7 +1315,7 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, B> {
     /// Get flags from tag. `false` if not set.
     pub fn flag(&mut self) -> Result<bool> {
         self.data(htslib::BCF_HT_FLAG).map(|data| match data {
-            Some((_, ret)) => ret == 1,
+            Some(ret) => ret == 1,
             None => false,
         })
     }
@@ -1313,7 +1328,7 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, B> {
     /// memory.
     pub fn string(mut self) -> Result<Option<BufferBacked<'b, Vec<&'b [u8]>, B>>> {
         self.data(htslib::BCF_HT_STR).map(|data| {
-            data.map(|(_, ret)| {
+            data.map(|ret| {
                 BufferBacked::new(
                     unsafe {
                         slice::from_raw_parts(self.buffer.borrow().inner as *const u8, ret as usize)
@@ -1389,7 +1404,7 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Format<'a, B> {
     }
 
     /// Read and decode format data into a given type.
-    fn data(&mut self, data_type: u32) -> Result<(usize, i32)> {
+    fn data(&mut self, data_type: u32) -> Result<i32> {
         let mut n: i32 = self.buffer.borrow().len;
         let c_str = ffi::CString::new(self.tag).unwrap();
         let ret = unsafe {
@@ -1410,7 +1425,7 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Format<'a, B> {
                 tag: self.desc(),
                 record: self.record.desc(),
             }),
-            ret => Ok((n as usize, ret)),
+            ret => Ok(ret),
         }
     }
 
@@ -1421,12 +1436,17 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Format<'a, B> {
     /// the BufferBacked object is already dropped, you will access unallocated
     /// memory.
     pub fn integer(mut self) -> Result<BufferBacked<'b, Vec<&'b [i32]>, B>> {
-        self.data(htslib::BCF_HT_INT).map(|(n, _)| {
+        self.data(htslib::BCF_HT_INT).map(|ret| {
             BufferBacked::new(
-                unsafe { slice::from_raw_parts(self.buffer.borrow_mut().inner as *const i32, n) }
-                    .chunks(self.values_per_sample())
-                    .map(|s| trim_slice(s))
-                    .collect(),
+                unsafe {
+                    slice::from_raw_parts(
+                        self.buffer.borrow_mut().inner as *const i32,
+                        ret as usize,
+                    )
+                }
+                .chunks(self.values_per_sample())
+                .map(|s| trim_slice(s))
+                .collect(),
                 self.buffer,
             )
         })
@@ -1439,12 +1459,17 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Format<'a, B> {
     /// the BufferBacked object is already dropped, you will access unallocated
     /// memory.
     pub fn float(mut self) -> Result<BufferBacked<'b, Vec<&'b [f32]>, B>> {
-        self.data(htslib::BCF_HT_REAL).map(|(n, _)| {
+        self.data(htslib::BCF_HT_REAL).map(|ret| {
             BufferBacked::new(
-                unsafe { slice::from_raw_parts(self.buffer.borrow_mut().inner as *const f32, n) }
-                    .chunks(self.values_per_sample())
-                    .map(|s| trim_slice(s))
-                    .collect(),
+                unsafe {
+                    slice::from_raw_parts(
+                        self.buffer.borrow_mut().inner as *const f32,
+                        ret as usize,
+                    )
+                }
+                .chunks(self.values_per_sample())
+                .map(|s| trim_slice(s))
+                .collect(),
                 self.buffer,
             )
         })
@@ -1457,17 +1482,22 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Format<'a, B> {
     /// the BufferBacked object is already dropped, you will access unallocated
     /// memory.
     pub fn string(mut self) -> Result<BufferBacked<'b, Vec<&'b [u8]>, B>> {
-        self.data(htslib::BCF_HT_STR).map(|(n, _)| {
+        self.data(htslib::BCF_HT_STR).map(|ret| {
+            if ret == 0 {
+                return BufferBacked::new(Vec::new(), self.buffer);
+            }
             BufferBacked::new(
-                unsafe { slice::from_raw_parts(self.buffer.borrow_mut().inner as *const u8, n) }
-                    .chunks(self.values_per_sample())
-                    .map(|s| {
-                        // stop at zero character
-                        s.split(|c| *c == 0u8)
-                            .next()
-                            .expect("Bug: returned string should not be empty.")
-                    })
-                    .collect(),
+                unsafe {
+                    slice::from_raw_parts(self.buffer.borrow_mut().inner as *const u8, ret as usize)
+                }
+                .chunks(self.values_per_sample())
+                .map(|s| {
+                    // stop at zero character
+                    s.split(|c| *c == 0u8)
+                        .next()
+                        .expect("Bug: returned string should not be empty.")
+                })
+                .collect(),
                 self.buffer,
             )
         })
@@ -1567,6 +1597,26 @@ mod tests {
         assert_eq!(record.rlen(), 0);
         assert_eq!(record.sample_count(), 0);
         assert_eq!(record.pos(), 0)
+    }
+
+    #[test]
+    fn test_record_clone() {
+        let tmp = NamedTempFile::new().unwrap();
+        let path = tmp.path();
+        let header = Header::new();
+        let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
+        let mut record = vcf.empty_record();
+        let alleles: &[&[u8]] = &[b"AGG", b"TG"];
+        record.set_alleles(alleles).expect("Failed to set alleles");
+        record.set_pos(6);
+
+        let mut cloned_record = record.clone();
+        cloned_record.set_pos(5);
+
+        assert_eq!(record.pos(), 6);
+        assert_eq!(record.allele_count(), 2);
+        assert_eq!(cloned_record.pos(), 5);
+        assert_eq!(cloned_record.allele_count(), 2);
     }
 
     #[test]

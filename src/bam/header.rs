@@ -7,6 +7,7 @@ use crate::bam::HeaderView;
 use lazy_static::lazy_static;
 use linear_map::LinearMap;
 use regex::Regex;
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 /// A BAM header.
@@ -63,12 +64,15 @@ impl Header {
         self.records.join(&b'\n')
     }
 
+    /// This returns a header as a HashMap.
+    /// Comment lines starting with "@CO" will NOT be included in the HashMap.
+    /// Comment lines can be obtained by the `comments` function.
     pub fn to_hashmap(&self) -> HashMap<String, Vec<LinearMap<String, String>>> {
         let mut header_map = HashMap::default();
 
         lazy_static! {
             static ref REC_TYPE_RE: Regex = Regex::new(r"@([A-Z][A-Z])").unwrap();
-            static ref TAG_RE: Regex = Regex::new(r"([A-Za-z][A-Za-z0-9]):([ -~]+)").unwrap();
+            static ref TAG_RE: Regex = Regex::new(r"([A-Za-z][A-Za-z0-9]):([ -~]*)").unwrap();
         }
 
         let header_string = String::from_utf8(self.to_bytes()).unwrap();
@@ -83,6 +87,9 @@ impl Header {
                 .unwrap()
                 .as_str()
                 .to_owned();
+            if record_type.eq("CO") {
+                continue;
+            }
             let mut field = LinearMap::default();
             for part in parts.iter().skip(1) {
                 let cap = TAG_RE.captures(part).unwrap();
@@ -96,6 +103,15 @@ impl Header {
                 .push(field);
         }
         header_map
+    }
+
+    /// Returns an iterator of comment lines.
+    pub fn comments(&self) -> impl Iterator<Item = Cow<str>> {
+        self.records.iter().flat_map(|r| {
+            r.split(|x| x == &b'\n')
+                .filter(|x| x.starts_with(b"@CO\t"))
+                .map(|x| String::from_utf8_lossy(&x[4..]))
+        })
     }
 }
 
@@ -123,7 +139,7 @@ impl<'a> HeaderRecord<'a> {
     /// * `tag` - the tag identifier
     /// * `value` - the value. Can be any type convertible into a string. Preferably numbers or
     ///   strings.
-    pub fn push_tag<V: ToString>(&mut self, tag: &'a [u8], value: &V) -> &mut Self {
+    pub fn push_tag<V: ToString>(&mut self, tag: &'a [u8], value: V) -> &mut Self {
         self.tags.push((tag, value.to_string().into_bytes()));
         self
     }
@@ -138,5 +154,24 @@ impl<'a> HeaderRecord<'a> {
             out.extend(value.iter());
         }
         out
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::HeaderRecord;
+
+    #[test]
+    fn test_push_tag() {
+        let mut record = HeaderRecord::new(b"HD");
+        record.push_tag(b"X1", 0);
+        record.push_tag(b"X2", &0);
+
+        let x = "x".to_string();
+        record.push_tag(b"X3", x.as_str());
+        record.push_tag(b"X4", &x);
+        record.push_tag(b"X5", x);
+
+        assert_eq!(record.to_bytes(), b"@HD\tX1:0\tX2:0\tX3:x\tX4:x\tX5:x");
     }
 }

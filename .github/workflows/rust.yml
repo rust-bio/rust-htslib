@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
   Formatting:
@@ -19,10 +19,10 @@ jobs:
           toolchain: stable
           override: true
           components: rustfmt
-      
+
       - name: Check format
         run: cargo fmt -- --check
-     
+
   Linting:
     runs-on: ubuntu-latest
     steps:
@@ -52,29 +52,31 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install stable toolchain
+      - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1.0.6
         with:
-          toolchain: stable
+          toolchain: nightly
           override: true
 
       - name: Install system dependencies
         run: |
-            sudo apt-get install --yes zlib1g-dev libbz2-dev musl musl-dev musl-tools clang libc6-dev
+          sudo apt-get install --yes zlib1g-dev libbz2-dev musl musl-dev musl-tools clang libc6-dev
 
       - uses: Swatinem/rust-cache@v1.3.0
 
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
-          args: '--all-features --out Lcov --exclude-files hts-sys/*_prebuilt_bindings.rs -- --test-threads 1'
+          # TODO: update to latest tarpaulin once artefact download is fixed: https://github.com/actions-rs/tarpaulin/pull/23
+          version: "0.22.0"
+          args: "--all-features --run-types Tests,Doctests --out Lcov -- --test-threads 1"
 
       - name: Upload coverage
-        uses: coverallsapp/github-action@v1.1.1
+        uses: coverallsapp/github-action@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path-to-lcov: ./lcov.info
-  
+
   Testing-Features:
     needs: Formatting
     runs-on: ubuntu-latest
@@ -83,9 +85,6 @@ jobs:
         target:
           - no-default-features
           - all-features
-          - musl-release-no-default-features
-          - musl-release-all-features
-          - musl-all-features
         include:
           - target: no-default-features
             args: --no-default-features
@@ -94,19 +93,7 @@ jobs:
             args: --all-features
             toolchain_target: x86_64-unknown-linux-musl
             use_cross: false
-          - target: musl-release-no-default-features
-            args: --release --target x86_64-unknown-linux-musl --no-default-features
-            toolchain_target: x86_64-unknown-linux-musl
-            use_cross: true
-          - target: musl-release-all-features
-            args: --release --target x86_64-unknown-linux-musl --all-features --verbose
-            toolchain_target: x86_64-unknown-linux-musl
-            use_cross: true
-          - target: musl-all-features
-            args: --target x86_64-unknown-linux-musl --all-features --verbose
-            toolchain_target: x86_64-unknown-linux-musl
-            use_cross: true
-            
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -121,7 +108,7 @@ jobs:
 
       - name: Install system dependencies
         run: |
-            sudo apt-get install --yes zlib1g-dev libbz2-dev musl musl-dev musl-tools clang libc6-dev
+          sudo apt-get install --yes zlib1g-dev libbz2-dev musl musl-dev musl-tools clang libc6-dev
 
       - uses: Swatinem/rust-cache@v1.3.0
 
@@ -134,33 +121,32 @@ jobs:
 
   Testing-MacOS:
     needs: Formatting
-    runs-on: macOS-latest
+    runs-on: macos-latest
     strategy:
       matrix:
         target:
-          - intel-catalina
-          - intel-bigsur
-          - m1-bigsur
+          - intel-monterey
+          - intel-ventura
+          - silicon-sonoma
         include:
-          - target: intel-catalina
-            os: macOS-10.15
+          - target: intel-monterey
+            os: macOS-12.0
             toolchain_target: x86_64-apple-darwin
+            toolchain: stable
+            aux_args: --target x86_64-apple-darwin
+            default: true
+          - target: intel-ventura
+            os: macOS-13.0
+            toolchain_target: x86_64-apple-darwin
+            toolchain: stable
+            aux_args: --target x86_64-apple-darwin
+            default: true
+          - target: silicon-sonoma
+            os: macOS-14.0
+            toolchain_target: aarch64-apple-darwin
             toolchain: stable
             aux_args: ""
             default: false
-          - target: intel-bigsur
-            os: macOS-11.0
-            toolchain_target: x86_64-apple-darwin
-            toolchain: stable
-            aux_args: ""
-            default: false
-          # TODO enable again and try to find out why this fails
-          # - target: m1-bigsur
-          #   os: macOS-11.0
-          #   toolchain_target: aarch64-apple-darwin
-          #   toolchain: nightly
-          #   aux_args: --target aarch64-apple-darwin
-          #   default: true
 
     steps:
       - name: Checkout repository
@@ -171,55 +157,49 @@ jobs:
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1.0.6
         with:
-          toolchain: stable
+          toolchain: ${{ matrix.toolchain }}
+          target: ${{ matrix.toolchain_target }}
           override: true
+          default: ${{ matrix.default }}
 
       - name: Install htslib dependencies
         run: brew install bzip2 zlib xz curl-openssl
 
-      #- uses: actions-rs/toolchain@v1.0.6
-      #  with:
-      #    toolchain: ${{ matrix.toolchain }}
-      #    target: ${{ matrix.toolchain_target }}
-      #    #override: true
-      #    default: ${{ matrix.default }}
-
       - name: Test
         uses: actions-rs/cargo@v1.0.1
         with:
-          use-cross: false  # cross is not supported on GHA OSX runner, see: https://github.community/t/why-is-docker-not-installed-on-macos/17017
+          use-cross: false # cross is not supported on GHA OSX runner, see: https://github.community/t/why-is-docker-not-installed-on-macos/17017
           command: test
           args: --release --all-features --verbose ${{ matrix.aux_args }}
-
 #  Testing-OSX-MUSL-BigSur:
 #   needs: Formatting
 #   runs-on: macOS-11.0
 #   steps:
-      # Test MUSL builds on OSX
-      #
-      # - uses: actions-rs/toolchain@v1.0.6
-      #   with:
-      #     toolchain: stable
-      #     target: x86_64-unknown-linux-musl
-      #     override: true
+# Test MUSL builds on OSX
+#
+# - uses: actions-rs/toolchain@v1.0.6
+#   with:
+#     toolchain: stable
+#     target: x86_64-unknown-linux-musl
+#     override: true
 
-      # - name: Install OSX musl-cross
-      #   run: brew install FiloSottile/musl-cross/musl-cross
+# - name: Install OSX musl-cross
+#   run: brew install FiloSottile/musl-cross/musl-cross
 
-      # # https://github.com/FiloSottile/homebrew-musl-cross/issues/16
-      # - name: Provide musl-gcc symlink for the right musl arch
-      #   run: ln -sf /usr/local/opt/musl-cross/libexec/bin/x86_64-linux-musl-gcc /usr/local/bin/musl-gcc
+# # https://github.com/FiloSottile/homebrew-musl-cross/issues/16
+# - name: Provide musl-gcc symlink for the right musl arch
+#   run: ln -sf /usr/local/opt/musl-cross/libexec/bin/x86_64-linux-musl-gcc /usr/local/bin/musl-gcc
 
-      # - name: Test musl build without default features
-      #   uses: actions-rs/cargo@v1
-      #   with:
-      #     use-cross: false  # cross is not supported on GHA OSX runner, see: https://github.community/t/why-is-docker-not-installed-on-macos/17017
-      #     command: test
-      #     args: --release --target x86_64-unknown-linux-musl --no-default-features
+# - name: Test musl build without default features
+#   uses: actions-rs/cargo@v1
+#   with:
+#     use-cross: false  # cross is not supported on GHA OSX runner, see: https://github.community/t/why-is-docker-not-installed-on-macos/17017
+#     command: test
+#     args: --release --target x86_64-unknown-linux-musl --no-default-features
 
-      # - name: Test musl build with all features and debug symbols (non --release) on OSX
-      #   uses: actions-rs/cargo@v1.0.1
-      #   with:
-      #     use-cross: false
-      #     command: test
-      #     args: --target x86_64-unknown-linux-musl --all-features --verbose
+# - name: Test musl build with all features and debug symbols (non --release) on OSX
+#   uses: actions-rs/cargo@v1.0.1
+#   with:
+#     use-cross: false
+#     command: test
+#     args: --target x86_64-unknown-linux-musl --all-features --verbose
