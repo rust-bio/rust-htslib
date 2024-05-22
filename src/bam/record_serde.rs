@@ -8,6 +8,8 @@ use serde_bytes::{ByteBuf, Bytes};
 use crate::bam::record::Record;
 
 fn fix_l_extranul(rec: &mut Record) {
+    // first, reset the number of extranuls to 0 for calling .qname(); then calculate how many we actually have
+    rec.inner_mut().core.l_extranul = 0;
     let l_extranul = rec.qname().iter().rev().take_while(|x| **x == 0u8).count() as u8;
     rec.inner_mut().core.l_extranul = l_extranul;
 }

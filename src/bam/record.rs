@@ -114,12 +114,23 @@ fn extranul_from_qname(qname: &[u8]) -> usize {
 impl Record {
     /// Create an empty BAM record.
     pub fn new() -> Self {
-        Record {
+        let mut record = Record {
             inner: unsafe { MaybeUninit::zeroed().assume_init() },
             own: true,
             cigar: None,
             header: None,
-        }
+        };
+        // The read/query name needs to be set as empty to properly initialize
+        // the record
+        record.set_qname(b"");
+        // Developer note: these are needed so the returned record is properly
+        // initialized as unmapped.
+        record.set_unmapped();
+        record.set_tid(-1);
+        record.set_pos(-1);
+        record.set_mpos(-1);
+        record.set_mtid(-1);
+        record
     }
 
     pub fn from_inner(from: *mut htslib::bam1_t) -> Self {
