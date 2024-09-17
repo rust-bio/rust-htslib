@@ -2859,6 +2859,19 @@ mod alignment_cigar_tests {
     }
 
     #[test]
+    fn test_read_orientation_supplementary() {
+        let mut bam = Reader::from_path(&"test/test_orientation_supplementary.sam").unwrap();
+
+        for res in bam.records() {
+            let record = res.unwrap();
+            assert_eq!(
+                record.read_pair_orientation(),
+                SequenceReadPairOrientation::F2R1
+            );
+        }
+    }
+
+    #[test]
     pub fn test_cigar_parsing_non_ascii_error() {
         let cigar_str = "43ጷ";
         let expected_error = Err(Error::BamParseCigar {
