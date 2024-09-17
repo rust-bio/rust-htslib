@@ -1089,9 +1089,19 @@ impl Record {
             }
 
             let (pos_1, pos_2, fwd_1, fwd_2) = if self.is_first_in_template() {
-                (self.pos(), self.mpos(), !self.is_reverse(), !self.is_mate_reverse())
+                (
+                    self.pos(),
+                    self.mpos(),
+                    !self.is_reverse(),
+                    !self.is_mate_reverse(),
+                )
             } else {
-                (self.mpos(), self.pos(), !self.is_mate_reverse(), !self.is_reverse())
+                (
+                    self.mpos(),
+                    self.pos(),
+                    !self.is_mate_reverse(),
+                    !self.is_reverse(),
+                )
             };
 
             if pos_1 < pos_2 {
