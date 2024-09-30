@@ -11,6 +11,7 @@ pub mod header;
 pub mod index;
 pub mod pileup;
 pub mod record;
+pub mod sam_flag;
 
 #[cfg(feature = "serde_feature")]
 pub mod record_serde;
