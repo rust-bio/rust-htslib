@@ -1088,6 +1088,27 @@ impl Record {
         }
         "".to_owned()
     }
+
+    /// Format the record as a VCF string
+    ///
+    /// This method is intended for debug and error reporting purposes.
+    ///
+    pub fn to_vcf_string(&self) -> String {
+        // int vcf_format(const bcf_hdr_t *h, const bcf1_t *v, kstring_t *s)
+        let mut buf = htslib::kstring_t {
+            l: 0,
+            m: 0,
+            s: ptr::null_mut(),
+        };
+        unsafe {
+            htslib::vcf_format(self.header().inner, self.inner, &mut buf);
+            let vcf_str = String::from(ffi::CStr::from_ptr(buf.s).to_str().unwrap());
+            if !buf.s.is_null() {
+                libc::free(buf.s as *mut libc::c_void);
+            }
+            vcf_str
+        }
+    }
 }
 
 impl Clone for Record {
@@ -1713,5 +1734,20 @@ mod tests {
         record.remove_filter(&bar, true).unwrap();
         assert!(!record.has_filter(&bar));
         assert!(record.has_filter("PASS".as_bytes()));
+    }
+
+    #[test]
+    fn test_record_to_vcf_string() {
+        let tmp = NamedTempFile::new().unwrap();
+        let path = tmp.path();
+        let mut header = Header::new();
+        // Add contig records
+        let header_contig_line = b"##contig=<ID=chr1,length=1000>";
+        header.push_record(header_contig_line);
+        header.push_record(br#"##FILTER=<ID=foo,Description="sample is a foo fighter">"#);
+        let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
+        let mut record = vcf.empty_record();
+        record.push_filter("foo".as_bytes()).unwrap();
+        assert_eq!(record.to_vcf_string(), "chr1\t1\t.\t.\t.\t0\tfoo\t.\n");
     }
 }
