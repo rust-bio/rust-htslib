@@ -87,7 +87,13 @@ impl Reader {
         let mode = ffi::CString::new("r").unwrap();
         let cpath = ffi::CString::new(path).unwrap();
         let inner = unsafe { htslib::bgzf_open(cpath.as_ptr(), mode.as_ptr()) };
-        Ok(Self { inner })
+        if inner != std::ptr::null_mut() {
+            Ok(Self { inner })
+        } else {
+            Err(Error::FileOpen {
+                path: String::from_utf8(path.to_vec()).unwrap(),
+            })
+        }
     }
 
     /// Set the thread pool to use for parallel decompression.
@@ -211,7 +217,13 @@ impl Writer {
         let mode = Self::get_open_mode(level)?;
         let cpath = ffi::CString::new(path).unwrap();
         let inner = unsafe { htslib::bgzf_open(cpath.as_ptr(), mode.as_ptr()) };
-        Ok(Self { inner, tpool: None })
+        if inner != std::ptr::null_mut() {
+            Ok(Self { inner, tpool: None })
+        } else {
+            Err(Error::FileOpen {
+                path: String::from_utf8(path.to_vec()).unwrap(),
+            })
+        }
     }
 
     /// Internal function to convert compression level to "mode"
