@@ -2097,10 +2097,15 @@ impl CigarStringView {
                     }
                     break;
                 },
-                Cigar::Del(_) => {
-                    return Err(Error::BamUnexpectedCigarOperation {
-                        msg: "'deletion' (D) found before any operation describing read sequence".to_owned()
-                    });
+                Cigar::Del(l) => {
+                    // METHOD: leading deletions can happen in case of trimmed reads where
+                    // a primer has been removed AFTER read mapping.
+                    // Example: 24M8I8D18M9S before trimming, 32H8D18M9S after trimming
+                    // with fgbio. While leading deletions should be impossible with
+                    // normal read mapping, they make perfect sense with primer trimming
+                    // because the mapper still had the evidence to decide in favor of
+                    // the deletion via the primer sequence.
+                    rpos += l;
                 },
                 Cigar::RefSkip(_) => {
                     return Err(Error::BamUnexpectedCigarOperation {
