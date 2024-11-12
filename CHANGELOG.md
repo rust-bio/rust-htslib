@@ -2,6 +2,18 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.48.0](https://github.com/rust-bio/rust-htslib/compare/v0.47.1...v0.48.0) (2024-11-12)
+
+
+### Features
+
+* Add to_vcf_string method for bcf::Record ([#443](https://github.com/rust-bio/rust-htslib/issues/443)) ([489c0d7](https://github.com/rust-bio/rust-htslib/commit/489c0d7677445cfe38580c8d4c843ad4f4e2d827))
+
+
+### Bug Fixes
+
+* return error when bgzf_open fails to open a file ([#444](https://github.com/rust-bio/rust-htslib/issues/444)) ([9bda5f7](https://github.com/rust-bio/rust-htslib/commit/9bda5f768a5c54767c7e08ef1cafd28ff3f2a3b3))
+
 ## [0.47.1](https://github.com/rust-bio/rust-htslib/compare/v0.47.0...v0.47.1) (2024-11-12)
 
 
