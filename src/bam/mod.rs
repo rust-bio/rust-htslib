@@ -677,7 +677,7 @@ impl IndexedReader {
     ///
     /// Both iterating (with [.records()](trait.Read.html#tymethod.records)) and looping without allocation (with [.read()](trait.Read.html#tymethod.read) are a two stage process:
     /// 1. 'fetch' the region of interest
-    /// 2. iter/loop trough the reads.
+    /// 2. iter/loop through the reads.
     ///
     /// Example:
     /// ```
@@ -702,6 +702,8 @@ impl IndexedReader {
     /// The start / stop coordinates will take i64 (the correct type as of htslib's 'large
     /// coordinates' expansion), i32, u32, and u64 (with a possible panic! if the coordinate
     /// won't fit an i64).
+    ///
+    /// `start` and `stop` are zero-based. `start` is inclusive, `stop` is exclusive.
     ///
     /// This replaces the old fetch and fetch_str implementations.
     pub fn fetch<'a, T: Into<FetchDefinition<'a>>>(&mut self, fetch_definition: T) -> Result<()> {
@@ -1037,7 +1039,7 @@ impl Drop for IndexedReader {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Format {
     Sam,
     Bam,
@@ -1125,7 +1127,7 @@ impl Writer {
             );
 
             (*rec).text = text as *mut c_char;
-            (*rec).l_text = l_text as u64;
+            (*rec).l_text = l_text;
             rec
         };
 
@@ -1390,9 +1392,9 @@ impl HeaderView {
                 header_string.len(),
             );
 
-            let rec = htslib::sam_hdr_parse((l_text + 1) as u64, text as *const c_char);
+            let rec = htslib::sam_hdr_parse((l_text + 1), text as *const c_char);
             (*rec).text = text as *mut c_char;
-            (*rec).l_text = l_text as u64;
+            (*rec).l_text = l_text;
             rec
         };
 
@@ -1578,7 +1580,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             assert_eq!(c1.inner().core.l_qname, b1.inner().core.l_qname);
             assert_eq!(c1.inner().core.n_cigar, b1.inner().core.n_cigar);
             assert_eq!(c1.inner().core.l_qseq, b1.inner().core.l_qseq);
-            assert_eq!(c1.inner().core.isize, b1.inner().core.isize);
+            assert_eq!(c1.inner().core.isize_, b1.inner().core.isize_);
             //... except m_data
         }
     }
@@ -2449,7 +2451,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
         where
             F: Fn(&record::Record) -> Option<bool>,
         {
-            let mut bam_reader = Reader::from_path(bamfile).unwrap(); // internal functions, just unwarp
+            let mut bam_reader = Reader::from_path(bamfile).unwrap(); // internal functions, just unwrap
             let header = header::Header::from_template(bam_reader.header());
             let mut sam_writer = Writer::from_path(samfile, &header, Format::Sam).unwrap();
             for record in bam_reader.records() {
@@ -2998,6 +3000,58 @@ CCCCCCCCCCCCCCCCCCC"[..],
         let header_refseqs = header_hashmap.get("SQ".into()).unwrap();
         assert_eq!(header_refseqs[0].get("SN").unwrap(), "ref_1",);
         assert_eq!(header_refseqs[0].get("LN").unwrap(), "10000000",);
+    }
+
+    #[test]
+    fn test_bam_new() {
+        // Create the path to write the tmp test BAM
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
+            .expect("Cannot create temp dir");
+        let bampath = tmp.path().join("test.bam");
+
+        // write an unmapped BAM record (uBAM)
+        {
+            // Build the header
+            let mut header = Header::new();
+
+            // Add the version
+            header.push_record(
+                HeaderRecord::new(b"HD")
+                    .push_tag(b"VN", &"1.6")
+                    .push_tag(b"SO", &"unsorted"),
+            );
+
+            // Build the writer
+            let mut writer = Writer::from_path(&bampath, &header, Format::Bam).unwrap();
+
+            // Build an empty record
+            let mut record = Record::new();
+
+            // Write the record (this previously seg-faulted)
+            assert!(writer.write(&record).is_ok());
+        }
+
+        // Read the record
+        {
+            // Build th reader
+            let mut reader = Reader::from_path(&bampath).expect("Error opening file.");
+
+            // Read the record
+            let mut rec = Record::new();
+            match reader.read(&mut rec) {
+                Some(r) => r.expect("Failed to read record."),
+                None => panic!("No record read."),
+            };
+
+            // Check a few things
+            assert!(rec.is_unmapped());
+            assert_eq!(rec.tid(), -1);
+            assert_eq!(rec.pos(), -1);
+            assert_eq!(rec.mtid(), -1);
+            assert_eq!(rec.mpos(), -1);
+        }
     }
 
     #[test]
