@@ -47,6 +47,6 @@ static = ["hts-sys/static"]
 
 [dev-dependencies]
 bincode = "1.2"
-pretty_assertions = "0.6"
+pretty_assertions = "1.4"
 serde_json = "1.0"
 tempfile = "3.1.0"
