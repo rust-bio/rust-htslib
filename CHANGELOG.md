@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.47.1](https://github.com/rust-bio/rust-htslib/compare/v0.47.0...v0.47.1) (2024-11-12)
+
+
+### Bug Fixes
+
+* allow leading deletions in read_pos method of CigarStringView. ([#447](https://github.com/rust-bio/rust-htslib/issues/447)) ([2986713](https://github.com/rust-bio/rust-htslib/commit/298671382ffeab8f1f057cde83e8474963fbfb9a))
+
 ## [0.47.0](https://github.com/rust-bio/rust-htslib/compare/v0.46.0...v0.47.0) (2024-05-22)
 
 
