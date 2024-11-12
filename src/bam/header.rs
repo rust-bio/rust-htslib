@@ -88,7 +88,7 @@ impl Header {
 
                 if let Some(record_type) = record_type {
                     if record_type == "CO" {
-                        continue
+                        continue;
                     }
                     let mut field = LinearMap::default();
                     for part in parts.iter().skip(1) {
