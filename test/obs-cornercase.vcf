@@ -1,0 +1,23 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=PASS,Description="All filters passed">
+##INFO=<ID=SVLEN,Number=A,Type=Integer,Description="Difference in length between REF and ALT alleles">
+##INFO=<ID=END,Number=A,Type=Integer,Description="End position of structural variant (inclusive, 1-based).">
+##INFO=<ID=SVTYPE,Number=A,Type=String,Description="Structural variant type">
+##INFO=<ID=EVENT,Number=A,Type=String,Description="ID of event associated to breakend">
+##INFO=<ID=MATEID,Number=1,Type=String,Description="ID of mate breakend">
+##contig=<ID=10,length=2601>
+##INFO=<ID=PROB_MAPPING,Number=.,Type=Integer,Description="Varlociraptor observations (binary encoded, meant for internal use only).">
+##INFO=<ID=PROB_ALT,Number=.,Type=Integer,Description="Varlociraptor observations (binary encoded, meant for internal use only).">
+##INFO=<ID=PROB_REF,Number=.,Type=Integer,Description="Varlociraptor observations (binary encoded, meant for internal use only).">
+##INFO=<ID=PROB_MISSED_ALLELE,Number=.,Type=Integer,Description="Varlociraptor observations (binary encoded, meant for internal use only).">
+##INFO=<ID=PROB_SAMPLE_ALT,Number=.,Type=Integer,Description="Varlociraptor observations (binary encoded, meant for internal use only).">
+##INFO=<ID=PROB_DOUBLE_OVERLAP,Number=.,Type=Integer,Description="Varlociraptor observations (binary encoded, meant for internal use only).">
+##INFO=<ID=STRAND,Number=.,Type=Integer,Description="Varlociraptor observations (binary encoded, meant for internal use only).">
+##INFO=<ID=READ_ORIENTATION,Number=.,Type=Integer,Description="Varlociraptor observations (binary encoded, meant for internal use only).">
+##INFO=<ID=SOFTCLIPPED,Number=.,Type=Integer,Description="Varlociraptor observations (binary encoded, meant for internal use only).">
+##varlociraptor_preprocess_args={"Preprocess":{"kind":{"Variants":{"reference":"ref.fa","candidates":"candidates.vcf","bam":"patient13.bam","reference_buffer_size":10,"min_bam_refetch_distance":1,"alignment_properties":null,"output":"patient13.obs.bcf","spurious_ins_rate":2.8e-6,"spurious_del_rate":5.1e-6,"spurious_insext_rate":0.0,"spurious_delext_rate":0.0,"protocol_strandedness":"Opposite","realignment_window":64,"max_depth":200,"omit_insert_size":false,"pairhmm_mode":"exact"}}}}
+##varlociraptor_observation_format_version=5
+##bcftools_viewVersion=1.11+htslib-1.11
+##bcftools_viewCommand=view patient13.obs.bcf; Date=Tue Nov 17 13:48:51 2020
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+10	1301	gridss33fb_1085o	T	T[10:2000[	2.1391e+09	.	EVENT=gridss33fb_1085;SVTYPE=BND;MATEID=gridss33fb_1085h;PROB_MAPPING=2,0,0,0,1,0,6982,48788,1,0,3556,48946;PROB_REF=2,0,0,0,1,0,29208,48945,1,0,29208,48945;PROB_ALT=2,0,0,0,0,0,53400,0,0,53537;PROB_MISSED_ALLELE=2,0,0,0,1,0,29208,49073,1,0,29208,49073;PROB_SAMPLE_ALT=2,0,0,0,1,0,64758,48272,1,0,64758,48272;PROB_DOUBLE_OVERLAP=2,0,0,0,0,0,64512,0,0,64512;STRAND=2,0,0,0,0,0,1,0;READ_ORIENTATION=2,0,0,0,0,0,0,0;SOFTCLIPPED=257,0,0,0,768,2,0,0,0

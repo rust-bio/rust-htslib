@@ -10,25 +10,117 @@
 //! Note that BCF corresponds to the in-memory representation of BCF/VCF records in Htslib
 //! itself. Thus, it comes without a runtime penalty for parsing, in contrast to reading VCF
 //! files.
+//!
+//! # Example (reading)
+//!
+//!   - Obtaining 0-based locus index of the VCF record.
+//!   - Obtaining alleles of the VCF record.
+//!   - calculate alt-allele dosage in a mutli-sample VCF / BCF
+//!
+//! ```
+//! use crate::rust_htslib::bcf::{Reader, Read};
+//! use std::convert::TryFrom;
+//!
+//! let path = &"test/test_string.vcf";
+//! let mut bcf = Reader::from_path(path).expect("Error opening file.");
+//! // iterate through each row of the vcf body.
+//! for (i, record_result) in bcf.records().enumerate() {
+//!     let mut record = record_result.expect("Fail to read record");
+//!     let mut s = String::new();
+//!      for allele in record.alleles() {
+//!          for c in allele {
+//!              s.push(char::from(*c))
+//!          }
+//!          s.push(' ')
+//!      }
+//!     // 0-based position and the list of alleles
+//!     println!("Locus: {}, Alleles: {}", record.pos(), s);
+//!     // number of sample in the vcf
+//!     let sample_count = usize::try_from(record.sample_count()).unwrap();
+//!
+//!     // Counting ref, alt and missing alleles for each sample
+//!     let mut n_ref = vec![0; sample_count];
+//!     let mut n_alt = vec![0; sample_count];
+//!     let mut n_missing = vec![0; sample_count];
+//!     let gts = record.genotypes().expect("Error reading genotypes");
+//!     for sample_index in 0..sample_count {
+//!         // for each sample
+//!         for gta in gts.get(sample_index).iter() {
+//!             // for each allele
+//!             match gta.index() {
+//!                 Some(0) => n_ref[sample_index] += 1,  // reference allele
+//!                 Some(_) => n_alt[sample_index] += 1,  // alt allele
+//!                 None => n_missing[sample_index] += 1, // missing allele
+//!             }
+//!         }
+//!     }
+//! }
+//! ```
+//!
+//! # Example (writing)
+//!
+//!   - Setting up a VCF writer from scratch (including a simple header)
+//!   - Creating a VCF record and writing it to the VCF file
+//!
+//! ```
+//! use rust_htslib::bcf::{Format, Writer};
+//! use rust_htslib::bcf::header::Header;
+//! use rust_htslib::bcf::record::GenotypeAllele;
+//!
+//! // Create minimal VCF header with a single contig and a single sample
+//! let mut header = Header::new();
+//! let header_contig_line = r#"##contig=<ID=1,length=10>"#;
+//! header.push_record(header_contig_line.as_bytes());
+//! let header_gt_line = r#"##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">"#;
+//! header.push_record(header_gt_line.as_bytes());
+//! header.push_sample("test_sample".as_bytes());
+//!
+//! // Write uncompressed VCF to stdout with above header and get an empty record
+//! let mut vcf = Writer::from_stdout(&header, true, Format::Vcf).unwrap();
+//! let mut record = vcf.empty_record();
+//!
+//! // Set chrom and pos to 1 and 7, respectively - note the 0-based positions
+//! let rid = vcf.header().name2rid(b"1").unwrap();
+//! record.set_rid(Some(rid));
+//! record.set_pos(6);
+//!
+//! // Set record genotype to 0|1 - note first allele is always unphased
+//! let alleles = &[GenotypeAllele::Unphased(0), GenotypeAllele::Phased(1)];
+//! record.push_genotypes(alleles).unwrap();
+//!
+//! // Write record
+//! vcf.write(&record).unwrap()
+//! ```
+//!
+//! This will print the following VCF to stdout:
+//!
+//! ```lang-none
+//! ##fileformat=VCFv4.2
+//! ##FILTER=<ID=PASS,Description="All filters passed">
+//! ##contig=<ID=1,length=10>
+//! ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+//! #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  test_sample
+//! 1       7       .       .       .       0       .       .       GT      0|1
+//! ```
 
 use std::ffi;
 use std::path::Path;
 use std::rc::Rc;
+use std::str;
 
 use url::Url;
 
 pub mod buffer;
 pub mod header;
+pub mod index;
 pub mod record;
 
-use bcf::header::{HeaderView, SampleSubset};
-use htslib;
+use crate::bcf::header::{HeaderView, SampleSubset};
+use crate::errors::{Error, Result};
+use crate::htslib;
 
-pub use bcf::header::{Header, HeaderRecord};
-pub use bcf::record::Record;
-
-/// Redefinition of corresponding `#define` in `vcf.h.`.
-pub const GT_MISSING: i32 = 0;
+pub use crate::bcf::header::{Header, HeaderRecord};
+pub use crate::bcf::record::Record;
 
 /// A trait for a BCF reader with a read method.
 pub trait Read: Sized {
@@ -36,10 +128,14 @@ pub trait Read: Sized {
     ///
     /// # Arguments
     /// * record - an empty record, that can be created with `bcf::Reader::empty_record`.
-    fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError>;
+    ///
+    /// # Returns
+    /// None if end of file was reached, otherwise Some will contain
+    /// a result with an error in case of failure.
+    fn read(&mut self, record: &mut record::Record) -> Option<Result<()>>;
 
     /// Return an iterator over all records of the VCF/BCF file.
-    fn records(&mut self) -> Records<Self>;
+    fn records(&mut self) -> Records<'_, Self>;
 
     /// Return the header.
     fn header(&self) -> &HeaderView;
@@ -56,7 +152,7 @@ pub trait Read: Sized {
     /// # Arguments
     ///
     /// * `n_threads` - number of extra background writer threads to use, must be `> 0`.
-    fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError>;
+    fn set_threads(&mut self, n_threads: usize) -> Result<()>;
 }
 
 /// A VCF/BCF reader.
@@ -67,14 +163,15 @@ pub struct Reader {
 }
 
 unsafe impl Send for Reader {}
-
+/// # Safety
+///
 /// Implementation for `Reader::set_threads()` and `Writer::set_threads`.
-pub fn set_threads(hts_file: *mut htslib::htsFile, n_threads: usize) -> Result<(), ThreadingError> {
+pub unsafe fn set_threads(hts_file: *mut htslib::htsFile, n_threads: usize) -> Result<()> {
     assert!(n_threads > 0, "n_threads must be > 0");
 
-    let r = unsafe { htslib::hts_set_threads(hts_file, n_threads as i32) };
+    let r = htslib::hts_set_threads(hts_file, n_threads as i32);
     if r != 0 {
-        Err(ThreadingError::Some)
+        Err(Error::SetThreads)
     } else {
         Ok(())
     }
@@ -82,25 +179,26 @@ pub fn set_threads(hts_file: *mut htslib::htsFile, n_threads: usize) -> Result<(
 
 impl Reader {
     /// Create a new reader from a given path.
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, BCFPathError> {
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         match path.as_ref().to_str() {
-            Some(p) if path.as_ref().exists() => Ok(try!(Self::new(p.as_bytes()))),
-            _ => Err(BCFPathError::InvalidPath),
+            Some(p) if !path.as_ref().exists() => Err(Error::FileNotFound { path: p.into() }),
+            Some(p) => Self::new(p.as_bytes()),
+            _ => Err(Error::NonUnicodePath),
         }
     }
 
     /// Create a new reader from a given URL.
-    pub fn from_url(url: &Url) -> Result<Self, BCFError> {
+    pub fn from_url(url: &Url) -> Result<Self> {
         Self::new(url.as_str().as_bytes())
     }
 
     /// Create a new reader from standard input.
-    pub fn from_stdin() -> Result<Self, BCFError> {
+    pub fn from_stdin() -> Result<Self> {
         Self::new(b"-")
     }
 
-    fn new(path: &[u8]) -> Result<Self, BCFError> {
-        let htsfile = try!(bcf_open(path, b"r"));
+    fn new(path: &[u8]) -> Result<Self> {
+        let htsfile = bcf_open(path, b"r")?;
         let header = unsafe { htslib::bcf_hdr_read(htsfile) };
         Ok(Reader {
             inner: htsfile,
@@ -110,36 +208,36 @@ impl Reader {
 }
 
 impl Read for Reader {
-    fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError> {
+    fn read(&mut self, record: &mut record::Record) -> Option<Result<()>> {
         match unsafe { htslib::bcf_read(self.inner, self.header.inner, record.inner) } {
             0 => {
                 unsafe {
                     // Always unpack record.
                     htslib::bcf_unpack(record.inner_mut(), htslib::BCF_UN_ALL as i32);
                 }
-                record.set_header(self.header.clone());
-                Ok(())
+                record.set_header(Rc::clone(&self.header));
+                Some(Ok(()))
             }
-            -1 => Err(ReadError::NoMoreRecord),
-            _ => Err(ReadError::Invalid),
+            -1 => None,
+            _ => Some(Err(Error::BcfInvalidRecord)),
         }
     }
 
-    fn records(&mut self) -> Records<Self> {
+    fn records(&mut self) -> Records<'_, Self> {
         Records { reader: self }
     }
 
-    fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
-        set_threads(self.inner, n_threads)
+    fn set_threads(&mut self, n_threads: usize) -> Result<()> {
+        unsafe { set_threads(self.inner, n_threads) }
     }
 
     fn header(&self) -> &HeaderView {
-        return &self.header;
+        &self.header
     }
 
     /// Return empty record.  Can be reused multiple times.
     fn empty_record(&self) -> Record {
-        return Record::new(self.header.clone());
+        Record::new(Rc::clone(&self.header))
     }
 }
 
@@ -160,7 +258,7 @@ pub struct IndexedReader {
     header: Rc<HeaderView>,
 
     /// The position of the previous fetch, if any.
-    current_region: Option<(u32, u32, u32)>,
+    current_region: Option<(u32, u64, Option<u64>)>,
 }
 
 unsafe impl Send for IndexedReader {}
@@ -171,17 +269,19 @@ impl IndexedReader {
     /// # Arguments
     ///
     /// * `path` - the path to open.
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, IndexedReaderPathError> {
-        match path.as_ref().to_str() {
-            Some(p) if path.as_ref().exists() => {
-                Ok(try!(Self::new(&ffi::CString::new(p).unwrap())))
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let path = path.as_ref();
+        match path.to_str() {
+            Some(p) if path.exists() => {
+                Self::new(&ffi::CString::new(p).map_err(|_| Error::NonUnicodePath)?)
             }
-            _ => Err(IndexedReaderPathError::InvalidPath),
+            Some(p) => Err(Error::FileNotFound { path: p.into() }),
+            None => Err(Error::NonUnicodePath),
         }
     }
 
     /// Create a new `IndexedReader` from an URL.
-    pub fn from_url(url: &Url) -> Result<Self, IndexedReaderError> {
+    pub fn from_url(url: &Url) -> Result<Self> {
         Self::new(&ffi::CString::new(url.as_str()).unwrap())
     }
 
@@ -190,7 +290,7 @@ impl IndexedReader {
     /// # Arguments
     ///
     /// * `path` - the path. Use "-" for stdin.
-    fn new(path: &ffi::CStr) -> Result<Self, IndexedReaderError> {
+    fn new(path: &ffi::CStr) -> Result<Self> {
         // Create reader and require existence of index file.
         let ser_reader = unsafe { htslib::bcf_sr_init() };
         unsafe {
@@ -203,11 +303,13 @@ impl IndexedReader {
             }));
             Ok(IndexedReader {
                 inner: ser_reader,
-                header: header,
+                header,
                 current_region: None,
             })
         } else {
-            Err(IndexedReaderError::InvalidPath)
+            Err(Error::BcfOpen {
+                target: path.to_str().unwrap().to_owned(),
+            })
         }
     }
 
@@ -217,14 +319,20 @@ impl IndexedReader {
     ///
     /// * `rid` - numeric ID of the reference to jump to; use `HeaderView::name2rid` for resolving
     ///           contig name to ID.
-    /// * `start` - `0`-based start coordinate of region on reference.
-    /// * `end` - `0`-based end coordinate of region on reference.
-    pub fn fetch(&mut self, rid: u32, start: u32, end: u32) -> Result<(), FetchError> {
-        let contig = self.header.rid2name(rid);
+    /// * `start` - `0`-based **inclusive** start coordinate of region on reference.
+    /// * `end` - Optional `0`-based **inclusive** end coordinate of region on reference. If `None`
+    /// is given, records are fetched from `start` until the end of the contig.
+    ///
+    /// # Note
+    /// The entire contig can be fetched by setting `start` to `0` and `end` to `None`.
+    pub fn fetch(&mut self, rid: u32, start: u64, end: Option<u64>) -> Result<()> {
+        let contig = self.header.rid2name(rid)?;
         let contig = ffi::CString::new(contig).unwrap();
-        let contig = contig.as_ptr();
-        if unsafe { htslib::bcf_sr_seek(self.inner, contig, start as i32) } != 0 {
-            Err(FetchError::Some)
+        if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i64) } != 0 {
+            Err(Error::GenomicSeek {
+                contig: contig.to_str().unwrap().to_owned(),
+                start,
+            })
         } else {
             self.current_region = Some((rid, start, end));
             Ok(())
@@ -233,13 +341,13 @@ impl IndexedReader {
 }
 
 impl Read for IndexedReader {
-    fn read(&mut self, record: &mut record::Record) -> Result<(), ReadError> {
+    fn read(&mut self, record: &mut record::Record) -> Option<Result<()>> {
         match unsafe { htslib::bcf_sr_next_line(self.inner) } {
             0 => {
                 if unsafe { (*self.inner).errnum } != 0 {
-                    Err(ReadError::SyncedBcfReaderError)
+                    Some(Err(Error::BcfInvalidRecord))
                 } else {
-                    Err(ReadError::NoMoreRecord)
+                    None
                 }
             }
             i => {
@@ -255,46 +363,52 @@ impl Read for IndexedReader {
                     );
                 }
 
-                record.set_header(self.header.clone());
+                unsafe {
+                    // Always unpack record.
+                    htslib::bcf_unpack(record.inner_mut(), htslib::BCF_UN_ALL as i32);
+                }
+
+                record.set_header(Rc::clone(&self.header));
 
                 match self.current_region {
                     Some((rid, _start, end)) => {
-                        if record.rid().is_some()
-                            && rid == record.rid().unwrap()
-                            && record.pos() <= end
-                        {
-                            Ok(())
+                        let endpos = match end {
+                            Some(e) => e,
+                            None => u64::MAX,
+                        };
+                        if Some(rid) == record.rid() && record.pos() as u64 <= endpos {
+                            Some(Ok(()))
                         } else {
-                            Err(ReadError::NoMoreRecord)
+                            None
                         }
                     }
-                    None => Ok(()),
+                    None => Some(Ok(())),
                 }
             }
         }
     }
 
-    fn records(&mut self) -> Records<Self> {
+    fn records(&mut self) -> Records<'_, Self> {
         Records { reader: self }
     }
 
-    fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
+    fn set_threads(&mut self, n_threads: usize) -> Result<()> {
         assert!(n_threads > 0, "n_threads must be > 0");
 
         let r = unsafe { htslib::bcf_sr_set_threads(self.inner, n_threads as i32) };
         if r != 0 {
-            Err(ThreadingError::Some)
+            Err(Error::SetThreads)
         } else {
             Ok(())
         }
     }
 
     fn header(&self) -> &HeaderView {
-        return &self.header;
+        &self.header
     }
 
     fn empty_record(&self) -> Record {
-        return Record::new(self.header.clone());
+        Record::new(Rc::clone(&self.header))
     }
 }
 
@@ -312,52 +426,51 @@ pub mod synced {
     /// This module contains bitmask constants for `SyncedReader`.
     pub mod pairing {
         /// Allow different alleles, as long as they all are SNPs.
-        pub const SNPS: u32 = ::htslib::BCF_SR_PAIR_SNPS;
+        pub const SNPS: u32 = crate::htslib::BCF_SR_PAIR_SNPS;
         /// The same as above, but with indels.
-        pub const INDELS: u32 = ::htslib::BCF_SR_PAIR_INDELS;
+        pub const INDELS: u32 = crate::htslib::BCF_SR_PAIR_INDELS;
         /// Any combination of alleles can be returned by `bcf_sr_next_line()`.
-        pub const ANY: u32 = ::htslib::BCF_SR_PAIR_ANY;
+        pub const ANY: u32 = crate::htslib::BCF_SR_PAIR_ANY;
         /// At least some of multiallelic ALTs must match.  Implied by all the others with the exception of `EXACT`.
-        pub const SOME: u32 = ::htslib::BCF_SR_PAIR_SOME;
+        pub const SOME: u32 = crate::htslib::BCF_SR_PAIR_SOME;
         /// Allow REF-only records with SNPs.
-        pub const SNP_REF: u32 = ::htslib::BCF_SR_PAIR_SNP_REF;
+        pub const SNP_REF: u32 = crate::htslib::BCF_SR_PAIR_SNP_REF;
         /// Allow REF-only records with indels.
-        pub const INDEL_REF: u32 = ::htslib::BCF_SR_PAIR_INDEL_REF;
+        pub const INDEL_REF: u32 = crate::htslib::BCF_SR_PAIR_INDEL_REF;
         /// Require the exact same set of alleles in all files.
-        pub const EXACT: u32 = ::htslib::BCF_SR_PAIR_EXACT;
+        pub const EXACT: u32 = crate::htslib::BCF_SR_PAIR_EXACT;
         /// `SNPS | INDELS`.
-        pub const BOTH: u32 = ::htslib::BCF_SR_PAIR_BOTH;
+        pub const BOTH: u32 = crate::htslib::BCF_SR_PAIR_BOTH;
         /// `SNPS | INDELS | SNP_REF | INDEL_REF`.
-        pub const BOTH_REF: u32 = ::htslib::BCF_SR_PAIR_BOTH_REF;
+        pub const BOTH_REF: u32 = crate::htslib::BCF_SR_PAIR_BOTH_REF;
     }
 
     /// A wrapper for `bcf_srs_t`; allows joint traversal of multiple VCF and/or BCF files.
     #[derive(Debug)]
     pub struct SyncedReader {
         /// Internal handle for the synced reader.
-        inner: *mut ::htslib::bcf_srs_t,
+        inner: *mut crate::htslib::bcf_srs_t,
 
         /// RC's of `HeaderView`s of the readers.
         headers: Vec<Rc<HeaderView>>,
 
         /// The position of the previous fetch, if any.
-        current_region: Option<(u32, u32, u32)>,
+        current_region: Option<(u32, u64, u64)>,
     }
 
     // TODO: add interface for setting threads, ensure that the pool is freed properly
-
     impl SyncedReader {
-        pub fn new() -> Result<Self, AllocationError> {
-            let inner = unsafe { ::htslib::bcf_sr_init() };
+        pub fn new() -> Result<Self> {
+            let inner = unsafe { crate::htslib::bcf_sr_init() };
             if inner.is_null() {
-                Err(AllocationError::Some)
-            } else {
-                Ok(SyncedReader {
-                    inner: inner,
-                    headers: Vec::new(),
-                    current_region: None,
-                })
+                return Err(Error::BcfAllocationError);
             }
+
+            Ok(SyncedReader {
+                inner,
+                headers: Vec::new(),
+                current_region: None,
+            })
         }
 
         /// Enable or disable requiring of index
@@ -371,29 +484,32 @@ pub mod synced {
         pub fn set_pairing(&mut self, bitmask: u32) {
             unsafe {
                 // TODO: 1 actually is BCF_SR_PAIR_LOGIC but is not available here?
-                ::htslib::bcf_sr_set_opt(self.inner, 1, bitmask);
+                crate::htslib::bcf_sr_set_opt(self.inner, 1, bitmask);
             }
         }
 
         /// Add new reader with the path to the file.
-        pub fn add_reader<P: AsRef<Path>>(&mut self, path: P) -> Result<(), BCFError> {
+        pub fn add_reader<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
             match path.as_ref().to_str() {
                 Some(p) if path.as_ref().exists() => {
                     let p_cstring = ffi::CString::new(p).unwrap();
                     let res =
-                        unsafe { ::htslib::bcf_sr_add_reader(self.inner, p_cstring.as_ptr()) };
-                    if res != 0 {
-                        let i = (self.reader_count() - 1) as isize;
-                        let header = Rc::new(HeaderView::new(unsafe {
-                            ::htslib::bcf_hdr_dup((*(*self.inner).readers.offset(i)).header)
-                        }));
-                        self.headers.push(header);
-                        Ok(())
-                    } else {
-                        Err(BCFError::Some)
+                        unsafe { crate::htslib::bcf_sr_add_reader(self.inner, p_cstring.as_ptr()) };
+
+                    if res == 0 {
+                        return Err(Error::BcfOpen {
+                            target: p.to_owned(),
+                        });
                     }
+
+                    let i = (self.reader_count() - 1) as isize;
+                    let header = Rc::new(HeaderView::new(unsafe {
+                        crate::htslib::bcf_hdr_dup((*(*self.inner).readers.offset(i)).header)
+                    }));
+                    self.headers.push(header);
+                    Ok(())
                 }
-                _ => Err(BCFError::Some),
+                _ => Err(Error::NonUnicodePath),
             }
         }
 
@@ -403,7 +519,7 @@ pub mod synced {
                 panic!("Invalid reader!");
             } else {
                 unsafe {
-                    ::htslib::bcf_sr_remove_reader(self.inner, idx as i32);
+                    crate::htslib::bcf_sr_remove_reader(self.inner, idx as i32);
                 }
                 self.headers.remove(idx as usize);
             }
@@ -414,18 +530,17 @@ pub mod synced {
             unsafe { (*self.inner).nreaders as u32 }
         }
 
-        /// Read next line and return number of readers that have the given line.
-        pub fn read_next(&mut self) -> Result<u32, ReadError> {
-            let num = unsafe { ::htslib::bcf_sr_next_line(self.inner) as u32 };
+        /// Read next line and return number of readers that have the given line (0 if end of all files is reached).
+        pub fn read_next(&mut self) -> Result<u32> {
+            let num = unsafe { crate::htslib::bcf_sr_next_line(self.inner) as u32 };
 
             if num == 0 {
                 if unsafe { (*self.inner).errnum } != 0 {
-                    Err(ReadError::Invalid)
-                } else {
-                    Ok(0)
+                    return Err(Error::BcfInvalidRecord);
                 }
+                Ok(0)
             } else {
-                assert!(num > 0, "Must not be negative");
+                assert!(num > 0, "num returned by htslib must not be negative");
                 match self.current_region {
                     Some((rid, _start, end)) => {
                         for idx in 0..self.reader_count() {
@@ -436,8 +551,8 @@ pub mod synced {
                                 let record = *(*(*self.inner).readers.offset(idx as isize))
                                     .buffer
                                     .offset(0);
-                                if (*record).rid != (rid as i32) || (*record).pos >= (end as i32) {
-                                    return Err(ReadError::NoMoreRecord);
+                                if (*record).rid != (rid as i32) || (*record).pos >= (end as i64) {
+                                    return Ok(0);
                                 }
                             }
                         }
@@ -462,7 +577,7 @@ pub mod synced {
             if self.has_line(idx) {
                 let record = Record::new(self.headers[idx as usize].clone());
                 unsafe {
-                    ::htslib::bcf_copy(
+                    crate::htslib::bcf_copy(
                         record.inner,
                         *(*(*self.inner).readers.offset(idx as isize))
                             .buffer
@@ -493,14 +608,16 @@ pub mod synced {
         ///           contig name to ID.
         /// * `start` - `0`-based start coordinate of region on reference.
         /// * `end` - `0`-based end coordinate of region on reference.
-        pub fn fetch(&mut self, rid: u32, start: u32, end: u32) -> Result<(), FetchError> {
+        pub fn fetch(&mut self, rid: u32, start: u64, end: u64) -> Result<()> {
             let contig = {
-                let contig = self.header(0).rid2name(rid).clone();
+                let contig = self.header(0).rid2name(rid).unwrap(); //.clone();
                 ffi::CString::new(contig).unwrap()
             };
-            let contig = contig.as_ptr();
-            if unsafe { htslib::bcf_sr_seek(self.inner, contig, start as i32) } != 0 {
-                Err(FetchError::Some)
+            if unsafe { htslib::bcf_sr_seek(self.inner, contig.as_ptr(), start as i64) } != 0 {
+                Err(Error::GenomicSeek {
+                    contig: contig.to_str().unwrap().to_owned(),
+                    start,
+                })
             } else {
                 self.current_region = Some((rid, start, end));
                 Ok(())
@@ -510,10 +627,15 @@ pub mod synced {
 
     impl Drop for SyncedReader {
         fn drop(&mut self) {
-            unsafe { ::htslib::bcf_sr_destroy(self.inner) };
+            unsafe { crate::htslib::bcf_sr_destroy(self.inner) };
         }
     }
+}
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Format {
+    Vcf,
+    Bcf,
 }
 
 /// A VCF/BCF writer.
@@ -539,12 +661,12 @@ impl Writer {
         path: P,
         header: &Header,
         uncompressed: bool,
-        vcf: bool,
-    ) -> Result<Self, BCFPathError> {
+        format: Format,
+    ) -> Result<Self> {
         if let Some(p) = path.as_ref().to_str() {
-            Ok(try!(Self::new(p.as_bytes(), header, uncompressed, vcf)))
+            Ok(Self::new(p.as_bytes(), header, uncompressed, format)?)
         } else {
-            Err(BCFPathError::InvalidPath)
+            Err(Error::NonUnicodePath)
         }
     }
 
@@ -560,9 +682,9 @@ impl Writer {
         url: &Url,
         header: &Header,
         uncompressed: bool,
-        vcf: bool,
-    ) -> Result<Self, BCFError> {
-        Self::new(url.as_str().as_bytes(), header, uncompressed, vcf)
+        format: Format,
+    ) -> Result<Self> {
+        Self::new(url.as_str().as_bytes(), header, uncompressed, format)
     }
 
     /// Create a new writer to stdout.
@@ -572,19 +694,19 @@ impl Writer {
     /// * `header` - header definition to use
     /// * `uncompressed` - disable compression
     /// * `vcf` - write VCF instead of BCF
-    pub fn from_stdout(header: &Header, uncompressed: bool, vcf: bool) -> Result<Self, BCFError> {
-        Self::new(b"-", header, uncompressed, vcf)
+    pub fn from_stdout(header: &Header, uncompressed: bool, format: Format) -> Result<Self> {
+        Self::new(b"-", header, uncompressed, format)
     }
 
-    fn new(path: &[u8], header: &Header, uncompressed: bool, vcf: bool) -> Result<Self, BCFError> {
-        let mode: &[u8] = match (uncompressed, vcf) {
-            (true, true) => b"w",
-            (false, true) => b"wz",
-            (true, false) => b"wu",
-            (false, false) => b"wb",
+    fn new(path: &[u8], header: &Header, uncompressed: bool, format: Format) -> Result<Self> {
+        let mode: &[u8] = match (uncompressed, format) {
+            (true, Format::Vcf) => b"w",
+            (false, Format::Vcf) => b"wz",
+            (true, Format::Bcf) => b"wbu",
+            (false, Format::Bcf) => b"wb",
         };
 
-        let htsfile = try!(bcf_open(path, mode));
+        let htsfile = bcf_open(path, mode)?;
         unsafe { htslib::bcf_hdr_write(htsfile, header.inner) };
         Ok(Writer {
             inner: htsfile,
@@ -604,7 +726,7 @@ impl Writer {
     ///
     /// This record can then be reused multiple times.
     pub fn empty_record(&self) -> Record {
-        record::Record::new(self.header.clone())
+        record::Record::new(Rc::clone(&self.header))
     }
 
     /// Translate record to header of this writer.
@@ -616,7 +738,7 @@ impl Writer {
         unsafe {
             htslib::bcf_translate(self.header.inner, record.header().inner, record.inner);
         }
-        record.set_header(self.header.clone());
+        record.set_header(Rc::clone(&self.header));
     }
 
     /// Subset samples of record to match header of this writer.
@@ -625,16 +747,15 @@ impl Writer {
     ///
     /// - `record` - The `Record` to modify.
     pub fn subset(&mut self, record: &mut record::Record) {
-        match self.subset {
-            Some(ref mut subset) => unsafe {
+        if let Some(ref mut subset) = self.subset {
+            unsafe {
                 htslib::bcf_subset(
                     self.header.inner,
                     record.inner,
                     subset.len() as i32,
                     subset.as_mut_ptr(),
                 );
-            },
-            None => (),
+            }
         }
     }
 
@@ -643,9 +764,9 @@ impl Writer {
     /// # Arguments
     ///
     /// - `record` - The `Record` to write.
-    pub fn write(&mut self, record: &record::Record) -> Result<(), WriteError> {
+    pub fn write(&mut self, record: &record::Record) -> Result<()> {
         if unsafe { htslib::bcf_write(self.inner, self.header.inner, record.inner) } == -1 {
-            Err(WriteError::Some)
+            Err(Error::WriteRecord)
         } else {
             Ok(())
         }
@@ -657,8 +778,8 @@ impl Writer {
     /// # Arguments
     ///
     /// * `n_threads` - number of extra background writer threads to use, must be `> 0`.
-    pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
-        set_threads(self.inner, n_threads)
+    pub fn set_threads(&mut self, n_threads: usize) -> Result<()> {
+        unsafe { set_threads(self.inner, n_threads) }
     }
 }
 
@@ -671,184 +792,100 @@ impl Drop for Writer {
 }
 
 #[derive(Debug)]
-pub struct Records<'a, R: 'a + Read> {
+pub struct Records<'a, R: Read> {
     reader: &'a mut R,
 }
 
 impl<'a, R: Read> Iterator for Records<'a, R> {
-    type Item = Result<record::Record, ReadError>;
+    type Item = Result<record::Record>;
 
-    fn next(&mut self) -> Option<Result<record::Record, ReadError>> {
+    fn next(&mut self) -> Option<Result<record::Record>> {
         let mut record = self.reader.empty_record();
         match self.reader.read(&mut record) {
-            Err(ReadError::NoMoreRecord) => None,
-            Err(e) => Some(Err(e)),
-            Ok(()) => Some(Ok(record)),
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum AllocationError {
-        Some {
-            description("Error allocating internal data structure")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum BCFError {
-        Some {
-            description("error reading BCF/VCF file")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum BCFPathError {
-        InvalidPath {
-            description("invalid path")
-        }
-        BCFError(err: BCFError) {
-            from()
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum ThreadingError {
-        Some {
-            description("error setting threads for multi-threaded I/O")
+            Some(Err(e)) => Some(Err(e)),
+            Some(Ok(_)) => Some(Ok(record)),
+            None => None,
         }
     }
 }
 
 /// Wrapper for opening a BCF file.
-fn bcf_open(path: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile, BCFError> {
-    let p = ffi::CString::new(path).unwrap();
-    let ret = unsafe { htslib::hts_open(p.as_ptr(), ffi::CString::new(mode).unwrap().as_ptr()) };
+fn bcf_open(target: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
+    let p = ffi::CString::new(target).unwrap();
+    let c_str = ffi::CString::new(mode).unwrap();
+    let ret = unsafe { htslib::hts_open(p.as_ptr(), c_str.as_ptr()) };
+
     if ret.is_null() {
-        Err(BCFError::Some)
-    } else {
-        Ok(ret)
+        return Err(Error::BcfOpen {
+            target: str::from_utf8(target).unwrap().to_owned(),
+        });
     }
-}
 
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum ReadError {
-        Invalid {
-            description("invalid record")
-        }
-        NoMoreRecord {
-            description("no more record")
-        }
-        SyncedBcfReaderError {
-            description("problem reading from synced bcf reader")
+    unsafe {
+        if !(mode.contains(&b'w')
+            || (*ret).format.category == htslib::htsFormatCategory_variant_data)
+        {
+            return Err(Error::BcfOpen {
+                target: str::from_utf8(target).unwrap().to_owned(),
+            });
         }
     }
-}
-
-impl ReadError {
-    /// Returns true if no record has been read because the end of the file was reached.
-    pub fn is_eof(&self) -> bool {
-        match self {
-            &ReadError::NoMoreRecord => true,
-            _ => false,
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum IndexedReaderPathError {
-        InvalidPath {
-            description("invalid path")
-        }
-        IndexedReaderError(err: IndexedReaderError) {
-            from()
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum IndexedReaderError {
-        InvalidPath {
-            description("invalid path")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum WriteError {
-        Some {
-            description("failed to write record")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum FetchError {
-        Some {
-            description("error fetching a locus")
-        }
-    }
+    Ok(ret)
 }
 
 #[cfg(test)]
 mod tests {
-    extern crate tempdir;
+    use super::record::Buffer;
     use super::*;
-    use bcf::header::Id;
-    use bcf::record::Numeric;
+    use crate::bcf::header::Id;
+    use crate::bcf::record::GenotypeAllele;
+    use crate::bcf::record::Numeric;
+    use crate::bcf::Reader;
+    use std::convert::TryFrom;
     use std::fs::File;
     use std::io::prelude::Read as IoRead;
     use std::path::Path;
     use std::str;
 
     fn _test_read<P: AsRef<Path>>(path: &P) {
-        let mut bcf = Reader::from_path(path).ok().expect("Error opening file.");
+        let mut bcf = Reader::from_path(path).expect("Error opening file.");
         assert_eq!(bcf.header.samples(), [b"NA12878.subsample-0.25-0"]);
 
         for (i, rec) in bcf.records().enumerate() {
-            let mut record = rec.ok().expect("Error reading record.");
+            let record = rec.expect("Error reading record.");
             assert_eq!(record.sample_count(), 1);
 
             assert_eq!(record.rid().expect("Error reading rid."), 0);
-            assert_eq!(record.pos(), 10021 + i as u32);
-            assert_eq!(record.qual(), 0f32);
-            assert_eq!(
-                record
-                    .info(b"MQ0F")
+            assert_eq!(record.pos(), 10021 + i as i64);
+            assert!((record.qual() - 0f32).abs() < std::f32::EPSILON);
+            let mut buffer = Buffer::new();
+            assert!(
+                (record
+                    .info_shared_buffer(b"MQ0F", &mut buffer)
                     .float()
-                    .ok()
                     .expect("Error reading info.")
-                    .expect("Missing tag"),
-                [1.0]
+                    .expect("Missing tag")[0]
+                    - 1.0)
+                    .abs()
+                    < std::f32::EPSILON
             );
             if i == 59 {
-                assert_eq!(
-                    record
-                        .info(b"SGB")
+                assert!(
+                    (record
+                        .info_shared_buffer(b"SGB", &mut buffer)
                         .float()
-                        .ok()
                         .expect("Error reading info.")
-                        .expect("Missing tag"),
-                    [-0.379885]
+                        .expect("Missing tag")[0]
+                        - -0.379885)
+                        .abs()
+                        < std::f32::EPSILON
                 );
             }
             // the artificial "not observed" allele is present in each record.
             assert_eq!(record.alleles().iter().last().unwrap(), b"<X>");
 
-            let mut fmt = record.format(b"PL");
-            let pl = fmt.integer().ok().expect("Error reading format.");
+            let fmt = record.format(b"PL");
+            let pl = fmt.integer().expect("Error reading format.");
             assert_eq!(pl.len(), 1);
             if i == 59 {
                 assert_eq!(pl[0].len(), 6);
@@ -866,77 +903,106 @@ mod tests {
     #[test]
     fn test_reader_set_threads() {
         let path = &"test/test.bcf";
-        let mut bcf = Reader::from_path(path).ok().expect("Error opening file.");
+        let mut bcf = Reader::from_path(path).expect("Error opening file.");
         bcf.set_threads(2).unwrap();
     }
 
     #[test]
     fn test_writer_set_threads() {
         let path = &"test/test.bcf";
-        let tmp = tempdir::TempDir::new("rust-htslib")
-            .ok()
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
             .expect("Cannot create temp dir");
         let bcfpath = tmp.path().join("test.bcf");
-        let bcf = Reader::from_path(path).ok().expect("Error opening file.");
+        let bcf = Reader::from_path(path).expect("Error opening file.");
         let header = Header::from_template_subset(&bcf.header, &[b"NA12878.subsample-0.25-0"])
-            .ok()
             .expect("Error subsetting samples.");
-        let mut writer = Writer::from_path(&bcfpath, &header, false, false)
-            .ok()
-            .expect("Error opening file.");
+        let mut writer =
+            Writer::from_path(&bcfpath, &header, false, Format::Bcf).expect("Error opening file.");
         writer.set_threads(2).unwrap();
     }
 
     #[test]
     fn test_fetch() {
-        let mut bcf = IndexedReader::from_path(&"test/test.bcf")
-            .ok()
-            .expect("Error opening file.");
+        let mut bcf = IndexedReader::from_path(&"test/test.bcf").expect("Error opening file.");
         bcf.set_threads(2).unwrap();
         let rid = bcf
             .header()
             .name2rid(b"1")
             .expect("Translating from contig '1' to ID failed.");
-        bcf.fetch(rid, 10_033, 10_060).expect("Fetching failed");
+        bcf.fetch(rid, 10_033, Some(10_060))
+            .expect("Fetching failed");
         assert_eq!(bcf.records().count(), 28);
     }
 
     #[test]
+    fn test_fetch_all() {
+        let mut bcf = IndexedReader::from_path(&"test/test.bcf").expect("Error opening file.");
+        bcf.set_threads(2).unwrap();
+        let rid = bcf
+            .header()
+            .name2rid(b"1")
+            .expect("Translating from contig '1' to ID failed.");
+        bcf.fetch(rid, 0, None).expect("Fetching failed");
+        assert_eq!(bcf.records().count(), 62);
+    }
+
+    #[test]
+    fn test_fetch_open_ended() {
+        let mut bcf = IndexedReader::from_path(&"test/test.bcf").expect("Error opening file.");
+        bcf.set_threads(2).unwrap();
+        let rid = bcf
+            .header()
+            .name2rid(b"1")
+            .expect("Translating from contig '1' to ID failed.");
+        bcf.fetch(rid, 10077, None).expect("Fetching failed");
+        assert_eq!(bcf.records().count(), 6);
+    }
+
+    #[test]
+    fn test_fetch_start_greater_than_last_vcf_pos() {
+        let mut bcf = IndexedReader::from_path(&"test/test.bcf").expect("Error opening file.");
+        bcf.set_threads(2).unwrap();
+        let rid = bcf
+            .header()
+            .name2rid(b"1")
+            .expect("Translating from contig '1' to ID failed.");
+        bcf.fetch(rid, 20077, None).expect("Fetching failed");
+        assert_eq!(bcf.records().count(), 0);
+    }
+
+    #[test]
     fn test_write() {
-        let mut bcf = Reader::from_path(&"test/test_multi.bcf")
-            .ok()
-            .expect("Error opening file.");
-        let tmp = tempdir::TempDir::new("rust-htslib")
-            .ok()
+        let mut bcf = Reader::from_path(&"test/test_multi.bcf").expect("Error opening file.");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
             .expect("Cannot create temp dir");
         let bcfpath = tmp.path().join("test.bcf");
         println!("{:?}", bcfpath);
         {
             let header = Header::from_template_subset(&bcf.header, &[b"NA12878.subsample-0.25-0"])
-                .ok()
                 .expect("Error subsetting samples.");
-            let mut writer = Writer::from_path(&bcfpath, &header, false, false)
-                .ok()
+            let mut writer = Writer::from_path(&bcfpath, &header, false, Format::Bcf)
                 .expect("Error opening file.");
             for rec in bcf.records() {
-                let mut record = rec.ok().expect("Error reading record.");
+                let mut record = rec.expect("Error reading record.");
                 writer.translate(&mut record);
                 writer.subset(&mut record);
-                record.trim_alleles().ok().expect("Error trimming alleles.");
-                writer.write(&record).ok().expect("Error writing record");
+                record.trim_alleles().expect("Error trimming alleles.");
+                writer.write(&record).expect("Error writing record");
             }
         }
         {
             _test_read(&bcfpath);
         }
-        tmp.close().ok().expect("Failed to delete temp dir");
+        tmp.close().expect("Failed to delete temp dir");
     }
 
     #[test]
     fn test_strings() {
-        let mut vcf = Reader::from_path(&"test/test_string.vcf")
-            .ok()
-            .expect("Error opening file.");
+        let mut vcf = Reader::from_path(&"test/test_string.vcf").expect("Error opening file.");
         let fs1 = [
             &b"LongString1"[..],
             &b"LongString2"[..],
@@ -945,33 +1011,28 @@ mod tests {
             &b"evenlength"[..],
             &b"ss6"[..],
         ];
+        let mut buffer = Buffer::new();
         for (i, rec) in vcf.records().enumerate() {
             println!("record {}", i);
-            let mut record = rec.ok().expect("Error reading record.");
+            let record = rec.expect("Error reading record.");
             assert_eq!(
                 record
-                    .info(b"S1")
+                    .info_shared_buffer(b"S1", &mut buffer)
                     .string()
-                    .ok()
                     .expect("Error reading string.")
                     .expect("Missing tag")[0],
                 format!("string{}", i + 1).as_bytes()
             );
-            println!(
-                "{}",
-                String::from_utf8_lossy(
-                    record
-                        .format(b"FS1")
-                        .string()
-                        .ok()
-                        .expect("Error reading string.")[0]
-                )
-            );
+            let fs1_str_vec = record
+                .format_shared_buffer(b"FS1", &mut buffer)
+                .string()
+                .expect("Error reading string.");
+            assert_eq!(fs1_str_vec.len(), 2);
+            println!("{}", String::from_utf8_lossy(fs1_str_vec[0]));
             assert_eq!(
                 record
                     .format(b"FS1")
                     .string()
-                    .ok()
                     .expect("Error reading string.")[0],
                 fs1[i]
             );
@@ -980,9 +1041,7 @@ mod tests {
 
     #[test]
     fn test_missing() {
-        let mut vcf = Reader::from_path(&"test/test_missing.vcf")
-            .ok()
-            .expect("Error opening file.");
+        let mut vcf = Reader::from_path(&"test/test_missing.vcf").expect("Error opening file.");
         let fn4 = [
             &[
                 i32::missing(),
@@ -993,13 +1052,13 @@ mod tests {
             &[i32::missing()][..],
         ];
         let f1 = [false, true];
+        let mut buffer = Buffer::new();
         for (i, rec) in vcf.records().enumerate() {
-            let mut record = rec.ok().expect("Error reading record.");
+            let record = rec.expect("Error reading record.");
             assert_eq!(
                 record
-                    .info(b"F1")
+                    .info_shared_buffer(b"F1", &mut buffer)
                     .float()
-                    .ok()
                     .expect("Error reading float.")
                     .expect("Missing tag")[0]
                     .is_nan(),
@@ -1009,16 +1068,11 @@ mod tests {
                 record
                     .format(b"FN4")
                     .integer()
-                    .ok()
                     .expect("Error reading integer.")[1],
                 fn4[i]
             );
             assert!(
-                record
-                    .format(b"FF4")
-                    .float()
-                    .ok()
-                    .expect("Error reading float.")[1]
+                record.format(b"FF4").float().expect("Error reading float.")[1]
                     .iter()
                     .all(|&v| v.is_missing())
             );
@@ -1027,12 +1081,10 @@ mod tests {
 
     #[test]
     fn test_genotypes() {
-        let mut vcf = Reader::from_path(&"test/test_string.vcf")
-            .ok()
-            .expect("Error opening file.");
+        let mut vcf = Reader::from_path(&"test/test_string.vcf").expect("Error opening file.");
         let expected = ["./1", "1|1", "0/1", "0|1", "1|.", "1/1"];
-        for (rec, exp_gt) in vcf.records().zip(expected.into_iter()) {
-            let mut rec = rec.ok().expect("Error reading record.");
+        for (rec, exp_gt) in vcf.records().zip(expected.iter()) {
+            let rec = rec.expect("Error reading record.");
             let genotypes = rec.genotypes().expect("Error reading genotypes");
             assert_eq!(&format!("{}", genotypes.get(0)), exp_gt);
         }
@@ -1040,11 +1092,9 @@ mod tests {
 
     #[test]
     fn test_header_ids() {
-        let vcf = Reader::from_path(&"test/test_string.vcf")
-            .ok()
-            .expect("Error opening file.");
+        let vcf = Reader::from_path(&"test/test_string.vcf").expect("Error opening file.");
         let header = &vcf.header();
-        use bcf::header::Id;
+        use crate::bcf::header::Id;
 
         assert_eq!(header.id_to_name(Id(4)), b"GT");
         assert_eq!(header.name_to_id(b"GT").unwrap(), Id(4));
@@ -1053,9 +1103,7 @@ mod tests {
 
     #[test]
     fn test_header_samples() {
-        let vcf = Reader::from_path(&"test/test_string.vcf")
-            .ok()
-            .expect("Error opening file.");
+        let vcf = Reader::from_path(&"test/test_string.vcf").expect("Error opening file.");
         let header = &vcf.header();
 
         assert_eq!(header.id_to_sample(Id(0)), b"one");
@@ -1066,15 +1114,32 @@ mod tests {
     }
 
     #[test]
+    fn test_header_contigs() {
+        let vcf = Reader::from_path(&"test/test_multi.bcf").expect("Error opening file.");
+        let header = &vcf.header();
+
+        assert_eq!(header.contig_count(), 86);
+
+        // test existing contig names and IDs
+        assert_eq!(header.rid2name(0).unwrap(), b"1");
+        assert_eq!(header.name2rid(b"1").unwrap(), 0);
+
+        assert_eq!(header.rid2name(85).unwrap(), b"hs37d5");
+        assert_eq!(header.name2rid(b"hs37d5").unwrap(), 85);
+
+        // test nonexistent contig names and IDs
+        assert!(header.name2rid(b"nonexistent_contig").is_err());
+        assert!(header.rid2name(100).is_err());
+    }
+
+    #[test]
     fn test_header_records() {
-        let vcf = Reader::from_path(&"test/test_string.vcf")
-            .ok()
-            .expect("Error opening file.");
+        let vcf = Reader::from_path(&"test/test_string.vcf").expect("Error opening file.");
         let records = vcf.header().header_records();
         assert_eq!(records.len(), 10);
 
-        match &records[1] {
-            &HeaderRecord::Filter {
+        match records[1] {
+            HeaderRecord::Filter {
                 ref key,
                 ref values,
             } => {
@@ -1082,9 +1147,82 @@ mod tests {
                 assert_eq!(values["ID"], "PASS");
             }
             _ => {
-                assert!(false);
+                panic!("Invalid HeaderRecord");
             }
         }
+    }
+
+    #[test]
+    fn test_header_info_types() {
+        let vcf = Reader::from_path(&"test/test.bcf").unwrap();
+        let header = vcf.header();
+        let truth = vec![
+            (
+                // INFO=<ID=INDEL,Number=0,Type=Flag>
+                "INDEL",
+                header::TagType::Flag,
+                header::TagLength::Fixed(0),
+            ),
+            (
+                // INFO=<ID=DP,Number=1,Type=Integer>
+                "DP",
+                header::TagType::Integer,
+                header::TagLength::Fixed(1),
+            ),
+            (
+                // INFO=<ID=QS,Number=R,Type=Float>
+                "QS",
+                header::TagType::Float,
+                header::TagLength::Alleles,
+            ),
+            (
+                // INFO=<ID=I16,Number=16,Type=Float>
+                "I16",
+                header::TagType::Float,
+                header::TagLength::Fixed(16),
+            ),
+        ];
+        for (ref_name, ref_type, ref_length) in truth {
+            let (tag_type, tag_length) = header.info_type(ref_name.as_bytes()).unwrap();
+            assert_eq!(tag_type, ref_type);
+            assert_eq!(tag_length, ref_length);
+        }
+
+        let vcf = Reader::from_path(&"test/test_svlen.vcf").unwrap();
+        let header = vcf.header();
+        let truth = vec![
+            (
+                // INFO=<ID=IMPRECISE,Number=0,Type=Flag>
+                "IMPRECISE",
+                header::TagType::Flag,
+                header::TagLength::Fixed(0),
+            ),
+            (
+                // INFO=<ID=SVTYPE,Number=1,Type=String>
+                "SVTYPE",
+                header::TagType::String,
+                header::TagLength::Fixed(1),
+            ),
+            (
+                // INFO=<ID=SVLEN,Number=.,Type=Integer>
+                "SVLEN",
+                header::TagType::Integer,
+                header::TagLength::Variable,
+            ),
+            (
+                // INFO<ID=CIGAR,Number=A,Type=String>
+                "CIGAR",
+                header::TagType::String,
+                header::TagLength::AltAlleles,
+            ),
+        ];
+        for (ref_name, ref_type, ref_length) in truth {
+            let (tag_type, tag_length) = header.info_type(ref_name.as_bytes()).unwrap();
+            assert_eq!(tag_type, ref_type);
+            assert_eq!(tag_length, ref_length);
+        }
+
+        assert!(header.info_type(b"NOT_THERE").is_err());
     }
 
     #[test]
@@ -1102,10 +1240,10 @@ mod tests {
     // Helper function reading full file into string.
     fn read_all<P: AsRef<Path>>(path: P) -> String {
         let mut file = File::open(path.as_ref())
-            .expect(&format!("Unable to open the file: {:?}", path.as_ref()));
+            .unwrap_or_else(|_| panic!("Unable to open the file: {:?}", path.as_ref()));
         let mut contents = String::new();
         file.read_to_string(&mut contents)
-            .expect(&format!("Unable to read the file: {:?}", path.as_ref()));
+            .unwrap_or_else(|_| panic!("Unable to read the file: {:?}", path.as_ref()));
         contents
     }
 
@@ -1115,62 +1253,68 @@ mod tests {
     #[test]
     fn test_write_various() {
         // Open reader, then create writer.
-        let tmp = tempdir::TempDir::new("rust-htslib")
-            .ok()
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
             .expect("Cannot create temp dir");
         let out_path = tmp.path().join("test_various.out.vcf");
 
-        let vcf = Reader::from_path(&"test/test_various.vcf")
-            .ok()
-            .expect("Error opening file.");
+        let vcf = Reader::from_path(&"test/test_various.vcf").expect("Error opening file.");
         // The writer goes into its own block so we can ensure that the file is closed and
         // all data is written below.
         {
-            let mut writer =
-                Writer::from_path(&out_path, &Header::from_template(&vcf.header()), true, true)
-                    .ok()
-                    .expect("Error opening file.");
-            let header = writer.header().clone();
+            let mut writer = Writer::from_path(
+                &out_path,
+                &Header::from_template(&vcf.header()),
+                true,
+                Format::Vcf,
+            )
+            .expect("Error opening file.");
 
             // Setup empty record, filled below.
             let mut record = writer.empty_record();
 
-            record.set_rid(&Some(0));
+            record.set_rid(Some(0));
             assert_eq!(record.rid().unwrap(), 0);
 
             record.set_pos(12);
             assert_eq!(record.pos(), 12);
 
-            assert_eq!(str::from_utf8(record.id().as_ref()).ok().unwrap(), ".");
-            record.set_id("to_be_cleared".as_bytes()).unwrap();
+            assert_eq!(str::from_utf8(record.id().as_ref()).unwrap(), ".");
+            record.set_id(b"to_be_cleared").unwrap();
             assert_eq!(
-                str::from_utf8(record.id().as_ref()).ok().unwrap(),
+                str::from_utf8(record.id().as_ref()).unwrap(),
                 "to_be_cleared"
             );
             record.clear_id().unwrap();
-            assert_eq!(str::from_utf8(record.id().as_ref()).ok().unwrap(), ".");
-            record.set_id("first_id".as_bytes()).unwrap();
-            record.push_id("second_id".as_bytes()).unwrap();
-            record.push_id("first_id".as_bytes()).unwrap();
+            assert_eq!(str::from_utf8(record.id().as_ref()).unwrap(), ".");
+            record.set_id(b"first_id").unwrap();
+            record.push_id(b"second_id").unwrap();
+            record.push_id(b"first_id").unwrap();
 
             assert!(record.filters().next().is_none());
-            record.set_filters(&[header.name_to_id(b"q10").unwrap()]);
-            record.push_filter(header.name_to_id(b"s50").unwrap());
-            record.remove_filter(header.name_to_id(b"q10").unwrap(), true);
-            record.push_filter(header.name_to_id(b"q10").unwrap());
+            record.set_filters(&["q10".as_bytes()]).unwrap();
+            record.push_filter("s50".as_bytes()).unwrap();
+            record.remove_filter("q10".as_bytes(), true).unwrap();
+            record.push_filter("q10".as_bytes()).unwrap();
 
-            record
-                .set_alleles(&["C".as_bytes(), "T".as_bytes(), "G".as_bytes()])
-                .unwrap();
+            record.set_alleles(&[b"C", b"T", b"G"]).unwrap();
 
             record.set_qual(10.0);
 
             record.push_info_integer(b"N1", &[32]).unwrap();
             record.push_info_float(b"F1", &[33.0]).unwrap();
-            record
-                .push_info_string(b"S1", &["fourtytwo".as_bytes()])
-                .unwrap();
+            record.push_info_string(b"S1", &[b"fourtytwo"]).unwrap();
             record.push_info_flag(b"X1").unwrap();
+
+            record
+                .push_genotypes(&[
+                    GenotypeAllele::Unphased(0),
+                    GenotypeAllele::Unphased(1),
+                    GenotypeAllele::Unphased(1),
+                    GenotypeAllele::Phased(1),
+                ])
+                .unwrap();
 
             record
                 .push_format_string(b"FS1", &[&b"yes"[..], &b"no"[..]])
@@ -1193,13 +1337,12 @@ mod tests {
 
     #[test]
     fn test_remove_headers() {
-        let vcf = Reader::from_path(&"test/test_headers.vcf")
-            .ok()
-            .expect("Error opening file.");
-        let tmp = tempdir::TempDir::new("rust-htslib")
-            .ok()
+        let vcf = Reader::from_path(&"test/test_headers.vcf").expect("Error opening file.");
+        let tmp = tempfile::Builder::new()
+            .prefix("rust-htslib")
+            .tempdir()
             .expect("Cannot create temp dir");
-        let bcfpath = tmp.path().join("test.vcf");
+        let vcfpath = tmp.path().join("test.vcf");
         let mut header = Header::from_template(&vcf.header);
         header
             .remove_contig(b"contig2")
@@ -1209,14 +1352,13 @@ mod tests {
             .remove_structured(b"Foo2")
             .remove_generic(b"Bar2");
         {
-            let mut _writer = Writer::from_path(&bcfpath, &header, true, true)
-                .ok()
+            let mut _writer = Writer::from_path(&vcfpath, &header, true, Format::Vcf)
                 .expect("Error opening output file.");
             // Note that we don't need to write anything, we are just looking at the header.
         }
 
         let expected = read_all("test/test_headers.out.vcf");
-        let actual = read_all(&bcfpath);
+        let actual = read_all(&vcfpath);
         assert_eq!(expected, actual);
     }
 
@@ -1280,4 +1422,168 @@ mod tests {
         let res4 = reader.read_next();
         assert_eq!(res4.unwrap(), 0);
     }
+
+    #[test]
+    fn test_svlen() {
+        let mut reader = Reader::from_path("test/test_svlen.vcf").unwrap();
+
+        let mut record = reader.empty_record();
+        reader.read(&mut record).unwrap().unwrap();
+
+        assert_eq!(
+            *record.info(b"SVLEN").integer().unwrap().unwrap(),
+            &[-127][..]
+        );
+    }
+
+    #[test]
+    fn test_fails_on_bam() {
+        let reader = Reader::from_path("test/test.bam");
+        assert!(reader.is_err());
+    }
+
+    #[test]
+    fn test_fails_on_non_existiant() {
+        let reader = Reader::from_path("test/no_such_file");
+        assert!(reader.is_err());
+    }
+
+    #[test]
+    fn test_multi_string_info_tag() {
+        let mut reader = Reader::from_path("test/test-info-multi-string.vcf").unwrap();
+        let mut rec = reader.empty_record();
+        let _ = reader.read(&mut rec);
+
+        assert_eq!(
+            rec.info_shared_buffer(b"ANN", Buffer::new())
+                .string()
+                .unwrap()
+                .unwrap()
+                .len(),
+            14
+        );
+    }
+
+    #[test]
+    fn test_multi_string_info_tag_number_a() {
+        let mut reader = Reader::from_path("test/test-info-multi-string-number=A.vcf").unwrap();
+        let mut rec = reader.empty_record();
+        let _ = reader.read(&mut rec);
+
+        assert_eq!(
+            rec.info_shared_buffer(b"X", Buffer::new())
+                .string()
+                .unwrap()
+                .unwrap()
+                .len(),
+            2
+        );
+    }
+
+    #[test]
+    fn test_genotype_allele_conversion() {
+        let allele = GenotypeAllele::Unphased(1);
+        let converted: i32 = allele.into();
+        let expected = 4;
+        assert_eq!(converted, expected);
+        let reverse_conversion = GenotypeAllele::from(expected);
+        assert_eq!(allele, reverse_conversion);
+    }
+
+    #[test]
+    fn test_genotype_missing_allele_conversion() {
+        let allele = GenotypeAllele::PhasedMissing;
+        let converted: i32 = allele.into();
+        let expected = 1;
+        assert_eq!(converted, expected);
+        let reverse_conversion = GenotypeAllele::from(expected);
+        assert_eq!(allele, reverse_conversion);
+    }
+
+    #[test]
+    fn test_alt_allele_dosage() {
+        let path = &"test/test_string.vcf";
+        let mut bcf = Reader::from_path(path).expect("Error opening file.");
+        let _header = bcf.header();
+        // FORMAT fields of first record of the vcf should look like:
+        // GT:FS1:FN1	./1:LongString1:1	1/1:ss1:2
+        let first_record = bcf.records().next().unwrap().expect("Fail to read record");
+        let sample_count = usize::try_from(first_record.sample_count()).unwrap();
+        assert_eq!(sample_count, 2);
+        let mut n_ref = vec![0; sample_count];
+        let mut n_alt = vec![0; sample_count];
+        let mut n_missing = vec![0; sample_count];
+        let gts = first_record.genotypes().expect("Error reading genotypes");
+        for sample_index in 0..sample_count {
+            // for each sample
+            for gta in gts.get(sample_index).iter() {
+                // for each allele
+                match gta.index() {
+                    Some(0) => n_ref[sample_index] += 1,  // reference allele
+                    Some(_) => n_alt[sample_index] += 1,  // alt allele
+                    None => n_missing[sample_index] += 1, // missing allele
+                }
+            }
+        }
+        assert_eq!(n_ref, [0, 0]);
+        assert_eq!(n_alt, [1, 2]);
+        assert_eq!(n_missing, [1, 0]);
+    }
+
+    #[test]
+    fn test_obs_cornercase() {
+        let mut reader = Reader::from_path("test/obs-cornercase.vcf").unwrap();
+        let first_record = reader
+            .records()
+            .next()
+            .unwrap()
+            .expect("Fail to read record");
+
+        assert_eq!(
+            *first_record.info(b"EVENT").string().unwrap().unwrap(),
+            [b"gridss33fb_1085"]
+        );
+        assert_eq!(
+            *first_record.info(b"MATEID").string().unwrap().unwrap(),
+            [b"gridss33fb_1085h"]
+        );
+    }
+
+    #[test]
+    fn test_trailing_omitted_format_fields() {
+        let mut reader = Reader::from_path("test/test_trailing_omitted_format.vcf").unwrap();
+        let first_record = reader
+            .records()
+            .next()
+            .unwrap()
+            .expect("Fail to read record");
+
+        let expected: Vec<&[u8]> = Vec::new();
+        assert_eq!(*first_record.format(b"STR").string().unwrap(), expected,);
+        assert_eq!(
+            *first_record.format(b"INT").integer().unwrap(),
+            vec![&[i32::missing()]],
+        );
+        assert!(first_record.format(b"FLT").float().unwrap()[0][0].is_nan(),);
+    }
+
+    // #[test]
+    // fn test_buffer_lifetime() {
+    //     let mut reader = Reader::from_path("test/obs-cornercase.vcf").unwrap();
+    //     let first_record = reader
+    //         .records()
+    //         .next()
+    //         .unwrap()
+    //         .expect("Fail to read record");
+
+    //     fn get_value<'a, 'b>(record: &'a Record) -> &'b [u8] {
+    //         // FIXME: this should not be possible, because the slice outlives the buffer.
+    //         let buffer: BufferBacked<'b, _, _> = record.info(b"EVENT").string().unwrap().unwrap();
+    //         let value: &'b [u8] = buffer[0];
+    //         value
+    //     }
+
+    //     let buffered = first_record.info(b"EVENT").string().unwrap().unwrap();
+    //     assert_eq!(get_value(&first_record), buffered[0]);
+    // }
 }

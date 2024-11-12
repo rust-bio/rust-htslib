@@ -1,0 +1,10 @@
+@HD	VN:1.5	SO:coordinate
+@SQ	SN:chr1	LN:120	M5:20a9a0fb770814e6c5e49946750f9724	UR:/stornext/snfs5/next-gen/scratch/farek/pkg/github/forks/rust-htslib/test/test_cram.fa
+@SQ	SN:chr2	LN:120	M5:7a2006ccca94ea92b6dae5997e1b0d70	UR:/stornext/snfs5/next-gen/scratch/farek/pkg/github/forks/rust-htslib/test/test_cram.fa
+@SQ	SN:chr3	LN:120	M5:a66b336bfe3ee8801c744c9545c87e24	UR:/stornext/snfs5/next-gen/scratch/farek/pkg/github/forks/rust-htslib/test/test_cram.fa
+chr1.1	163	chr1	5	0	20M	=	35	50	ACAGCCTCACCCAGGAAAGC	FFFFFFFFFFFFFFFFFFF:	MD:Z:20	NM:i:0
+chr1.2	83	chr1	35	0	20M	=	5	-50	CCACTGGGCTCAGGGAAGAC	FFFFFFFFFFFFFFFFFF::	MD:Z:20	NM:i:0
+chr2.1	99	chr2	15	0	20M	=	45	50	AATTTAAAATTGAAGACTTC	FFFFFFFFFFFFFFFFFFF:	MD:Z:20	NM:i:0
+chr2.2	147	chr2	45	0	15M1D5M	=	15	-50	AAGACATTGTTAAGAAATGA	FFFFFFFFFFFFFFFFFF::	MD:Z:15^T5	NM:i:1
+chr3.1	163	chr3	25	0	20M	=	55	50	CAGTGGAGAAGGAAACTTGG	FFFFFFFFFFFFFFFFFFF:	MD:Z:20	NM:i:0
+chr3.2	83	chr3	55	0	15M1I4M	=	25	-50	CCCATCAAGGTTGTATAGAA	FFFFFFFFFFFFFFFFFF::	MD:Z:19	NM:i:1

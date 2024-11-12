@@ -7,10 +7,11 @@ use std::fmt;
 use std::iter;
 use std::slice;
 
-use htslib;
+use crate::htslib;
 
-use bam;
-use bam::record;
+use crate::bam;
+use crate::bam::record;
+use crate::errors::{Error, Result};
 
 /// Iterator over alignments of a pileup.
 pub type Alignments<'a> = iter::Map<
@@ -40,7 +41,7 @@ impl Pileup {
         self.depth
     }
 
-    pub fn alignments(&self) -> Alignments {
+    pub fn alignments(&self) -> Alignments<'_> {
         self.inner().iter().map(Alignment::new)
     }
 
@@ -60,14 +61,14 @@ pub struct Alignment<'a> {
 }
 
 impl<'a> fmt::Debug for Alignment<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Alignment")
     }
 }
 
 impl<'a> Alignment<'a> {
     pub fn new(inner: &'a htslib::bam_pileup1_t) -> Self {
-        Alignment { inner: inner }
+        Alignment { inner }
     }
 
     /// Position within the read. None if either `is_del` or `is_refskip`.
@@ -124,7 +125,7 @@ pub enum Indel {
 
 /// Iterator over pileups.
 #[derive(Debug)]
-pub struct Pileups<'a, R: 'a + bam::Read> {
+pub struct Pileups<'a, R: bam::Read> {
     #[allow(dead_code)]
     reader: &'a mut R,
     itr: htslib::bam_plp_t,
@@ -132,31 +133,39 @@ pub struct Pileups<'a, R: 'a + bam::Read> {
 
 impl<'a, R: bam::Read> Pileups<'a, R> {
     pub fn new(reader: &'a mut R, itr: htslib::bam_plp_t) -> Self {
-        Pileups {
-            reader: reader,
-            itr: itr,
-        }
+        Pileups { reader, itr }
     }
 
+    /// Warning: because htslib internally uses signed integer for depth this method
+    /// will panic if `depth` exceeds `i32::max_value()`.
     pub fn set_max_depth(&mut self, depth: u32) {
+        if depth > i32::max_value() as u32 {
+            panic!(
+                "Maximum value for pileup depth is {} but {} was provided",
+                i32::max_value(),
+                depth
+            )
+        }
+        let intdepth = depth as i32;
         unsafe {
-            htslib::bam_plp_set_maxcnt(self.itr, depth as i32);
+            htslib::bam_plp_set_maxcnt(self.itr, intdepth);
         }
     }
 }
 
 impl<'a, R: bam::Read> Iterator for Pileups<'a, R> {
-    type Item = Result<Pileup, PileupError>;
+    type Item = Result<Pileup>;
 
-    fn next(&mut self) -> Option<Result<Pileup, PileupError>> {
+    #[allow(clippy::match_bool)]
+    fn next(&mut self) -> Option<Result<Pileup>> {
         let (mut tid, mut pos, mut depth) = (0i32, 0i32, 0i32);
         let inner = unsafe { htslib::bam_plp_auto(self.itr, &mut tid, &mut pos, &mut depth) };
 
         match inner.is_null() {
-            true if depth == -1 => Some(Err(PileupError::Some)),
+            true if depth == -1 => Some(Err(Error::BamPileup)),
             true => None,
             false => Some(Ok(Pileup {
-                inner: inner,
+                inner,
                 depth: depth as u32,
                 tid: tid as u32,
                 pos: pos as u32,
@@ -174,11 +183,25 @@ impl<'a, R: bam::Read> Drop for Pileups<'a, R> {
     }
 }
 
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum PileupError {
-        Some {
-            description("error generating pileup")
-        }
+#[cfg(test)]
+mod tests {
+
+    use crate::bam;
+    use crate::bam::Read;
+
+    #[test]
+    fn test_max_pileup() {
+        let mut bam = bam::Reader::from_path(&"test/test.bam").unwrap();
+        let mut p = bam.pileup();
+        p.set_max_depth(0u32);
+        p.set_max_depth(800u32);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_max_pileup_to_high() {
+        let mut bam = bam::Reader::from_path(&"test/test.bam").unwrap();
+        let mut p = bam.pileup();
+        p.set_max_depth((i32::max_value() as u32) + 1);
     }
 }

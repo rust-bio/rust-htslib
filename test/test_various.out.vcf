@@ -13,4 +13,4 @@
 ##FORMAT=<ID=CH1,Number=1,Type=Character,Description="Single FORMAT char">
 ##contig=<ID=19,length=59128983>
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	one	two
-19	13	first_id;second_id	C	T,G	10	s50;q10	N1=32;F1=33;S1=fourtytwo;X1	FS1:FF1:FN1:CH1	yes:43:42:A	no:11:10:B
+19	13	first_id;second_id	C	T,G	10	s50;q10	N1=32;F1=33;S1=fourtytwo;X1	GT:FS1:FF1:FN1:CH1	0/1:yes:43:42:A	1|1:no:11:10:B

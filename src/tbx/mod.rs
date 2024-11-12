@@ -41,14 +41,14 @@
 //! }
 //! ```
 
-use libc;
 use std::ffi;
-use std::mem;
 use std::path::Path;
 use std::ptr;
 use url::Url;
 
-use htslib;
+use crate::errors::{Error, Result};
+use crate::htslib;
+use crate::utils::path_as_bytes;
 
 /// A trait for a Tabix reader with a read method.
 pub trait Read: Sized {
@@ -60,14 +60,17 @@ pub trait Read: Sized {
     /// # Arguments
     ///
     /// * `record` - the `Vec<u8>` to be filled
-    fn read(&mut self, record: &mut Vec<u8>) -> Result<(), ReadError>;
+    ///
+    /// # Returns
+    /// Ok(true) if record was read, Ok(false) if no more record in file
+    fn read(&mut self, record: &mut Vec<u8>) -> Result<bool>;
 
     /// Iterator over the lines/records of the seeked region.
     ///
     /// Note that, while being convenient, this is less efficient than pre-allocating a
     /// `Vec<u8>` and reading into it with the `read()` method, since every iteration involves
     /// the allocation of a new `Vec<u8>`.
-    fn records(&mut self) -> Records<Self>;
+    fn records(&mut self) -> Records<'_, Self>;
 
     /// Return the text headers, split by line.
     fn header(&self) -> &Vec<String>;
@@ -97,11 +100,11 @@ pub struct Reader {
     itr: Option<*mut htslib::hts_itr_t>,
 
     /// The currently fetch region's tid.
-    tid: i32,
+    tid: i64,
     /// The currently fetch region's 0-based begin pos.
-    start: i32,
+    start: i64,
     /// The currently fetch region's 0-based end pos.
-    end: i32,
+    end: i64,
 }
 
 unsafe impl Send for Reader {}
@@ -115,15 +118,11 @@ impl Reader {
     /// # Arguments
     ///
     /// * `path` - the path to open.
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, TabixReaderPathError> {
-        if let Some(p) = path.as_ref().to_str() {
-            Ok(try!(Self::new(p.as_bytes())))
-        } else {
-            Err(TabixReaderPathError::InvalidPath)
-        }
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
+        Self::new(&path_as_bytes(path, true)?)
     }
 
-    pub fn from_url(url: &Url) -> Result<Self, TabixReaderError> {
+    pub fn from_url(url: &Url) -> Result<Self> {
         Self::new(url.as_str().as_bytes())
     }
 
@@ -132,12 +131,19 @@ impl Reader {
     /// # Arguments
     ///
     /// * `path` - the path.
-    fn new(path: &[u8]) -> Result<Self, TabixReaderError> {
+    fn new(path: &[u8]) -> Result<Self> {
         let path = ffi::CString::new(path).unwrap();
-        let hts_file =
-            unsafe { htslib::hts_open(path.as_ptr(), ffi::CString::new("r").unwrap().as_ptr()) };
-        let hts_format = unsafe { (*htslib::hts_get_format(hts_file)).format };
+        let c_str = ffi::CString::new("r").unwrap();
+        let hts_file = unsafe { htslib::hts_open(path.as_ptr(), c_str.as_ptr()) };
+        let hts_format: u32 = unsafe {
+            let file_format: *const hts_sys::htsFormat = htslib::hts_get_format(hts_file);
+            (*file_format).format
+        };
+
         let tbx = unsafe { htslib::tbx_index_load(path.as_ptr()) };
+        if tbx.is_null() {
+            return Err(Error::TabixInvalidIndex);
+        }
         let mut header = Vec::new();
         let mut buf = htslib::kstring_t {
             l: 0,
@@ -146,7 +152,7 @@ impl Reader {
         };
         unsafe {
             while htslib::hts_getline(hts_file, KS_SEP_LINE, &mut buf) >= 0 {
-                if buf.l > 0 && (*buf.s) as i32 == (*tbx).conf.meta_char {
+                if buf.l > 0 && i32::from(*buf.s) == (*tbx).conf.meta_char {
                     header.push(String::from(ffi::CStr::from_ptr(buf.s).to_str().unwrap()));
                 } else {
                     break;
@@ -154,44 +160,37 @@ impl Reader {
             }
         }
 
-        if tbx.is_null() {
-            Err(TabixReaderError::InvalidIndex)
-        } else {
-            Ok(Reader {
-                header,
-                hts_file,
-                hts_format,
-                tbx,
-                buf,
-                itr: None,
-                tid: -1,
-                start: -1,
-                end: -1,
-            })
-        }
+        Ok(Reader {
+            header,
+            hts_file,
+            hts_format,
+            tbx,
+            buf,
+            itr: None,
+            tid: -1,
+            start: -1,
+            end: -1,
+        })
     }
 
     /// Get sequence/target ID from sequence name.
-    pub fn tid(&self, name: &str) -> Result<u32, SequenceLookupError> {
-        // TODO: naming?
-        let res = unsafe {
-            htslib::tbx_name2id(
-                self.tbx,
-                ffi::CString::new(name.as_bytes()).unwrap().as_ptr(),
-            )
-        };
+    pub fn tid(&self, name: &str) -> Result<u64> {
+        let name_cstr = ffi::CString::new(name.as_bytes()).unwrap();
+        let res = unsafe { htslib::tbx_name2id(self.tbx, name_cstr.as_ptr()) };
         if res < 0 {
-            Err(SequenceLookupError::Some)
+            Err(Error::UnknownSequence {
+                sequence: name.to_owned(),
+            })
         } else {
-            Ok(res as u32)
+            Ok(res as u64)
         }
     }
 
     /// Fetch region given by numeric sequence number and 0-based begin and end position.
-    pub fn fetch(&mut self, tid: u32, start: u32, end: u32) -> Result<(), FetchError> {
-        self.tid = tid as i32;
-        self.start = start as i32;
-        self.end = end as i32;
+    pub fn fetch(&mut self, tid: u64, start: u64, end: u64) -> Result<()> {
+        self.tid = tid as i64;
+        self.start = start as i64;
+        self.end = end as i64;
 
         if let Some(itr) = self.itr {
             unsafe {
@@ -202,14 +201,14 @@ impl Reader {
             htslib::hts_itr_query(
                 (*self.tbx).idx,
                 tid as i32,
-                start as i32,
-                end as i32,
+                start as i64,
+                end as i64,
                 Some(htslib::tbx_readrec),
             )
         };
         if itr.is_null() {
             self.itr = None;
-            Err(FetchError::Some)
+            Err(Error::Fetch)
         } else {
             self.itr = Some(itr);
             Ok(())
@@ -232,7 +231,7 @@ impl Reader {
             }
         }
         unsafe {
-            libc::free(seqs as (*mut libc::c_void));
+            libc::free(seqs as *mut libc::c_void);
         };
 
         result
@@ -244,12 +243,12 @@ impl Reader {
     /// # Arguments
     ///
     /// * `n_threads` - number of extra background reader threads to use
-    pub fn set_threads(&mut self, n_threads: usize) -> Result<(), ThreadingError> {
+    pub fn set_threads(&mut self, n_threads: usize) -> Result<()> {
         assert!(n_threads > 0, "n_threads must be > 0");
 
         let r = unsafe { htslib::hts_set_threads(self.hts_file, n_threads as i32) };
         if r != 0 {
-            Err(ThreadingError::Some)
+            Err(Error::SetThreads)
         } else {
             Ok(())
         }
@@ -257,12 +256,12 @@ impl Reader {
 }
 
 /// Return whether the two given genomic intervals overlap.
-fn overlap(tid1: i32, begin1: i32, end1: i32, tid2: i32, begin2: i32, end2: i32) -> bool {
+fn overlap(tid1: i64, begin1: i64, end1: i64, tid2: i64, begin2: i64, end2: i64) -> bool {
     (tid1 == tid2) && (begin1 < end2) && (begin2 < end1)
 }
 
 impl Read for Reader {
-    fn read(&mut self, record: &mut Vec<u8>) -> Result<(), ReadError> {
+    fn read(&mut self, record: &mut Vec<u8>) -> Result<bool> {
         match self.itr {
             Some(itr) => {
                 loop {
@@ -271,15 +270,17 @@ impl Read for Reader {
                         htslib::hts_itr_next(
                             htslib::hts_get_bgzfp(self.hts_file),
                             itr,
-                            mem::transmute(&mut self.buf),
-                            mem::transmute(self.tbx),
+                            //mem::transmute(&mut self.buf),
+                            &mut self.buf as *mut htslib::kstring_t as *mut libc::c_void,
+                            //mem::transmute(self.tbx),
+                            self.tbx as *mut libc::c_void,
                         )
                     };
                     // Handle errors first.
                     if ret == -1 {
-                        return Err(ReadError::NoMoreRecord);
+                        return Ok(false);
                     } else if ret == -2 {
-                        return Err(ReadError::Truncated);
+                        return Err(Error::TabixTruncatedRecord);
                     } else if ret < 0 {
                         panic!("Return value should not be <0 but was: {}", ret);
                     }
@@ -287,18 +288,19 @@ impl Read for Reader {
                     // returns `< 0`).
                     let (tid, start, end) =
                         unsafe { ((*itr).curr_tid, (*itr).curr_beg, (*itr).curr_end) };
-                    if overlap(self.tid, self.start, self.end, tid, start, end) {
+                    // XXX: Careful with this tid conversion!!!
+                    if overlap(self.tid, self.start, self.end, tid as i64, start, end) {
                         *record =
                             unsafe { Vec::from(ffi::CStr::from_ptr(self.buf.s).to_str().unwrap()) };
-                        return Ok(());
+                        return Ok(true);
                     }
                 }
             }
-            _ => Err(ReadError::NoIter),
+            _ => Err(Error::TabixNoIter),
         }
     }
 
-    fn records(&mut self) -> Records<Self> {
+    fn records(&mut self) -> Records<'_, Self> {
         Records { reader: self }
     }
 
@@ -321,107 +323,20 @@ impl Drop for Reader {
 
 /// Iterator over the lines of a tabix file.
 #[derive(Debug)]
-pub struct Records<'a, R: 'a + Read> {
+pub struct Records<'a, R: Read> {
     reader: &'a mut R,
 }
 
 impl<'a, R: Read> Iterator for Records<'a, R> {
-    type Item = Result<Vec<u8>, ReadError>;
+    type Item = Result<Vec<u8>>;
 
-    fn next(&mut self) -> Option<Result<Vec<u8>, ReadError>> {
+    #[allow(clippy::read_zero_byte_vec)]
+    fn next(&mut self) -> Option<Result<Vec<u8>>> {
         let mut record = Vec::new();
         match self.reader.read(&mut record) {
-            Err(ReadError::NoMoreRecord) => None,
-            Ok(()) => Some(Ok(record)),
+            Ok(false) => None,
+            Ok(true) => Some(Ok(record)),
             Err(err) => Some(Err(err)),
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum ReadError {
-        NoIter {
-            description("previous iterator generation failed")
-        }
-        Truncated {
-            description("truncated record")
-        }
-        Invalid {
-            description("invalid record")
-        }
-        NoMoreRecord {
-            description("no more record")
-        }
-    }
-}
-
-impl ReadError {
-    /// Returns true if no record has been read because the end of the file was reached.
-    pub fn is_eof(&self) -> bool {
-        match self {
-            &ReadError::NoMoreRecord => true,
-            _ => false,
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum TabixReaderError {
-        InvalidIndex {
-            description("invalid index")
-        }
-        BGZFError(err: BGZFError) {
-            from()
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum TabixReaderPathError {
-        InvalidPath {
-            description("invalid path")
-        }
-        TabixReaderError(err: TabixReaderError) {
-            from()
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum BGZFError {
-        Some {
-            description("error reading BGZF file")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum ThreadingError {
-        Some {
-            description("error setting threads for multi-threaded I/O")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum FetchError {
-        Some {
-            description("error fetching a locus")
-        }
-    }
-}
-
-quick_error! {
-    #[derive(Debug, Clone)]
-    pub enum SequenceLookupError {
-        Some {
-            description("error looking up a sequence name")
         }
     }
 }
@@ -431,16 +346,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn bed_header() {
-        let reader = Reader::from_path("test/test_bed3.bed.gz")
-            .ok()
-            .expect("Error opening file.");
-
-        // Check header lines.
-        assert_eq!(
-            reader.header,
-            vec![String::from("#foo"), String::from("#bar")]
-        );
+    fn bed_basic() {
+        let reader =
+            Reader::from_path("test/tabix_reader/test_bed3.bed.gz").expect("Error opening file.");
 
         // Check sequence name vector.
         assert_eq!(
@@ -456,9 +364,8 @@ mod tests {
 
     #[test]
     fn bed_fetch_from_chr1_read_api() {
-        let mut reader = Reader::from_path("test/test_bed3.bed.gz")
-            .ok()
-            .expect("Error opening file.");
+        let mut reader =
+            Reader::from_path("test/tabix_reader/test_bed3.bed.gz").expect("Error opening file.");
 
         let chr1_id = reader.tid("chr1").unwrap();
         assert!(reader.fetch(chr1_id, 1000, 1003).is_ok());
@@ -466,19 +373,58 @@ mod tests {
         let mut record = Vec::new();
         assert!(reader.read(&mut record).is_ok());
         assert_eq!(record, Vec::from("chr1\t1001\t1002"));
-        assert!(reader.read(&mut record).is_err());
+        assert_eq!(reader.read(&mut record), Ok(false)); // EOF
     }
 
     #[test]
     fn bed_fetch_from_chr1_iterator_api() {
-        let mut reader = Reader::from_path("test/test_bed3.bed.gz")
-            .ok()
-            .expect("Error opening file.");
+        let mut reader =
+            Reader::from_path("test/tabix_reader/test_bed3.bed.gz").expect("Error opening file.");
 
         let chr1_id = reader.tid("chr1").unwrap();
         assert!(reader.fetch(chr1_id, 1000, 1003).is_ok());
 
         let records: Vec<Vec<u8>> = reader.records().map(|r| r.unwrap()).collect();
         assert_eq!(records, vec![Vec::from("chr1\t1001\t1002")]);
+    }
+
+    #[test]
+    fn test_fails_on_bam() {
+        let reader = Reader::from_path("test/test.bam");
+        assert!(reader.is_err());
+    }
+
+    #[test]
+    fn test_fails_on_non_existiant() {
+        let reader = Reader::from_path("test/no_such_file");
+        assert!(reader.is_err());
+    }
+
+    #[test]
+    fn test_fails_on_vcf() {
+        let reader = Reader::from_path("test/test_left.vcf");
+        assert!(reader.is_err());
+    }
+
+    #[test]
+    fn test_text_header_regions() {
+        // This file has chromosome, start, and end positions with a header line.
+        Reader::from_path("test/tabix_reader/genomic_regions_header.txt.gz")
+            .expect("Error opening file.");
+    }
+
+    #[test]
+    fn test_text_header_positions() {
+        // This file has chromosome and position with a header line, indexed with
+        // `tabix -b2 -e2 <file>`.
+        Reader::from_path("test/tabix_reader/genomic_positions_header.txt.gz")
+            .expect("Error opening file.");
+    }
+
+    #[test]
+    fn test_text_bad_header() {
+        // This is a duplicate of the above file but the index file is nonsense text.
+        Reader::from_path("test/tabix_reader/bad_header.txt.gz")
+            .expect_err("Invalid index file should fail.");
     }
 }

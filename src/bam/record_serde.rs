@@ -3,8 +3,16 @@ use std::fmt;
 use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
+use serde_bytes::{ByteBuf, Bytes};
 
-use bam::record::Record;
+use crate::bam::record::Record;
+
+fn fix_l_extranul(rec: &mut Record) {
+    // first, reset the number of extranuls to 0 for calling .qname(); then calculate how many we actually have
+    rec.inner_mut().core.l_extranul = 0;
+    let l_extranul = rec.qname().iter().rev().take_while(|x| **x == 0u8).count() as u8;
+    rec.inner_mut().core.l_extranul = l_extranul;
+}
 
 impl Serialize for Record {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -23,8 +31,8 @@ impl Serialize for Record {
         state.serialize_field("seq_len", &core.l_qseq)?;
         state.serialize_field("mtid", &core.mtid)?;
         state.serialize_field("mpos", &core.mpos)?;
-        state.serialize_field("isize", &core.isize)?;
-        state.serialize_field("data", self.data())?;
+        state.serialize_field("isize", &core.isize_)?;
+        state.serialize_field("data", Bytes::new(self.data()))?;
         state.end()
     }
 }
@@ -47,8 +55,7 @@ impl<'de> Deserialize<'de> for Record {
             Mpos,
             Isize,
             Data,
-        };
-
+        }
 
         impl<'de> Deserialize<'de> for Field {
             fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
@@ -60,7 +67,7 @@ impl<'de> Deserialize<'de> for Record {
                 impl<'de> Visitor<'de> for FieldVisitor {
                     type Value = Field;
 
-                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
                         formatter.write_str("expecting a bam field")
                     }
 
@@ -95,7 +102,7 @@ impl<'de> Deserialize<'de> for Record {
         impl<'de> Visitor<'de> for RecordVisitor {
             type Value = Record;
 
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
                 formatter.write_str("struct Record")
             }
 
@@ -133,17 +140,17 @@ impl<'de> Deserialize<'de> for Record {
                 let mpos = seq
                     .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let isize = seq
+                let isize_ = seq
                     .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let data: Vec<u8> = seq
-                    .next_element()?
-                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let data = seq
+                    .next_element::<ByteBuf>()?
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?
+                    .into_vec();
 
                 let mut rec = Record::new();
                 {
-                    let _m = rec.inner_mut();
-                    let m = &mut _m.core;
+                    let m = &mut rec.inner_mut().core;
                     m.tid = tid;
                     m.pos = pos;
                     m.bin = bin;
@@ -154,11 +161,11 @@ impl<'de> Deserialize<'de> for Record {
                     m.l_qseq = seq_len;
                     m.mtid = mtid;
                     m.mpos = mpos;
-                    m.isize = isize;
+                    m.isize_ = isize_;
                 }
 
-                //println!()
                 rec.set_data(&data);
+                fix_l_extranul(&mut rec);
                 Ok(rec)
             }
 
@@ -177,7 +184,7 @@ impl<'de> Deserialize<'de> for Record {
                 let mut mtid = None;
                 let mut mpos = None;
                 let mut isize = None;
-                let mut data: Option<Vec<u8>> = None;
+                let mut data: Option<ByteBuf> = None;
 
                 while let Some(key) = map.next_key()? {
                     match key {
@@ -266,13 +273,14 @@ impl<'de> Deserialize<'de> for Record {
                 let seq_len = seq_len.ok_or_else(|| de::Error::missing_field("seq_len"))?;
                 let mtid = mtid.ok_or_else(|| de::Error::missing_field("mtid"))?;
                 let mpos = mpos.ok_or_else(|| de::Error::missing_field("mpos"))?;
-                let isize = isize.ok_or_else(|| de::Error::missing_field("isize"))?;
-                let data = data.ok_or_else(|| de::Error::missing_field("data"))?;
+                let isize_ = isize.ok_or_else(|| de::Error::missing_field("isize"))?;
+                let data = data
+                    .ok_or_else(|| de::Error::missing_field("data"))?
+                    .into_vec();
 
                 let mut rec = Record::new();
                 {
-                    let _m = rec.inner_mut();
-                    let m = &mut _m.core;
+                    let m = &mut rec.inner_mut().core;
                     m.tid = tid;
                     m.pos = pos;
                     m.bin = bin;
@@ -283,15 +291,16 @@ impl<'de> Deserialize<'de> for Record {
                     m.l_qseq = seq_len;
                     m.mtid = mtid;
                     m.mpos = mpos;
-                    m.isize = isize;
+                    m.isize_ = isize_;
                 }
 
                 rec.set_data(&data);
+                fix_l_extranul(&mut rec);
                 Ok(rec)
             }
         }
 
-        const FIELDS: &'static [&'static str] = &[
+        const FIELDS: &[&str] = &[
             "tid", "pos", "bin", "qual", "l_qname", "flag", "n_cigar", "seq_len", "mtid", "mpos",
             "isize", "data",
         ];
@@ -301,36 +310,32 @@ impl<'de> Deserialize<'de> for Record {
 
 #[cfg(test)]
 mod tests {
-    use bam::record::Record;
-    use bam::Read;
-    use bam::Reader;
+    use crate::bam::record::Record;
+    use crate::bam::Read;
+    use crate::bam::Reader;
 
     use std::path::Path;
 
-    use bincode::{deserialize, serialize, Infinite};
+    use bincode::{deserialize, serialize};
     use serde_json;
 
     #[test]
     fn test_bincode() {
-        let mut bam = Reader::from_path(&Path::new("test/test.bam"))
-            .ok()
-            .expect("Error opening file.");
+        let mut bam = Reader::from_path(&Path::new("test/test.bam")).expect("Error opening file.");
 
         let mut recs = Vec::new();
         for record in bam.records() {
             recs.push(record.unwrap());
         }
 
-        let encoded: Vec<u8> = serialize(&recs, Infinite).unwrap();
+        let encoded: Vec<u8> = serialize(&recs).unwrap();
         let decoded: Vec<Record> = deserialize(&encoded[..]).unwrap();
         assert_eq!(recs, decoded);
     }
 
     #[test]
     fn test_serde_json() {
-        let mut bam = Reader::from_path(&Path::new("test/test.bam"))
-            .ok()
-            .expect("Error opening file.");
+        let mut bam = Reader::from_path(&Path::new("test/test.bam")).expect("Error opening file.");
 
         let mut recs = Vec::new();
         for record in bam.records() {
@@ -342,5 +347,4 @@ mod tests {
         let decoded: Vec<Record> = serde_json::from_str(&encoded).unwrap();
         assert_eq!(recs, decoded);
     }
-
 }
