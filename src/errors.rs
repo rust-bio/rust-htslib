@@ -10,6 +10,8 @@ pub enum Error {
     // General errors
     #[error("file not found: {path}")]
     FileNotFound { path: PathBuf },
+    #[error("file could not be opened: {path}")]
+    FileOpen { path: String },
     #[error("invalid (non-unicode) characters in path")]
     NonUnicodePath,
     #[error("failed to fetch region")]
