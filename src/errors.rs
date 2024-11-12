@@ -131,6 +131,8 @@ pub enum Error {
     BcfSetValues,
     #[error("failed to remove alleles in BCF/VCF record")]
     BcfRemoveAlleles,
+    #[error("failed to render BCF record as string")]
+    BcfToString,
 
     #[error("invalid compression level {level}")]
     BgzfInvalidCompressionLevel { level: i8 },

@@ -1088,6 +1088,38 @@ impl Record {
         }
         "".to_owned()
     }
+
+    /// Convert to VCF String
+    ///
+    /// Intended for debug only. Use Writer for efficient VCF output.
+    ///
+    pub fn to_vcf_string(&self) -> Result<String> {
+        let mut buf = htslib::kstring_t {
+            l: 0,
+            m: 0,
+            s: ptr::null_mut(),
+        };
+        let ret = unsafe { htslib::vcf_format(self.header().inner, self.inner, &mut buf) };
+
+        if ret < 0 {
+            if !buf.s.is_null() {
+                unsafe {
+                    libc::free(buf.s as *mut libc::c_void);
+                }
+            }
+            return Err(Error::BcfToString);
+        }
+
+        let vcf_str = unsafe {
+            let vcf_str = String::from(ffi::CStr::from_ptr(buf.s).to_str().unwrap());
+            if !buf.s.is_null() {
+                libc::free(buf.s as *mut libc::c_void);
+            }
+            vcf_str
+        };
+
+        Ok(vcf_str)
+    }
 }
 
 impl Clone for Record {
@@ -1713,5 +1745,31 @@ mod tests {
         record.remove_filter(&bar, true).unwrap();
         assert!(!record.has_filter(&bar));
         assert!(record.has_filter("PASS".as_bytes()));
+    }
+
+    #[test]
+    fn test_record_to_vcf_string_err() {
+        let tmp = NamedTempFile::new().unwrap();
+        let path = tmp.path();
+        let header = Header::new();
+        let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
+        let record = vcf.empty_record();
+        assert!(record.to_vcf_string().is_err());
+    }
+
+    #[test]
+    fn test_record_to_vcf_string() {
+        let tmp = NamedTempFile::new().unwrap();
+        let path = tmp.path();
+        let mut header = Header::new();
+        header.push_record(b"##contig=<ID=chr1,length=1000>");
+        header.push_record(br#"##FILTER=<ID=foo,Description="sample is a foo fighter">"#);
+        let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
+        let mut record = vcf.empty_record();
+        record.push_filter("foo".as_bytes()).unwrap();
+        assert_eq!(
+            record.to_vcf_string().unwrap(),
+            "chr1\t1\t.\t.\t.\t0\tfoo\t.\n"
+        );
     }
 }
