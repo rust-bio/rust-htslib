@@ -1088,30 +1088,36 @@ impl Record {
                 return SequenceReadPairOrientation::None;
             }
 
-            let (is_reverse, is_first_in_template, is_mate_reverse) = if self.pos() < self.mpos() {
-                // given record is the left one
+            let (pos_1, pos_2, fwd_1, fwd_2) = if self.is_first_in_template() {
                 (
-                    self.is_reverse(),
-                    self.is_first_in_template(),
-                    self.is_mate_reverse(),
+                    self.pos(),
+                    self.mpos(),
+                    !self.is_reverse(),
+                    !self.is_mate_reverse(),
                 )
             } else {
-                // given record is the right one
                 (
-                    self.is_mate_reverse(),
-                    self.is_last_in_template(),
-                    self.is_reverse(),
+                    self.mpos(),
+                    self.pos(),
+                    !self.is_mate_reverse(),
+                    !self.is_reverse(),
                 )
             };
-            match (is_reverse, is_first_in_template, is_mate_reverse) {
-                (false, false, false) => SequenceReadPairOrientation::F2F1,
-                (false, false, true) => SequenceReadPairOrientation::F2R1,
-                (false, true, false) => SequenceReadPairOrientation::F1F2,
-                (true, false, false) => SequenceReadPairOrientation::R2F1,
-                (false, true, true) => SequenceReadPairOrientation::F1R2,
-                (true, false, true) => SequenceReadPairOrientation::R2R1,
-                (true, true, false) => SequenceReadPairOrientation::R1F2,
-                (true, true, true) => SequenceReadPairOrientation::R1R2,
+
+            if pos_1 < pos_2 {
+                match (fwd_1, fwd_2) {
+                    (true, true) => SequenceReadPairOrientation::F1F2,
+                    (true, false) => SequenceReadPairOrientation::F1R2,
+                    (false, true) => SequenceReadPairOrientation::R1F2,
+                    (false, false) => SequenceReadPairOrientation::R1R2,
+                }
+            } else {
+                match (fwd_2, fwd_1) {
+                    (true, true) => SequenceReadPairOrientation::F2F1,
+                    (true, false) => SequenceReadPairOrientation::F2R1,
+                    (false, true) => SequenceReadPairOrientation::R2F1,
+                    (false, false) => SequenceReadPairOrientation::R2R1,
+                }
             }
         } else {
             SequenceReadPairOrientation::None
@@ -2840,6 +2846,32 @@ mod alignment_cigar_tests {
             assert_eq!(
                 record.read_pair_orientation(),
                 SequenceReadPairOrientation::F1R2
+            );
+        }
+    }
+
+    #[test]
+    fn test_read_orientation_f2r1() {
+        let mut bam = Reader::from_path(&"test/test_nonstandard_orientation.sam").unwrap();
+
+        for res in bam.records() {
+            let record = res.unwrap();
+            assert_eq!(
+                record.read_pair_orientation(),
+                SequenceReadPairOrientation::F2R1
+            );
+        }
+    }
+
+    #[test]
+    fn test_read_orientation_supplementary() {
+        let mut bam = Reader::from_path(&"test/test_orientation_supplementary.sam").unwrap();
+
+        for res in bam.records() {
+            let record = res.unwrap();
+            assert_eq!(
+                record.read_pair_orientation(),
+                SequenceReadPairOrientation::F2R1
             );
         }
     }
