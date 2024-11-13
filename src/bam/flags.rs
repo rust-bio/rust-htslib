@@ -4,7 +4,7 @@
 //!
 //! For example, the following code tests if the read flag has the FIRST_IN_PAIR flag set and the MATE_UNMAPPED flag not set:
 //! ```
-//! use rust_htslib::bam::{Flag, check_flag};
+//! use rust_htslib::bam::flags{Flag, check_flag};
 //! # let read_flag = record.flag(); in general this is the way to obtian a flag.
 //! let read_flag = 64;
 //! assert_eq!(check_flag(read_flag, Flag::FIRST_IN_PAIR, Flag::MATE_UNMAPPED), true);
@@ -13,10 +13,10 @@
 ///
 /// This structure contains constants representing SAM flag values as u16.
 /// Using this structure incurs no runtime cost.
-///
+/// 
 /// ```
-/// use rust_htslib::bam::{Flag};
-/// to get the value of a flag representing a read paired, and reversly mapped.
+/// use rust_htslib::bam::flags::Flag;
+/// // to get the value of a flag representing a read paired, and reversly mapped.
 /// let flag = Flag::PAIRED + Flag::READ_RERVERSE;
 ///
 /// ```
@@ -47,23 +47,23 @@ pub fn check_flag(flag: u16, in_: u16, not_in: u16) -> bool {
     //! * `not_in`: u16 - The flags you want to check if they are not set (use 0 for no test)
     //!
     //! # Usage:
-    //! example: let test if a flag is both paired and fisrt in pair
+    //! example: let test if a flag is both paired and first in pair
     //! ```
-    //! use rust_htslib::bam::{Flag, check_flag};
-    //! let read_flag = 18
-    //! assert_eq!(check_flag(read_flag, Flag::PAIRED +Flag::FIRST_IN_PAIR, 0), true);
+    //! use rust_htslib::bam::flags::{Flag, check_flag};
+    //! let read_flag = 65;
+    //! assert_eq!(check_flag(read_flag, Flag::PAIRED + Flag::FIRST_IN_PAIR, 0), true);
     //! ```
     //! let test that the read is mapped. READ_UNMAPPED
     //! ```
-    //! use rust_htslib::bam::{Flag, check_flag};
-    //! let read_flag = 18
+    //! use rust_htslib::bam::flags::{Flag, check_flag};
+    //! let read_flag = 18;
     //! assert_eq!(check_flag(read_flag, 0, Flag::READ_UNMAPPED), true);
     //! ```
     //!
     //! Finally let do a more complexe real example test:
     //! ```
-    //! use rust_htslib::bam::{Flag, check_flag};
-    //! let read_flag = 19
+    //! use rust_htslib::bam::flags::{Flag, check_flag};
+    //! let read_flag = 19;
     //! assert_eq!(check_flag(read_flag, Flag::PAIRED + Flag::PROPERLY_PAIRED + Flag::READ_RERVERSE , Flag::READ_UNMAPPED + Flag::MATE_UNMAPPED), true);
     //! ```
     //!
