@@ -13,7 +13,7 @@
 ///
 /// This structure contains constants representing SAM flag values as u16.
 /// Using this structure incurs no runtime cost.
-/// 
+///
 /// ```
 /// use rust_htslib::bam::flags::Flag;
 /// // to get the value of a flag representing a read paired, and reversly mapped.
