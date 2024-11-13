@@ -5,7 +5,7 @@
 //! For example, the following code tests if the read flag has the FIRST_IN_PAIR flag set and the MATE_UNMAPPED flag not set:
 //! ```
 //! use rust_htslib::bam::flags{Flag, check_flag};
-//! # let read_flag = record.flag(); in general this is the way to obtian a flag.
+//! let read_flag = record.flag(); // in general this is the way to obtain a flag.
 //! let read_flag = 64;
 //! assert_eq!(check_flag(read_flag, Flag::FIRST_IN_PAIR, Flag::MATE_UNMAPPED), true);
 //! ```
