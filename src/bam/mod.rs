@@ -7,6 +7,7 @@
 
 pub mod buffer;
 pub mod ext;
+pub mod flags;
 pub mod header;
 pub mod index;
 pub mod pileup;
