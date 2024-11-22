@@ -85,7 +85,7 @@ impl Reader {
     /// * `name` - the name of the template sequence (e.g., "chr1")
     /// * `begin` - the offset within the template sequence (starting with 0)
     /// * `end` - the end position to return (if smaller than `begin`, the behavior is undefined).
-    pub fn fetch_seq<N: AsRef<str>>(&self, name: N, begin: usize, end: usize) -> Result<&[u8]> {
+    pub fn fetch_seq<N: AsRef<str>>(&self, name: N, begin: usize, end: usize) -> Result<Vec<u8>> {
         if begin > std::i64::MAX as usize {
             return Err(Error::FaidxPositionTooLarge);
         }
@@ -93,19 +93,19 @@ impl Reader {
             return Err(Error::FaidxPositionTooLarge);
         }
         let cname = ffi::CString::new(name.as_ref().as_bytes()).unwrap();
-        let len_out: i64 = 0;
-        let cseq = unsafe {
-            let ptr = htslib::faidx_fetch_seq64(
-                self.inner,                          //*const faidx_t,
-                cname.as_ptr(),                      // c_name
-                begin as htslib::hts_pos_t,          // p_beg_i
-                end as htslib::hts_pos_t,            // p_end_i
-                &mut (len_out as htslib::hts_pos_t), //len
-            );
-            ffi::CStr::from_ptr(ptr)
+        let mut len_out: htslib::hts_pos_t = 0;
+        let ptr = unsafe {
+            htslib::faidx_fetch_seq64(
+                self.inner,                 //*const faidx_t,
+                cname.as_ptr(),             // c_name
+                begin as htslib::hts_pos_t, // p_beg_i
+                end as htslib::hts_pos_t,   // p_end_i
+                &mut len_out,               //len
+            )
         };
-
-        Ok(cseq.to_bytes())
+        let vec =
+            unsafe { Vec::from_raw_parts(ptr as *mut u8, len_out as usize, len_out as usize) };
+        Ok(vec)
     }
 
     /// Fetches the sequence and returns it as string.
@@ -122,7 +122,7 @@ impl Reader {
         end: usize,
     ) -> Result<String> {
         let bytes = self.fetch_seq(name, begin, end)?;
-        Ok(std::str::from_utf8(bytes).unwrap().to_owned())
+        Ok(std::str::from_utf8(&bytes).unwrap().to_owned())
     }
 
     /// Fetches the number of sequences in the fai index
@@ -226,6 +226,7 @@ mod tests {
     fn faidx_read_chr_start() {
         let r = open_reader();
 
+        //for _i in 0..100_000_000 { // loop to check for memory leaks
         let bseq = r.fetch_seq("chr1", 0, 9).unwrap();
         assert_eq!(bseq.len(), 10);
         assert_eq!(bseq, b"GGGCACAGCC");
@@ -233,6 +234,7 @@ mod tests {
         let seq = r.fetch_seq_string("chr1", 0, 9).unwrap();
         assert_eq!(seq.len(), 10);
         assert_eq!(seq, "GGGCACAGCC");
+        //}
     }
 
     #[test]
