@@ -237,7 +237,7 @@ impl Read for Reader {
 
     /// Return empty record.  Can be reused multiple times.
     fn empty_record(&self) -> Record {
-        Record::new(Rc::clone(&self.header))
+        self.header.empty_record()
     }
 }
 

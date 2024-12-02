@@ -34,6 +34,7 @@
 
 use std::ffi;
 use std::os::raw::c_char;
+use std::rc::Rc;
 use std::slice;
 use std::str;
 
@@ -506,6 +507,13 @@ impl HeaderView {
         }
         result
     }
+
+    /// Create an empty record using this header view.
+    ///
+    /// The record can be reused multiple times.
+    pub fn empty_record(&self) -> crate::bcf::Record {
+        crate::bcf::Record::new(Rc::new(self.clone()))
+    }
 }
 
 impl Clone for HeaderView {
@@ -539,4 +547,26 @@ pub enum TagLength {
     Alleles,
     Genotypes,
     Variable,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::bcf::Reader;
+
+    #[test]
+    fn test_header_view_empty_record() {
+        // Open a VCF file to get a HeaderView
+        let vcf = Reader::from_path("test/test_string.vcf").expect("Error opening file");
+        let header_view = vcf.header.clone();
+
+        // Create an empty record from the HeaderView
+        let record = header_view.empty_record();
+        eprintln!("{:?}", record.rid());
+
+        // Verify the record is properly initialized with default/empty values
+        assert_eq!(record.rid(), Some(0)); // No chromosome/contig set
+        assert_eq!(record.pos(), 0); // No position set
+        assert_eq!(record.qual(), 0.0); // No quality score set
+    }
 }

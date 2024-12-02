@@ -30,7 +30,7 @@ newtype_derive = "0.1"
 regex = "1.3"
 serde = {version = "^1", optional = true, features = ["derive"]}
 serde_bytes = {version = "0.11", optional = true}
-thiserror = "2"
+thiserror = {version = "^2" }
 url = "2.1"
 
 [features]
