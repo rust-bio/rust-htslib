@@ -2,6 +2,18 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.49.0](https://github.com/rust-bio/rust-htslib/compare/v0.48.0...v0.49.0) (2024-12-02)
+
+
+### Features
+
+* move empty_record to header ([#453](https://github.com/rust-bio/rust-htslib/issues/453)) ([797965c](https://github.com/rust-bio/rust-htslib/commit/797965c5ab815112b1a2a1bcdb32716c1bc1f92a))
+
+
+### Bug Fixes
+
+* memory leak in faidx when fetching sequences ([#455](https://github.com/rust-bio/rust-htslib/issues/455)) ([d9fe03a](https://github.com/rust-bio/rust-htslib/commit/d9fe03acfb81278a09a7e6091b9e1c38dd7b6cb4))
+
 ## [0.48.0](https://github.com/rust-bio/rust-htslib/compare/v0.47.1...v0.48.0) (2024-11-12)
 
 
