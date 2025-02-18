@@ -86,10 +86,10 @@ impl Reader {
     /// * `begin` - the offset within the template sequence (starting with 0)
     /// * `end` - the end position to return (if smaller than `begin`, the behavior is undefined).
     pub fn fetch_seq<N: AsRef<str>>(&self, name: N, begin: usize, end: usize) -> Result<Vec<u8>> {
-        if begin > std::i64::MAX as usize {
+        if begin > i64::MAX as usize {
             return Err(Error::FaidxPositionTooLarge);
         }
-        if end > std::i64::MAX as usize {
+        if end > i64::MAX as usize {
             return Err(Error::FaidxPositionTooLarge);
         }
         let cname = ffi::CString::new(name.as_ref().as_bytes()).unwrap();

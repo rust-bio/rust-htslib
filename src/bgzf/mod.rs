@@ -87,7 +87,7 @@ impl Reader {
         let mode = ffi::CString::new("r").unwrap();
         let cpath = ffi::CString::new(path).unwrap();
         let inner = unsafe { htslib::bgzf_open(cpath.as_ptr(), mode.as_ptr()) };
-        if inner != std::ptr::null_mut() {
+        if !inner.is_null() {
             Ok(Self { inner })
         } else {
             Err(Error::FileOpen {
@@ -217,7 +217,7 @@ impl Writer {
         let mode = Self::get_open_mode(level)?;
         let cpath = ffi::CString::new(path).unwrap();
         let inner = unsafe { htslib::bgzf_open(cpath.as_ptr(), mode.as_ptr()) };
-        if inner != std::ptr::null_mut() {
+        if !inner.is_null() {
             Ok(Self { inner, tpool: None })
         } else {
             Err(Error::FileOpen {
@@ -240,7 +240,7 @@ impl Writer {
             // This should be unreachable
             Ok(i) => return Err(Error::BgzfInvalidCompressionLevel { level: i }),
         };
-        return Ok(ffi::CString::new(write_string).unwrap());
+        Ok(ffi::CString::new(write_string).unwrap())
     }
 
     /// Set the thread pool to use for parallel compression.
@@ -514,7 +514,7 @@ mod tests {
             CompressionLevel::Uncompressed,
         ]
         .into_iter()
-        .chain((-1..=9_i8).map(|n| CompressionLevel::Level(n)));
+        .chain((-1..=9_i8).map(CompressionLevel::Level));
 
         for level in compression_levels {
             {
