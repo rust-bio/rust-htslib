@@ -10,7 +10,7 @@ jobs:
     if: github.repository_owner == 'rust-bio'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -22,26 +22,22 @@ jobs:
           bump-minor-pre-major: true
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         if: ${{ steps.release_main.outputs.release_created }}
         with:
           toolchain: stable
-          override: true
 
       - name: Install system dependencies
         if: ${{ steps.release_main.outputs.release_created }}
         run: |
           sudo apt-get install --yes zlib1g-dev libbz2-dev musl musl-dev musl-tools clang libc6-dev
 
-      - uses: Swatinem/rust-cache@v1.3.0
+      - uses: Swatinem/rust-cache@v2
         if: ${{ steps.release_main.outputs.release_created }}
 
       - name: Publish rust-htslib
         if: ${{ steps.release_main.outputs.release_created }}
-        uses: actions-rs/cargo@v1
-        with:
-          command: publish
-          args: --token ${{ secrets.CRATES_IO_TOKEN }}
+        run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }}
 
       # - uses: katyo/publish-crates@v1
       #   if: ${{ steps.release_main.outputs.release_created || steps.release_sys.outputs.release_created }}

@@ -34,6 +34,7 @@
 
 use std::ffi;
 use std::os::raw::c_char;
+use std::rc::Rc;
 use std::slice;
 use std::str;
 
@@ -112,12 +113,14 @@ impl Header {
             .map(|&s| ffi::CString::new(s).unwrap())
             .collect();
         let name_pointers: Vec<_> = names.iter().map(|s| s.as_ptr() as *mut i8).collect();
+        #[allow(clippy::unnecessary_cast)]
+        let name_pointers_ptr = name_pointers.as_ptr() as *const *mut c_char;
         let inner = unsafe {
             htslib::bcf_hdr_subset(
                 header.inner,
                 samples.len() as i32,
-                name_pointers.as_ptr() as *const *mut c_char,
-                imap.as_mut_ptr() as *mut i32,
+                name_pointers_ptr,
+                imap.as_mut_ptr(),
             )
         };
         if inner.is_null() {
@@ -506,6 +509,13 @@ impl HeaderView {
         }
         result
     }
+
+    /// Create an empty record using this header view.
+    ///
+    /// The record can be reused multiple times.
+    pub fn empty_record(&self) -> crate::bcf::Record {
+        crate::bcf::Record::new(Rc::new(self.clone()))
+    }
 }
 
 impl Clone for HeaderView {
@@ -539,4 +549,25 @@ pub enum TagLength {
     Alleles,
     Genotypes,
     Variable,
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::bcf::Reader;
+
+    #[test]
+    fn test_header_view_empty_record() {
+        // Open a VCF file to get a HeaderView
+        let vcf = Reader::from_path("test/test_string.vcf").expect("Error opening file");
+        let header_view = vcf.header.clone();
+
+        // Create an empty record from the HeaderView
+        let record = header_view.empty_record();
+        eprintln!("{:?}", record.rid());
+
+        // Verify the record is properly initialized with default/empty values
+        assert_eq!(record.rid(), Some(0)); // No chromosome/contig set
+        assert_eq!(record.pos(), 0); // No position set
+        assert_eq!(record.qual(), 0.0); // No quality score set
+    }
 }
