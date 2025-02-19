@@ -165,7 +165,7 @@ mod tests {
     fn test_push_tag() {
         let mut record = HeaderRecord::new(b"HD");
         record.push_tag(b"X1", 0);
-        record.push_tag(b"X2", &0);
+        record.push_tag(b"X2", 0);
 
         let x = "x".to_string();
         record.push_tag(b"X3", x.as_str());
