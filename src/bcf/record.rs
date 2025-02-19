@@ -4,10 +4,8 @@
 // except according to those terms.
 
 use std::borrow::{Borrow, BorrowMut};
-use std::f32;
 use std::ffi;
 use std::fmt;
-use std::i32;
 use std::marker::PhantomData;
 use std::ops::Deref;
 use std::os::raw::c_char;
@@ -120,10 +118,16 @@ impl Buffer {
     }
 }
 
+impl Default for Buffer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Drop for Buffer {
     fn drop(&mut self) {
         unsafe {
-            ::libc::free(self.inner as *mut ::libc::c_void);
+            ::libc::free(self.inner);
         }
     }
 }
@@ -131,7 +135,7 @@ impl Drop for Buffer {
 #[derive(new, Debug)]
 pub struct BufferBacked<'a, T: 'a + fmt::Debug, B: Borrow<Buffer> + 'a> {
     value: T,
-    buffer: B,
+    _buffer: B,
     #[new(default)]
     phantom: PhantomData<&'a B>,
 }
@@ -1124,10 +1128,7 @@ impl Record {
 
 impl Clone for Record {
     fn clone(&self) -> Self {
-        let inner = unsafe {
-            let inner = htslib::bcf_dup(self.inner);
-            inner
-        };
+        let inner = unsafe { htslib::bcf_dup(self.inner) };
         Record {
             inner,
             header: self.header.clone(),
@@ -1225,7 +1226,7 @@ custom_derive! {
 
 impl fmt::Display for Genotype {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let &Genotype(ref alleles) = self;
+        let Genotype(alleles) = self;
         write!(f, "{}", alleles[0])?;
         for a in &alleles[1..] {
             let sep = match a {
@@ -1277,7 +1278,9 @@ pub struct Info<'a, B: BorrowMut<Buffer> + Borrow<Buffer>> {
     buffer: B,
 }
 
-impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, B> {
+pub type BufferBackedOption<'b, B> = Option<BufferBacked<'b, Vec<&'b [u8]>, B>>;
+
+impl<'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'_, B> {
     /// Short description of info tag.
     pub fn desc(&self) -> String {
         str::from_utf8(self.tag).unwrap().to_owned()
@@ -1358,7 +1361,7 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, B> {
     /// as along as the data is accessed. If parts of the data are accessed while
     /// the BufferBacked object is already dropped, you will access unallocated
     /// memory.
-    pub fn string(mut self) -> Result<Option<BufferBacked<'b, Vec<&'b [u8]>, B>>> {
+    pub fn string(mut self) -> Result<BufferBackedOption<'b, B>> {
         self.data(htslib::BCF_HT_STR).map(|data| {
             data.map(|ret| {
                 BufferBacked::new(
@@ -1380,9 +1383,9 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Info<'a, B> {
     }
 }
 
-unsafe impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Send for Info<'a, B> {}
+unsafe impl<B: BorrowMut<Buffer> + Borrow<Buffer>> Send for Info<'_, B> {}
 
-unsafe impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Sync for Info<'a, B> {}
+unsafe impl<B: BorrowMut<Buffer> + Borrow<Buffer>> Sync for Info<'_, B> {}
 
 fn trim_slice<T: PartialEq + NumericUtils>(s: &[T]) -> &[T] {
     s.split(|v| v.is_vector_end())
@@ -1477,7 +1480,7 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Format<'a, B> {
                     )
                 }
                 .chunks(self.values_per_sample())
-                .map(|s| trim_slice(s))
+                .map(trim_slice)
                 .collect(),
                 self.buffer,
             )
@@ -1500,7 +1503,7 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Format<'a, B> {
                     )
                 }
                 .chunks(self.values_per_sample())
-                .map(|s| trim_slice(s))
+                .map(trim_slice)
                 .collect(),
                 self.buffer,
             )
@@ -1536,9 +1539,9 @@ impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Format<'a, B> {
     }
 }
 
-unsafe impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Send for Format<'a, B> {}
+unsafe impl<B: BorrowMut<Buffer> + Borrow<Buffer>> Send for Format<'_, B> {}
 
-unsafe impl<'a, 'b, B: BorrowMut<Buffer> + Borrow<Buffer> + 'b> Sync for Format<'a, B> {}
+unsafe impl<B: BorrowMut<Buffer> + Borrow<Buffer>> Sync for Format<'_, B> {}
 
 #[derive(Debug)]
 pub struct Filters<'a> {
@@ -1554,7 +1557,7 @@ impl<'a> Filters<'a> {
     }
 }
 
-impl<'a> Iterator for Filters<'a> {
+impl Iterator for Filters<'_> {
     type Item = Id;
 
     fn next(&mut self) -> Option<Id> {

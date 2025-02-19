@@ -8,116 +8,113 @@ on:
 
 jobs:
   Formatting:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1.0.6
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          override: true
           components: rustfmt
 
       - name: Check format
         run: cargo fmt -- --check
 
   Linting:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1.0.6
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          override: true
           components: clippy
 
       - name: Lint with clippy
-        uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+        run: RUSTFLAGS="-Dwarnings" cargo clippy --all-features --all-targets -- -Dclippy::all -Dunused_imports
 
   Testing:
     needs: Formatting
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, ubuntu-22.04-arm]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
       - name: Install nightly toolchain
-        uses: actions-rs/toolchain@v1.0.6
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
-          override: true
 
       - name: Install system dependencies
         run: |
           sudo apt-get install --yes zlib1g-dev libbz2-dev musl musl-dev musl-tools clang libc6-dev
 
-      - uses: Swatinem/rust-cache@v1.3.0
+      - uses: Swatinem/rust-cache@v2
 
       - name: Run cargo-tarpaulin
-        uses: actions-rs/tarpaulin@v0.1
-        with:
-          # TODO: update to latest tarpaulin once artefact download is fixed: https://github.com/actions-rs/tarpaulin/pull/23
-          version: "0.22.0"
-          args: "--all-features --run-types Tests,Doctests --out Lcov -- --test-threads 1"
+        run: |
+          set -x
+          cargo install cargo-tarpaulin
+          cargo tarpaulin --all-features --tests --doc --out Lcov -- --test-threads 1
 
       - name: Upload coverage
-        uses: coverallsapp/github-action@v1
+        uses: coverallsapp/github-action@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path-to-lcov: ./lcov.info
 
   Testing-Features:
     needs: Formatting
-    runs-on: ubuntu-latest
     strategy:
       matrix:
+        os: [ubuntu-22.04, ubuntu-22.04-arm]
         target:
           - no-default-features
           - all-features
         include:
           - target: no-default-features
             args: --no-default-features
-            use_cross: false
           - target: all-features
+            os: ubuntu-22.04
             args: --all-features
             toolchain_target: x86_64-unknown-linux-musl
-            use_cross: false
+          - target: all-features
+            os: ubuntu-22.04-arm
+            args: --all-features
+            toolchain_target: aarch64-unknown-linux-musl
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1.0.6
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          override: true
 
       - name: Install system dependencies
         run: |
           sudo apt-get install --yes zlib1g-dev libbz2-dev musl musl-dev musl-tools clang libc6-dev
 
-      - uses: Swatinem/rust-cache@v1.3.0
+      - uses: Swatinem/rust-cache@v2
 
       - name: Test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: ${{ matrix.args }}
-          use-cross: ${{ matrix.use_cross }}
+        run: |
+          cargo test ${{ matrix.args }}
 
   Testing-MacOS:
     needs: Formatting
@@ -150,27 +147,23 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1.0.6
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ matrix.toolchain }}
-          target: ${{ matrix.toolchain_target }}
+          targets: ${{ matrix.toolchain_target }}
           override: true
-          default: ${{ matrix.default }}
 
       - name: Install htslib dependencies
         run: brew install bzip2 zlib xz curl-openssl
 
       - name: Test
-        uses: actions-rs/cargo@v1.0.1
-        with:
-          use-cross: false # cross is not supported on GHA OSX runner, see: https://github.community/t/why-is-docker-not-installed-on-macos/17017
-          command: test
-          args: --release --all-features --verbose ${{ matrix.aux_args }}
+        run: |
+          cargo test --release --all-features --verbose ${{ matrix.aux_args }}
 #  Testing-OSX-MUSL-BigSur:
 #   needs: Formatting
 #   runs-on: macOS-11.0

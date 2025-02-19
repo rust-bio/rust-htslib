@@ -60,7 +60,7 @@ pub struct Alignment<'a> {
     inner: &'a htslib::bam_pileup1_t,
 }
 
-impl<'a> fmt::Debug for Alignment<'a> {
+impl fmt::Debug for Alignment<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Alignment")
     }
@@ -137,12 +137,12 @@ impl<'a, R: bam::Read> Pileups<'a, R> {
     }
 
     /// Warning: because htslib internally uses signed integer for depth this method
-    /// will panic if `depth` exceeds `i32::max_value()`.
+    /// will panic if `depth` exceeds `i32::MAX`.
     pub fn set_max_depth(&mut self, depth: u32) {
-        if depth > i32::max_value() as u32 {
+        if depth > i32::MAX as u32 {
             panic!(
                 "Maximum value for pileup depth is {} but {} was provided",
-                i32::max_value(),
+                i32::MAX,
                 depth
             )
         }
@@ -153,7 +153,7 @@ impl<'a, R: bam::Read> Pileups<'a, R> {
     }
 }
 
-impl<'a, R: bam::Read> Iterator for Pileups<'a, R> {
+impl<R: bam::Read> Iterator for Pileups<'_, R> {
     type Item = Result<Pileup>;
 
     #[allow(clippy::match_bool)]
@@ -174,7 +174,7 @@ impl<'a, R: bam::Read> Iterator for Pileups<'a, R> {
     }
 }
 
-impl<'a, R: bam::Read> Drop for Pileups<'a, R> {
+impl<R: bam::Read> Drop for Pileups<'_, R> {
     fn drop(&mut self) {
         unsafe {
             htslib::bam_plp_reset(self.itr);
@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     fn test_max_pileup() {
-        let mut bam = bam::Reader::from_path(&"test/test.bam").unwrap();
+        let mut bam = bam::Reader::from_path("test/test.bam").unwrap();
         let mut p = bam.pileup();
         p.set_max_depth(0u32);
         p.set_max_depth(800u32);
@@ -200,8 +200,8 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_max_pileup_to_high() {
-        let mut bam = bam::Reader::from_path(&"test/test.bam").unwrap();
+        let mut bam = bam::Reader::from_path("test/test.bam").unwrap();
         let mut p = bam.pileup();
-        p.set_max_depth((i32::max_value() as u32) + 1);
+        p.set_max_depth((i32::MAX as u32) + 1);
     }
 }
