@@ -14,7 +14,7 @@ jobs:
         with:
           submodules: recursive
 
-      - uses: GoogleCloudPlatform/release-please-action@v3
+      - uses: GoogleCloudPlatform/release-please-action@v4
         id: release_main
         with:
           release-type: rust
