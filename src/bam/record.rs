@@ -408,8 +408,7 @@ impl Record {
         // seq
         {
             for j in (0..seq.len()).step_by(2) {
-                data[i + j / 2] = ENCODE_BASE[seq[j] as usize] << 4
-                    | (if j + 1 < seq.len() {
+                data[i + j / 2] = (ENCODE_BASE[seq[j] as usize] << 4) | (if j + 1 < seq.len() {
                         ENCODE_BASE[seq[j + 1] as usize]
                     } else {
                         0
@@ -1689,14 +1688,14 @@ impl Cigar {
     fn encode(self) -> u32 {
         match self {
             Cigar::Match(len) => len << 4, // | 0,
-            Cigar::Ins(len) => len << 4 | 1,
-            Cigar::Del(len) => len << 4 | 2,
-            Cigar::RefSkip(len) => len << 4 | 3,
-            Cigar::SoftClip(len) => len << 4 | 4,
-            Cigar::HardClip(len) => len << 4 | 5,
-            Cigar::Pad(len) => len << 4 | 6,
-            Cigar::Equal(len) => len << 4 | 7,
-            Cigar::Diff(len) => len << 4 | 8,
+            Cigar::Ins(len) => (len << 4) | 1,
+            Cigar::Del(len) => (len << 4) | 2,
+            Cigar::RefSkip(len) => (len << 4) | 3,
+            Cigar::SoftClip(len) => (len << 4) | 4,
+            Cigar::HardClip(len) => (len << 4) | 5,
+            Cigar::Pad(len) => (len << 4) | 6,
+            Cigar::Equal(len) => (len << 4) | 7,
+            Cigar::Diff(len) => (len << 4) | 8,
         }
     }
 
