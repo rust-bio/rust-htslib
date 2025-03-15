@@ -1202,7 +1202,7 @@ impl From<GenotypeAllele> for i32 {
             GenotypeAllele::Unphased(a) => (a, 0),
             GenotypeAllele::Phased(a) => (a, 1),
         };
-        (allele + 1) << 1 | phased
+        ((allele + 1) << 1) | phased
     }
 }
 
