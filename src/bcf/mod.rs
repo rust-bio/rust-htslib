@@ -1091,6 +1091,129 @@ mod tests {
     }
 
     #[test]
+    fn test_genotypes_read_mixed_ploidy() {
+        let mut vcf = Reader::from_path("test/test_non_diploid.vcf").expect("Error opening file.");
+
+        // Expected genotypes for comparison
+        let expected = [vec!["0", "1"], vec!["0/1", "1/1"], vec!["1|0", "1/1|0"]];
+
+        for (rec, exp_gts) in vcf.records().zip(expected.iter()) {
+            let rec = rec.expect("Error reading record.");
+
+            // Get the genotypes from the record
+            let genotypes = rec.genotypes().expect("Error reading genotypes");
+
+            // Compare each genotype with the expected value
+            for (sample, exp_gt) in exp_gts.iter().enumerate() {
+                assert_eq!(&format!("{}", genotypes.get(sample)), exp_gt);
+            }
+        }
+    }
+
+    #[test]
+    fn test_genotypes_write_and_read_mixed_ploidy() {
+        let mut vcf = Reader::from_path("test/test_non_diploid.vcf").expect("Error opening file.");
+
+        // Create a temporary file to write the modified VCF data
+        let tmp = NamedTempFile::new().unwrap();
+        let path = tmp.path();
+
+        {
+            // Create a VCF writer with the same header as the input VCF
+            let mut writer = Writer::from_path(
+                path,
+                &Header::from_template(vcf.header()),
+                true,
+                Format::Vcf,
+            )
+            .unwrap();
+
+            // Modify record template by adding different genotypes and write the to the temp file.
+            let mut rec_tpl = vcf.records().next().unwrap().unwrap();
+            rec_tpl
+                .push_genotype_structured(
+                    &[
+                        vec![GenotypeAllele::Unphased(0)],
+                        vec![GenotypeAllele::Unphased(1)],
+                    ],
+                    3,
+                )
+                .unwrap();
+            writer.write(&rec_tpl).unwrap();
+            rec_tpl
+                .push_genotype_structured(
+                    &[
+                        vec![GenotypeAllele::Unphased(0), GenotypeAllele::Unphased(1)],
+                        vec![GenotypeAllele::Unphased(1), GenotypeAllele::Unphased(1)],
+                    ],
+                    3,
+                )
+                .unwrap();
+            writer.write(&rec_tpl).unwrap();
+            rec_tpl
+                .push_genotype_structured(
+                    &[
+                        vec![GenotypeAllele::Unphased(1), GenotypeAllele::Phased(0)],
+                        vec![
+                            GenotypeAllele::Unphased(1),
+                            GenotypeAllele::Unphased(1),
+                            GenotypeAllele::Phased(0),
+                        ],
+                    ],
+                    3,
+                )
+                .unwrap();
+            writer.write(&rec_tpl).unwrap();
+        }
+
+        // Read back the temporary file with the modified VCF data
+        let mut reader = Reader::from_path(path).unwrap();
+
+        // Expected genotypes for validation
+        let expected = [vec!["0", "1"], vec!["0/1", "1/1"], vec!["1|0", "1/1|0"]];
+
+        // Iterate over the records in the temporary file and validate the genotypes
+        for (rec, exp_gts) in reader.records().zip(expected.iter()) {
+            let rec = rec.expect("Error reading record");
+            let genotypes = rec.genotypes().expect("Error reading genotypes");
+
+            // Compare each genotype with the expected value
+            for (sample, exp_gt) in exp_gts.iter().enumerate() {
+                assert_eq!(&format!("{}", genotypes.get(sample)), exp_gt);
+            }
+        }
+    }
+
+    #[test]
+    fn test_genotypes_wrong_max_ploidy() {
+        let mut vcf = Reader::from_path("test/test_non_diploid.vcf").expect("Error opening file.");
+
+        // Modify record template by adding different genotypes and write the to the temp file.
+        let mut rec_tpl = vcf.records().next().unwrap().unwrap();
+        let err = rec_tpl
+            .push_genotype_structured(
+                &[
+                    vec![
+                        GenotypeAllele::Unphased(0),
+                        GenotypeAllele::Unphased(1),
+                        GenotypeAllele::Unphased(0),
+                    ],
+                    vec![
+                        GenotypeAllele::Unphased(1),
+                        GenotypeAllele::Unphased(0),
+                        GenotypeAllele::Unphased(1),
+                        GenotypeAllele::Unphased(0),
+                    ],
+                ],
+                3,
+            )
+            .expect_err(
+                "This should fail since there are more alleles specified (4 for second sample) than max_ploidy (3) suggests",
+            );
+        assert_eq!(err, crate::errors::Error::BcfSetValues);
+    }
+
+    #[test]
     fn test_header_ids() {
         let vcf = Reader::from_path("test/test_string.vcf").expect("Error opening file.");
         let header = &vcf.header();
