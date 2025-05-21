@@ -318,7 +318,7 @@ impl IndexedReader {
     /// # Arguments
     ///
     /// * `rid` - numeric ID of the reference to jump to; use `HeaderView::name2rid` for resolving
-    ///           contig name to ID.
+    ///   contig name to ID.
     /// * `start` - `0`-based **inclusive** start coordinate of region on reference.
     /// * `end` - Optional `0`-based **inclusive** end coordinate of region on reference. If `None`
     ///   is given, records are fetched from `start` until the end of the contig.
@@ -605,7 +605,7 @@ pub mod synced {
         /// # Arguments
         ///
         /// * `rid` - numeric ID of the reference to jump to; use `HeaderView::name2rid` for resolving
-        ///           contig name to ID.
+        ///   contig name to ID.
         /// * `start` - `0`-based start coordinate of region on reference.
         /// * `end` - `0`-based end coordinate of region on reference.
         pub fn fetch(&mut self, rid: u32, start: u64, end: u64) -> Result<()> {
@@ -835,6 +835,8 @@ fn bcf_open(target: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
 
 #[cfg(test)]
 mod tests {
+    use tempfile::NamedTempFile;
+
     use super::record::Buffer;
     use super::*;
     use crate::bcf::header::Id;

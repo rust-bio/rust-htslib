@@ -659,7 +659,7 @@ impl Record {
     /// # Arguments
     ///
     /// - `genotypes` - a flattened, two-dimensional array of GenotypeAllele,
-    ///                 the first dimension contains one array for each sample.
+    ///   the first dimension contains one array for each sample.
     ///
     /// # Errors
     ///
@@ -841,7 +841,7 @@ impl Record {
     ///
     /// - `tag` - The tag's string.
     /// - `data` - a flattened, two-dimensional array, the first dimension contains one array
-    ///            for each sample.
+    ///   for each sample.
     ///
     /// # Errors
     ///
@@ -856,7 +856,7 @@ impl Record {
     ///
     /// - `tag` - The tag's string.
     /// - `data` - a flattened, two-dimensional array, the first dimension contains one array
-    ///            for each sample.
+    ///   for each sample.
     ///
     /// # Errors
     ///
@@ -893,7 +893,7 @@ impl Record {
     ///
     /// - `tag` - The tag's string.
     /// - `data` - a flattened, two-dimensional array, the first dimension contains one array
-    ///            for each sample.
+    ///   for each sample.
     ///
     /// # Errors
     ///
@@ -934,7 +934,7 @@ impl Record {
     ///
     /// - `tag` - The tag's string.
     /// - `data` - a two-dimensional array, the first dimension contains one array
-    ///            for each sample. Must be non-empty.
+    ///   for each sample. Must be non-empty.
     ///
     /// # Errors
     ///
