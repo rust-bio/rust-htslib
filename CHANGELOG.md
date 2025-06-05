@@ -2,6 +2,18 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.50.0](https://github.com/rust-bio/rust-htslib/compare/v0.49.0...v0.50.0) (2025-06-05)
+
+
+### Features
+
+* Allow for non-diploid genotypes ([#476](https://github.com/rust-bio/rust-htslib/issues/476)) ([1c22ac5](https://github.com/rust-bio/rust-htslib/commit/1c22ac598edaa9fc1be354b857dc8f8f5c892984))
+
+
+### Bug Fixes
+
+* clippy and fmt after merging PR [#466](https://github.com/rust-bio/rust-htslib/issues/466) and [#467](https://github.com/rust-bio/rust-htslib/issues/467) ([141e01c](https://github.com/rust-bio/rust-htslib/commit/141e01c74aa3d087f4c2e7fe380d06b1e272865b))
+
 ## [0.49.0](https://github.com/rust-bio/rust-htslib/compare/v0.48.0...v0.49.0) (2024-12-02)
 
 
