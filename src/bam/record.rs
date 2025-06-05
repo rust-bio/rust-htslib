@@ -358,9 +358,9 @@ impl Record {
 
         let orig_aux_offset = self.qname_capacity()
             + 4 * self.cigar_len()
-            + (self.seq_len() + 1) / 2
+            + self.seq_len().div_ceil(2)
             + self.seq_len();
-        let new_aux_offset = q_len + extranul + cigar_width + (seq.len() + 1) / 2 + qual.len();
+        let new_aux_offset = q_len + extranul + cigar_width + seq.len().div_ceil(2) + qual.len();
         assert!(orig_aux_offset <= self.inner.l_data as usize);
         let aux_len = self.inner.l_data as usize - orig_aux_offset;
         self.inner_mut().l_data = (new_aux_offset + aux_len) as i32;
@@ -416,7 +416,7 @@ impl Record {
                     });
             }
             self.inner_mut().core.l_qseq = seq.len() as i32;
-            i += (seq.len() + 1) / 2;
+            i += seq.len().div_ceil(2);
         }
 
         // qual
@@ -564,7 +564,7 @@ impl Record {
 
     fn seq_data(&self) -> &[u8] {
         let offset = self.qname_capacity() + self.cigar_len() * 4;
-        &self.data()[offset..][..(self.seq_len() + 1) / 2]
+        &self.data()[offset..][..self.seq_len().div_ceil(2)]
     }
 
     /// Get read sequence. Complexity: O(1).
@@ -579,7 +579,7 @@ impl Record {
     /// This does not entail any offsets, hence the qualities can be used directly without
     /// e.g. subtracting 33. Complexity: O(1).
     pub fn qual(&self) -> &[u8] {
-        &self.data()[self.qname_capacity() + self.cigar_len() * 4 + (self.seq_len() + 1) / 2..]
+        &self.data()[self.qname_capacity() + self.cigar_len() * 4 + self.seq_len().div_ceil(2)..]
             [..self.seq_len()]
     }
 
@@ -787,7 +787,7 @@ impl Record {
                 // CIGAR (uint32_t):
                 + self.cigar_len() * std::mem::size_of::<u32>()
                 // Read sequence (4-bit encoded):
-                + (self.seq_len() + 1) / 2
+                + self.seq_len().div_ceil(2)
                 // Base qualities (char):
                 + self.seq_len()..],
         }
