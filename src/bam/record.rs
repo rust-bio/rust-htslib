@@ -505,11 +505,9 @@ impl Record {
         if new_cigar_data_len != old_cigar_data_len {
             // Move other data to new location
             unsafe {
-                let data = slice::from_raw_parts_mut(self.inner.data, self.inner().l_data as usize);
-
                 ::libc::memmove(
-                    data.as_mut_ptr().add(new_cigar_data_len) as *mut ::libc::c_void,
-                    data.as_mut_ptr().add(old_cigar_data_len) as *mut ::libc::c_void,
+                    self.inner.data.add(qname_data_len + new_cigar_data_len) as *mut ::libc::c_void,
+                    self.inner.data.add(qname_data_len + old_cigar_data_len) as *mut ::libc::c_void,
                     other_data_len as usize,
                 );
             }
