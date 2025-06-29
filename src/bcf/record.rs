@@ -1031,8 +1031,9 @@ impl Record {
     }
 
     /// Add an string-valued INFO tag.
-        let mut buf: Vec<u8> = Vec::new();
     fn push_info_string_impl(&mut self, tag: &CStr8, data: &[&[u8]], ht: u32) -> Result<()> {
+        let data_bytes = data.iter().map(|x| x.len() + 2).sum(); // estimate for buffer pre-alloc
+        let mut buf: Vec<u8> = Vec::with_capacity(data_bytes);
         for (i, &s) in data.iter().enumerate() {
             if i > 0 {
                 buf.extend(b",");
