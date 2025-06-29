@@ -1032,6 +1032,48 @@ impl Record {
 
     /// Add an string-valued INFO tag.
     fn push_info_string_impl(&mut self, tag: &CStr8, data: &[&[u8]], ht: u32) -> Result<()> {
+        if data.is_empty() {
+            // Clear the tag
+            let c_str = unsafe { CStr8::from_utf8_with_nul_unchecked(b"\0") };
+            let len = 0;
+            unsafe {
+                return if htslib::bcf_update_info(
+                    self.header().inner,
+                    self.inner,
+                    tag.as_ptr() as *mut c_char,
+                    c_str.as_ptr() as *const ::std::os::raw::c_void,
+                    len as i32,
+                    ht as i32,
+                ) == 0
+                {
+                    Ok(())
+                } else {
+                    Err(Error::BcfSetTag { tag: tag.into() })
+                };
+            }
+        }
+
+        if data == &[b""] {
+            // This is a flag
+            let c_str = unsafe { CStr8::from_utf8_with_nul_unchecked(b"\0") };
+            let len = 1;
+            unsafe {
+                return if htslib::bcf_update_info(
+                    self.header().inner,
+                    self.inner,
+                    tag.as_ptr() as *mut c_char,
+                    c_str.as_ptr() as *const ::std::os::raw::c_void,
+                    len as i32,
+                    ht as i32,
+                ) == 0
+                {
+                    Ok(())
+                } else {
+                    Err(Error::BcfSetTag { tag: tag.into() })
+                };
+            }
+        }
+
         let data_bytes = data.iter().map(|x| x.len() + 2).sum(); // estimate for buffer pre-alloc
         let mut buf: Vec<u8> = Vec::with_capacity(data_bytes);
         for (i, &s) in data.iter().enumerate() {
