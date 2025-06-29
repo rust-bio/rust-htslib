@@ -15,6 +15,7 @@ use std::str;
 use std::{ffi, iter};
 
 use bio_types::genome;
+use cstr8::{cstr8, CStr8};
 use derive_new::new;
 use ieee754::Ieee754;
 use lazy_static::lazy_static;
@@ -689,7 +690,7 @@ impl Record {
     /// ```
     pub fn push_genotypes(&mut self, genotypes: &[GenotypeAllele]) -> Result<()> {
         let encoded: Vec<i32> = genotypes.iter().map(|gt| i32::from(*gt)).collect();
-        self.push_format_integer(b"GT", &encoded)
+        self.push_format_integer(cstr8!("GT"), &encoded)
     }
 
     /// Add/replace genotypes in FORMAT GT tag by providing a list of genotypes.
@@ -759,7 +760,7 @@ impl Record {
                     )),
             );
         }
-        self.push_format_integer(b"GT", &data)
+        self.push_format_integer(cstr8!("GT"), &data)
     }
 
     /// Get genotypes as vector of one `Genotype` per sample.
@@ -846,7 +847,7 @@ impl Record {
     /// # Errors
     ///
     /// Returns error if tag is not present in header.
-    pub fn push_format_integer(&mut self, tag: &[u8], data: &[i32]) -> Result<()> {
+    pub fn push_format_integer(&mut self, tag: &CStr8, data: &[i32]) -> Result<()> {
         self.push_format(tag, data, htslib::BCF_HT_INT)
     }
 
@@ -883,7 +884,7 @@ impl Record {
     /// record.push_format_float(b"AF", &[0.5]);
     /// assert_eq!(0.5, record.format(b"AF").float().unwrap()[0][0]);
     /// ```
-    pub fn push_format_float(&mut self, tag: &[u8], data: &[f32]) -> Result<()> {
+    pub fn push_format_float(&mut self, tag: &CStr8, data: &[f32]) -> Result<()> {
         self.push_format(tag, data, htslib::BCF_HT_REAL)
     }
 
@@ -898,19 +899,18 @@ impl Record {
     /// # Errors
     ///
     /// Returns error if tag is not present in header.
-    pub fn push_format_char(&mut self, tag: &[u8], data: &[u8]) -> Result<()> {
+    pub fn push_format_char(&mut self, tag: &CStr8, data: &[u8]) -> Result<()> {
         self.push_format(tag, data, htslib::BCF_HT_STR)
     }
 
     /// Add a format tag. Data is a flattened two-dimensional array.
     /// The first dimension contains one array for each sample.
-    fn push_format<T>(&mut self, tag: &[u8], data: &[T], ht: u32) -> Result<()> {
-        let tag_c_str = ffi::CString::new(tag).unwrap();
+    fn push_format<T>(&mut self, tag: &CStr8, data: &[T], ht: u32) -> Result<()> {
         unsafe {
             if htslib::bcf_update_format(
                 self.header().inner,
                 self.inner,
-                tag_c_str.as_ptr() as *mut c_char,
+                tag.as_ptr() as *mut c_char,
                 data.as_ptr() as *const ::std::os::raw::c_void,
                 data.len() as i32,
                 ht as i32,
@@ -918,9 +918,7 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(Error::BcfSetTag {
-                    tag: str::from_utf8(tag).unwrap().to_owned(),
-                })
+                Err(Error::BcfSetTag { tag: tag.into() })
             }
         }
     }
@@ -939,7 +937,7 @@ impl Record {
     /// # Errors
     ///
     /// Returns error if tag is not present in header.
-    pub fn push_format_string<D: Borrow<[u8]>>(&mut self, tag: &[u8], data: &[D]) -> Result<()> {
+    pub fn push_format_string<D: Borrow<[u8]>>(&mut self, tag: &CStr8, data: &[D]) -> Result<()> {
         assert!(
             !data.is_empty(),
             "given string data must have at least 1 element"
@@ -952,42 +950,39 @@ impl Record {
             .iter()
             .map(|s| s.as_ptr() as *mut i8)
             .collect::<Vec<*mut i8>>();
-        let tag_c_str = ffi::CString::new(tag).unwrap();
         unsafe {
             if htslib::bcf_update_format_string(
                 self.header().inner,
                 self.inner,
-                tag_c_str.as_ptr() as *mut c_char,
+                tag.as_ptr() as *mut c_char,
                 c_ptrs.as_slice().as_ptr() as *mut *const c_char,
                 data.len() as i32,
             ) == 0
             {
                 Ok(())
             } else {
-                Err(Error::BcfSetTag {
-                    tag: str::from_utf8(tag).unwrap().to_owned(),
-                })
+                Err(Error::BcfSetTag { tag: tag.into() })
             }
         }
     }
 
     /// Add/replace an integer-typed INFO entry.
-    pub fn push_info_integer(&mut self, tag: &[u8], data: &[i32]) -> Result<()> {
+    pub fn push_info_integer(&mut self, tag: &CStr8, data: &[i32]) -> Result<()> {
         self.push_info(tag, data, htslib::BCF_HT_INT)
     }
 
     /// Remove the integer-typed INFO entry.
-    pub fn clear_info_integer(&mut self, tag: &[u8]) -> Result<()> {
+    pub fn clear_info_integer(&mut self, tag: &CStr8) -> Result<()> {
         self.push_info::<i32>(tag, &[], htslib::BCF_HT_INT)
     }
 
     /// Add/replace a float-typed INFO entry.
-    pub fn push_info_float(&mut self, tag: &[u8], data: &[f32]) -> Result<()> {
+    pub fn push_info_float(&mut self, tag: &CStr8, data: &[f32]) -> Result<()> {
         self.push_info(tag, data, htslib::BCF_HT_REAL)
     }
 
     /// Remove the float-typed INFO entry.
-    pub fn clear_info_float(&mut self, tag: &[u8]) -> Result<()> {
+    pub fn clear_info_float(&mut self, tag: &CStr8) -> Result<()> {
         self.push_info::<u8>(tag, &[], htslib::BCF_HT_REAL)
     }
 
@@ -997,13 +992,12 @@ impl Record {
     /// * `tag` - the tag to add/replace
     /// * `data` - the data to set
     /// * `ht` - the HTSLib type to use
-    fn push_info<T>(&mut self, tag: &[u8], data: &[T], ht: u32) -> Result<()> {
-        let tag_c_str = ffi::CString::new(tag).unwrap();
+    fn push_info<T>(&mut self, tag: &CStr8, data: &[T], ht: u32) -> Result<()> {
         unsafe {
             if htslib::bcf_update_info(
                 self.header().inner,
                 self.inner,
-                tag_c_str.as_ptr() as *mut c_char,
+                tag.as_ptr() as *mut c_char,
                 data.as_ptr() as *const ::std::os::raw::c_void,
                 data.len() as i32,
                 ht as i32,
@@ -1011,36 +1005,34 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(Error::BcfSetTag {
-                    tag: str::from_utf8(tag).unwrap().to_owned(),
-                })
+                Err(Error::BcfSetTag { tag: tag.into() })
             }
         }
     }
 
     /// Set flag into the INFO column.
-    pub fn push_info_flag(&mut self, tag: &[u8]) -> Result<()> {
+    pub fn push_info_flag(&mut self, tag: &CStr8) -> Result<()> {
         self.push_info_string_impl(tag, &[b""], htslib::BCF_HT_FLAG)
     }
 
     /// Remove the flag from the INFO column.
-    pub fn clear_info_flag(&mut self, tag: &[u8]) -> Result<()> {
+    pub fn clear_info_flag(&mut self, tag: &CStr8) -> Result<()> {
         self.push_info_string_impl(tag, &[], htslib::BCF_HT_FLAG)
     }
 
     /// Add/replace a string-typed INFO entry.
-    pub fn push_info_string(&mut self, tag: &[u8], data: &[&[u8]]) -> Result<()> {
+    pub fn push_info_string(&mut self, tag: &CStr8, data: &[&[u8]]) -> Result<()> {
         self.push_info_string_impl(tag, data, htslib::BCF_HT_STR)
     }
 
     /// Remove the string field from the INFO column.
-    pub fn clear_info_string(&mut self, tag: &[u8]) -> Result<()> {
+    pub fn clear_info_string(&mut self, tag: &CStr8) -> Result<()> {
         self.push_info_string_impl(tag, &[], htslib::BCF_HT_STR)
     }
 
     /// Add an string-valued INFO tag.
-    fn push_info_string_impl(&mut self, tag: &[u8], data: &[&[u8]], ht: u32) -> Result<()> {
         let mut buf: Vec<u8> = Vec::new();
+    fn push_info_string_impl(&mut self, tag: &CStr8, data: &[&[u8]], ht: u32) -> Result<()> {
         for (i, &s) in data.iter().enumerate() {
             if i > 0 {
                 buf.extend(b",");
@@ -1053,12 +1045,11 @@ impl Record {
         } else {
             c_str.to_bytes().len()
         };
-        let tag_c_str = ffi::CString::new(tag).unwrap();
         unsafe {
             if htslib::bcf_update_info(
                 self.header().inner,
                 self.inner,
-                tag_c_str.as_ptr() as *mut c_char,
+                tag.as_ptr() as *mut c_char,
                 c_str.as_ptr() as *const ::std::os::raw::c_void,
                 len as i32,
                 ht as i32,
@@ -1066,9 +1057,7 @@ impl Record {
             {
                 Ok(())
             } else {
-                Err(Error::BcfSetTag {
-                    tag: str::from_utf8(tag).unwrap().to_owned(),
-                })
+                Err(Error::BcfSetTag { tag: tag.into() })
             }
         }
     }

@@ -835,6 +835,7 @@ fn bcf_open(target: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
 
 #[cfg(test)]
 mod tests {
+    use cstr8::cstr8;
     use tempfile::NamedTempFile;
 
     use super::record::Buffer;
@@ -1427,10 +1428,12 @@ mod tests {
 
             record.set_qual(10.0);
 
-            record.push_info_integer(b"N1", &[32]).unwrap();
-            record.push_info_float(b"F1", &[33.0]).unwrap();
-            record.push_info_string(b"S1", &[b"fourtytwo"]).unwrap();
-            record.push_info_flag(b"X1").unwrap();
+            record.push_info_integer(cstr8!("N1"), &[32]).unwrap();
+            record.push_info_float(cstr8!("F1"), &[33.0]).unwrap();
+            record
+                .push_info_string(cstr8!("S1"), &[b"fourtytwo"])
+                .unwrap();
+            record.push_info_flag(cstr8!("X1")).unwrap();
 
             record
                 .push_genotypes(&[
@@ -1442,12 +1445,16 @@ mod tests {
                 .unwrap();
 
             record
-                .push_format_string(b"FS1", &[&b"yes"[..], &b"no"[..]])
+                .push_format_string(cstr8!("FS1"), &[&b"yes"[..], &b"no"[..]])
                 .unwrap();
-            record.push_format_integer(b"FF1", &[43, 11]).unwrap();
-            record.push_format_float(b"FN1", &[42.0, 10.0]).unwrap();
             record
-                .push_format_char(b"CH1", &[b"A"[0], b"B"[0]])
+                .push_format_integer(cstr8!("FF1"), &[43, 11])
+                .unwrap();
+            record
+                .push_format_float(cstr8!("FN1"), &[42.0, 10.0])
+                .unwrap();
+            record
+                .push_format_char(cstr8!("CH1"), &[b"A"[0], b"B"[0]])
                 .unwrap();
 
             // Finally, write out the record.
