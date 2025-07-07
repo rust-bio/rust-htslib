@@ -1223,8 +1223,8 @@ mod tests {
         use crate::bcf::header::Id;
 
         assert_eq!(header.id_to_name(Id(4)), b"GT");
-        assert_eq!(header.name_to_id(b"GT").unwrap(), Id(4));
-        assert!(header.name_to_id(b"XX").is_err());
+        assert_eq!(header.name_to_id(cstr8!("GT")).unwrap(), Id(4));
+        assert!(header.name_to_id(cstr8!("XX")).is_err());
     }
 
     #[test]

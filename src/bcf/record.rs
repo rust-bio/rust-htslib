@@ -15,7 +15,7 @@ use std::str;
 use std::{ffi, iter};
 
 use bio_types::genome;
-use cstr8::{cstr8, CStr8};
+use cstr8::{cstr8, CStr8, CString8};
 use derive_new::new;
 use ieee754::Ieee754;
 use lazy_static::lazy_static;
@@ -87,10 +87,22 @@ pub trait FilterId {
 
 impl FilterId for [u8] {
     fn id_from_header(&self, header: &HeaderView) -> Result<Id> {
-        header.name_to_id(self)
+        let str = String::from_utf8(self.to_vec()).map_err(|_| Error::BcfInvalidRecord)?;
+        let id = CString8::new(str).map_err(|_| Error::BcfInvalidRecord)?;
+        header.name_to_id(&id)
     }
     fn is_pass(&self) -> bool {
         matches!(self, b"PASS" | b".")
+    }
+}
+
+impl<'a> FilterId for &'a CStr8 {
+    fn id_from_header(&self, header: &HeaderView) -> Result<Id> {
+        header.name_to_id(self)
+    }
+
+    fn is_pass(&self) -> bool {
+        matches!(self.as_bytes(), b"PASS" | b".")
     }
 }
 
@@ -422,6 +434,7 @@ impl Record {
     ///
     /// # Example
     /// ```rust
+    /// # use cstr8::cstr8;
     /// # use rust_htslib::bcf::{Format, Header, Writer};
     /// # use rust_htslib::bcf::header::Id;
     /// # use tempfile::NamedTempFile;
@@ -432,8 +445,8 @@ impl Record {
     /// header.push_record(br#"##FILTER=<ID=bar,Description="a horse walks into...">"#);
     /// # let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
     /// # let mut record = vcf.empty_record();
-    /// let foo = record.header().name_to_id(b"foo").unwrap();
-    /// let bar = record.header().name_to_id(b"bar").unwrap();
+    /// let foo = record.header().name_to_id(cstr8!("foo")).unwrap();
+    /// let bar = record.header().name_to_id(cstr8!("bar")).unwrap();
     /// assert!(record.has_filter("PASS".as_bytes()));
     /// let mut filters = vec![&foo, &bar];
     /// record.set_filters(&filters).unwrap();
@@ -474,6 +487,7 @@ impl Record {
     ///
     /// # Example
     /// ```rust
+    /// # use cstr8::cstr8;
     /// # use rust_htslib::bcf::{Format, Header, Writer};
     /// # use tempfile::NamedTempFile;
     /// # let tmp = tempfile::NamedTempFile::new().unwrap();
@@ -484,7 +498,7 @@ impl Record {
     /// # let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
     /// # let mut record = vcf.empty_record();
     /// let foo = "foo".as_bytes();
-    /// let bar = record.header().name_to_id(b"bar").unwrap();
+    /// let bar = record.header().name_to_id(cstr8!("bar")).unwrap();
     /// assert!(record.has_filter("PASS".as_bytes()));
     ///
     /// record.push_filter(foo).unwrap();
@@ -799,6 +813,7 @@ impl Record {
     /// for an example of the setup used here.*
     ///
     /// ```rust
+    /// # use cstr8::cstr8;
     /// # use rust_htslib::bcf::{Format, Writer};
     /// # use rust_htslib::bcf::header::Header;
     /// #
@@ -809,7 +824,7 @@ impl Record {
     /// # // Write uncompressed VCF to stdout with above header and get an empty record
     /// # let mut vcf = Writer::from_stdout(&header, true, Format::Vcf).unwrap();
     /// # let mut record = vcf.empty_record();
-    /// record.push_format_integer(b"DP", &[20, 12]).expect("Failed to set DP format field");
+    /// record.push_format_integer(cstr8!("DP"), &[20, 12]).expect("Failed to set DP format field");
     ///
     /// let read_depths = record.format(b"DP").integer().expect("Couldn't retrieve DP field");
     /// let sample1_depth = read_depths[0];
@@ -870,6 +885,7 @@ impl Record {
     /// VCF, header, and record.
     ///
     /// ```
+    /// # use cstr8::cstr8;
     /// # use rust_htslib::bcf::{Format, Writer};
     /// # use rust_htslib::bcf::header::Header;
     /// # use rust_htslib::bcf::record::GenotypeAllele;
@@ -881,7 +897,7 @@ impl Record {
     /// # header.push_sample("test_sample".as_bytes());
     /// # let mut vcf = Writer::from_stdout(&header, true, Format::Vcf).unwrap();
     /// # let mut record = vcf.empty_record();
-    /// record.push_format_float(b"AF", &[0.5]);
+    /// record.push_format_float(cstr8!("AF"), &[0.5]);
     /// assert_eq!(0.5, record.format(b"AF").float().unwrap()[0][0]);
     /// ```
     pub fn push_format_float(&mut self, tag: &CStr8, data: &[f32]) -> Result<()> {
@@ -1801,7 +1817,7 @@ mod tests {
         let mut record = vcf.empty_record();
         assert!(record.has_filter("PASS".as_bytes()));
         record.push_filter("foo".as_bytes()).unwrap();
-        let bar = record.header().name_to_id(b"bar").unwrap();
+        let bar = record.header().name_to_id(cstr8!("bar")).unwrap();
         record.push_filter(&bar).unwrap();
         assert!(record.has_filter("foo".as_bytes()));
         assert!(record.has_filter(&bar));
@@ -1843,8 +1859,8 @@ mod tests {
         header.push_record(br#"##FILTER=<ID=bar,Description="a horse walks into...">"#);
         let vcf = Writer::from_path(path, &header, true, Format::Vcf).unwrap();
         let mut record = vcf.empty_record();
-        let foo = record.header().name_to_id(b"foo").unwrap();
-        let bar = record.header().name_to_id(b"bar").unwrap();
+        let foo = record.header().name_to_id(cstr8!("foo")).unwrap();
+        let bar = record.header().name_to_id(cstr8!("bar")).unwrap();
         record.set_filters(&[&foo, &bar]).unwrap();
         assert!(record.has_filter(&foo));
         assert!(record.has_filter(&bar));
