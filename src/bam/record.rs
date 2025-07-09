@@ -473,6 +473,62 @@ impl Record {
         self.inner_mut().core.l_extranul = extranul as u8;
     }
 
+    /// Replace current cigar with a new one.
+    pub fn set_cigar(&mut self, new_cigar: Option<&CigarString>) {
+        self.cigar = None;
+
+        let qname_data_len = self.qname_capacity();
+        let old_cigar_data_len = self.cigar_len() * 4;
+
+        // Length of data after cigar
+        let other_data_len = self.inner_mut().l_data - (qname_data_len + old_cigar_data_len) as i32;
+
+        let new_cigar_len = match new_cigar {
+            Some(x) => x.len(),
+            None => 0,
+        };
+        let new_cigar_data_len = new_cigar_len * 4;
+
+        if new_cigar_data_len < old_cigar_data_len {
+            self.inner_mut().l_data -= (old_cigar_data_len - new_cigar_data_len) as i32;
+        } else if new_cigar_data_len > old_cigar_data_len {
+            self.inner_mut().l_data += (new_cigar_data_len - old_cigar_data_len) as i32;
+
+            // Reallocate if necessary
+            if (self.inner().m_data as i32) < self.inner().l_data {
+                // Verbosity due to lexical borrowing
+                let l_data = self.inner().l_data;
+                self.realloc_var_data(l_data as usize);
+            }
+        }
+
+        if new_cigar_data_len != old_cigar_data_len {
+            // Move other data to new location
+            unsafe {
+                ::libc::memmove(
+                    self.inner.data.add(qname_data_len + new_cigar_data_len) as *mut ::libc::c_void,
+                    self.inner.data.add(qname_data_len + old_cigar_data_len) as *mut ::libc::c_void,
+                    other_data_len as usize,
+                );
+            }
+        }
+
+        // Copy cigar data
+        if let Some(cigar_string) = new_cigar {
+            let cigar_data = unsafe {
+                #[allow(clippy::cast_ptr_alignment)]
+                slice::from_raw_parts_mut(
+                    self.inner.data.add(qname_data_len) as *mut u32,
+                    cigar_string.len(),
+                )
+            };
+            for (i, c) in cigar_string.iter().enumerate() {
+                cigar_data[i] = c.encode();
+            }
+        }
+        self.inner_mut().core.n_cigar = new_cigar_len as u32;
+    }
+
     fn realloc_var_data(&mut self, new_len: usize) {
         // pad request
         let new_len = new_len as u32;
