@@ -40,6 +40,7 @@ use std::str;
 
 use crate::htslib;
 
+use cstr8::CStr8;
 use linear_map::LinearMap;
 
 use crate::errors::{Error, Result};
@@ -398,17 +399,14 @@ impl HeaderView {
     }
 
     /// Convert string ID (e.g., for a `FILTER` value) to its numeric identifier.
-    pub fn name_to_id(&self, id: &[u8]) -> Result<Id> {
-        let c_str = ffi::CString::new(id).unwrap();
+    pub fn name_to_id(&self, id: &CStr8) -> Result<Id> {
         unsafe {
             match htslib::bcf_hdr_id2int(
                 self.inner,
                 htslib::BCF_DT_ID as i32,
-                c_str.as_ptr() as *const c_char,
+                id.as_ptr() as *const c_char,
             ) {
-                -1 => Err(Error::BcfUnknownID {
-                    id: str::from_utf8(id).unwrap().to_owned(),
-                }),
+                -1 => Err(Error::BcfUnknownID { id: id.into() }),
                 i => Ok(Id(i as u32)),
             }
         }
