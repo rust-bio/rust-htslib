@@ -182,7 +182,7 @@ mod tests {
 
     #[test]
     fn test_buffer() {
-        let reader = bam::IndexedReader::from_path(&"test/test.bam").unwrap();
+        let reader = bam::IndexedReader::from_path("test/test.bam").unwrap();
         let mut buffer = RecordBuffer::new(reader, false);
 
         buffer.fetch(b"CHROMOSOME_I", 1, 5).unwrap();

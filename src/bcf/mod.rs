@@ -237,7 +237,7 @@ impl Read for Reader {
 
     /// Return empty record.  Can be reused multiple times.
     fn empty_record(&self) -> Record {
-        Record::new(Rc::clone(&self.header))
+        self.header.empty_record()
     }
 }
 
@@ -318,10 +318,10 @@ impl IndexedReader {
     /// # Arguments
     ///
     /// * `rid` - numeric ID of the reference to jump to; use `HeaderView::name2rid` for resolving
-    ///           contig name to ID.
+    ///   contig name to ID.
     /// * `start` - `0`-based **inclusive** start coordinate of region on reference.
     /// * `end` - Optional `0`-based **inclusive** end coordinate of region on reference. If `None`
-    /// is given, records are fetched from `start` until the end of the contig.
+    ///   is given, records are fetched from `start` until the end of the contig.
     ///
     /// # Note
     /// The entire contig can be fetched by setting `start` to `0` and `end` to `None`.
@@ -605,7 +605,7 @@ pub mod synced {
         /// # Arguments
         ///
         /// * `rid` - numeric ID of the reference to jump to; use `HeaderView::name2rid` for resolving
-        ///           contig name to ID.
+        ///   contig name to ID.
         /// * `start` - `0`-based start coordinate of region on reference.
         /// * `end` - `0`-based end coordinate of region on reference.
         pub fn fetch(&mut self, rid: u32, start: u64, end: u64) -> Result<()> {
@@ -796,7 +796,7 @@ pub struct Records<'a, R: Read> {
     reader: &'a mut R,
 }
 
-impl<'a, R: Read> Iterator for Records<'a, R> {
+impl<R: Read> Iterator for Records<'_, R> {
     type Item = Result<record::Record>;
 
     fn next(&mut self) -> Option<Result<record::Record>> {
@@ -835,6 +835,8 @@ fn bcf_open(target: &[u8], mode: &[u8]) -> Result<*mut htslib::htsFile> {
 
 #[cfg(test)]
 mod tests {
+    use tempfile::NamedTempFile;
+
     use super::record::Buffer;
     use super::*;
     use crate::bcf::header::Id;
@@ -857,7 +859,7 @@ mod tests {
 
             assert_eq!(record.rid().expect("Error reading rid."), 0);
             assert_eq!(record.pos(), 10021 + i as i64);
-            assert!((record.qual() - 0f32).abs() < std::f32::EPSILON);
+            assert!((record.qual() - 0f32).abs() < f32::EPSILON);
             let mut buffer = Buffer::new();
             assert!(
                 (record
@@ -867,7 +869,7 @@ mod tests {
                     .expect("Missing tag")[0]
                     - 1.0)
                     .abs()
-                    < std::f32::EPSILON
+                    < f32::EPSILON
             );
             if i == 59 {
                 assert!(
@@ -878,7 +880,7 @@ mod tests {
                         .expect("Missing tag")[0]
                         - -0.379885)
                         .abs()
-                        < std::f32::EPSILON
+                        < f32::EPSILON
                 );
             }
             // the artificial "not observed" allele is present in each record.
@@ -925,7 +927,7 @@ mod tests {
 
     #[test]
     fn test_fetch() {
-        let mut bcf = IndexedReader::from_path(&"test/test.bcf").expect("Error opening file.");
+        let mut bcf = IndexedReader::from_path("test/test.bcf").expect("Error opening file.");
         bcf.set_threads(2).unwrap();
         let rid = bcf
             .header()
@@ -938,7 +940,7 @@ mod tests {
 
     #[test]
     fn test_fetch_all() {
-        let mut bcf = IndexedReader::from_path(&"test/test.bcf").expect("Error opening file.");
+        let mut bcf = IndexedReader::from_path("test/test.bcf").expect("Error opening file.");
         bcf.set_threads(2).unwrap();
         let rid = bcf
             .header()
@@ -950,7 +952,7 @@ mod tests {
 
     #[test]
     fn test_fetch_open_ended() {
-        let mut bcf = IndexedReader::from_path(&"test/test.bcf").expect("Error opening file.");
+        let mut bcf = IndexedReader::from_path("test/test.bcf").expect("Error opening file.");
         bcf.set_threads(2).unwrap();
         let rid = bcf
             .header()
@@ -962,7 +964,7 @@ mod tests {
 
     #[test]
     fn test_fetch_start_greater_than_last_vcf_pos() {
-        let mut bcf = IndexedReader::from_path(&"test/test.bcf").expect("Error opening file.");
+        let mut bcf = IndexedReader::from_path("test/test.bcf").expect("Error opening file.");
         bcf.set_threads(2).unwrap();
         let rid = bcf
             .header()
@@ -974,7 +976,7 @@ mod tests {
 
     #[test]
     fn test_write() {
-        let mut bcf = Reader::from_path(&"test/test_multi.bcf").expect("Error opening file.");
+        let mut bcf = Reader::from_path("test/test_multi.bcf").expect("Error opening file.");
         let tmp = tempfile::Builder::new()
             .prefix("rust-htslib")
             .tempdir()
@@ -1002,7 +1004,7 @@ mod tests {
 
     #[test]
     fn test_strings() {
-        let mut vcf = Reader::from_path(&"test/test_string.vcf").expect("Error opening file.");
+        let mut vcf = Reader::from_path("test/test_string.vcf").expect("Error opening file.");
         let fs1 = [
             &b"LongString1"[..],
             &b"LongString2"[..],
@@ -1041,7 +1043,7 @@ mod tests {
 
     #[test]
     fn test_missing() {
-        let mut vcf = Reader::from_path(&"test/test_missing.vcf").expect("Error opening file.");
+        let mut vcf = Reader::from_path("test/test_missing.vcf").expect("Error opening file.");
         let fn4 = [
             &[
                 i32::missing(),
@@ -1081,7 +1083,7 @@ mod tests {
 
     #[test]
     fn test_genotypes() {
-        let mut vcf = Reader::from_path(&"test/test_string.vcf").expect("Error opening file.");
+        let mut vcf = Reader::from_path("test/test_string.vcf").expect("Error opening file.");
         let expected = ["./1", "1|1", "0/1", "0|1", "1|.", "1/1"];
         for (rec, exp_gt) in vcf.records().zip(expected.iter()) {
             let rec = rec.expect("Error reading record.");
@@ -1091,8 +1093,131 @@ mod tests {
     }
 
     #[test]
+    fn test_genotypes_read_mixed_ploidy() {
+        let mut vcf = Reader::from_path("test/test_non_diploid.vcf").expect("Error opening file.");
+
+        // Expected genotypes for comparison
+        let expected = [vec!["0", "1"], vec!["0/1", "1/1"], vec!["1|0", "1/1|0"]];
+
+        for (rec, exp_gts) in vcf.records().zip(expected.iter()) {
+            let rec = rec.expect("Error reading record.");
+
+            // Get the genotypes from the record
+            let genotypes = rec.genotypes().expect("Error reading genotypes");
+
+            // Compare each genotype with the expected value
+            for (sample, exp_gt) in exp_gts.iter().enumerate() {
+                assert_eq!(&format!("{}", genotypes.get(sample)), exp_gt);
+            }
+        }
+    }
+
+    #[test]
+    fn test_genotypes_write_and_read_mixed_ploidy() {
+        let mut vcf = Reader::from_path("test/test_non_diploid.vcf").expect("Error opening file.");
+
+        // Create a temporary file to write the modified VCF data
+        let tmp = NamedTempFile::new().unwrap();
+        let path = tmp.path();
+
+        {
+            // Create a VCF writer with the same header as the input VCF
+            let mut writer = Writer::from_path(
+                path,
+                &Header::from_template(vcf.header()),
+                true,
+                Format::Vcf,
+            )
+            .unwrap();
+
+            // Modify record template by adding different genotypes and write the to the temp file.
+            let mut rec_tpl = vcf.records().next().unwrap().unwrap();
+            rec_tpl
+                .push_genotype_structured(
+                    &[
+                        vec![GenotypeAllele::Unphased(0)],
+                        vec![GenotypeAllele::Unphased(1)],
+                    ],
+                    3,
+                )
+                .unwrap();
+            writer.write(&rec_tpl).unwrap();
+            rec_tpl
+                .push_genotype_structured(
+                    &[
+                        vec![GenotypeAllele::Unphased(0), GenotypeAllele::Unphased(1)],
+                        vec![GenotypeAllele::Unphased(1), GenotypeAllele::Unphased(1)],
+                    ],
+                    3,
+                )
+                .unwrap();
+            writer.write(&rec_tpl).unwrap();
+            rec_tpl
+                .push_genotype_structured(
+                    &[
+                        vec![GenotypeAllele::Unphased(1), GenotypeAllele::Phased(0)],
+                        vec![
+                            GenotypeAllele::Unphased(1),
+                            GenotypeAllele::Unphased(1),
+                            GenotypeAllele::Phased(0),
+                        ],
+                    ],
+                    3,
+                )
+                .unwrap();
+            writer.write(&rec_tpl).unwrap();
+        }
+
+        // Read back the temporary file with the modified VCF data
+        let mut reader = Reader::from_path(path).unwrap();
+
+        // Expected genotypes for validation
+        let expected = [vec!["0", "1"], vec!["0/1", "1/1"], vec!["1|0", "1/1|0"]];
+
+        // Iterate over the records in the temporary file and validate the genotypes
+        for (rec, exp_gts) in reader.records().zip(expected.iter()) {
+            let rec = rec.expect("Error reading record");
+            let genotypes = rec.genotypes().expect("Error reading genotypes");
+
+            // Compare each genotype with the expected value
+            for (sample, exp_gt) in exp_gts.iter().enumerate() {
+                assert_eq!(&format!("{}", genotypes.get(sample)), exp_gt);
+            }
+        }
+    }
+
+    #[test]
+    fn test_genotypes_wrong_max_ploidy() {
+        let mut vcf = Reader::from_path("test/test_non_diploid.vcf").expect("Error opening file.");
+
+        // Modify record template by adding different genotypes and write the to the temp file.
+        let mut rec_tpl = vcf.records().next().unwrap().unwrap();
+        let err = rec_tpl
+            .push_genotype_structured(
+                &[
+                    vec![
+                        GenotypeAllele::Unphased(0),
+                        GenotypeAllele::Unphased(1),
+                        GenotypeAllele::Unphased(0),
+                    ],
+                    vec![
+                        GenotypeAllele::Unphased(1),
+                        GenotypeAllele::Unphased(0),
+                        GenotypeAllele::Unphased(1),
+                        GenotypeAllele::Unphased(0),
+                    ],
+                ],
+                3,
+            )
+            .expect_err(
+                "This should fail since there are more alleles specified (4 for second sample) than max_ploidy (3) suggests",
+            );
+        assert_eq!(err, crate::errors::Error::BcfSetValues);
+    }
+
+    #[test]
     fn test_header_ids() {
-        let vcf = Reader::from_path(&"test/test_string.vcf").expect("Error opening file.");
+        let vcf = Reader::from_path("test/test_string.vcf").expect("Error opening file.");
         let header = &vcf.header();
         use crate::bcf::header::Id;
 
@@ -1103,7 +1228,7 @@ mod tests {
 
     #[test]
     fn test_header_samples() {
-        let vcf = Reader::from_path(&"test/test_string.vcf").expect("Error opening file.");
+        let vcf = Reader::from_path("test/test_string.vcf").expect("Error opening file.");
         let header = &vcf.header();
 
         assert_eq!(header.id_to_sample(Id(0)), b"one");
@@ -1115,7 +1240,7 @@ mod tests {
 
     #[test]
     fn test_header_contigs() {
-        let vcf = Reader::from_path(&"test/test_multi.bcf").expect("Error opening file.");
+        let vcf = Reader::from_path("test/test_multi.bcf").expect("Error opening file.");
         let header = &vcf.header();
 
         assert_eq!(header.contig_count(), 86);
@@ -1134,7 +1259,7 @@ mod tests {
 
     #[test]
     fn test_header_records() {
-        let vcf = Reader::from_path(&"test/test_string.vcf").expect("Error opening file.");
+        let vcf = Reader::from_path("test/test_string.vcf").expect("Error opening file.");
         let records = vcf.header().header_records();
         assert_eq!(records.len(), 10);
 
@@ -1154,7 +1279,7 @@ mod tests {
 
     #[test]
     fn test_header_info_types() {
-        let vcf = Reader::from_path(&"test/test.bcf").unwrap();
+        let vcf = Reader::from_path("test/test.bcf").unwrap();
         let header = vcf.header();
         let truth = vec![
             (
@@ -1188,7 +1313,7 @@ mod tests {
             assert_eq!(tag_length, ref_length);
         }
 
-        let vcf = Reader::from_path(&"test/test_svlen.vcf").unwrap();
+        let vcf = Reader::from_path("test/test_svlen.vcf").unwrap();
         let header = vcf.header();
         let truth = vec![
             (
@@ -1227,7 +1352,7 @@ mod tests {
 
     #[test]
     fn test_remove_alleles() {
-        let mut bcf = Reader::from_path(&"test/test_multi.bcf").unwrap();
+        let mut bcf = Reader::from_path("test/test_multi.bcf").unwrap();
         for res in bcf.records() {
             let mut record = res.unwrap();
             if record.pos() == 10080 {
@@ -1259,13 +1384,13 @@ mod tests {
             .expect("Cannot create temp dir");
         let out_path = tmp.path().join("test_various.out.vcf");
 
-        let vcf = Reader::from_path(&"test/test_various.vcf").expect("Error opening file.");
+        let vcf = Reader::from_path("test/test_various.vcf").expect("Error opening file.");
         // The writer goes into its own block so we can ensure that the file is closed and
         // all data is written below.
         {
             let mut writer = Writer::from_path(
                 &out_path,
-                &Header::from_template(&vcf.header()),
+                &Header::from_template(vcf.header()),
                 true,
                 Format::Vcf,
             )
@@ -1337,7 +1462,7 @@ mod tests {
 
     #[test]
     fn test_remove_headers() {
-        let vcf = Reader::from_path(&"test/test_headers.vcf").expect("Error opening file.");
+        let vcf = Reader::from_path("test/test_headers.vcf").expect("Error opening file.");
         let tmp = tempfile::Builder::new()
             .prefix("rust-htslib")
             .tempdir()
@@ -1369,8 +1494,8 @@ mod tests {
         reader.set_pairing(synced::pairing::SNPS);
 
         assert_eq!(reader.reader_count(), 0);
-        reader.add_reader(&"test/test_left.vcf.gz").unwrap();
-        reader.add_reader(&"test/test_right.vcf.gz").unwrap();
+        reader.add_reader("test/test_left.vcf.gz").unwrap();
+        reader.add_reader("test/test_right.vcf.gz").unwrap();
         assert_eq!(reader.reader_count(), 2);
 
         let res1 = reader.read_next();
@@ -1399,8 +1524,8 @@ mod tests {
         reader.set_pairing(synced::pairing::SNPS);
 
         assert_eq!(reader.reader_count(), 0);
-        reader.add_reader(&"test/test_left.vcf.gz").unwrap();
-        reader.add_reader(&"test/test_right.vcf.gz").unwrap();
+        reader.add_reader("test/test_left.vcf.gz").unwrap();
+        reader.add_reader("test/test_right.vcf.gz").unwrap();
         assert_eq!(reader.reader_count(), 2);
 
         reader.fetch(0, 0, 1000).unwrap();

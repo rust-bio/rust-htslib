@@ -192,7 +192,7 @@ mod tests {
 
     #[test]
     fn test_buffer() {
-        let reader = bcf::Reader::from_path(&"test/test.bcf").unwrap();
+        let reader = bcf::Reader::from_path("test/test.bcf").unwrap();
         let mut buffer = RecordBuffer::new(reader);
 
         buffer.fetch(b"1", 100, 10023).unwrap();

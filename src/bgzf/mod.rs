@@ -87,7 +87,7 @@ impl Reader {
         let mode = ffi::CString::new("r").unwrap();
         let cpath = ffi::CString::new(path).unwrap();
         let inner = unsafe { htslib::bgzf_open(cpath.as_ptr(), mode.as_ptr()) };
-        if inner != std::ptr::null_mut() {
+        if !inner.is_null() {
             Ok(Self { inner })
         } else {
             Err(Error::FileOpen {
@@ -121,10 +121,7 @@ impl std::io::Read for Reader {
             htslib::bgzf_read(self.inner, buf.as_mut_ptr() as *mut libc::c_void, buf.len())
         };
         if nbytes < 0 {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Can not read",
-            ))
+            Err(std::io::Error::other("Can not read"))
         } else {
             Ok(nbytes as usize)
         }
@@ -217,7 +214,7 @@ impl Writer {
         let mode = Self::get_open_mode(level)?;
         let cpath = ffi::CString::new(path).unwrap();
         let inner = unsafe { htslib::bgzf_open(cpath.as_ptr(), mode.as_ptr()) };
-        if inner != std::ptr::null_mut() {
+        if !inner.is_null() {
             Ok(Self { inner, tpool: None })
         } else {
             Err(Error::FileOpen {
@@ -240,7 +237,7 @@ impl Writer {
             // This should be unreachable
             Ok(i) => return Err(Error::BgzfInvalidCompressionLevel { level: i }),
         };
-        return Ok(ffi::CString::new(write_string).unwrap());
+        Ok(ffi::CString::new(write_string).unwrap())
     }
 
     /// Set the thread pool to use for parallel compression.
@@ -268,10 +265,7 @@ impl std::io::Write for Writer {
         let nbytes =
             unsafe { htslib::bgzf_write(self.inner, buf.as_ptr() as *mut libc::c_void, buf.len()) };
         if nbytes < 0 {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Can not write",
-            ))
+            Err(std::io::Error::other("Can not write"))
         } else {
             Ok(nbytes as usize)
         }
@@ -282,10 +276,7 @@ impl std::io::Write for Writer {
         if exit_code == 0 {
             Ok(())
         } else {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Can not flush",
-            ))
+            Err(std::io::Error::other("Can not flush"))
         }
     }
 }
@@ -514,7 +505,7 @@ mod tests {
             CompressionLevel::Uncompressed,
         ]
         .into_iter()
-        .chain((-1..=9_i8).map(|n| CompressionLevel::Level(n)));
+        .chain((-1..=9_i8).map(CompressionLevel::Level));
 
         for level in compression_levels {
             {

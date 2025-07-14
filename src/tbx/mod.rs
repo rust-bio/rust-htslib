@@ -253,6 +253,10 @@ impl Reader {
             Ok(())
         }
     }
+
+    pub fn hts_format(&self) -> htslib::htsExactFormat {
+        self.hts_format
+    }
 }
 
 /// Return whether the two given genomic intervals overlap.
@@ -327,7 +331,7 @@ pub struct Records<'a, R: Read> {
     reader: &'a mut R,
 }
 
-impl<'a, R: Read> Iterator for Records<'a, R> {
+impl<R: Read> Iterator for Records<'_, R> {
     type Item = Result<Vec<u8>>;
 
     #[allow(clippy::read_zero_byte_vec)]
