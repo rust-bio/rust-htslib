@@ -375,7 +375,7 @@ impl HeaderView {
             let n = (*self.inner).n[htslib::BCF_DT_ID as usize] as usize;
             let entry = slice::from_raw_parts((*self.inner).id[htslib::BCF_DT_ID as usize], n);
             let d = (*entry[id as usize].val).info[hdr_type as usize];
-            (d >> 4 & 0xf, d >> 8 & 0xf, d >> 12)
+            ((d >> 4) & 0xf, (d >> 8) & 0xf, d >> 12)
         };
         let _type = match _type as ::libc::c_uint {
             htslib::BCF_HT_FLAG => TagType::Flag,

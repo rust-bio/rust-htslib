@@ -1934,6 +1934,67 @@ CCCCCCCCCCCCCCCCCCC"[..],
     }
 
     #[test]
+    fn test_set_cigar() {
+        let (names, _, seqs, quals, cigars) = gold();
+
+        assert!(names[0] != names[1]);
+
+        for i in 0..names.len() {
+            let mut rec = record::Record::new();
+            rec.set(names[i], Some(&cigars[i]), seqs[i], quals[i]);
+            rec.push_aux(b"NM", Aux::I32(15)).unwrap();
+
+            assert_eq!(rec.qname(), names[i]);
+            assert_eq!(*rec.cigar(), cigars[i]);
+            assert_eq!(rec.seq().as_bytes(), seqs[i]);
+            assert_eq!(rec.qual(), quals[i]);
+            assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
+
+            // boring cigar
+            let new_cigar = CigarString(vec![Cigar::Match(rec.seq_len() as u32)]);
+            assert_ne!(*rec.cigar(), new_cigar);
+            rec.set_cigar(Some(&new_cigar));
+            assert_eq!(*rec.cigar(), new_cigar);
+
+            assert_eq!(rec.qname(), names[i]);
+            assert_eq!(rec.seq().as_bytes(), seqs[i]);
+            assert_eq!(rec.qual(), quals[i]);
+            assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
+
+            // bizarre cigar
+            let new_cigar = (0..rec.seq_len())
+                .map(|i| {
+                    if i % 2 == 0 {
+                        Cigar::Match(1)
+                    } else {
+                        Cigar::Ins(1)
+                    }
+                })
+                .collect::<Vec<_>>();
+            let new_cigar = CigarString(new_cigar);
+            assert_ne!(*rec.cigar(), new_cigar);
+            rec.set_cigar(Some(&new_cigar));
+            assert_eq!(*rec.cigar(), new_cigar);
+
+            assert_eq!(rec.qname(), names[i]);
+            assert_eq!(rec.seq().as_bytes(), seqs[i]);
+            assert_eq!(rec.qual(), quals[i]);
+            assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
+
+            // empty cigar
+            let new_cigar = CigarString(Vec::new());
+            assert_ne!(*rec.cigar(), new_cigar);
+            rec.set_cigar(None);
+            assert_eq!(*rec.cigar(), new_cigar);
+
+            assert_eq!(rec.qname(), names[i]);
+            assert_eq!(rec.seq().as_bytes(), seqs[i]);
+            assert_eq!(rec.qual(), quals[i]);
+            assert_eq!(rec.aux(b"NM").unwrap(), Aux::I32(15));
+        }
+    }
+
+    #[test]
     fn test_remove_aux() {
         let mut bam = Reader::from_path(Path::new("test/test.bam")).expect("Error opening file.");
 

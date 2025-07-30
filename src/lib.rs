@@ -20,7 +20,7 @@
 //! ```
 //!
 //! We can reproduce that with Rust-Htslib. Reading BAM files and printing the header
-//! to the the screen is as easy as
+//! to the screen is as easy as
 //!
 //! ```
 //! use rust_htslib::{bam, bam::Read};

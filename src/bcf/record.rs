@@ -4,7 +4,6 @@
 // except according to those terms.
 
 use std::borrow::{Borrow, BorrowMut};
-use std::ffi;
 use std::fmt;
 use std::marker::PhantomData;
 use std::ops::Deref;
@@ -13,6 +12,7 @@ use std::ptr;
 use std::rc::Rc;
 use std::slice;
 use std::str;
+use std::{ffi, iter};
 
 use bio_types::genome;
 use derive_new::new;
@@ -659,7 +659,7 @@ impl Record {
     /// # Arguments
     ///
     /// - `genotypes` - a flattened, two-dimensional array of GenotypeAllele,
-    ///                 the first dimension contains one array for each sample.
+    ///   the first dimension contains one array for each sample.
     ///
     /// # Errors
     ///
@@ -690,6 +690,76 @@ impl Record {
     pub fn push_genotypes(&mut self, genotypes: &[GenotypeAllele]) -> Result<()> {
         let encoded: Vec<i32> = genotypes.iter().map(|gt| i32::from(*gt)).collect();
         self.push_format_integer(b"GT", &encoded)
+    }
+
+    /// Add/replace genotypes in FORMAT GT tag by providing a list of genotypes.
+    ///
+    /// # Arguments
+    ///
+    /// - `genotypes` - a two-dimensional array of GenotypeAllele
+    /// - `max_ploidy` - the maximum number of alleles allowed for any genotype on any sample.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any genotype has more allelles than `max_ploidy` or if the GT tag is not present in the header.
+    ///
+    /// # Example
+    ///
+    /// Example assumes we have a Record `record` from a VCF with a `GT` `FORMAT` tag and three samples.
+    /// See [module documentation](../index.html#example-writing) for how to set up
+    /// VCF, header, and record.
+    ///
+    /// ```
+    /// # use rust_htslib::bcf::{Format, Writer};
+    /// # use rust_htslib::bcf::header::Header;
+    /// # use rust_htslib::bcf::record::GenotypeAllele;
+    /// # use std::iter;
+    /// # let mut header = Header::new();
+    /// # let header_contig_line = r#"##contig=<ID=1,length=10>"#;
+    /// # header.push_record(header_contig_line.as_bytes());
+    /// # let header_gt_line = r#"##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">"#;
+    /// # header.push_record(header_gt_line.as_bytes());
+    /// # header.push_sample("first_sample".as_bytes());
+    /// # header.push_sample("second_sample".as_bytes());
+    /// # header.push_sample("third_sample".as_bytes());
+    /// # let mut vcf = Writer::from_stdout(&header, true, Format::Vcf)?;
+    /// # let mut record = vcf.empty_record();
+    /// let alleles = vec![
+    ///     vec![GenotypeAllele::Unphased(1), GenotypeAllele::Unphased(1)],
+    ///     vec![GenotypeAllele::Unphased(0), GenotypeAllele::Phased(1)],
+    ///     vec![GenotypeAllele::Unphased(0)],
+    /// ];
+    /// record.push_genotype_structured(&alleles, 2);
+    /// let gts = record.genotypes()?;
+    /// assert_eq!("1/1", &format!("{}", gts.get(0)));
+    /// assert_eq!("0|1", &format!("{}", gts.get(1)));
+    /// assert_eq!("0", &format!("{}", gts.get(2)));
+    /// # Ok::<(), rust_htslib::errors::Error>(())
+    /// ```
+    pub fn push_genotype_structured<GT>(
+        &mut self,
+        genotypes: &[GT],
+        max_ploidy: usize,
+    ) -> Result<()>
+    where
+        GT: AsRef<[GenotypeAllele]>,
+    {
+        let mut data = Vec::with_capacity(max_ploidy * genotypes.len());
+        for gt in genotypes {
+            if gt.as_ref().len() > max_ploidy {
+                return Err(Error::BcfSetValues);
+            }
+            data.extend(
+                gt.as_ref()
+                    .iter()
+                    .map(|gta| i32::from(*gta))
+                    .chain(iter::repeat_n(
+                        VECTOR_END_INTEGER,
+                        max_ploidy - gt.as_ref().len(),
+                    )),
+            );
+        }
+        self.push_format_integer(b"GT", &data)
     }
 
     /// Get genotypes as vector of one `Genotype` per sample.
@@ -771,7 +841,7 @@ impl Record {
     ///
     /// - `tag` - The tag's string.
     /// - `data` - a flattened, two-dimensional array, the first dimension contains one array
-    ///            for each sample.
+    ///   for each sample.
     ///
     /// # Errors
     ///
@@ -786,7 +856,7 @@ impl Record {
     ///
     /// - `tag` - The tag's string.
     /// - `data` - a flattened, two-dimensional array, the first dimension contains one array
-    ///            for each sample.
+    ///   for each sample.
     ///
     /// # Errors
     ///
@@ -823,7 +893,7 @@ impl Record {
     ///
     /// - `tag` - The tag's string.
     /// - `data` - a flattened, two-dimensional array, the first dimension contains one array
-    ///            for each sample.
+    ///   for each sample.
     ///
     /// # Errors
     ///
@@ -864,7 +934,7 @@ impl Record {
     ///
     /// - `tag` - The tag's string.
     /// - `data` - a two-dimensional array, the first dimension contains one array
-    ///            for each sample. Must be non-empty.
+    ///   for each sample. Must be non-empty.
     ///
     /// # Errors
     ///
@@ -1202,7 +1272,7 @@ impl From<GenotypeAllele> for i32 {
             GenotypeAllele::Unphased(a) => (a, 0),
             GenotypeAllele::Phased(a) => (a, 1),
         };
-        (allele + 1) << 1 | phased
+        ((allele + 1) << 1) | phased
     }
 }
 
@@ -1249,14 +1319,19 @@ where
 }
 
 impl<'a, B: Borrow<Buffer> + 'a> Genotypes<'a, B> {
-    /// Get genotype of ith sample. So far, only supports diploid genotypes.
+    /// Get genotype of ith sample.
     ///
     /// Note that the result complies with the BCF spec. This means that the
     /// first allele will always be marked as `Unphased`. That is, if you have 1|1 in the VCF,
     /// this method will return `[Unphased(1), Phased(1)]`.
     pub fn get(&self, i: usize) -> Genotype {
         let igt = self.encoded[i];
-        Genotype(igt.iter().map(|&e| GenotypeAllele::from(e)).collect())
+        let allelles = igt
+            .iter()
+            .take_while(|&&i| i != VECTOR_END_INTEGER)
+            .map(|&i| GenotypeAllele::from(i))
+            .collect();
+        Genotype(allelles)
     }
 }
 
