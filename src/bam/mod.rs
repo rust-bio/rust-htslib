@@ -32,6 +32,7 @@ use crate::utils::path_as_bytes;
 pub use crate::bam::buffer::RecordBuffer;
 pub use crate::bam::header::Header;
 pub use crate::bam::record::Record;
+use crate::faidx::Reader as FastaReader;
 use hts_sys::{hts_fmt_option, sam_fields};
 use std::convert::{TryFrom, TryInto};
 use std::mem::MaybeUninit;
@@ -595,6 +596,15 @@ pub struct IndexedReader {
     idx: Rc<IndexView>,
     itr: Option<*mut htslib::hts_itr_t>,
     tpool: Option<ThreadPool>,
+    baq_data: Option<BAQData>,
+    filters: u32,
+}
+
+#[derive(Debug)]
+struct BAQData {
+    fasta_reader: FastaReader,
+    ref_seq: Option<(u32, Vec<u8>)>,
+    flags: usize,
 }
 
 unsafe impl Send for IndexedReader {}
@@ -641,6 +651,8 @@ impl IndexedReader {
                 idx: Rc::new(IndexView::new(idx)),
                 itr: None,
                 tpool: None,
+                baq_data: None,
+                filters: 0,
             })
         }
     }
@@ -669,6 +681,8 @@ impl IndexedReader {
                 idx: Rc::new(IndexView::new(idx)),
                 itr: None,
                 tpool: None,
+                baq_data: None,
+                filters: 0,
             })
         }
     }
@@ -789,16 +803,57 @@ impl IndexedReader {
         record: *mut htslib::bam1_t,
     ) -> i32 {
         let _self = unsafe { (data as *mut Self).as_mut().unwrap() };
-        match _self.itr {
-            Some(itr) => itr_next(_self.htsfile, itr, record), // read fetched region
-            None => unsafe {
-                htslib::sam_read1(
-                    _self.htsfile,
-                    _self.header().inner_ptr() as *mut hts_sys::sam_hdr_t,
-                    record,
-                )
-            }, // ordinary reading
+        let mut ret;
+        loop {
+            ret = match _self.itr {
+                Some(itr) => itr_next(_self.htsfile, itr, record), // read fetched region
+                None => unsafe {
+                    htslib::sam_read1(
+                        _self.htsfile,
+                        _self.header().inner_ptr() as *mut hts_sys::sam_hdr_t,
+                        record,
+                    )
+                }, // ordinary reading
+            };
+
+            if ret < 0 {
+                break;
+            }
+            let tid = unsafe { (*record).core.tid };
+            let flag = unsafe { (*record).core.flag };
+
+            if tid < 0 || (_self.filters != 0 && flag & _self.filters as u16 != 0) {
+                // unmapped or no tid, so we can skip this record
+                continue;
+            }
+
+            if let Some(baq_data) = &mut _self.baq_data {
+                // we have a reference, so we can realign
+                let ref_ = &baq_data.fasta_reader;
+                if baq_data.ref_seq.is_none() || baq_data.ref_seq.as_ref().unwrap().0 != tid as u32
+                {
+                    // we need to fetch the sequence
+                    let name = std::str::from_utf8(_self.header.tid2name(tid as u32)).unwrap();
+                    let length = _self.header.target_len(tid as u32).unwrap() as usize;
+
+                    let seq = ref_.fetch_seq(name, 0, length - 1).unwrap();
+                    baq_data.ref_seq = Some((tid as u32, seq));
+                }
+                // realign the record
+                let seq = &baq_data.ref_seq.as_ref().unwrap().1;
+                unsafe {
+                    htslib::sam_prob_realn(
+                        record,
+                        seq.as_ptr() as *const c_char,
+                        seq.len().try_into().unwrap(),
+                        baq_data.flags as i32,
+                    );
+                }
+            }
+
+            break;
         }
+        ret
     }
 
     /// Set the reference path for reading CRAM files.
@@ -808,6 +863,23 @@ impl IndexedReader {
     /// * `path` - path to the FASTA reference
     pub fn set_reference<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
         unsafe { set_fai_filename(self.htsfile, path) }
+    }
+
+    pub fn set_filters(&mut self, filters: u32) {
+        self.filters = filters;
+    }
+
+    pub fn enable_baq_computation<P: AsRef<Path>>(
+        &mut self,
+        ref_path: P,
+        flags: usize,
+    ) -> Result<()> {
+        self.baq_data = Some(BAQData {
+            fasta_reader: FastaReader::from_path(ref_path)?,
+            ref_seq: None,
+            flags,
+        });
+        Ok(())
     }
 
     pub fn index(&self) -> &IndexView {
