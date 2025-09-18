@@ -34,9 +34,9 @@
 
 use std::ffi;
 use std::os::raw::c_char;
-use std::rc::Rc;
 use std::slice;
 use std::str;
+use std::sync::Arc;
 
 use crate::htslib;
 
@@ -65,9 +65,12 @@ custom_derive! {
 /// A BCF header.
 #[derive(Debug)]
 pub struct Header {
-    pub inner: *mut htslib::bcf_hdr_t,
+    pub(crate) inner: *mut htslib::bcf_hdr_t,
     pub subset: Option<SampleSubset>,
 }
+
+unsafe impl Send for Header {}
+unsafe impl Sync for Header {}
 
 impl Default for Header {
     fn default() -> Self {
@@ -266,11 +269,14 @@ pub enum HeaderRecord {
 
 #[derive(Debug)]
 pub struct HeaderView {
-    pub inner: *mut htslib::bcf_hdr_t,
+    pub(crate) inner: *mut htslib::bcf_hdr_t,
 }
 
+unsafe impl Send for HeaderView {}
+unsafe impl Sync for HeaderView {}
+
 impl HeaderView {
-    pub fn new(inner: *mut htslib::bcf_hdr_t) -> Self {
+    pub(crate) fn new(inner: *mut htslib::bcf_hdr_t) -> Self {
         HeaderView { inner }
     }
 
@@ -513,8 +519,15 @@ impl HeaderView {
     /// Create an empty record using this header view.
     ///
     /// The record can be reused multiple times.
+    ///
+    /// # Performance
+    ///
+    /// This is quite slow and resource-intensive as it clones the actual
+    /// header, instead of the reference to it. Therefore, whenever possible
+    /// / feasible you should use [`Record::new`](crate::bcf::Record::new) with
+    /// a reference to your header.
     pub fn empty_record(&self) -> crate::bcf::Record {
-        crate::bcf::Record::new(Rc::new(self.clone()))
+        crate::bcf::Record::new(Arc::new(self.clone()))
     }
 }
 
