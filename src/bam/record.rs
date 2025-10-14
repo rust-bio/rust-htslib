@@ -833,7 +833,7 @@ impl Record {
     ///
     /// When an error occurs, the `Err` variant will be returned
     /// and the iterator will not be able to advance anymore.
-    pub fn aux_iter(&self) -> AuxIter {
+    pub fn aux_iter(&self) -> AuxIter<'_> {
         AuxIter {
             // In order to get to the aux data section of a `bam::Record`
             // we need to skip fields in front of it
@@ -1118,14 +1118,14 @@ impl Record {
     ///    }
     ///    assert_eq!(mod_count, 14);
     /// ```
-    pub fn basemods_iter(&self) -> Result<BaseModificationsIter> {
+    pub fn basemods_iter(&self) -> Result<BaseModificationsIter<'_>> {
         BaseModificationsIter::new(self)
     }
 
     /// An iterator that returns all of the modifications for each position as a vector.
     /// This is useful for the case where multiple possible modifications can be annotated
     /// at a single position (for example a C could be 5-mC or 5-hmC)
-    pub fn basemods_position_iter(&self) -> Result<BaseModificationsPositionIter> {
+    pub fn basemods_position_iter(&self) -> Result<BaseModificationsPositionIter<'_>> {
         BaseModificationsPositionIter::new(self)
     }
 
@@ -1504,7 +1504,7 @@ where
     }
 
     /// Returns an iterator over the array.
-    pub fn iter(&self) -> AuxArrayIter<T> {
+    pub fn iter(&self) -> AuxArrayIter<'_, T> {
         AuxArrayIter {
             index: 0,
             array: self,

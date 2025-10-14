@@ -106,7 +106,7 @@ impl Header {
     }
 
     /// Returns an iterator of comment lines.
-    pub fn comments(&self) -> impl Iterator<Item = Cow<str>> {
+    pub fn comments(&self) -> impl Iterator<Item = Cow<'_, str>> {
         self.records.iter().flat_map(|r| {
             r.split(|x| x == &b'\n')
                 .filter(|x| x.starts_with(b"@CO\t"))
