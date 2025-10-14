@@ -1068,6 +1068,160 @@ impl Record {
         }
     }
 
+    /// Update or add auxiliary data.
+    pub fn update_aux(&mut self, tag: &[u8], value: Aux<'_>) -> Result<()> {
+        // Update existing aux data for the given tag if already present in the record
+        // without changing the ordering of tags in the record or append aux data at
+        // the end of the existing aux records if it is a new tag.
+
+        let ctag = tag.as_ptr() as *mut c_char;
+        let ret = unsafe {
+            match value {
+                Aux::Char(_v) => return Err(Error::BamAuxTagUpdatingNotSupported),
+                Aux::I8(v) => htslib::bam_aux_update_int(self.inner_ptr_mut(), ctag, v as i64),
+                Aux::U8(v) => htslib::bam_aux_update_int(self.inner_ptr_mut(), ctag, v as i64),
+                Aux::I16(v) => htslib::bam_aux_update_int(self.inner_ptr_mut(), ctag, v as i64),
+                Aux::U16(v) => htslib::bam_aux_update_int(self.inner_ptr_mut(), ctag, v as i64),
+                Aux::I32(v) => htslib::bam_aux_update_int(self.inner_ptr_mut(), ctag, v as i64),
+                Aux::U32(v) => htslib::bam_aux_update_int(self.inner_ptr_mut(), ctag, v as i64),
+                Aux::Float(v) => htslib::bam_aux_update_float(self.inner_ptr_mut(), ctag, v),
+                // Not part of specs but implemented in `htslib`:
+                Aux::Double(v) => {
+                    htslib::bam_aux_update_float(self.inner_ptr_mut(), ctag, v as f32)
+                }
+                Aux::String(v) => {
+                    let c_str = ffi::CString::new(v).map_err(|_| Error::BamAuxStringError)?;
+                    htslib::bam_aux_update_str(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        (v.len() + 1) as i32,
+                        c_str.as_ptr() as *const c_char,
+                    )
+                }
+                Aux::HexByteArray(_v) => return Err(Error::BamAuxTagUpdatingNotSupported),
+                // Not sure it's safe to cast an immutable slice to a mutable pointer in the following branches
+                Aux::ArrayI8(aux_array) => match aux_array {
+                    AuxArray::TargetType(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'c',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                    AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'c',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                },
+                Aux::ArrayU8(aux_array) => match aux_array {
+                    AuxArray::TargetType(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'C',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                    AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'C',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                },
+                Aux::ArrayI16(aux_array) => match aux_array {
+                    AuxArray::TargetType(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b's',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                    AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b's',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                },
+                Aux::ArrayU16(aux_array) => match aux_array {
+                    AuxArray::TargetType(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'S',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                    AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'S',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                },
+                Aux::ArrayI32(aux_array) => match aux_array {
+                    AuxArray::TargetType(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'i',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                    AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'i',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                },
+                Aux::ArrayU32(aux_array) => match aux_array {
+                    AuxArray::TargetType(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'I',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                    AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'I',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                },
+                Aux::ArrayFloat(aux_array) => match aux_array {
+                    AuxArray::TargetType(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'f',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                    AuxArray::RawLeBytes(inner) => htslib::bam_aux_update_array(
+                        self.inner_ptr_mut(),
+                        ctag,
+                        b'f',
+                        inner.len() as u32,
+                        inner.slice.as_ptr() as *mut ::libc::c_void,
+                    ),
+                },
+            }
+        };
+
+        if ret < 0 {
+            Err(Error::BamAux)
+        } else {
+            Ok(())
+        }
+    }
+
     // Delete auxiliary tag.
     pub fn remove_aux(&mut self, tag: &[u8]) -> Result<()> {
         let c_str = ffi::CString::new(tag).map_err(|_| Error::BamAuxStringError)?;

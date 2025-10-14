@@ -91,6 +91,8 @@ pub enum Error {
     BamAuxUnknownType,
     #[error("failed to add aux field, tag is already present")]
     BamAuxTagAlreadyPresent,
+    #[error("updating the aux field for this datatype is not supported")]
+    BamAuxTagUpdatingNotSupported,
 
     // Errors for base modification fields
     #[error("no base modification tag found for record")]
