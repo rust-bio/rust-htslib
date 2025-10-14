@@ -21,6 +21,7 @@ use std::path::Path;
 use std::rc::Rc;
 use std::slice;
 use std::str;
+use std::sync::Arc;
 
 use url::Url;
 
@@ -250,7 +251,7 @@ pub trait Read: Sized {
 #[derive(Debug)]
 pub struct Reader {
     htsfile: *mut htslib::htsFile,
-    header: Rc<HeaderView>,
+    header: Arc<HeaderView>,
     tpool: Option<ThreadPool>,
 }
 
@@ -298,7 +299,7 @@ impl Reader {
 
         Ok(Reader {
             htsfile,
-            header: Rc::new(HeaderView::new(header)),
+            header: Arc::new(HeaderView::new(header)),
             tpool: None,
         })
     }
@@ -383,7 +384,7 @@ impl Read for Reader {
             -2 => Some(Err(Error::BamTruncatedRecord)),
             -4 => Some(Err(Error::BamInvalidRecord)),
             _ => {
-                record.set_header(Rc::clone(&self.header));
+                record.set_header(Arc::clone(&self.header));
 
                 Some(Ok(()))
             }
@@ -591,8 +592,8 @@ impl<'a, T: AsRef<[u8]>, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> Fro
 #[derive(Debug)]
 pub struct IndexedReader {
     htsfile: *mut htslib::htsFile,
-    header: Rc<HeaderView>,
-    idx: Rc<IndexView>,
+    header: Arc<HeaderView>,
+    idx: Arc<IndexView>,
     itr: Option<*mut htslib::hts_itr_t>,
     tpool: Option<ThreadPool>,
 }
@@ -637,8 +638,8 @@ impl IndexedReader {
         } else {
             Ok(IndexedReader {
                 htsfile,
-                header: Rc::new(HeaderView::new(header)),
-                idx: Rc::new(IndexView::new(idx)),
+                header: Arc::new(HeaderView::new(header)),
+                idx: Arc::new(IndexView::new(idx)),
                 itr: None,
                 tpool: None,
             })
@@ -665,8 +666,8 @@ impl IndexedReader {
         } else {
             Ok(IndexedReader {
                 htsfile,
-                header: Rc::new(HeaderView::new(header)),
-                idx: Rc::new(IndexView::new(idx)),
+                header: Arc::new(HeaderView::new(header)),
+                idx: Arc::new(IndexView::new(idx)),
                 itr: None,
                 tpool: None,
             })
@@ -908,15 +909,14 @@ impl IndexedReader {
 #[derive(Debug)]
 pub struct IndexView {
     inner: *mut hts_sys::hts_idx_t,
-    owned: bool,
 }
+
+unsafe impl Send for IndexView {}
+unsafe impl Sync for IndexView {}
 
 impl IndexView {
     fn new(hts_idx: *mut hts_sys::hts_idx_t) -> Self {
-        Self {
-            inner: hts_idx,
-            owned: true,
-        }
+        Self { inner: hts_idx }
     }
 
     #[inline]
@@ -960,10 +960,8 @@ impl IndexView {
 
 impl Drop for IndexView {
     fn drop(&mut self) {
-        if self.owned {
-            unsafe {
-                htslib::hts_idx_destroy(self.inner);
-            }
+        unsafe {
+            htslib::hts_idx_destroy(self.inner);
         }
     }
 }
@@ -977,7 +975,7 @@ impl Read for IndexedReader {
                     -2 => Some(Err(Error::BamTruncatedRecord)),
                     -4 => Some(Err(Error::BamInvalidRecord)),
                     _ => {
-                        record.set_header(Rc::clone(&self.header));
+                        record.set_header(Arc::clone(&self.header));
 
                         Some(Ok(()))
                     }
@@ -1060,7 +1058,7 @@ impl Format {
 #[derive(Debug)]
 pub struct Writer {
     f: *mut htslib::htsFile,
-    header: Rc<HeaderView>,
+    header: Arc<HeaderView>,
     tpool: Option<ThreadPool>,
 }
 
@@ -1134,7 +1132,7 @@ impl Writer {
 
         Ok(Writer {
             f,
-            header: Rc::new(HeaderView::new(header_record)),
+            header: Arc::new(HeaderView::new(header_record)),
             tpool: None,
         })
     }
@@ -1364,8 +1362,10 @@ fn itr_next(
 #[derive(Debug)]
 pub struct HeaderView {
     inner: *mut htslib::bam_hdr_t,
-    owned: bool,
 }
+
+unsafe impl Send for HeaderView {}
+unsafe impl Sync for HeaderView {}
 
 impl HeaderView {
     /// Create a new HeaderView from a pre-populated Header object
@@ -1399,8 +1399,8 @@ impl HeaderView {
     }
 
     /// Create a new HeaderView from the underlying Htslib type, and own it.
-    pub fn new(inner: *mut htslib::bam_hdr_t) -> Self {
-        HeaderView { inner, owned: true }
+    fn new(inner: *mut htslib::bam_hdr_t) -> Self {
+        HeaderView { inner }
     }
 
     #[inline]
@@ -1480,17 +1480,14 @@ impl Clone for HeaderView {
     fn clone(&self) -> Self {
         HeaderView {
             inner: unsafe { htslib::sam_hdr_dup(self.inner) },
-            owned: true,
         }
     }
 }
 
 impl Drop for HeaderView {
     fn drop(&mut self) {
-        if self.owned {
-            unsafe {
-                htslib::sam_hdr_destroy(self.inner);
-            }
+        unsafe {
+            htslib::sam_hdr_destroy(self.inner);
         }
     }
 }

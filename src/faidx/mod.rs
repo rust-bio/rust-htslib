@@ -195,6 +195,8 @@ impl Drop for Reader {
     }
 }
 
+unsafe impl Send for Reader {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
