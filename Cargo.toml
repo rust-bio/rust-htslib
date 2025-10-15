@@ -46,7 +46,7 @@ serde_feature = ["serde", "serde_bytes", "bio-types/serde"]
 static = ["hts-sys/static"]
 
 [dev-dependencies]
-bincode = "1.2"
+bincode = "2.0"
 pretty_assertions = "1.4"
 serde_json = "1.0"
 tempfile = "3.1.0"
