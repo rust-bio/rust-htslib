@@ -103,7 +103,7 @@ impl Default for Record {
 #[inline]
 fn extranul_from_qname(qname: &[u8]) -> usize {
     let qlen = qname.len() + 1;
-    if qlen % 4 != 0 {
+    if !qlen.is_multiple_of(4) {
         4 - qlen % 4
     } else {
         0
