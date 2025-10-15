@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.51.0](https://github.com/rust-bio/rust-htslib/compare/v0.50.0...v0.51.0) (2025-10-15)
+
+
+### Features
+
+* Add support for updating existing aux tags inplace. ([#481](https://github.com/rust-bio/rust-htslib/issues/481)) ([f4a1106](https://github.com/rust-bio/rust-htslib/commit/f4a1106df49bde257b323d966fe4228b1a5ece15))
+
 ## [0.50.0](https://github.com/rust-bio/rust-htslib/compare/v0.49.0...v0.50.0) (2025-07-09)
 
 
