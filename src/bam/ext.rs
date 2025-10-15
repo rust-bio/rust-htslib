@@ -301,7 +301,7 @@ pub trait BamRecordExtensions {
     /// left most aligned reference position of the read on the reference genome.
     fn reference_start(&self) -> i64;
 
-    /// right most aligned reference position of the read on the reference genome.
+    /// right most aligned absolute reference position of the read on the reference genome.
     fn reference_end(&self) -> i64;
 
     /// infer the query length from the cigar string, optionally include hard clipped bases
@@ -435,7 +435,7 @@ impl BamRecordExtensions for bam::Record {
         self.pos()
     }
 
-    /// Calculate the rightmost base position of an alignment on the reference genome.
+    /// Calculate the rightmost absolute reference base position of an alignment on the reference genome.
     /// Returns the coordinate of the first base after the alignment (0-based).
     fn reference_end(&self) -> i64 {
         unsafe { htslib::bam_endpos(self.inner_ptr()) }
