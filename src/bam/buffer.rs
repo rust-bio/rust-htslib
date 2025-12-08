@@ -5,8 +5,8 @@
 
 use std::collections::{vec_deque, VecDeque};
 use std::mem;
-use std::sync::Arc;
 use std::str;
+use std::sync::Arc;
 
 use crate::bam;
 use crate::bam::Read;
@@ -132,7 +132,8 @@ impl RecordBuffer {
 
                 // Record is kept, do not reuse it for next iteration
                 // and thus create a new one.
-                let mut record = mem::replace(&mut self.buffer_record, Arc::new(bam::Record::new()));
+                let mut record =
+                    mem::replace(&mut self.buffer_record, Arc::new(bam::Record::new()));
 
                 if self.cache_cigar {
                     Arc::get_mut(&mut record).unwrap().cache_cigar();
