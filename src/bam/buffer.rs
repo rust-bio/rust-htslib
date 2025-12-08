@@ -44,7 +44,7 @@ impl RecordBuffer {
             overflow: None,
             cache_cigar,
             min_refetch_distance: 1,
-            buffer_record: Rc::new(bam::Record::new()),
+            buffer_record: Arc::new(bam::Record::new()),
             start_pos: Some(0),
         }
     }
