@@ -857,7 +857,14 @@ impl Record {
         if self.aux(tag).is_ok() {
             return Err(Error::BamAuxTagAlreadyPresent);
         }
+        self.push_aux_unchecked(tag, value)
+    }
 
+    /// Add auxiliary data, without checking if the tag is present.
+    ///
+    /// The caller should ensure that the same tag is not pushed more than once.
+    /// This is provided as a performance optimization.
+    pub fn push_aux_unchecked(&mut self, tag: &[u8], value: Aux<'_>) -> Result<()> {
         let ctag = tag.as_ptr() as *mut c_char;
         let ret = unsafe {
             match value {
