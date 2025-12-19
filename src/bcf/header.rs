@@ -513,8 +513,8 @@ impl HeaderView {
     /// Create an empty record using this header view.
     ///
     /// The record can be reused multiple times.
-    pub fn empty_record(&self) -> crate::bcf::Record {
-        crate::bcf::Record::new(Rc::new(self.clone()))
+    pub fn empty_record(self: &Rc<Self>) -> crate::bcf::Record {
+        crate::bcf::Record::new(Rc::clone(self))
     }
 }
 
