@@ -48,6 +48,21 @@ impl Header {
         }
     }
 
+    /// Creates a new Header from a HashMap. Useful if you have used `to_hashmap` and manipulated that hashmap to create a new header.
+    pub fn from_hashmap(hashmap: HashMap<String, Vec<LinearMap<String, String>>>) -> Self {
+        let mut header = Header::new();
+        for (key, values) in hashmap.iter() {
+            for value in values {
+                let mut record = HeaderRecord::new(key.as_bytes());
+                for (tag, val) in value.iter() {
+                    record.push_tag(tag.as_bytes(), val);
+                }
+                header.push_record(&record);
+            }
+        }
+        header
+    }
+
     /// Add a record to the header.
     pub fn push_record(&mut self, record: &HeaderRecord<'_>) -> &mut Self {
         self.records.push(record.to_bytes());
