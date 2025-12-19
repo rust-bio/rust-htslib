@@ -1692,6 +1692,7 @@ CCCCCCCCCCCCCCCCCCC"[..],
             // fix qual offset
             let qual: Vec<u8> = quals[i].iter().map(|&q| q - 33).collect();
             assert_eq!(rec.qual(), &qual[..]);
+            assert_eq!(rec.aux(b"X"), Err(Error::BamAuxStringError));
             assert_eq!(rec.aux(b"NotAvailableAux"), Err(Error::BamAuxTagNotFound));
         }
 
@@ -2006,7 +2007,8 @@ CCCCCCCCCCCCCCCCCCC"[..],
                 rec.remove_aux(b"YT").unwrap();
             }
 
-            assert!(rec.remove_aux(b"ab").is_err());
+            assert_eq!(rec.remove_aux(b"X"), Err(Error::BamAuxStringError));
+            assert_eq!(rec.remove_aux(b"ab"), Err(Error::BamAuxTagNotFound));
 
             assert_eq!(rec.aux(b"XS"), Err(Error::BamAuxTagNotFound));
             assert_eq!(rec.aux(b"YT"), Err(Error::BamAuxTagNotFound));

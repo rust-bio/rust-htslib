@@ -519,15 +519,8 @@ impl HeaderView {
     /// Create an empty record using this header view.
     ///
     /// The record can be reused multiple times.
-    ///
-    /// # Performance
-    ///
-    /// This is quite slow and resource-intensive as it clones the actual
-    /// header, instead of the reference to it. Therefore, whenever possible
-    /// / feasible you should use [`Record::new`](crate::bcf::Record::new) with
-    /// a reference to your header.
-    pub fn empty_record(&self) -> crate::bcf::Record {
-        crate::bcf::Record::new(Arc::new(self.clone()))
+    pub fn empty_record(self: &Arc<Self>) -> crate::bcf::Record {
+        crate::bcf::Record::new(self.clone())
     }
 }
 

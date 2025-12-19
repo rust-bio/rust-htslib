@@ -644,11 +644,13 @@ impl Record {
     /// Only the first two bytes of a given tag are used for the look-up of a field.
     /// See [`Aux`] for more details.
     pub fn aux(&self, tag: &[u8]) -> Result<Aux<'_>> {
-        let c_str = ffi::CString::new(tag).map_err(|_| Error::BamAuxStringError)?;
+        if tag.len() < 2 {
+            return Err(Error::BamAuxStringError);
+        }
         let aux = unsafe {
             htslib::bam_aux_get(
                 &self.inner as *const htslib::bam1_t,
-                c_str.as_ptr() as *mut c_char,
+                tag.as_ptr() as *const c_char,
             )
         };
         unsafe { Self::read_aux_field(aux).map(|(aux_field, _length)| aux_field) }
@@ -1224,11 +1226,13 @@ impl Record {
 
     // Delete auxiliary tag.
     pub fn remove_aux(&mut self, tag: &[u8]) -> Result<()> {
-        let c_str = ffi::CString::new(tag).map_err(|_| Error::BamAuxStringError)?;
+        if tag.len() < 2 {
+            return Err(Error::BamAuxStringError);
+        }
         let aux = unsafe {
             htslib::bam_aux_get(
                 &self.inner as *const htslib::bam1_t,
-                c_str.as_ptr() as *mut c_char,
+                tag.as_ptr() as *const c_char,
             )
         };
         unsafe {
