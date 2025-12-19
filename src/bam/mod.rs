@@ -3049,8 +3049,9 @@ CCCCCCCCCCCCCCCCCCC"[..],
     #[test]
     fn test_bam_header_sync() {
         let reader = Reader::from_path("test/test_issue_156_no_text.bam").unwrap();
-        let header_hashmap = Header::from_template(reader.header()).to_hashmap();
-        let header_refseqs = header_hashmap.get("SQ").unwrap();
+        let header_hashmap = Header::from_template(reader.header()).to_hashmap().unwrap();
+        let header_refseqs = header_hashmap.get("SQ".into()).unwrap();
+
         assert_eq!(header_refseqs[0].get("SN").unwrap(), "ref_1",);
         assert_eq!(header_refseqs[0].get("LN").unwrap(), "10000000",);
     }
