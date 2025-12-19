@@ -372,10 +372,7 @@ impl Read for IndexedReader {
 
                 match self.current_region {
                     Some((rid, _start, end)) => {
-                        let endpos = match end {
-                            Some(e) => e,
-                            None => u64::MAX,
-                        };
+                        let endpos = end.unwrap_or(u64::MAX);
                         if Some(rid) == record.rid() && record.pos() as u64 <= endpos {
                             Some(Ok(()))
                         } else {
