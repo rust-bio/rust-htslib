@@ -105,8 +105,8 @@
 
 use std::ffi;
 use std::path::Path;
-use std::rc::Rc;
 use std::str;
+use std::sync::Arc;
 
 use url::Url;
 
@@ -159,10 +159,11 @@ pub trait Read: Sized {
 #[derive(Debug)]
 pub struct Reader {
     inner: *mut htslib::htsFile,
-    header: Rc<HeaderView>,
+    header: Arc<HeaderView>,
 }
 
 unsafe impl Send for Reader {}
+
 /// # Safety
 ///
 /// Implementation for `Reader::set_threads()` and `Writer::set_threads`.
@@ -202,7 +203,7 @@ impl Reader {
         let header = unsafe { htslib::bcf_hdr_read(htsfile) };
         Ok(Reader {
             inner: htsfile,
-            header: Rc::new(HeaderView::new(header)),
+            header: Arc::new(HeaderView::new(header)),
         })
     }
 }
@@ -215,7 +216,7 @@ impl Read for Reader {
                     // Always unpack record.
                     htslib::bcf_unpack(record.inner_mut(), htslib::BCF_UN_ALL as i32);
                 }
-                record.set_header(Rc::clone(&self.header));
+                record.set_header(Arc::clone(&self.header));
                 Some(Ok(()))
             }
             -1 => None,
@@ -224,7 +225,7 @@ impl Read for Reader {
     }
 
     fn records(&mut self) -> Records<'_, Self> {
-        Records { reader: self }
+        Records::new(self)
     }
 
     fn set_threads(&mut self, n_threads: usize) -> Result<()> {
@@ -237,7 +238,7 @@ impl Read for Reader {
 
     /// Return empty record.  Can be reused multiple times.
     fn empty_record(&self) -> Record {
-        self.header.empty_record()
+        Record::new(self.header.clone())
     }
 }
 
@@ -255,7 +256,7 @@ pub struct IndexedReader {
     /// The synced VCF/BCF reader to use internally.
     inner: *mut htslib::bcf_srs_t,
     /// The header.
-    header: Rc<HeaderView>,
+    header: Arc<HeaderView>,
 
     /// The position of the previous fetch, if any.
     current_region: Option<(u32, u64, Option<u64>)>,
@@ -298,7 +299,7 @@ impl IndexedReader {
         } // 0: BCF_SR_REQUIRE_IDX
           // Attach a file with the path from the arguments.
         if unsafe { htslib::bcf_sr_add_reader(ser_reader, path.as_ptr()) } >= 0 {
-            let header = Rc::new(HeaderView::new(unsafe {
+            let header = Arc::new(HeaderView::new(unsafe {
                 htslib::bcf_hdr_dup((*(*ser_reader).readers.offset(0)).header)
             }));
             Ok(IndexedReader {
@@ -368,7 +369,7 @@ impl Read for IndexedReader {
                     htslib::bcf_unpack(record.inner_mut(), htslib::BCF_UN_ALL as i32);
                 }
 
-                record.set_header(Rc::clone(&self.header));
+                record.set_header(Arc::clone(&self.header));
 
                 match self.current_region {
                     Some((rid, _start, end)) => {
@@ -386,7 +387,7 @@ impl Read for IndexedReader {
     }
 
     fn records(&mut self) -> Records<'_, Self> {
-        Records { reader: self }
+        Records::new(self)
     }
 
     fn set_threads(&mut self, n_threads: usize) -> Result<()> {
@@ -405,7 +406,7 @@ impl Read for IndexedReader {
     }
 
     fn empty_record(&self) -> Record {
-        Record::new(Rc::clone(&self.header))
+        Record::new(self.header.clone())
     }
 }
 
@@ -448,8 +449,8 @@ pub mod synced {
         /// Internal handle for the synced reader.
         inner: *mut crate::htslib::bcf_srs_t,
 
-        /// RC's of `HeaderView`s of the readers.
-        headers: Vec<Rc<HeaderView>>,
+        /// Arcs of `HeaderView`s of the readers.
+        headers: Vec<Arc<HeaderView>>,
 
         /// The position of the previous fetch, if any.
         current_region: Option<(u32, u64, u64)>,
@@ -500,7 +501,7 @@ pub mod synced {
                     }
 
                     let i = (self.reader_count() - 1) as isize;
-                    let header = Rc::new(HeaderView::new(unsafe {
+                    let header = Arc::new(HeaderView::new(unsafe {
                         crate::htslib::bcf_hdr_dup((*(*self.inner).readers.offset(i)).header)
                     }));
                     self.headers.push(header);
@@ -639,7 +640,7 @@ pub enum Format {
 #[derive(Debug)]
 pub struct Writer {
     inner: *mut htslib::htsFile,
-    header: Rc<HeaderView>,
+    header: Arc<HeaderView>,
     subset: Option<SampleSubset>,
 }
 
@@ -707,7 +708,7 @@ impl Writer {
         unsafe { htslib::bcf_hdr_write(htsfile, header.inner) };
         Ok(Writer {
             inner: htsfile,
-            header: Rc::new(HeaderView::new(unsafe {
+            header: Arc::new(HeaderView::new(unsafe {
                 htslib::bcf_hdr_dup(header.inner)
             })),
             subset: header.subset.clone(),
@@ -723,7 +724,7 @@ impl Writer {
     ///
     /// This record can then be reused multiple times.
     pub fn empty_record(&self) -> Record {
-        record::Record::new(Rc::clone(&self.header))
+        Record::new(self.header.clone())
     }
 
     /// Translate record to header of this writer.
@@ -735,7 +736,7 @@ impl Writer {
         unsafe {
             htslib::bcf_translate(self.header.inner, record.header().inner, record.inner);
         }
-        record.set_header(Rc::clone(&self.header));
+        record.set_header(Arc::clone(&self.header));
     }
 
     /// Subset samples of record to match header of this writer.
@@ -791,6 +792,12 @@ impl Drop for Writer {
 #[derive(Debug)]
 pub struct Records<'a, R: Read> {
     reader: &'a mut R,
+}
+
+impl<'a, R: Read> Records<'a, R> {
+    pub fn new(reader: &'a mut R) -> Self {
+        Self { reader }
+    }
 }
 
 impl<R: Read> Iterator for Records<'_, R> {

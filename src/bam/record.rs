@@ -11,9 +11,9 @@ use std::marker::PhantomData;
 use std::mem::{size_of, MaybeUninit};
 use std::ops;
 use std::os::raw::c_char;
-use std::rc::Rc;
 use std::slice;
 use std::str;
+use std::sync::Arc;
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
@@ -53,7 +53,7 @@ pub struct Record {
     pub inner: htslib::bam1_t,
     own: bool,
     cigar: Option<CigarStringView>,
-    header: Option<Rc<HeaderView>>,
+    header: Option<Arc<HeaderView>>,
 }
 
 unsafe impl Send for Record {}
@@ -183,7 +183,7 @@ impl Record {
         }
     }
 
-    pub fn set_header(&mut self, header: Rc<HeaderView>) {
+    pub fn set_header(&mut self, header: Arc<HeaderView>) {
         self.header = Some(header);
     }
 
@@ -835,7 +835,7 @@ impl Record {
     ///
     /// When an error occurs, the `Err` variant will be returned
     /// and the iterator will not be able to advance anymore.
-    pub fn aux_iter(&self) -> AuxIter<'_> {
+    pub fn aux_iter(&'_ self) -> AuxIter<'_> {
         AuxIter {
             // In order to get to the aux data section of a `bam::Record`
             // we need to skip fields in front of it
@@ -1283,14 +1283,14 @@ impl Record {
     ///    }
     ///    assert_eq!(mod_count, 14);
     /// ```
-    pub fn basemods_iter(&self) -> Result<BaseModificationsIter<'_>> {
+    pub fn basemods_iter(&'_ self) -> Result<BaseModificationsIter<'_>> {
         BaseModificationsIter::new(self)
     }
 
     /// An iterator that returns all of the modifications for each position as a vector.
     /// This is useful for the case where multiple possible modifications can be annotated
     /// at a single position (for example a C could be 5-mC or 5-hmC)
-    pub fn basemods_position_iter(&self) -> Result<BaseModificationsPositionIter<'_>> {
+    pub fn basemods_position_iter(&'_ self) -> Result<BaseModificationsPositionIter<'_>> {
         BaseModificationsPositionIter::new(self)
     }
 
@@ -1669,7 +1669,7 @@ where
     }
 
     /// Returns an iterator over the array.
-    pub fn iter(&self) -> AuxArrayIter<'_, T> {
+    pub fn iter(&'_ self) -> AuxArrayIter<'_, T> {
         AuxArrayIter {
             index: 0,
             array: self,

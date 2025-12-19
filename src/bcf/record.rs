@@ -9,9 +9,9 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::os::raw::c_char;
 use std::ptr;
-use std::rc::Rc;
 use std::slice;
 use std::str;
+use std::sync::Arc;
 use std::{ffi, iter};
 
 use bio_types::genome;
@@ -175,12 +175,12 @@ impl<'a, T: 'a + fmt::Debug + fmt::Display, B: Borrow<Buffer> + 'a> fmt::Display
 #[derive(Debug)]
 pub struct Record {
     pub inner: *mut htslib::bcf1_t,
-    header: Rc<HeaderView>,
+    header: Arc<HeaderView>,
 }
 
 impl Record {
     /// Construct record with reference to header `HeaderView`, for create-internal use.
-    pub(crate) fn new(header: Rc<HeaderView>) -> Self {
+    pub fn new(header: Arc<HeaderView>) -> Self {
         let inner = unsafe {
             let inner = htslib::bcf_init();
             // Always unpack record.
@@ -201,7 +201,7 @@ impl Record {
     }
 
     /// Set the record header.
-    pub(crate) fn set_header(&mut self, header: Rc<HeaderView>) {
+    pub(crate) fn set_header(&mut self, header: Arc<HeaderView>) {
         self.header = header;
     }
 
