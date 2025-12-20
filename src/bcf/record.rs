@@ -200,6 +200,17 @@ impl Record {
         self.header.as_ref()
     }
 
+    /// Translate the record to the given header.
+    pub fn translate(&mut self, dst_header: &mut Arc<HeaderView>) -> Result<()> {
+        if unsafe { htslib::bcf_translate(dst_header.inner, self.header().inner, self.inner) } == 0
+        {
+            self.set_header(Arc::clone(dst_header));
+            Ok(())
+        } else {
+            Err(Error::BcfTranslate)
+        }
+    }
+
     /// Set the record header.
     pub(crate) fn set_header(&mut self, header: Arc<HeaderView>) {
         self.header = header;
