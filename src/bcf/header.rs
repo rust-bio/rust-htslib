@@ -88,6 +88,15 @@ impl Header {
         }
     }
 
+    /// Get a pointer to the raw header.
+    ///
+    /// # Safety
+    /// The caller must ensure that the pointer is not used after this `Header`
+    /// is dropped
+    pub unsafe fn inner_ptr(&self) -> *mut htslib::bcf_hdr_t {
+        self.inner
+    }
+
     /// Create a new `Header` using the given `HeaderView` as the template.
     ///
     /// After construction, you can modify the header independently from the template `header`.
@@ -276,8 +285,21 @@ unsafe impl Send for HeaderView {}
 unsafe impl Sync for HeaderView {}
 
 impl HeaderView {
-    pub(crate) fn new(inner: *mut htslib::bcf_hdr_t) -> Self {
+    /// Create a view from a raw pointer to a header.
+    ///
+    /// # Safety
+    /// The caller must ensure that the header is initialized.
+    pub unsafe fn from_ptr(inner: *mut htslib::bcf_hdr_t) -> Self {
         HeaderView { inner }
+    }
+
+    /// Get a pointer to the underlying raw header.
+    ///
+    /// # Safety
+    /// The caller must ensure that the pointer is not used after this
+    /// `HeaderView` is dropped
+    pub unsafe fn as_ptr(&self) -> *mut htslib::bcf_hdr_t {
+        self.inner
     }
 
     #[inline]

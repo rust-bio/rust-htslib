@@ -203,7 +203,7 @@ impl Reader {
         let header = unsafe { htslib::bcf_hdr_read(htsfile) };
         Ok(Reader {
             inner: htsfile,
-            header: Arc::new(HeaderView::new(header)),
+            header: Arc::new(unsafe { HeaderView::from_ptr(header) }),
         })
     }
 }
@@ -299,9 +299,11 @@ impl IndexedReader {
         } // 0: BCF_SR_REQUIRE_IDX
           // Attach a file with the path from the arguments.
         if unsafe { htslib::bcf_sr_add_reader(ser_reader, path.as_ptr()) } >= 0 {
-            let header = Arc::new(HeaderView::new(unsafe {
-                htslib::bcf_hdr_dup((*(*ser_reader).readers.offset(0)).header)
-            }));
+            let header = Arc::new(unsafe {
+                HeaderView::from_ptr(htslib::bcf_hdr_dup(
+                    (*(*ser_reader).readers.offset(0)).header,
+                ))
+            });
             Ok(IndexedReader {
                 inner: ser_reader,
                 header,
@@ -501,9 +503,11 @@ pub mod synced {
                     }
 
                     let i = (self.reader_count() - 1) as isize;
-                    let header = Arc::new(HeaderView::new(unsafe {
-                        crate::htslib::bcf_hdr_dup((*(*self.inner).readers.offset(i)).header)
-                    }));
+                    let header = Arc::new(unsafe {
+                        HeaderView::from_ptr(crate::htslib::bcf_hdr_dup(
+                            (*(*self.inner).readers.offset(i)).header,
+                        ))
+                    });
                     self.headers.push(header);
                     Ok(())
                 }
@@ -708,9 +712,7 @@ impl Writer {
         unsafe { htslib::bcf_hdr_write(htsfile, header.inner) };
         Ok(Writer {
             inner: htsfile,
-            header: Arc::new(HeaderView::new(unsafe {
-                htslib::bcf_hdr_dup(header.inner)
-            })),
+            header: Arc::new(unsafe { HeaderView::from_ptr(htslib::bcf_hdr_dup(header.inner)) }),
             subset: header.subset.clone(),
         })
     }
