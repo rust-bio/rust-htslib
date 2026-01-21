@@ -313,6 +313,64 @@ pub trait BamRecordExtensions {
     fn seq_len_from_cigar(&self, include_hard_clip: bool) -> usize;
 }
 
+impl IterAlignedBlocks {
+    /// Create a new `IterAlignedBlocks` from its component parts.
+    ///
+    /// This allows constructing an iterator over aligned blocks without needing
+    /// access to a `BamRecordExtensions` instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `pos` - The starting position on the reference sequence
+    /// * `cigar` - The CIGAR operations as a vector
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rust_htslib::bam::record::Cigar;
+    /// use rust_htslib::bam::ext::IterAlignedBlocks;
+    ///
+    /// let cigar = vec![Cigar::Match(10), Cigar::Del(5), Cigar::Match(20)];
+    /// let iter = IterAlignedBlocks::new(100, cigar);
+    /// ```
+    pub fn new(pos: i64, cigar: Vec<Cigar>) -> Self {
+        Self {
+            pos,
+            cigar_index: 0,
+            cigar,
+        }
+    }
+}
+
+impl IterIntrons {
+    /// Create a new `IterIntrons` from its component parts.
+    ///
+    /// This allows constructing an iterator over introns without needing
+    /// access to a `BamRecordExtensions` instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `pos` - The starting position on the reference sequence
+    /// * `cigar` - The CIGAR operations as a vector
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rust_htslib::bam::record::Cigar;
+    /// use rust_htslib::bam::ext::IterIntrons;
+    ///
+    /// let cigar = vec![Cigar::Match(10), Cigar::RefSkip(1000), Cigar::Match(20)];
+    /// let iter = IterIntrons::new(100, cigar);
+    /// ```
+    pub fn new(pos: i64, cigar: Vec<Cigar>) -> Self {
+        Self {
+            pos,
+            cigar_index: 0,
+            cigar,
+        }
+    }
+}
+
 impl BamRecordExtensions for bam::Record {
     fn aligned_blocks(&self) -> IterAlignedBlocks {
         IterAlignedBlocks {
@@ -1020,6 +1078,26 @@ mod tests {
         assert_eq!(introns.len(), 2);
         assert_eq!(introns[0], [44587984, 44589680]);
         assert_eq!(introns[1], [44589703, 44592034]);
+    }
+
+    #[test]
+    fn test_iter_constructors() {
+        use crate::bam::ext::{IterAlignedBlocks, IterIntrons};
+
+        // Test IterAlignedBlocks constructor
+        let cigar = vec![Cigar::Match(10), Cigar::Del(5), Cigar::Match(20)];
+        let mut iter = IterAlignedBlocks::new(100, cigar);
+        let blocks: Vec<_> = iter.collect();
+        assert_eq!(blocks.len(), 2);
+        assert_eq!(blocks[0], [100, 110]);
+        assert_eq!(blocks[1], [115, 135]);
+
+        // Test IterIntrons constructor
+        let cigar = vec![Cigar::Match(10), Cigar::RefSkip(1000), Cigar::Match(20)];
+        let mut iter = IterIntrons::new(100, cigar);
+        let introns: Vec<_> = iter.collect();
+        assert_eq!(introns.len(), 1);
+        assert_eq!(introns[0], [110, 1110]);
     }
 
     #[test]
