@@ -2,6 +2,32 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.0.0](https://github.com/rust-bio/rust-htslib/compare/v0.51.0...v1.0.0) (2026-01-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* make the inner header pointer accessible again, although only through unsafe ([#504](https://github.com/rust-bio/rust-htslib/issues/504))
+* Reason about Send/Sync-ness of types and change Rcs to Arcs ([#488](https://github.com/rust-bio/rust-htslib/issues/488))
+* Use Arc instead of Rc in bam::buffer, such that the buffer can be used in a multithreaded context ([#495](https://github.com/rust-bio/rust-htslib/issues/495))
+
+### Features
+
+* Reason about Send/Sync-ness of types and change Rcs to Arcs ([#488](https://github.com/rust-bio/rust-htslib/issues/488)) ([d743a34](https://github.com/rust-bio/rust-htslib/commit/d743a3477a774e0fbe258c346918c7717ad061d2))
+* Use Arc instead of Rc in bam::buffer, such that the buffer can be used in a multithreaded context ([#495](https://github.com/rust-bio/rust-htslib/issues/495)) ([229d5a2](https://github.com/rust-bio/rust-htslib/commit/229d5a265685fd25e59e807524a5df27d4057c83))
+
+
+### Bug Fixes
+
+* apply clippy suggestion to use unwrap_or instead of match ([#501](https://github.com/rust-bio/rust-htslib/issues/501)) ([161f759](https://github.com/rust-bio/rust-htslib/commit/161f7594c8433ea1229722fd4a6cb7add57aa1ef))
+* empty_header was making a deep copy of header ([#499](https://github.com/rust-bio/rust-htslib/issues/499)) ([60aad09](https://github.com/rust-bio/rust-htslib/commit/60aad095d9b5b4809de2797b9ab784566257b730)), closes [#493](https://github.com/rust-bio/rust-htslib/issues/493)
+* make the inner header pointer accessible again, although only through unsafe ([#504](https://github.com/rust-bio/rust-htslib/issues/504)) ([4dc0fba](https://github.com/rust-bio/rust-htslib/commit/4dc0fba181301287afb10a19ad26aaedb30fab7d))
+
+
+### Performance Improvements
+
+* **bam:** Remove unnecessary heap allocation in `Record::aux` ([#498](https://github.com/rust-bio/rust-htslib/issues/498)) ([9680bb4](https://github.com/rust-bio/rust-htslib/commit/9680bb4810cc670203ca9148393ef75dd60f9d48))
+
 ## [0.51.0](https://github.com/rust-bio/rust-htslib/compare/v0.50.0...v0.51.0) (2025-10-15)
 
 
