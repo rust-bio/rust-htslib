@@ -1086,7 +1086,7 @@ mod tests {
 
         // Test IterAlignedBlocks constructor
         let cigar = vec![Cigar::Match(10), Cigar::Del(5), Cigar::Match(20)];
-        let mut iter = IterAlignedBlocks::new(100, cigar);
+        let iter = IterAlignedBlocks::new(100, cigar);
         let blocks: Vec<_> = iter.collect();
         assert_eq!(blocks.len(), 2);
         assert_eq!(blocks[0], [100, 110]);
@@ -1094,7 +1094,7 @@ mod tests {
 
         // Test IterIntrons constructor
         let cigar = vec![Cigar::Match(10), Cigar::RefSkip(1000), Cigar::Match(20)];
-        let mut iter = IterIntrons::new(100, cigar);
+        let iter = IterIntrons::new(100, cigar);
         let introns: Vec<_> = iter.collect();
         assert_eq!(introns.len(), 1);
         assert_eq!(introns[0], [110, 1110]);
