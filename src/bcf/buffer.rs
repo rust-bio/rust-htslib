@@ -107,18 +107,16 @@ impl RecordBuffer {
         }
 
         // move overflow from last fill into ringbuffer
-        if self.overflow.is_some() {
-            let pos = self.overflow.as_ref().unwrap().pos() as u64;
+        if let Some(overflow) = self.overflow.take() {
+            let pos = overflow.pos() as u64;
             if pos >= start {
                 if pos <= end {
-                    self.ringbuffer.push_back(self.overflow.take().unwrap());
+                    self.ringbuffer.push_back(overflow);
                     added += 1;
                 } else {
+                    self.overflow = Some(overflow);
                     return Ok((added, deleted));
                 }
-            } else {
-                // discard overflow
-                self.overflow.take();
             }
         }
 
