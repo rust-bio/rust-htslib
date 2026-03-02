@@ -1029,8 +1029,8 @@ impl Read for IndexedReader {
 impl Drop for IndexedReader {
     fn drop(&mut self) {
         unsafe {
-            if self.itr.is_some() {
-                htslib::hts_itr_destroy(self.itr.unwrap());
+            if let Some(itr) = self.itr {
+                htslib::hts_itr_destroy(itr);
             }
             htslib::hts_close(self.htsfile);
         }

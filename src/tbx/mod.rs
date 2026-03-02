@@ -316,8 +316,8 @@ impl Read for Reader {
 impl Drop for Reader {
     fn drop(&mut self) {
         unsafe {
-            if self.itr.is_some() {
-                htslib::hts_itr_destroy(self.itr.unwrap());
+            if let Some(itr) = self.itr {
+                htslib::hts_itr_destroy(itr);
             }
             htslib::tbx_destroy(self.tbx);
             htslib::hts_close(self.hts_file);
