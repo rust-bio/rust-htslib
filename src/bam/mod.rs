@@ -846,8 +846,11 @@ impl IndexedReader {
                 return Err(Error::InvalidTid { tid });
             }
 
+            // Map unmapped reads (tid == -1) to the last slot (nref) to avoid usize wrapping.
+            let count_idx = if tid == -1 { nref } else { tid as usize };
+
             if tid != last_tid {
-                if (last_tid >= -1) && (counts[tid as usize][0] + counts[tid as usize][1]) > 0 {
+                if (last_tid >= -1) && (counts[count_idx][0] + counts[count_idx][1]) > 0 {
                     return Err(Error::BamUnsorted);
                 }
                 last_tid = tid;
@@ -858,7 +861,7 @@ impl IndexedReader {
             } else {
                 0
             };
-            counts[(*b).core.tid as usize][idx] += 1;
+            counts[count_idx][idx] += 1;
         }
 
         if ret == -1 {
@@ -1029,8 +1032,8 @@ impl Read for IndexedReader {
 impl Drop for IndexedReader {
     fn drop(&mut self) {
         unsafe {
-            if self.itr.is_some() {
-                htslib::hts_itr_destroy(self.itr.unwrap());
+            if let Some(itr) = self.itr {
+                htslib::hts_itr_destroy(itr);
             }
             htslib::hts_close(self.htsfile);
         }
@@ -3161,6 +3164,20 @@ CCCCCCCCCCCCCCCCCCC"[..],
             (1, 120, 2, 0),
             (2, 120, 2, 0),
             (-1, 0, 0, 0),
+        ];
+        let actual = reader.index_stats().unwrap();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_slow_idxstats_cram_unmapped() {
+        let mut reader = IndexedReader::from_path("test/test_cram_unmapped.cram").unwrap();
+        reader.set_reference("test/test_cram.fa").unwrap();
+        let expected = vec![
+            (0, 120, 2, 0),
+            (1, 120, 2, 0),
+            (2, 120, 2, 0),
+            (-1, 0, 0, 2),
         ];
         let actual = reader.index_stats().unwrap();
         assert_eq!(expected, actual);
