@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.0.1](https://github.com/rust-bio/rust-htslib/compare/v1.0.0...v1.0.1) (2026-06-29)
+
+
+### Bug Fixes
+
+* map unmapped reads (tid=-1) to correct index in slow_idxstats ([#511](https://github.com/rust-bio/rust-htslib/issues/511)) ([ebd7d99](https://github.com/rust-bio/rust-htslib/commit/ebd7d994889120525345d928c19d9d4e06130f3d))
+
 ## [1.0.0](https://github.com/rust-bio/rust-htslib/compare/v0.51.0...v1.0.0) (2026-01-29)
 
 
