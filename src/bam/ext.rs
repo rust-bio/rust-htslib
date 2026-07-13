@@ -452,10 +452,9 @@ impl BamRecordExtensions for bam::Record {
                 | Cigar::Diff(len) => {
                     result += len;
                 }
-                Cigar::HardClip(len)
-                    if include_hard_clip => {
-                        result += len;
-                    }
+                Cigar::HardClip(len) if include_hard_clip => {
+                    result += len;
+                }
                 _ => {}
             }
         }
