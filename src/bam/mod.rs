@@ -1439,7 +1439,12 @@ impl HeaderView {
     }
 
     pub fn tid2name(&self, tid: u32) -> &[u8] {
-        unsafe { ffi::CStr::from_ptr(htslib::sam_hdr_tid2name(self.inner, tid as i32)).to_bytes() }
+        let ptr = unsafe { htslib::sam_hdr_tid2name(self.inner, tid as i32) };
+        if ptr.is_null() {
+            b""
+        } else {
+            unsafe { ffi::CStr::from_ptr(ptr).to_bytes() }
+        }
     }
 
     pub fn target_count(&self) -> u32 {
@@ -3181,6 +3186,13 @@ CCCCCCCCCCCCCCCCCCC"[..],
         ];
         let actual = reader.index_stats().unwrap();
         assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_nonexistent_tidname() {
+        let header = Header::new();
+        let header_view = HeaderView::from_header(&header);
+        assert_eq!(b"", header_view.tid2name(0));
     }
 
     // #[test]
