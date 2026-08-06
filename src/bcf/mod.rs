@@ -295,10 +295,12 @@ impl IndexedReader {
         // Create reader and require existence of index file.
         let ser_reader = unsafe { htslib::bcf_sr_init() };
         unsafe {
+            // 0: BCF_SR_REQUIRE_IDX
             htslib::bcf_sr_set_opt(ser_reader, 0);
-        } // 0: BCF_SR_REQUIRE_IDX
-          // Attach a file with the path from the arguments.
-        if unsafe { htslib::bcf_sr_add_reader(ser_reader, path.as_ptr()) } >= 0 {
+        }
+        // Attach a file with the path from the arguments. 1 = success, 0 = fail
+        // https://github.com/samtools/htslib/blob/develop/htslib/synced_bcf_reader.h#L232
+        if unsafe { htslib::bcf_sr_add_reader(ser_reader, path.as_ptr()) } != 0 {
             let header = Arc::new(unsafe {
                 HeaderView::from_ptr(htslib::bcf_hdr_dup(
                     (*(*ser_reader).readers.offset(0)).header,
