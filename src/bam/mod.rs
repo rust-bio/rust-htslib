@@ -593,7 +593,7 @@ impl<'a, T: AsRef<[u8]>, X: Into<FetchCoordinate>, Y: Into<FetchCoordinate>> Fro
 pub struct IndexedReader {
     htsfile: *mut htslib::htsFile,
     header: Arc<HeaderView>,
-    idx: Arc<IndexView>,
+    idx: Option<IndexView>,
     itr: Option<*mut htslib::hts_itr_t>,
     tpool: Option<ThreadPool>,
 }
@@ -639,7 +639,7 @@ impl IndexedReader {
             Ok(IndexedReader {
                 htsfile,
                 header: Arc::new(HeaderView::new(header)),
-                idx: Arc::new(IndexView::new(idx)),
+                idx: Some(IndexView::new(idx)),
                 itr: None,
                 tpool: None,
             })
@@ -667,7 +667,7 @@ impl IndexedReader {
             Ok(IndexedReader {
                 htsfile,
                 header: Arc::new(HeaderView::new(header)),
-                idx: Arc::new(IndexView::new(idx)),
+                idx: Some(IndexView::new(idx)),
                 itr: None,
                 tpool: None,
             })
@@ -812,7 +812,7 @@ impl IndexedReader {
     }
 
     pub fn index(&self) -> &IndexView {
-        &self.idx
+        self.idx.as_ref().unwrap()
     }
 
     // Analogous to slow_idxstats in samtools, see
@@ -1032,9 +1032,13 @@ impl Read for IndexedReader {
 impl Drop for IndexedReader {
     fn drop(&mut self) {
         unsafe {
-            if let Some(itr) = self.itr {
+            if let Some(itr) = self.itr.take() {
                 htslib::hts_itr_destroy(itr);
             }
+
+            // A CRAM index contains a pointer to the CRAM file handle.
+            // Destroy the index before hts_close frees that handle.
+            drop(self.idx.take());
             htslib::hts_close(self.htsfile);
         }
     }
@@ -1796,6 +1800,19 @@ CCCCCCCCCCCCCCCCCCC"[..],
     fn test_read_indexed() {
         let bam = IndexedReader::from_path("test/test.bam").expect("Expected valid index.");
         _test_read_indexed_common(bam);
+    }
+
+    #[test]
+    fn test_read_indexed_cram() {
+        let mut reader = IndexedReader::from_path("test/test_cram.cram").unwrap();
+        reader.set_reference("test/test_cram.fa").unwrap();
+        reader.fetch(("chr1", 0, 120)).unwrap();
+
+        let mut record = Record::new();
+        reader.read(&mut record).unwrap().unwrap();
+        assert_eq!(record.qname(), b"chr1.1");
+
+        drop(reader);
     }
 
     #[test]
