@@ -1799,6 +1799,19 @@ CCCCCCCCCCCCCCCCCCC"[..],
     }
 
     #[test]
+    fn test_read_indexed_cram() {
+        let mut reader = IndexedReader::from_path("test/test_cram.cram").unwrap();
+        reader.set_reference("test/test_cram.fa").unwrap();
+        reader.fetch(("chr1", 0, 120)).unwrap();
+
+        let mut record = Record::new();
+        reader.read(&mut record).unwrap().unwrap();
+        assert_eq!(record.qname(), b"chr1.1");
+
+        drop(reader);
+    }
+
+    #[test]
     fn test_read_indexed_different_index_name() {
         let bam = IndexedReader::from_path_and_index(
             &"test/test_different_index_name.bam",
