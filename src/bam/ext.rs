@@ -452,10 +452,8 @@ impl BamRecordExtensions for bam::Record {
                 | Cigar::Diff(len) => {
                     result += len;
                 }
-                Cigar::HardClip(len) => {
-                    if include_hard_clip {
-                        result += len;
-                    }
+                Cigar::HardClip(len) if include_hard_clip => {
+                    result += len;
                 }
                 _ => {}
             }
@@ -9648,6 +9646,7 @@ mod tests {
             ("40X", 40, 40),
             ("20M5I20M", 45, 45),
             ("20M5D20M", 40, 40),
+            ("5H", 0, 5),
             ("5H35M", 35, 40),
             ("5S35M", 40, 40),
             ("35M5H", 35, 40),
