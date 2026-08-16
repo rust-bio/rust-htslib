@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.0.2](https://github.com/rust-bio/rust-htslib/compare/v1.0.1...v1.0.2) (2026-08-15)
+
+
+### Bug Fixes
+
+* add null check to tidname on HeaderView ([#515](https://github.com/rust-bio/rust-htslib/issues/515)) ([979b3d1](https://github.com/rust-bio/rust-htslib/commit/979b3d1462ae4dd6ad996d5492976af393ee0434))
+* drop cram index in hts_close to avoid UB ([#518](https://github.com/rust-bio/rust-htslib/issues/518)) ([d472d33](https://github.com/rust-bio/rust-htslib/commit/d472d33f927173c278ede81960f950c9d61cec46))
+
 ## [1.0.1](https://github.com/rust-bio/rust-htslib/compare/v1.0.0...v1.0.1) (2026-06-29)
 
 
