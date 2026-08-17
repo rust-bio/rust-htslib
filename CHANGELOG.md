@@ -2,6 +2,17 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.0.0](https://github.com/rust-bio/rust-htslib/compare/v1.0.2...v2.0.0) (2026-08-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* bam header to_hashmap method now returns a result in order to deal with header parsing issues ([#396](https://github.com/rust-bio/rust-htslib/issues/396))
+
+### Features
+
+* bam header to_hashmap method now returns a result in order to deal with header parsing issues ([#396](https://github.com/rust-bio/rust-htslib/issues/396)) ([96afbc9](https://github.com/rust-bio/rust-htslib/commit/96afbc960fa9510f67db927d264dff296fecea59))
+
 ## [1.0.2](https://github.com/rust-bio/rust-htslib/compare/v1.0.1...v1.0.2) (2026-08-15)
 
 
