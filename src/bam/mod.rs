@@ -19,7 +19,6 @@ use std::ffi;
 use std::os::raw::c_char;
 use std::path::Path;
 use std::rc::Rc;
-use std::slice;
 use std::str;
 use std::sync::Arc;
 
@@ -196,7 +195,7 @@ pub trait Read: Sized {
         // this reimplements the bgzf_tell macro
         let htsfile = unsafe { self.htsfile().as_ref() }.expect("bug: null pointer to htsFile");
         let bgzf = unsafe { *htsfile.fp.bgzf };
-        (bgzf.block_address << 16) | (i64::from(bgzf.block_offset) & 0xFFFF)
+        unsafe { hts_sys::bgzf_tell(htsfile.fp.bgzf) }
     }
 
     /// Activate multi-threaded BAM read support in htslib. This should permit faster
@@ -1107,34 +1106,40 @@ impl Writer {
     fn new(path: &[u8], mode: &[u8], header: &header::Header) -> Result<Self> {
         let f = hts_open(path, mode)?;
 
-        // sam_hdr_parse does not populate the text and l_text fields of the header_record.
-        // This causes non-SQ headers to be dropped in the output BAM file.
-        // To avoid this, we copy the All header to a new C-string that is allocated with malloc,
-        // and set this into header_record manually.
         let header_record = unsafe {
-            let mut header_string = header.to_bytes();
-            if !header_string.is_empty() && header_string[header_string.len() - 1] != b'\n' {
-                header_string.push(b'\n');
+            let mut buf = header.to_bytes();
+            if buf.last().copied() != Some(b'\n') {
+                buf.push(b'\n');
             }
-            let l_text = header_string.len();
-            let text = ::libc::malloc(l_text + 1);
-            libc::memset(text, 0, l_text + 1);
-            libc::memcpy(
-                text,
-                header_string.as_ptr() as *const ::libc::c_void,
-                header_string.len(),
+
+            let rec = htslib::sam_hdr_init();
+            if rec.is_null() {
+                return Err(Error::BamOpen {
+                    target: String::from_utf8_lossy(path).into_owned(),
+                });
+            }
+
+            let ret = htslib::sam_hdr_add_lines(
+                rec,
+                buf.as_ptr() as *const c_char,
+                buf.len(),
             );
+            if ret != 0 {
+                htslib::sam_hdr_destroy(rec);
+                return Err(Error::BamOpen {
+                    target: String::from_utf8_lossy(path).into_owned(),
+                });
+            }
 
-            //println!("{}", str::from_utf8(&header_string).unwrap());
-            let rec = htslib::sam_hdr_parse(l_text + 1, text as *const c_char);
-
-            (*rec).text = text as *mut c_char;
-            (*rec).l_text = l_text;
             rec
         };
 
-        unsafe {
-            htslib::sam_hdr_write(f, header_record);
+        let ret = unsafe { htslib::sam_hdr_write(f, header_record) };
+        if ret != 0 {
+            unsafe { htslib::sam_hdr_destroy(header_record) };
+            return Err(Error::BamOpen {
+                target: String::from_utf8_lossy(path).into_owned(),
+            });
         }
 
         Ok(Writer {
@@ -1387,18 +1392,26 @@ impl HeaderView {
     /// Create a new HeaderView from bytes
     pub fn from_bytes(header_string: &[u8]) -> Self {
         let header_record = unsafe {
-            let l_text = header_string.len();
-            let text = ::libc::malloc(l_text + 1);
-            ::libc::memset(text, 0, l_text + 1);
-            ::libc::memcpy(
-                text,
-                header_string.as_ptr() as *const ::libc::c_void,
-                header_string.len(),
-            );
+            let rec = htslib::sam_hdr_init();
+            assert!(!rec.is_null(), "sam_hdr_init() failed");
 
-            let rec = htslib::sam_hdr_parse(l_text + 1, text as *const c_char);
-            (*rec).text = text as *mut c_char;
-            (*rec).l_text = l_text;
+            if !header_string.is_empty() {
+                let mut header_string = header_string.to_vec();
+                if header_string.last().copied() != Some(b'\n') {
+                    header_string.push(b'\n');
+                }
+
+                let ret = htslib::sam_hdr_add_lines(
+                    rec,
+                    header_string.as_ptr() as *const c_char,
+                    header_string.len(),
+                );
+                if ret != 0 {
+                    htslib::sam_hdr_destroy(rec);
+                    panic!("sam_hdr_add_lines() failed");
+                }
+            }
+
             rec
         };
 
@@ -1452,25 +1465,27 @@ impl HeaderView {
     }
 
     pub fn target_count(&self) -> u32 {
-        self.inner().n_targets as u32
+        unsafe { hts_sys::sam_hdr_nref(self.inner()) as u32 }
     }
 
     pub fn target_names(&self) -> Vec<&[u8]> {
-        let names = unsafe {
-            slice::from_raw_parts(self.inner().target_name, self.target_count() as usize)
-        };
-        names
-            .iter()
-            .map(|name| unsafe { ffi::CStr::from_ptr(*name).to_bytes() })
-            .collect()
-    }
+        let n = self.target_count();
+        let mut names = Vec::with_capacity(n as usize);
 
+        for tid in 0..n {
+            let p = unsafe { hts_sys::sam_hdr_tid2name(self.inner(), tid as i32) };
+            assert!(!p.is_null(), "{}", "sam_hdr_tid2name() returned NULL for valid tid {tid}");
+            names.push(unsafe { ffi::CStr::from_ptr(p) }.to_bytes());
+        }
+
+        names
+    }  
+
+    #[inline]
     pub fn target_len(&self, tid: u32) -> Option<u64> {
-        let inner = unsafe { *self.inner };
-        if (tid as i32) < inner.n_targets {
-            let l: &[u32] =
-                unsafe { slice::from_raw_parts(inner.target_len, inner.n_targets as usize) };
-            Some(l[tid as usize] as u64)
+        let len = unsafe { hts_sys::sam_hdr_tid2len(self.inner(), tid as i32) };
+        if len > 0 {
+            Some(len as u64)
         } else {
             None
         }
@@ -3024,10 +3039,11 @@ CCCCCCCCCCCCCCCCCCC"[..],
         assert_ne!(&one_data, &two_data);
         assert_ne!(&one_aux_array, &two_aux_array);
 
+
         let one_aux = Aux::ArrayI8(one_aux_array);
         let two_aux = Aux::ArrayI8(two_aux_array);
         assert_ne!(&one_aux, &two_aux);
-
+    
         // Raw bytes
         let bam_header = Header::new();
         let mut test_record = Record::from_sam(
@@ -3035,6 +3051,8 @@ CCCCCCCCCCCCCCCCCCC"[..],
             "ali1\t4\t*\t0\t0\t*\t*\t0\t0\tACGT\tFFFF".as_bytes(),
         )
         .unwrap();
+
+
 
         test_record.push_aux(b"XA", one_aux).unwrap();
         test_record.push_aux(b"XB", two_aux).unwrap();
