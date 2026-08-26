@@ -6,3 +6,5 @@ Cargo.lock
 htslib/*
 test/out.bam
 test/test_index_build.bam.csi
+built_test.csi
+built_test_vcf.tbx
