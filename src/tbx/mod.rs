@@ -135,6 +135,11 @@ impl Reader {
         let path = ffi::CString::new(path).unwrap();
         let c_str = ffi::CString::new("r").unwrap();
         let hts_file = unsafe { htslib::hts_open(path.as_ptr(), c_str.as_ptr()) };
+        if hts_file.is_null() {
+            return Err(Error::FileOpen {
+                path: path.to_string_lossy().into_owned(),
+            });
+        }
         let hts_format: u32 = unsafe {
             let file_format: *const hts_sys::htsFormat = htslib::hts_get_format(hts_file);
             (*file_format).format
@@ -402,6 +407,12 @@ mod tests {
     fn test_fails_on_non_existiant() {
         let reader = Reader::from_path("test/no_such_file");
         assert!(reader.is_err());
+    }
+
+    #[test]
+    fn test_from_url_missing_file_is_error() {
+        let url = Url::parse("file:///test/no_such_file.vcf.gz").unwrap();
+        assert!(Reader::from_url(&url).is_err());
     }
 
     #[test]

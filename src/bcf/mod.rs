@@ -294,26 +294,33 @@ impl IndexedReader {
     fn new(path: &ffi::CStr) -> Result<Self> {
         // Create reader and require existence of index file.
         let ser_reader = unsafe { htslib::bcf_sr_init() };
+        if ser_reader.is_null() {
+            return Err(Error::BcfAllocationError);
+        }
         unsafe {
             htslib::bcf_sr_set_opt(ser_reader, 0);
         } // 0: BCF_SR_REQUIRE_IDX
           // Attach a file with the path from the arguments.
-        if unsafe { htslib::bcf_sr_add_reader(ser_reader, path.as_ptr()) } >= 0 {
-            let header = Arc::new(unsafe {
-                HeaderView::from_ptr(htslib::bcf_hdr_dup(
-                    (*(*ser_reader).readers.offset(0)).header,
-                ))
-            });
-            Ok(IndexedReader {
-                inner: ser_reader,
-                header,
-                current_region: None,
-            })
-        } else {
-            Err(Error::BcfOpen {
+        let added = unsafe { htslib::bcf_sr_add_reader(ser_reader, path.as_ptr()) };
+        if added == 0 {
+            unsafe { htslib::bcf_sr_destroy(ser_reader) };
+            return Err(Error::BcfOpen {
                 target: path.to_str().unwrap().to_owned(),
-            })
+            });
         }
+        let hdr_ptr = unsafe { (*(*ser_reader).readers.offset(0)).header };
+        if hdr_ptr.is_null() {
+            unsafe { htslib::bcf_sr_destroy(ser_reader) };
+            return Err(Error::BcfOpen {
+                target: path.to_str().unwrap().to_owned(),
+            });
+        }
+        let header = Arc::new(unsafe { HeaderView::from_ptr(htslib::bcf_hdr_dup(hdr_ptr)) });
+        Ok(IndexedReader {
+            inner: ser_reader,
+            header,
+            current_region: None,
+        })
     }
 
     /// Jump to the given region.
@@ -1577,6 +1584,12 @@ mod tests {
     fn test_fails_on_non_existiant() {
         let reader = Reader::from_path("test/no_such_file");
         assert!(reader.is_err());
+    }
+
+    #[test]
+    fn test_indexed_reader_from_url_missing_file_is_error() {
+        let url = Url::parse("file:///test/no_such_file.vcf.gz").unwrap();
+        assert!(IndexedReader::from_url(&url).is_err());
     }
 
     #[test]
